@@ -9995,6 +9995,26 @@ private rootIdOf(tab: Tab): string | null {
         // 清空前收集旧卡片：排序切换/列表刷新时同页签卡片直接复用（移动 DOM 而非重建），
         // 已渲染的缩略图原样保留，重排瞬时完成
         cancelDocPreview(scrollElement);
+        // T-7009：异步重绘/排序切换的现场保持——innerHTML 清空前捕获滚动与焦点；
+        // 焦点卡片按 tabId 在新列表找回（DOM 复用移动的是同一元素，可重新聚焦；
+        // 焦点回归经 T-7007 的 focusin 委托联动预览，现场完整），找不到诚实放弃。
+        const scenePrevScrollTop = scrollElement.scrollTop;
+        const sceneActive = document.activeElement instanceof HTMLElement && scrollElement.contains(document.activeElement)
+            ? document.activeElement : null;
+        const sceneFocusTabId = sceneActive?.closest<HTMLElement>(".sw__card[data-tab-id]")?.dataset.tabId || "";
+        // 焦点是否已在本表面内（含搜索框等列表外控件）：在则重绘不得抢默认焦点；
+        // 不在（首次打开无焦点）才落默认首卡。
+        const surfaceRoot = scrollElement.closest<HTMLElement>(".sw-platform-surface") || scrollElement.parentElement;
+        const sceneFocusInSurface = !!(document.activeElement instanceof HTMLElement
+            && surfaceRoot && surfaceRoot.contains(document.activeElement));
+        const restoreListScene = () => {
+            scrollElement.scrollTop = Math.min(scenePrevScrollTop, Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight));
+            if (sceneFocusTabId) {
+                const restored = Array.from(scrollElement.querySelectorAll<HTMLElement>(".sw__card"))
+                    .find((card) => card.dataset.tabId === sceneFocusTabId);
+                restored?.focus({preventScroll: true});
+            }
+        };
         const reusable = new Map<string, HTMLElement>();
         scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
             if (card.dataset.tabId) {
@@ -10030,6 +10050,8 @@ private rootIdOf(tab: Tab): string | null {
 
         if (all.length === 0) {
             scrollElement.appendChild(this.buildEmptyState());
+            // T-7009：空态同样恢复滚动现场（钳制后通常归零）
+            restoreListScene();
             return;
         }
 
@@ -10046,12 +10068,18 @@ private rootIdOf(tab: Tab): string | null {
         }
 
         // 初始焦点：打开面板时键盘用户直接落在默认卡片本体上（T-7007 主焦点模型）
+        // T-7009：默认首卡焦点只服务首次打开（本表面内尚无焦点）；异步重绘/排序
+        // 切换时焦点已在表面内（搜索框或某张卡片），不得被默认焦点抢走。
+        if (!sceneFocusInSurface) {
         this.focusCard(all[focusState.defaultFocusIndex]?.card, true);
+        }
 
         // 视口懒渲染缩略图：复用卡片跳过，新卡片滚入可视区时才生成
         this.renderThumbnails(all, scrollElement, THUMB_BATCH);
         // T-6820 数字直达角标：渲染后刷新前 9 个可见卡片的数字标记
         this.updateDigitBadges(scrollElement);
+        // T-7009：恢复重绘前的滚动位置与焦点卡片
+        restoreListScene();
     }
 
     // T-6820 数字直达可发现性：为前 9 个可见卡片写入 1-9 角标（CSS ::after 渲染），

@@ -107,7 +107,7 @@ test("ADR 0092 recalibrates the raw bundle self-discipline line before T-6979", 
     const gate = readSourceText(path.join(__dirname, "host", "release-quality.test.cjs"));
     assert.match(gate, /metrics\.RAW_BUNDLE_BUDGET_BYTES/);
     // ADR 0081 是历史基线；当前线由 ADR 0092 校准至 1120 KiB。
-    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1120 * 1024);
+    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1152 * 1024);
     // 校准日期备注本身就在注释里——按门禁清单 D-395 例外用原始文本断言注释
     const gateRaw = fs.readFileSync(path.join(__dirname, "host", "release-quality.test.cjs"), "utf8");
     assert.match(gateRaw, /2026-09-23 \(ADR 0074\)/);

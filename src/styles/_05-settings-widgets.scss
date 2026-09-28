@@ -1042,6 +1042,14 @@
         font-variant-numeric: tabular-nums;
     }
     .sw-home-health__actions { display: flex; flex: none; gap: 4px; }
+
+    // T-7011：单项重试在途——行降透明度表达进行态（aria-busy 同步供读屏），
+    // prefers-reduced-motion 下不加动画，仅静默降透明。
+    &[aria-busy="true"] {
+        opacity: .62;
+
+        .sw-home-health__actions button { cursor: default; }
+    }
 }
 
 .sw-home-health__refresh { margin-top: 4px; }

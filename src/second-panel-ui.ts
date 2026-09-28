@@ -999,7 +999,10 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     scroller.scrollTop = Math.max(0, scroller.scrollTop + (cellRect.top - scrollerRect.top) - scrollerRect.height / 2);
                 }
             };
-            const renderHealthList = () => {
+            // T-7011：单项重试在途登记——在途行渲染为 busy（按钮禁用+行 aria-busy），
+            // 双击防护不重复触发；settle 后从集合移除并重绘列表（行落回真实分组=结果）。
+            const inFlightRetries = new Set<string>();
+            const renderHealthList = (): void => {
                 const report = buildHomeHealthReport(collectRows());
                 listRoot.textContent = "";
                 const groupLabels: Record<string, string> = {
@@ -1057,11 +1060,32 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             window.setTimeout(() => cell.classList.remove("sw-home__cell--locate"), 1600);
                         }));
                         if (row.health !== "ok") {
-                            actions.appendChild(smallButton(this.i18n.homeHealthRetryOne, () => {
+                            const retryButton = smallButton(this.i18n.homeHealthRetryOne, () => {
+                                // T-7011：双击防护——在途重试不重复触发（不重复写入、不重复请求）
+                                if (inFlightRetries.has(row.instanceId)) return;
                                 const controller = homeControllers.find((c) => c.instanceId === row.instanceId);
                                 if (!controller) return;
-                                void controller.refresh(undefined, {force: true}).then(() => renderHealthList());
-                            }));
+                                inFlightRetries.add(row.instanceId);
+                                retryButton.disabled = true;
+                                retryButton.textContent = this.i18n.homeRefreshing;
+                                retryButton.setAttribute("aria-busy", "true");
+                                line.setAttribute("aria-busy", "true");
+                                void controller.refresh(undefined, {force: true})
+                                    .catch((): undefined => undefined)
+                                    .then((): void => {
+                                        inFlightRetries.delete(row.instanceId);
+                                        // settle 后重绘：行按最新健康状态落回 失败/正常 分组 = 单项结果
+                                        renderHealthList();
+                                    });
+                            });
+                            if (inFlightRetries.has(row.instanceId)) {
+                                // 「刷新列表」等重绘通道也要如实呈现在途行
+                                retryButton.disabled = true;
+                                retryButton.textContent = this.i18n.homeRefreshing;
+                                retryButton.setAttribute("aria-busy", "true");
+                                line.setAttribute("aria-busy", "true");
+                            }
+                            actions.appendChild(retryButton);
                         }
                         actions.appendChild(smallButton(this.i18n.homeHealthCopySummary, () => {
                             const summary = buildHomeDiagnosticSummary(row, diagLabels);

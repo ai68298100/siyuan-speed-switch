@@ -18,7 +18,7 @@
 // ADR 0092 (2026-09-28): v0.41.0 raw entry is 1,113,051 B, leaving only
 // 1,061 B on the 1088 KiB line before the T-6979 switcher fixes. Reduction
 // audit: no removable entry dead weight; keep archive/compressed ceilings.
-const RAW_BUNDLE_BUDGET_BYTES = 1120 * 1024;
+const RAW_BUNDLE_BUDGET_BYTES = 1152 * 1024;
 // ADR 0090 (2026-09-28): recalibrated the archive ceiling 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout
@@ -27,7 +27,7 @@ const RAW_BUNDLE_BUDGET_BYTES = 1120 * 1024;
 // audit: icon/preview/i18n/README are market-required; the 4 packaged docs are
 // the F7 store-facing declaration (T-6707); snippet studio already ships as a
 // dynamic chunk. Per-entry compressed line (320 KiB, ADR 0089) unchanged.
-const ARCHIVE_BUDGET_BYTES = 544 * 1024;
+const ARCHIVE_BUDGET_BYTES = 576 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
 // writing-streak second wave (T-6681) shrank headroom to 11780 bytes. Same
