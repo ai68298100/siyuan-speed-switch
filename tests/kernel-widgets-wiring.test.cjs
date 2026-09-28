@@ -878,6 +878,83 @@ test('platform surface contract: query passthrough, focus restore and settings r
         'the mobile switcher settings button must request restore');
 });
 
+// T-7007：第一面板主焦点模型与过滤 chips 语义收口。
+test('switcher focus model: cards are real focus targets and chips are an honest button group (T-7007)', () => {
+    const createCardSlice = indexSource.slice(
+        indexSource.indexOf('private createCard('),
+        indexSource.indexOf('private buildCardThumb('),
+    );
+    assert.match(createCardSlice, /card\.tabIndex = 0;/,
+        '页签卡必须是真实 DOM 焦点目标（tabindex=0）');
+    assert.match(createCardSlice, /card\.setAttribute\("role", "button"\);/,
+        '卡片必须有 button 语义供读屏播报激活行为');
+    assert.match(createCardSlice, /card\.setAttribute\("aria-label", this\.titleOf\(tab\)\);/,
+        '卡片可访问名称必须是页签标题');
+    const syncSlice = indexSource.slice(
+        indexSource.indexOf('private syncCardState('),
+        indexSource.indexOf('private buildEmptyState('),
+    );
+    assert.match(syncSlice, /card\.setAttribute\("aria-label", title\);/,
+        '复用卡片跨页签重挂时必须同步可访问名称');
+    const focusFn = indexSource.slice(
+        indexSource.indexOf('private focusCard('),
+        indexSource.indexOf('private scrollIntoView('),
+    );
+    assert.match(focusFn, /domFocus = false/, 'focusCard 必须参数化 DOM 焦点（悬浮聚焦不抢焦点）');
+    assert.match(focusFn, /card\.focus\(\{preventScroll: true\};?/, '键盘路径必须把焦点落到卡片本体');
+    assert.match(indexSource, /this\.focusCard\(cards\[next\], true\);/,
+        '方向键/Tab 导航必须移动 DOM 焦点');
+    assert.match(indexSource, /this\.focusCard\(all\[focusState\.defaultFocusIndex\]\?\.card, true\);/,
+        '打开面板时初始焦点必须落在默认卡片本体');
+    assert.match(indexSource, /scrollElement\.addEventListener\("focusin"/,
+        'DOM 焦点进入卡片时必须同步视觉焦点与预览（单一真源）');
+    // 过滤 chips：诚实降级为按钮组（aria-pressed），不留半套 tablist。
+    const chipsSlice = indexSource.slice(
+        indexSource.indexOf('private applySearchChips('),
+        indexSource.indexOf('private activateUnifiedItem(') >= 0
+            ? indexSource.indexOf('private activateUnifiedItem(')
+            : indexSource.indexOf('T-6799 统一索引分区'),
+    );
+    assert.match(chipsSlice, /row\.setAttribute\("role", "group"\);/,
+        'chips 容器必须是 group 语义');
+    assert.match(chipsSlice, /aria-pressed/, 'chips 必须用 aria-pressed 表达选中');
+    assert.doesNotMatch(chipsSlice, /setAttribute\("role", "tab"\)/,
+        'chips 不得保留无 aria-controls/roving 的半套 tab 语义');
+    assert.doesNotMatch(chipsSlice, /aria-selected/,
+        'chips 不得残留 aria-selected（tablist 专属属性）');
+});
+
+// T-7010：第二面板 renderPanel 重绘事务——捕获滚动锚与聚焦现场，挂载后恢复。
+test('workbench rerender transaction: capture scroll and focus before rebuild, restore after mount (T-7010)', () => {
+    const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
+    const captureSlice = secondPanelSource.slice(
+        secondPanelSource.indexOf('const renderPanel = () => {'),
+        secondPanelSource.indexOf('homeRefreshBatchController?.abort();'),
+    );
+    assert.match(captureSlice, /root\.contains\(activeBefore\)/,
+        '捕获必须只认面板内的活动元素');
+    assert.match(captureSlice, /closest<HTMLElement>\("\.sw-home__cell"\)/,
+        '组件卡现场必须按 cell 捕获');
+    assert.match(captureSlice, /dataset\.homeAction/,
+        '工具栏按钮现场必须按 data-home-action 捕获');
+    assert.match(captureSlice, /scrollTop: root\.scrollTop,/,
+        '滚动锚必须在清空 DOM 前捕获');
+    const restoreSlice = secondPanelSource.slice(
+        secondPanelSource.indexOf('root.appendChild(mountFragment);'),
+        secondPanelSource.indexOf('T-6953：编辑会话历史压栈'),
+    );
+    assert.match(restoreSlice, /root\.scrollTop = capture\.scrollTop;/,
+        '挂载后必须立即复位滚动锚');
+    assert.match(restoreSlice, /for \(const candidate of cellsNow\)/,
+        '组件卡焦点必须按 object-id 遍历比对恢复（不走选择器插值）');
+    assert.match(restoreSlice, /restoreTarget\?\.focus\(\{preventScroll: true\}\);/,
+        '丢失的 DOM 焦点必须恢复到现场目标');
+    assert.match(secondPanelSource, /editToggle\.dataset\.homeAction = "edit";/,
+        '编辑开关必须带稳定动作标识供重建后找回');
+    assert.match(secondPanelSource, /refreshAllButton\.dataset\.homeAction = "refresh-all";/,
+        '刷新全部按钮必须带稳定动作标识');
+});
+
 test('platform primitives: badge dot, kbd chip, segmented control, pill actions (T-6871 RZ-1)', () => {
     const {declaresIn} = require('./css-block-scan.cjs');
     const shell = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_platform-shell.scss'));

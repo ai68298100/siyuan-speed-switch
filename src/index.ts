@@ -4092,7 +4092,9 @@ const updatedMap: {[rootId: string]: string} = {};
         if (!row) {
             row = document.createElement("div");
             row.className = "sw__search-chips";
-            row.setAttribute("role", "tablist");
+            // T-7007：chips 语义收口为按钮组（aria-pressed）——半套 tablist
+            // （有 role=tab 无 aria-controls/roving/方向键）比诚实降级更误导读屏。
+            row.setAttribute("role", "group");
             row.setAttribute("aria-label", this.i18n.chipsLabel);
             const defs: Array<[string, string]> = [
                 ["all", this.i18n.chipsAll],
@@ -4106,14 +4108,14 @@ const updatedMap: {[rootId: string]: string} = {};
                 chip.className = "sw__search-chip";
                 chip.dataset.chip = key;
                 chip.textContent = label;
-                chip.setAttribute("role", "tab");
+                chip.setAttribute("aria-pressed", "false");
                 chip.addEventListener("click", () => {
                     this.docSearchState.chipFilters.set(scrollElement, key);
                     scrollElement.dataset.swChip = key;
                     row!.querySelectorAll<HTMLElement>(".sw__search-chip").forEach((el) => {
                         const active = el.dataset.chip === key;
                         el.classList.toggle("is-active", active);
-                        el.setAttribute("aria-selected", String(active));
+                        el.setAttribute("aria-pressed", String(active));
                     });
                 });
                 row.appendChild(chip);
@@ -4123,7 +4125,7 @@ const updatedMap: {[rootId: string]: string} = {};
         row.querySelectorAll<HTMLElement>(".sw__search-chip").forEach((el) => {
             const active = el.dataset.chip === selected;
             el.classList.toggle("is-active", active);
-            el.setAttribute("aria-selected", String(active));
+            el.setAttribute("aria-pressed", String(active));
         });
     }
 
@@ -9706,8 +9708,8 @@ private rootIdOf(tab: Tab): string | null {
             mountDocPreviewPane.call(this, layout, scrollElement);
         }
 
-        // 初始焦点
-        this.focusCard(all[focusState.defaultFocusIndex]?.card);
+        // 初始焦点：打开面板时键盘用户直接落在默认卡片本体上（T-7007 主焦点模型）
+        this.focusCard(all[focusState.defaultFocusIndex]?.card, true);
 
         // 视口懒渲染缩略图：复用卡片跳过，新卡片滚入可视区时才生成
         this.renderThumbnails(all, scrollElement, THUMB_BATCH);
@@ -10093,6 +10095,8 @@ private rootIdOf(tab: Tab): string | null {
         }
         const title = this.titleOf(tab);
         card.dataset.title = title;
+        // T-7007：复用卡片跨页签重挂时同步可访问名称，读屏不读出旧标题。
+        card.setAttribute("aria-label", title);
         card.dataset.rootId = rootId;
         card.dataset.notebookId = resolveSearchNotebookId(tab as unknown);
         card.dataset.searchPath = buildOpenedDocumentScope(tab as unknown)?.path || "";
@@ -10298,6 +10302,12 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             + (isActive ? " sw__active" : "")
             + (isPinned ? " sw__pinned" : "")
             + (isFaved ? " sw__faved" : "");
+        // T-7007：卡片是真实 DOM 焦点目标（主焦点模型）——键盘用户 Tab/方向键
+        // 直接落在卡片上，读屏读出标题；附属动作按钮（pin/fav/close）在卡片
+        // 获得焦点后经 :focus-within 可见。点击激活与右键菜单行为不变。
+        card.tabIndex = 0;
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", this.titleOf(tab));
         card.dataset.tabId = tab.id;
         card.dataset.title = this.titleOf(tab);
         card.dataset.rootId = this.rootIdOf(tab) || "";
@@ -11018,8 +11028,17 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             }
 
             if (next >= 0 && cards[next]) {
-                this.focusCard(cards[next]);
+                this.focusCard(cards[next], true);
                 this.scrollIntoView(cards[next], scrollElement);
+            }
+        });
+        // T-7007：焦点进入卡片（Tab 进入、附属动作按钮聚焦、方向键 focus()）时
+        // 同步视觉焦点与预览，保证 DOM 焦点与 sw__focused 单一真源。
+        scrollElement.addEventListener("focusin", (event) => {
+            const target = event.target as HTMLElement | null;
+            const card = target?.closest<HTMLElement>(".sw__card");
+            if (card && scrollElement.contains(card)) {
+                this.focusCard(card);
             }
         });
     }
@@ -11117,8 +11136,20 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         return best;
     }
 
-    private focusCard(card: HTMLElement | undefined | null) {
+    private focusCard(card: HTMLElement | undefined | null, domFocus = false) {
         if (!card) {
+            return;
+        }
+        // T-7007：键盘导航路径把 DOM 焦点移到卡片本体（Tab 顺序与读屏跟随）；
+        // mouseenter 悬浮聚焦保持纯视觉，不抢 DOM 焦点。
+        if (domFocus && card.isConnected) {
+            try {
+                card.focus({preventScroll: true});
+            } catch (_) {
+                card.focus();
+            }
+        }
+        if (card.classList.contains("sw__focused")) {
             return;
         }
         const container = card.closest(".sw__scroll") || card.parentElement;

@@ -171,6 +171,19 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         };
 
         const renderPanel = () => {
+            // T-7010 重绘事务（捕获段）：重建前记录滚动锚与聚焦现场（组件卡按
+            // data-sw-object-id、工具栏按钮按 data-home-action）；挂载后恢复，
+            // 编辑开关/刷新全部/配置保存等整面板重绘不再跳顶丢焦点。
+            const activeBefore = document.activeElement;
+            const activeInside = activeBefore instanceof HTMLElement && root.contains(activeBefore) ? activeBefore : null;
+            const capturedCell = activeInside?.closest<HTMLElement>(".sw-home__cell") || null;
+            const capturedBarAction = activeInside?.closest<HTMLElement>("button[data-home-action]")?.dataset.homeAction || "";
+            const capture = activeInside ? {
+                scrollTop: root.scrollTop,
+                bodyScrollTop: root.closest<HTMLElement>(".b3-dialog__body")?.scrollTop ?? -1,
+                cellId: capturedCell?.dataset.swObjectId || "",
+                barAction: capturedBarAction,
+            } : null;
             homeRefreshBatchController?.abort();
             homeRefreshBatchController = null;
             homeControllers.splice(0).forEach((entry) => entry.dispose());
@@ -237,6 +250,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             const editToggle = document.createElement("button");
             editToggle.type = "button";
             editToggle.className = "b3-button b3-button--text";
+            // T-7010：重绘事务用 data-home-action 在重建后找回同一工具栏按钮。
+            editToggle.dataset.homeAction = "edit";
             editToggle.setAttribute("aria-pressed", String(editing));
             editToggle.textContent = editing ? this.i18n.homeDone : this.i18n.homeEditLayout;
             editToggle.addEventListener("click", () => {
@@ -254,6 +269,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 const refreshAllButton = document.createElement("button");
                 refreshAllButton.type = "button";
                 refreshAllButton.className = "b3-button b3-button--text sw-home__refresh";
+                refreshAllButton.dataset.homeAction = "refresh-all";
                 refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll);
                 refreshAllButton.innerHTML = '<svg><use xlink:href="#iconRefresh"></use></svg><span>' + this.i18n.homeRefreshAll + '</span>';
                 let retryEntries: typeof homeControllers | null = null;
@@ -864,6 +880,31 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
 
             mountFragment.appendChild(body);
             root.appendChild(mountFragment);
+
+            // T-7010 重绘事务（恢复段）：滚动锚立即复位；若重建吞掉了 DOM 焦点
+            // （清空 innerHTML 后 activeElement 落到 body），按捕获的现场找回
+            // 同一组件卡或工具栏按钮；目标已不存在时诚实放弃，不猜焦点。
+            if (capture) {
+                root.scrollTop = capture.scrollTop;
+                const dialogBody = root.closest<HTMLElement>(".b3-dialog__body");
+                if (dialogBody && capture.bodyScrollTop >= 0) dialogBody.scrollTop = capture.bodyScrollTop;
+                const focusNow = document.activeElement;
+                if (!(focusNow instanceof HTMLElement && root.contains(focusNow))) {
+                    let restoreTarget: HTMLElement | null = null;
+                    if (capture.cellId) {
+                        const cellsNow = root.querySelectorAll<HTMLElement>(".sw-home__cell[data-sw-object-id]");
+                        for (const candidate of cellsNow) {
+                            if (candidate.dataset.swObjectId === capture.cellId) {
+                                restoreTarget = candidate;
+                                break;
+                            }
+                        }
+                    } else if (capture.barAction) {
+                        restoreTarget = root.querySelector<HTMLElement>(`.sw-home__bar button[data-home-action="${capture.barAction}"]`);
+                    }
+                    restoreTarget?.focus({preventScroll: true});
+                }
+            }
 
             // T-6953：编辑会话历史压栈——进入编辑建基线；此后每次渲染若状态有变则压入
             //（去重防刷屏），操作名来自 layoutOpLabel；撤销/重做应用时抑制压栈；
