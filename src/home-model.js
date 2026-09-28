@@ -196,7 +196,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "bucketId", label: "桶 ID（留空自动选择）", type: "activitywatch-bucket", defaults: ""},
     ]},
     {moduleId: "recent-edits", title: "近期编辑", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 5, defaults: 5},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "days", label: "最近天数", type: "number", min: 1, max: 3650, defaults: 30},
         {key: "query", label: "标题或路径过滤", type: "text", defaults: ""},
@@ -323,8 +323,8 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showTargetDate", label: "显示目标日期", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "emphasis", label: "数字大小", type: "select", options: ["标准", "大", "特大"], defaults: "标准"},
     ]},
-    {moduleId: "plugin-commands", title: "插件命令", icon: "iconPlugin", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
+    {moduleId: "plugin-commands", title: "插件命令", icon: "iconPlugin", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide", "large"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 5, defaults: 5},
         {key: "query", label: "搜索命令或插件", type: "text", defaults: ""},
         {key: "plugin", label: "限定插件名称", type: "text", defaults: ""},
         {key: "sortBy", label: "排序方式", type: "select", options: ["插件顺序", "命令名称", "插件名称"], defaults: "插件顺序"},
@@ -373,7 +373,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "recent-updates", title: "最近更新", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 5, defaults: 5},
         {key: "groupByDocument", label: "同文档更新合并", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showPath", label: "显示文档路径", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showUpdated", label: "显示更新时间", type: "select", options: ["是", "否"], defaults: "是"},
@@ -388,7 +388,7 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "database-list", title: "数据库", icon: "iconDatabase", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "blockId", label: "绑定单个数据库（表格形态）", type: "database", defaults: ""},
-        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 5, defaults: 5},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "query", label: "名称或路径过滤", type: "text", defaults: ""},
         {key: "sortBy", label: "排序方式", type: "select", options: ["最近更新", "名称", "路径"], defaults: "最近更新"},
@@ -397,7 +397,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "saved-searches", title: "已存筛选", icon: "iconSearch", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 5, defaults: 5},
         {key: "query", label: "名称或关键词过滤", type: "text", defaults: ""},
         {key: "method", label: "搜索方式", type: "select", options: ["全部", "文本", "查询语法", "SQL", "正则", "语义"], defaults: "全部"},
         {key: "sortBy", label: "排序方式", type: "select", options: ["原顺序", "名称"], defaults: "原顺序"},
@@ -409,7 +409,7 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "database-table", title: "数据库表格", icon: "iconDatabase", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "blockId", label: "选择数据库", type: "database", defaults: ""},
         {key: "columns", label: "展示内容（最多 3 项）", type: "database-columns", defaults: ""},
-        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 8, defaults: 8},
         {key: "showColumnNames", label: "显示字段名", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRank", label: "显示行号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
@@ -850,7 +850,7 @@ function normalizePluginCommandsConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const rawLimit = Math.trunc(Number(source.limit));
     return {
-        limit: Number.isFinite(rawLimit) ? Math.min(12, Math.max(1, rawLimit)) : 8,
+        limit: Number.isFinite(rawLimit) ? Math.min(5, Math.max(1, rawLimit)) : 5,
         query: widgetText(source.query || source.filter, 64),
         plugin: widgetText(source.plugin, 64),
         sortBy: ["插件顺序", "命令名称", "插件名称"].includes(source.sortBy) ? source.sortBy : "插件顺序",

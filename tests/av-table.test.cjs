@@ -27,7 +27,7 @@ test('av config validates the block id and clamps the limit', () => {
     assert.equal(normalizeAvTableConfig({blockId: "paste-the-whole-url"}).blockId, "");
     assert.equal(normalizeAvTableConfig({}).blockId, "");
     assert.equal(normalizeAvTableConfig({limit: 0}).limit, 1);
-    assert.equal(normalizeAvTableConfig({limit: 99}).limit, 12);
+    assert.equal(normalizeAvTableConfig({limit: 99}).limit, 8);
     assert.deepEqual(normalizeAvTableConfig({columns: "col3,col1,col3"}).columns, ["col3", "col1"]);
     assert.deepEqual(normalizeAvTableConfig({columns: "a,b,c,d"}).columns, ["a", "b", "c"]);
     assert.equal(normalizeAvTableConfig({}).showColumnNames, true);

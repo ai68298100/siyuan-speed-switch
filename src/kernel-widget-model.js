@@ -239,7 +239,7 @@ function buildTodayReservationsSnapshot(rows, config, labels = {}, now = Date.no
 function normalizeRecentUpdatesConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
-        limit: clampLimit(source.limit, 8),
+        limit: Math.min(5, clampLimit(source.limit, 5)),
         groupByDocument: source.groupByDocument !== "否" && source.groupByDocument !== false,
         showPath: source.showPath !== "否" && source.showPath !== false,
         showUpdated: source.showUpdated !== "否" && source.showUpdated !== false,
@@ -443,7 +443,7 @@ function normalizeDatabaseListConfig(value) {
     const blockId = boundedText(source.blockId, 64);
     return {
         blockId: /^\d{14}-[0-9a-z]+$/i.test(blockId) ? blockId : "",
-        limit: clampLimit(source.limit, 8),
+        limit: Math.min(5, clampLimit(source.limit, 5)),
         notebook: boundedText(source.notebook, 64),
         query: boundedText(source.query, 64).replace(/[%_']/g, ""),
         sortBy: ["最近更新", "名称", "路径"].includes(source.sortBy) ? source.sortBy : "最近更新",
@@ -493,7 +493,7 @@ function normalizeSavedSearchesConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const methodNames = ["文本", "查询语法", "SQL", "正则", "语义"];
     return {
-        limit: clampLimit(source.limit, 8),
+        limit: Math.min(5, clampLimit(source.limit, 5)),
         query: boundedText(source.query, 64),
         method: methodNames.includes(source.method) ? methodNames.indexOf(source.method) : -1,
         sortBy: source.sortBy === "名称" ? "名称" : "原顺序",
@@ -520,7 +520,7 @@ function normalizeAvTableConfig(value) {
     const columns = [...new Set(rawColumns.map((item) => boundedText(item, 64)).filter(Boolean))].slice(0, 3);
     return {
         blockId: /^\d{14}-[0-9a-z]+$/i.test(blockId) ? blockId : "",
-        limit: clampLimit(source.limit, 8),
+        limit: Math.min(8, clampLimit(source.limit, 8)),
         columns,
         showColumnNames: source.showColumnNames !== "否" && source.showColumnNames !== false,
         showRank: source.showRank === "是" || source.showRank === true,
@@ -702,7 +702,7 @@ function normalizeRecentEditsConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const days = Math.trunc(Number(source.days));
     return {
-        limit: clampLimit(source.limit, 8),
+        limit: Math.min(5, clampLimit(source.limit, 5)),
         notebook: boundedText(source.notebook, 64),
         days: Number.isFinite(days) ? Math.min(3650, Math.max(1, days)) : 30,
         query: boundedText(source.query, 64).replace(/[%_']/g, ""),

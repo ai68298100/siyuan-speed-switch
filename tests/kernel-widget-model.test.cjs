@@ -145,7 +145,7 @@ test('recent updates expose aggregation, time, path and rank controls', () => {
     assert.equal(flat.stat.value, "2");
     assert.equal(flat.stat.label, "块", "平铺模式的统计单位随投影语义切换");
     assert.deepEqual(model.normalizeRecentUpdatesConfig({showPath: "否", showUpdated: false}), {
-        limit: 8, groupByDocument: true, showPath: false, showUpdated: false, showRank: false,
+        limit: 5, groupByDocument: true, showPath: false, showUpdated: false, showRank: false,
     });
 });
 
@@ -283,7 +283,7 @@ test('database list filters, sorts and reports the server total with configurabl
 
 test('recent edits model bounds time scope, filters rows, and formats paths and timestamps', () => {
     assert.deepEqual(model.normalizeRecentEditsConfig({days: 0, limit: 99, query: "a%'_", showPath: "否", showRank: true}), {
-        limit: 12, notebook: "", days: 1, query: "a", showPath: false, showUpdated: true, showRank: true,
+        limit: 5, notebook: "", days: 1, query: "a", showPath: false, showUpdated: true, showRank: true,
     });
     const rows = [
         {id: "20260917120200-abcdef", content: "旧标题", hpath: "/旧", updated: "20260917120000", total_count: 7},
@@ -609,7 +609,7 @@ test('navigation builders clamp limits to their spec-card row caps and tolerate 
     assert.equal(model.normalizeDataHealthConfig({}).limit, 8);
     assert.equal(model.normalizeHostRecentDocsConfig({limit: "x"}).limit, 8);
     assert.deepEqual(model.normalizeHostRecentDocsConfig({showPath: "否", showRank: "是"}), {limit: 8, showPath: false, showRank: true});
-    assert.equal(model.normalizeDatabaseListConfig({}).limit, 8);
+    assert.equal(model.normalizeDatabaseListConfig({}).limit, 5);
     assert.equal(model.normalizeOutlineWidgetConfig({maxDepth: 99}).maxDepth, 8);
     assert.equal(model.normalizeDocumentRelationsConfig({relation: '坏值'}).relation, '全部');
     assert.equal(model.normalizeTagListConfig({limit: 99}).limit, 12);

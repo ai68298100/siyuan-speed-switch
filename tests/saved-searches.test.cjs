@@ -41,10 +41,10 @@ test('method index beyond the label array degrades to no method text', () => {
 test('limit clamp, stat and payload guards', () => {
     const criteria = Array.from({length: 14}, (_, index) => criterion(`条件${index}`, `k${index}`));
     const snapshot = buildSavedSearchesSnapshot({code: 0, data: criteria}, {limit: 6}, {title: "T", methods: METHODS}, NOW);
-    assert.equal(snapshot.items.length, 6);
-    assert.equal(snapshot.stat.value, "6/14", "统计同时反馈已显示和筛选后总数");
+    assert.equal(snapshot.items.length, 5);
+    assert.equal(snapshot.stat.value, "5/14", "统计同时反馈已显示和筛选后总数");
     assert.equal(model_normalizeSavedSearchesConfig({limit: 0}).limit, 1);
-    assert.equal(model_normalizeSavedSearchesConfig({}).limit, 8);
+    assert.equal(model_normalizeSavedSearchesConfig({}).limit, 5);
     assert.equal(buildSavedSearchesSnapshot({data: "bad"}, {}, {title: "T"}), null);
     assert.equal(buildSavedSearchesSnapshot(null, {}, {title: "T"}), null);
 });
