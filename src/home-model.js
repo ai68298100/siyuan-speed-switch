@@ -903,4 +903,26 @@ function buildPluginCommandsSnapshot(commands, config, labels = {}) {
     };
 }
 
-module.exports = {HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+// T-6967 S2：15 分钟心跳族唯一登记处——工作台心跳刷新（second-panel-ui）与
+// 商店详情元信息「刷新」行（home-store-ui）同源消费；放本模块是因为两个消费方
+// 都已依赖 home-model（避免为 11 个 id 拉入 46 KB 的 external-widget-model 整模块）。
+// 新增联网组件进入心跳族时只改这一个清单（契约 batch3/batch6 钉住成员）。
+const LIFE_HEARTBEAT_MODULE_IDS = Object.freeze([
+    "external-weather-open-meteo",
+    "external-air-quality",
+    "external-anime-bangumi",
+    "external-hot-news-dailyhot",
+    "external-news-newsnow",
+    "external-news-hackernews",
+    "external-activitywatch-time",
+    "external-status-uptimekuma",
+    "external-fx-frankfurter",
+    "external-rss-miniflux",
+    "external-rss-subscription",
+]);
+
+function isLifeHeartbeatModule(moduleId) {
+    return LIFE_HEARTBEAT_MODULE_IDS.includes(typeof moduleId === "string" ? moduleId : "");
+}
+
+module.exports = {LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};

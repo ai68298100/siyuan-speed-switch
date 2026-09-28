@@ -228,6 +228,8 @@ import {
     HOME_SIZE_DEFAULTS,
     HOME_SIZE_MODES,
     HomeSizeMode,
+    StudioSizeMode,
+    STUDIO_SIZE_MODES,
     HOME_WIDGET_SIZES,
     HOME_WIDGET_SIZE_LABELS,
     HomeWidgetSize,
@@ -772,6 +774,9 @@ const DEFAULT_SETTINGS: ISwSettings = {
     homePalette: "auto",     // 组件卡片强调色：自动多彩 / 柔和 / 单色
     homeWidth: 960,          // 组件面板固定宽度
     homeHeight: 720,         // 组件面板固定高度
+    studioSizeMode: "fullscreen", // 片段实验室尺寸模式：全屏（ADR 0080 默认）/ 自适应 / 固定（T-6986）
+    studioWidth: 1120,       // 片段实验室固定宽度（编辑/预览/AI 三栏需要更宽）
+    studioHeight: 800,       // 片段实验室固定高度
     columns: 0,            // 缩略图列数，0=自动
     thumbHeight: 128,      // 缂╃暐鍥鹃珮搴?px
     sortBy: "mru",         // 页签排序方式
@@ -824,6 +829,9 @@ export interface ISwSettings {
     homePalette: HomePalette;
     homeWidth: number;            // 组件面板固定宽度
     homeHeight: number;           // 组件面板固定高度
+    studioSizeMode: StudioSizeMode; // 片段实验室尺寸模式（T-6986）
+    studioWidth: number;          // 片段实验室固定宽度
+    studioHeight: number;         // 片段实验室固定高度
     groupBy: TabGroupMode;        // 列表分组方式（默认按笔记本）
     columns: number;
     thumbHeight: number;
@@ -2113,6 +2121,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 panelScale: [PANEL_SCALE_MIN, PANEL_SCALE_MAX],
                 homeWidth: [480, 1920],
                 homeHeight: [360, 1280],
+                studioWidth: [480, 1920],
+                studioHeight: [360, 1280],
                 columns: [COLUMNS_MIN, COLUMNS_MAX],
                 thumbHeight: [THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX],
                 mobileColumns: [MOBILE_COLUMNS_MIN, MOBILE_COLUMNS_MAX],
@@ -2231,6 +2241,15 @@ export default class SpeedSwitchPlugin extends Plugin {
     private clampNum(value: any, min: number, max: number, fallback: number): number {
         // 委派到 util.clampNum（pure，便于单元测试）；class 内保留方法签名以便现有调用点不变
         return clampNum(value, min, max, fallback);
+    }
+
+    // T-6999：面板窗口预览入口——设置页「面板」标签从这里打开对应面板查看当前
+    // 尺寸效果。走 openPlatformSurface 统一管线（单例守卫、FAB 串行释放、会话记录）；
+    // 设置弹窗保持打开叠在下层，关闭预览面板即回到设置现场。
+    openPanelPreview(surface: "switcher" | "workbench" | "studio") {
+        if (this.isUnloading) return;
+        if (surface === "studio" && this.isMobile) return;
+        this.openPlatformSurface(surface, "switcher");
     }
 
     // ==================== 设置页本地控件工厂（统一格式、减少重复） ====================
@@ -3431,14 +3450,24 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.notePlatformSurface("studio", context);
         const holder: {dialog: Dialog | null; controller: SnippetStudioController | null} = {dialog: null, controller: null};
         const releaseFab = this.suspendFABForDialog();
-        // ADR 0080：工作室默认全屏（编辑/预览/AI 三栏内容优先），不再用 92vw 折算尺寸
-        const width = window.innerWidth;
-        const height = window.innerHeight;
+        // T-6986（D1 决断）：工作室尺寸模式 fullscreen/adaptive/custom——默认保持全屏
+        // （ADR 0080 不回退）；adaptive/custom 沿用 resolvePanelSize 的最小尺寸与
+        // 视口钳制语义（与工作台 openSecondPanel 同一管线），不再叠加全屏容器类。
+        const studioSettings = this.getSettings();
+        const studioViewport = {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX};
+        const studioMode: StudioSizeMode = STUDIO_SIZE_MODES.includes(studioSettings.studioSizeMode)
+            ? studioSettings.studioSizeMode
+            : "fullscreen";
+        const size = studioMode === "fullscreen"
+            ? {width: studioViewport.width, height: studioViewport.height}
+            : studioMode === "adaptive"
+                ? resolvePanelSize({...studioSettings, panelSizeMode: "adaptive", panelScale: PANEL_SCALE_DEFAULT}, studioViewport)
+                : resolvePanelSize({...studioSettings, panelSizeMode: "custom", dialogWidth: studioSettings.studioWidth, dialogHeight: studioSettings.studioHeight}, studioViewport);
         const dialog = new Dialog({
             title: "",
             content: '<div class="sw-snippet-studio-host"></div>',
-            width: `${width}px`,
-            height: `${height}px`,
+            width: `${size.width}px`,
+            height: `${size.height}px`,
             disableClose: true,
             destroyCallback: () => {
                 holder.controller?.dispose();
@@ -3449,7 +3478,12 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
         holder.dialog = dialog;
         this.snippetStudioDialog = dialog;
-        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen", "sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
+        // 全屏模式才叠加 fullscreen 容器类（T-6941 的 100vw/100vh 跟随规则随之生效）；
+        // 自适应/固定模式用 Dialog 内联尺寸，缩窗后保持打开时尺寸（与工作台语义一致）。
+        if (studioMode === "fullscreen") {
+            dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
+        }
+        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
         if (!root) {

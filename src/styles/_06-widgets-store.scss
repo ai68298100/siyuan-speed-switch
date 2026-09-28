@@ -99,10 +99,13 @@
         flex-wrap: wrap;
 
         input { flex: 1 1 100%; }
-        .sw-home-store__sort { flex: 1 1 46%; max-width: none; }
         .sw-home-store__guide { flex: 1 1 46%; min-height: 32px; }
         .sw-home-store__clear-search { margin-left: -40px; z-index: 1; }
     }
+
+    // T-6967 S2：排序已在筛选行尾（.sw-home-store__filter-bar），窄屏不再并入搜索行；
+    // 保持行尾定宽，chips 自身横向滚动。
+    .sw-home-store__filter-bar .sw-home-store__sort { min-width: 96px; max-width: 120px; }
 
     .sw-home-store__card:hover { transform: none; }
 
@@ -483,6 +486,7 @@
 
 @media print {
     .sw-home-store__search,
+    .sw-home-store__filter-bar,
     .sw-home-store__tabs,
     .sw-home-store__sizes,
     .sw-home-store__preview,

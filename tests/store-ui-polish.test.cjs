@@ -36,7 +36,8 @@ test('group toggle supports touch action', () => assert.ok(declaresIn(css, '.sw-
 test('summary reserves stable height', () => assert.ok(declaresIn(css, '.sw-home-store__summary', /min-height: 18px/, base)));
 test('mobile search row wraps', () => assert.ok(declaresIn(css, '.sw-home-store__search', /flex-wrap: wrap/, narrow)));
 test('mobile search input gets full row', () => assert.ok(declaresIn(css, '.sw-home-store__search input', /flex: 1 1 100%/, narrow)));
-test('mobile sort control expands', () => assert.match(css, /\.sw-home-store__sort \{ flex: 1 1 46%; max-width: none; \}/));
+// T-6967 S2：排序收进筛选行尾——窄屏保持行尾定宽（chips 自身横滚），不再并入搜索行
+test('mobile sort menu stays pinned at the filter row end', () => assert.match(css, /\.sw-home-store__filter-bar \.sw-home-store__sort \{ min-width: 96px; max-width: 120px; \}/));
 test('mobile guide button expands', () => assert.match(css, /\.sw-home-store__guide \{ flex: 1 1 46%; min-height: 32px; \}/));
 test('mobile cards disable hover lift', () => assert.match(css, /\.sw-home-store__card:hover \{ transform: none; \}/));
 test('mobile tabs preserve horizontal overscroll', () => assert.match(css, /overscroll-behavior-x: contain/));

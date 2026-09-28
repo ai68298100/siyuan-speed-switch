@@ -9,7 +9,7 @@ import type {EventBus, TEventBus} from "siyuan";
 import {HOME_WIDGET_SIZES, PANEL_SCALE_DEFAULT, PANEL_SIZE_MIN_PX} from "./constants";
 import type {HomeSizeMode, HomeWidgetSize} from "./constants";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries, buildHomeHealthReport, buildHomeDiagnosticSummary, formatHealthTime} from "./home-controller";
-import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, LIFE_HEARTBEAT_MODULE_IDS} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
 import {createLayoutHistory, layoutSnapshotOf, pushLayoutHistory, undoLayoutHistory, redoLayoutHistory, canUndoLayoutHistory, canRedoLayoutHistory, peekUndoLabel, peekRedoLabel, reconcileLayoutSnapshot} from "./home-layout-history";
 import {openHomeConfigForm} from "./home-config-form";
@@ -854,7 +854,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             // 联网生活组件采用独立低频心跳；天气最多每 15 分钟、每日放送最多每 30 分钟更新一次，切回前台时
             // 先经过 adapter/cache 判定，隐藏页面不会产生后台请求。
             // T-6971 批次⑥：列表流五组件同属 15 分钟心跳族（RSS 订阅此前漏登记）。
-            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-air-quality", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-status-uptimekuma", "external-fx-frankfurter", "external-rss-miniflux", "external-rss-subscription"]);
+            // T-6967 S2：成员清单上收到 external-widget-model（商店详情「刷新」行同源消费）。
+            const lifeModuleIds = new Set(LIFE_HEARTBEAT_MODULE_IDS);
             if (controllers.some((entry) => lifeModuleIds.has(entry.moduleId))) {
                 const refreshLife = (force = false) => controllers.filter((entry) => lifeModuleIds.has(entry.moduleId))
                     .forEach((entry) => { void entry.refresh(undefined, force ? {force: true} : {}); });

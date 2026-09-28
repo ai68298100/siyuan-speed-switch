@@ -151,6 +151,9 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // 入图，实测 70；上限按同口径校准 69→70，zip 余量 ~10 KiB 在案。
     // T-6953（2026-09-27 计划阶段 B）：home-layout-history 布局撤销/重做纯模块入图，
     // 实测 71；上限按同口径校准 70→71，zip 余量在案（成批后复核整包线）。
+    // T-6967 S2（2026-09-29 第二批）：external-widget-model 入图——15 分钟心跳族清单
+    // 上收为唯一登记处，second-panel-ui 与 home-store-ui 同源消费，实测 72；上限按
+    // 同口径校准 71→72（先例 T-6814/T-6950），zip 余量随本批复核（见 release-readiness 快照）。
     // 包体复核：raw 1024 KiB 自律线、zip 硬上限与压缩条目线均独立审查（见 release-readiness 快照）。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);

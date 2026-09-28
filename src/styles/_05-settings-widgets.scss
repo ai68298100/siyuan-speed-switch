@@ -920,13 +920,25 @@
         font-size: 20px;
         line-height: 1;
     }
+    // T-6967 S2：排序菜单移入 .sw-home-store__filter-bar（chips 行尾），
+    // 搜索行内不再出现排序控件（样式随之迁出，见下方 filter-bar 规则）。
+}
 
+// T-6967 S2：筛选一条化——chips（tablist）与排序菜单同一视觉行，排序固定行尾；
+// tablist 自身横向滚动（窄容器 chips 溢出时），排序菜单不随 chips 滚动。
+.sw-home-store__filter-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+
+    .sw-home-store__tabs { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
     .sw-home-store__sort {
         flex: 0 0 auto;
         min-width: 106px;
         max-width: 132px;
         height: 32px;
         border-radius: 8px;
+        margin-bottom: 4px;
     }
 }
 

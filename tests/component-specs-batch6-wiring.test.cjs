@@ -98,7 +98,14 @@ test('wiring: RSS row marks read state in meta and exposes the unread chip', () 
 });
 
 test('wiring: RSS subscription joins the 15-minute heartbeat family', () => {
-    assert.match(panel, /"external-rss-subscription"\]\);/, 'RSS 订阅必须登记进 lifeModuleIds（此前漏登记）');
+    // T-6967 S2：心跳族成员唯一登记处落 home-model（此前漏登记教训固化为共享清单），
+    // RSS 订阅必须在共享清单内；放 home-model 避免拉入 46 KB 目录模块（包体自律）。
+    const homeModel = readSourceFile('src/home-model.js');
+    assert.match(homeModel, /"external-rss-miniflux",\s*\n\s*"external-rss-subscription",\s*\n\]\)/,
+        'RSS 订阅必须登记进共享心跳族清单（此前漏登记）');
+    const panel = readSourceFile('src/second-panel-ui.ts');
+    assert.match(panel, /const lifeModuleIds = new Set\(LIFE_HEARTBEAT_MODULE_IDS\)/,
+        '工作台心跳必须消费共享清单');
 });
 
 test('state: loaders keep stale values on failure — list is never cleared by a failed refresh', () => {

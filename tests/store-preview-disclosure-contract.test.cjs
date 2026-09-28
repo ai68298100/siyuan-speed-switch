@@ -43,6 +43,14 @@ test('preview chips have visible borders', () => assert.ok(declaresIn(css, '.sw-
 test('preview chips allow long source names', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /overflow-wrap: anywhere/, base)));
 test('preview chips keep legacy word-break fallback', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /word-break: break-word/, base)));
 test('preview chips remain selectable', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /user-select: text/, base)));
-test('preview network tone is scoped', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip.is-network', /border-color/, base)));
+// T-6967 S2（G6 收口）：联网/本机/离线是能力事实而非进行态——能力 chips 中性化，
+// 不得再借用警示/加载配色（历史「联网」误用 loading 橙的教训钉死在这里）。
+test('preview capability tones are neutral (G6)', () => {
+    for (const tone of ['is-network', 'is-local', 'is-offline']) {
+        assert.ok(declaresIn(css, `.sw-store-preview__meta-chip.${tone}`, /color: var\(--b3-theme-on-background\)/, base),
+            `${tone} must use the neutral foreground`);
+        assert.doesNotMatch(css, new RegExp(`\\.${tone} \\{ border-color: color-mix[^}]*#d58b32`), 'capability chip must not borrow the loading/warning orange');
+    }
+});
 test('preview privacy tone is scoped', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip.is-privacy', /opacity/, base)));
 test('preview disclosure styles remain store-preview scoped', () => assert.match(css, /\.sw-store-preview/));

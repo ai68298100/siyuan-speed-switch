@@ -6,11 +6,17 @@ const {readSourceFile} = require('./source-scan.cjs');
 
 const adapters = readSourceFile('src/home-external-adapters.ts');
 const panel = readSourceFile('src/second-panel-ui.ts');
+const homeModel = readSourceFile('src/home-model.js');
 const airModel = readSourceFile('src/air-quality-model.js');
 
 test('weather/air wiring: both widgets join the 15-minute life heartbeat family', () => {
-    assert.match(panel, /const lifeModuleIds = new Set\(\["external-weather-open-meteo", "external-air-quality", "external-anime-bangumi"/,
-        '天气与空气质量都必须在 15 分钟心跳族');
+    // T-6967 S2：心跳族成员唯一登记在 home-model（工作台心跳与商店
+    // 详情「刷新」行同源消费）；放 home-model 而非 external-widget-model，
+    // 避免为 11 个 id 把 46 KB 目录模块拉进主包（包体自律）。
+    assert.match(homeModel, /const LIFE_HEARTBEAT_MODULE_IDS = Object\.freeze\(\[\s*\n\s*"external-weather-open-meteo",\s*\n\s*"external-air-quality",/,
+        '天气与空气质量都必须登记在共享 15 分钟心跳族清单头部');
+    assert.match(panel, /const lifeModuleIds = new Set\(LIFE_HEARTBEAT_MODULE_IDS\)/,
+        '工作台心跳必须消费共享清单（不再内联副本）');
     assert.match(adapters, /register\("external-weather-open-meteo"/);
     assert.match(adapters, /register\("external-air-quality"/);
 });

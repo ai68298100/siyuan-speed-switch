@@ -40,9 +40,11 @@ test('mobile search wraps controls', () => assert.ok(declaresIn(css, '.sw-home-s
 test('mobile search keeps gap', () => assert.ok(declaresIn(css, '.sw-home-store__search', /gap: 7px/, narrow)));
 test('mobile search input keeps flexible width', () => assert.ok(declaresIn(css, '.sw-home-store__search input', /flex: 1 1 calc\(100% - 40px\)/, narrow)));
 test('mobile search input has zero minimum', () => assert.ok(declaresIn(css, '.sw-home-store__search input', /min-width: 0/, narrow)));
-test('mobile sort fills half row', () => assert.ok(declaresIn(css, '.sw-home-store__search .sw-home-store__sort', /flex: 1 1 46%/, narrow)));
+// T-6967 S2：排序已收进筛选行尾——窄屏不再并入搜索行半幅，改为行尾定宽；
+// chips 行（tablist）自身横滚 + 吸附。
+test('mobile sort stays pinned at the filter row end', () => assert.ok(declaresIn(css, '.sw-home-store__filter-bar .sw-home-store__sort', /min-width: 96px/, narrow)));
 test('mobile guide fills half row', () => assert.ok(declaresIn(css, '.sw-home-store__guide', /flex: 1 1 calc\(50% - 4px\)/, narrow)));
-test('mobile sort removes max width', () => assert.ok(declaresIn(css, '.sw-home-store__search .sw-home-store__sort', /max-width: none/, narrow)));
+test('mobile sort keeps a bounded width at the row end', () => assert.ok(declaresIn(css, '.sw-home-store__filter-bar .sw-home-store__sort', /max-width: 120px/, narrow)));
 test('mobile search controls allow shrink', () => assert.ok(declaresIn(css, '.sw-home-store__guide', /min-width: 0/, narrow)));
 test('mobile store grid is single column', () => assert.ok(declaresIn(css, '.sw-home-store__grid', /grid-template-columns: minmax\(0, 1fr\)/, narrow)));
 test('mobile grid keeps zero minimum', () => assert.ok(declaresIn(css, '.sw-home-store__grid', /min-width: 0/, narrow)));
@@ -198,7 +200,7 @@ test('store filter empty state uses polite live updates', () => assert.match(sto
 test('store filter empty state is atomic', () => assert.match(storeSource,/filterEmptyState\.setAttribute\("aria-atomic", "true"\)/));
 test('store clear filters is a typed button', () => assert.match(storeSource,/clearFilters\.type = "button"/));
 test('store clear filters exposes an action key', () => assert.match(storeSource,/clearFilters\.dataset\.action = "clear-filters"/));
-test('store clear filters restores active tab selection', () => { const i = storeSource.indexOf('clearFilters.addEventListener("click"'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 1200); assert.ok(w.includes('setAttribute("aria-selected"'), '重置后须恢复 aria-selected'); });
+test('store clear filters restores active tab selection', () => { const i = storeSource.indexOf('clearFilters.addEventListener("click"'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 2000); assert.ok(w.includes('setAttribute("aria-selected"'), '重置后须恢复 aria-selected'); });
 test('store clear filters restores roving tabindex', () => assert.match(storeSource,/button\.setAttribute\("tabindex", active \? "0" : "-1"\)/));
 test('store clear filters returns focus to search', () => assert.match(storeSource,/searchInput\.focus\(\)/));
 test('store group toggle exposes expanded state', () => assert.match(storeSource,/groupToggle\.setAttribute\("aria-expanded", String\(!collapsedGroups\.has\(label\)\)\)/));
@@ -254,7 +256,16 @@ test('store unavailable removal is a typed button', () => assert.match(storeSour
 test('store unavailable removal exposes an action key', () => assert.match(storeSource,/removeButton\.dataset\.action = "remove-unavailable"/));
 test('store unavailable removal guards missing instance', () => assert.match(storeSource,/const instance = instanceStateByModule\.get\(entry\.moduleId\);\s*if \(!instance\) return/));
 test('store empty catalog resets ready and pending counts', () => assert.match(storeSource,/root\.dataset\.readyCount = "0";\s*root\.dataset\.pendingCount = "0"/));
-test('store empty catalog clears busy state', () => { const i = storeSource.indexOf('homeNoMoreModules'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 400); assert.ok(w.includes('aria-busy", "false"'), '清空目录须解除 busy'); });
+// T-6967 S2：目录级失败横幅取代整树清空——横幅带可理解原因与重试出口，busy 解除。
+test('store empty catalog shows a failure banner with retry', () => {
+    const i = storeSource.indexOf('sw-home-store__catalog-fail');
+    assert.ok(i >= 0, '横幅必须挂专属样式类');
+    const w = storeSource.slice(i, i + 2000);
+    assert.ok(w.includes('"role", "alert"'), '横幅必须是 alert 语义');
+    assert.ok(w.includes('sw-home-store__catalog-retry'), '横幅必须提供重试按钮');
+    assert.ok(w.includes('homeStoreCatalogFailTitle'), '横幅标题必须来自 i18n');
+    assert.ok(w.includes('aria-busy", "false"'), '清空目录须解除 busy');
+});
 test('store rescan timer is cancelled on destroy', () => assert.match(storeSource,/window\.clearTimeout\(rescanTimer\)/));
 test('store change listener is removed on destroy', () => assert.match(secondPanelSource, /this\.homeModuleChangeListeners\.delete\(handleModuleChange\)/));
 

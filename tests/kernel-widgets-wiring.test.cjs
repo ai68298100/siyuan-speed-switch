@@ -1184,17 +1184,27 @@ test('mobile stacked quick-action bar and converged sheet language (T-6876 RZ-6)
         '.sw__mobile-sheet .sw__mobile-sheet-handle', /width:\s*36px/), 'sheets keep the grabber handle');
 });
 
-test('surfaces default to fullscreen with optional sizes (T-6877, ADR 0080)', () => {
+test('surfaces default to fullscreen with optional sizes (T-6877, ADR 0080; T-6986)', () => {
     const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
-    const defaults = indexSource.slice(indexSource.indexOf('const DEFAULT_SETTINGS: ISwSettings = {'), indexSource.indexOf('const DEFAULT_SETTINGS: ISwSettings = {') + 900);
+    const settingsModel = readSourceText(path.join(__dirname, '..', 'src', 'settings-model.js'));
+    const defaults = indexSource.slice(indexSource.indexOf('const DEFAULT_SETTINGS: ISwSettings = {'), indexSource.indexOf('const DEFAULT_SETTINGS: ISwSettings = {') + 1200);
     // 切换器与工作台默认全屏（fullscreen 布尔由 panelSizeMode 派生，语义不变）。
     assert.match(defaults, /panelSizeMode: "fullscreen"/, 'the switcher must default to fullscreen');
     assert.match(defaults, /homeSizeMode: "fullscreen"/, 'the workbench must default to fullscreen');
-    // 片段实验室：打开即视口全屏，并叠加 fullscreen 容器类。
-    assert.match(indexSource, /const width = window\.innerWidth;\s*\n\s*const height = window\.innerHeight;/,
-        'the studio must open at viewport size');
-    assert.match(indexSource, /classList\.add\("sw-dialog--fullscreen", "sw-dialog--snippet-studio"/,
-        'the studio dialog must carry the fullscreen container class');
+    // 片段实验室（T-6986，D1 决断）：默认仍全屏；非全屏走 resolvePanelSize 管线
+    // （与工作台同语义），只有全屏模式才叠加 fullscreen 容器类。
+    assert.match(defaults, /studioSizeMode: "fullscreen"/, 'the studio must default to fullscreen');
+    assert.match(indexSource, /const size = studioMode === "fullscreen"\s*\n\s*\? \{width: studioViewport\.width, height: studioViewport\.height\}/,
+        'the studio must open at viewport size in fullscreen mode');
+    assert.match(indexSource, /if \(studioMode === "fullscreen"\) \{\s*\n\s*dialog\.element\.querySelector<HTMLElement>\("\.b3-dialog__container"\)\?\.classList\.add\("sw-dialog--fullscreen"\);/,
+        'only fullscreen mode carries the fullscreen container class');
+    assert.match(indexSource, /studioMode === "adaptive"\s*\n\s*\? resolvePanelSize\(\{\.\.\.studioSettings, panelSizeMode: "adaptive", panelScale: PANEL_SCALE_DEFAULT\}, studioViewport\)/,
+        'studio adaptive mode must reuse the shared resolvePanelSize pipeline');
+    assert.match(indexSource, /panelSizeMode: "custom", dialogWidth: studioSettings\.studioWidth, dialogHeight: studioSettings\.studioHeight/,
+        'studio custom mode must use the dedicated studio width/height settings');
+    // 白名单归一：模式值非法回落全屏（ADR 0080 默认不回退）。
+    assert.match(settingsModel, /studioSizeMode: source\.studioSizeMode === "adaptive" \|\| source\.studioSizeMode === "custom"\s*\n\s*\|\| source\.studioSizeMode === "fullscreen"/,
+        'settings-model must whitelist studioSizeMode values');
     // 尺寸可选项全部保留（用户可改回）：三表面设置行仍在。
     assert.match(secondPanelSource, /mode === "fullscreen" \|\| \(mode === "follow" && settings\.panelSizeMode === "fullscreen"\)/,
         'the workbench keeps its follow/adaptive/custom/fullscreen options');

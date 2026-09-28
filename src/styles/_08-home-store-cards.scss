@@ -372,11 +372,13 @@
     font-size: 9px;
     line-height: 1.3;
 
-    &.is-online { border-color: color-mix(in srgb, #d58b32 45%, transparent); color: #a76618; }
-    &.is-offline { border-color: color-mix(in srgb, #4f9f68 45%, transparent); color: #3b8252; }
-    &.is-local { border-color: color-mix(in srgb, #6655c8 48%, transparent); color: #5c49b6; }
+    // T-6967 S2（G6 收口）：联网/离线/本机/插件是能力事实而非进行态——
+    // 与预览元信息 chips 一致转中性；彩色只留给 状态/依赖/推荐 等真实语义。
+    &.is-online,
+    &.is-offline,
+    &.is-local,
+    &.is-plugin { border-color: color-mix(in srgb, var(--b3-border-color) 72%, transparent); color: var(--b3-theme-on-surface-light); }
     &.is-privacy { opacity: 0.82; }
-    &.is-plugin { border-color: color-mix(in srgb, #7b61bd 48%, transparent); color: #6b50aa; }
     &.is-config { border-color: color-mix(in srgb, var(--b3-theme-primary) 38%, transparent); color: var(--b3-theme-primary); }
 }
 
@@ -425,16 +427,25 @@
     .sw-home-store { padding: 10px 12px 14px; }
     .sw-home-store__search { flex-wrap: wrap; gap: 7px; }
     .sw-home-store__search input { flex: 1 1 calc(100% - 40px); min-width: 0; }
-    .sw-home-store__search .sw-home-store__sort,
+    // T-6967 S2：排序已收进筛选行尾，窄屏不再与说明按钮并列占搜索行
     .sw-home-store__guide { flex: 1 1 calc(50% - 4px); max-width: none; min-width: 0; }
     .sw-home-store__grid { grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
-    .sw-home-store__tabs { overflow-x: auto; scrollbar-width: thin; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
-    .sw-home-store__tab { flex: 0 0 auto; min-height: 36px; padding-inline: 12px !important; }
+    // T-6967 S2：移动端 chips 横向滚动 + 吸附——逐枚 chip 贴齐滚动口起点，
+    // 活动页签带 scroll-margin 避免吸附裁切下划线。
+    .sw-home-store__tabs {
+        overflow-x: auto;
+        scrollbar-width: thin;
+        overscroll-behavior-inline: contain;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+    }
+    .sw-home-store__tab { flex: 0 0 auto; min-height: 36px; padding-inline: 12px !important; scroll-snap-align: start; scroll-margin-inline: 4px; }
     .sw-home-store__card { width: 100%; max-width: 100%; padding: 11px 12px; }
     .sw-home-store__preview { max-width: 100%; overflow: hidden; }
     .sw-home-store__sizes .sw-home-store__add { margin-inline-start: auto; }
     .sw-home-store__summary,
     .sw-home-store__source-meta,
+    .sw-home-store__detail-meta,
     .sw-home-store__filter-empty { max-width: 100%; }
     .sw-home-store__filter-empty { overflow-wrap: anywhere; }
 }
@@ -672,6 +683,45 @@
     color: var(--b3-theme-on-surface-light);
     font-size: 12px;
     line-height: 1.55;
+}
+
+// T-6967 S2：详情窗格元信息四行明文（数据来源/刷新/隐私/缓存）——
+// 取代原先 chips 形态的来源信息；dt 定宽左列、dd 明文右列，只表事实不加状态色。
+.sw-home-store__detail-meta {
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--b3-theme-surface) 72%, transparent);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.sw-home-store__detail-meta-row {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px;
+    padding: 2px 0;
+
+    dt { margin: 0; color: var(--b3-theme-on-surface-light); white-space: nowrap; }
+    dd {
+        margin: 0;
+        min-width: 0;
+        color: var(--b3-theme-on-background);
+        overflow-wrap: anywhere;
+    }
+}
+
+// T-6967 S2：目录级失败横幅——保留搜索/chips/详情窗格，只说明目录不可用并给重试。
+.sw-home-store__catalog-fail {
+    margin: 6px 0 14px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--b3-theme-warning, #d58b32) 42%, var(--b3-border-color));
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--b3-theme-warning, #d58b32) 7%, transparent);
+
+    strong { display: block; margin-bottom: 4px; font-size: 13px; }
+    p { margin: 0 0 8px; color: var(--b3-theme-on-surface); font-size: 12.5px; line-height: 1.55; }
 }
 
 // 批量模式底栏（Ctrl+B 进入）：已选计数 + 取消 + 批量添加

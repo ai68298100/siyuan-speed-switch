@@ -33,7 +33,8 @@ test('store rerender restores group toggle', () => assert.match(storeUiSource, /
 test('store rerender restores search control', () => assert.match(storeUiSource, /root\.querySelector<HTMLElement>\("\.sw-home-store__search input"\)/));
 test('store rerender restores sort control', () => assert.match(storeUiSource, /root\.querySelector<HTMLElement>\("\.sw-home-store__sort"\)/));
 test('store rerender focuses without jumping scroll', () => assert.match(storeUiSource, /target\.focus\(\{preventScroll: true\}\)/));
-test('empty store path restores view state', () => assert.match(storeUiSource, /root\.textContent = this\.i18n\.homeNoMoreModules;\s*restoreStoreView\(\);/));
+// T-6967 S2：空目录路径改为横幅 + 保留 chrome + 恢复视图（不再整树 textContent 清空）。
+test('empty store path restores view state', () => assert.match(storeUiSource, /catalogPane\.appendChild\(storeFragment\);[\s\S]{0,400}?restoreStoreView\(\);/));
 test('normal store path restores view state', () => assert.match(storeUiSource, /applyFilter\(\);\s*restoreStoreView\(\);/));
 test('sort changes rerender the store', () => assert.match(storeUiSource, /sortSelect\.addEventListener\("change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); persistStoreState\(\); renderStore\(\); \}\)/));
 test('module changes rerender the store', () => { const i = storeUiSource.indexOf('const handleModuleChange = () => {'); assert.ok(i >= 0, 'missing handleModuleChange'); const body = storeUiSource.slice(i, i + 300); assert.ok(body.includes('renderStore();'), 'rerender on module change'); });

@@ -199,6 +199,11 @@ export const HOME_SIZE_DEFAULTS = {
     maxH: 1280,
 };
 
+// 片段实验室尺寸模式（T-6986，D1 决断）：fullscreen=全屏（默认，ADR 0080 不回退）/
+// adaptive=独立自适应（90%）/ custom=固定尺寸。实验室是桌面专属表面（ADR 0078），无 follow。
+export type StudioSizeMode = "fullscreen" | "adaptive" | "custom";
+export const STUDIO_SIZE_MODES: StudioSizeMode[] = ["fullscreen", "adaptive", "custom"];
+
 // 列表分组流式布局：卡片最小宽与块间距，与 .sw__grid 的 minmax(220px, 1fr)/12px 保持一致
 export const GROUP_FLOW_MIN_CARD_PX = 220;
 export const GROUP_FLOW_GAP_PX = 12;

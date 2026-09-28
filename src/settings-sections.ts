@@ -15,7 +15,7 @@ import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
 import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, applyFloatingBallPreset, saveFloatingBallPreset, removeFloatingBallPreset, FLOATING_BALL_UI_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT, FLOATING_BALL_DIGIT_SLOT_COUNT} from "./floating-ball-model";
 import {selectFloatingBallMoreActions} from "./floating-ball-panel";
 import {FLOATING_BALL_SETTINGS_MAX_BYTES, buildFloatingBallSettingsRows, updateFloatingBallAction, moveFloatingBallAction, removeFloatingBallAction, restoreFloatingBallDefaults, serializeFloatingBallSettings, importFloatingBallSettings, checkFloatingBallSettingsBudget} from "./floating-ball-settings-model";
-import type {PanelSizeMode, HomeSizeMode} from "./constants";
+import type {PanelSizeMode, HomeSizeMode, StudioSizeMode} from "./constants";
 import type {ISwSettings, IFavoriteItem, IQuickAction, IQuickActionPickerCandidate, QuickActionSupport, QuickActionTarget, SortBy, QuickActionDisplay, HomePalette, DockDisplay, SidebarLayout} from "./index";
 declare module "./document-sets" {
     export function normalizeDocumentSets(value: unknown, max?: number): {schemaVersion: number; sets: unknown[]; changed: boolean};
@@ -77,6 +77,8 @@ export interface SettingsSectionsHost {
     settingGroupTitle(text: string): HTMLElement;
     settingGroupCard(...children: HTMLElement[]): HTMLElement;
     settingSegmented(title: string, description: string | undefined, items: Array<{value: string, label: string}>, current: string, onChange: (value: string) => void): HTMLElement;
+    // T-6999：面板窗口预览入口——从设置页打开对应面板查看当前尺寸效果
+    openPanelPreview(surface: "switcher" | "workbench" | "studio"): void;
     // 行为与数据访问（宿主方法）
     clampNum(value: any, min: number, max: number, fallback: number): number;
     updateSettings(patch: Partial<ISwSettings>): void;
@@ -121,14 +123,9 @@ export interface SettingsSectionsHost {
     // T-6463 存储用量透明化
     measureStorageUsage(): Promise<Array<{key: string, bytes: number}>>;
 }
-    // ===== 设置页 · 外观：弹窗宽高、缩略图列数与高度 =====
+    // ===== 设置页 · 外观：皮肤、缩略图列数与高度 =====
 export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
-        const sizeModeOptions: Array<{value: PanelSizeMode, label: string}> = [
-            {value: "adaptive", label: this.i18n.panelSizeModeAdaptive},
-            {value: "custom", label: this.i18n.panelSizeModeCustom},
-            {value: "fullscreen", label: this.i18n.panelSizeModeFullscreen},
-        ];
         // T-6872（RZ-2）：标签页内按语义分组为多张卡片；2~4 个互斥取值改分段控件
         wrapper.append(
             // T-6796 皮肤：fusion=融合思源主题（默认），其余为独立皮肤
@@ -141,16 +138,8 @@ export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettin
                     {value: "paper", label: this.i18n.skinPaper},
                 ], s.skin || "fusion", (v) => this.updateSettings({skin: v as ISwSettings["skin"]})),
             ),
-            this.settingGroupTitle(this.i18n.settingsGroupWindow),
-            this.settingGroupCard(
-                this.settingSegmented(this.i18n.panelSizeMode, this.i18n.panelSizeModeTip, sizeModeOptions, s.panelSizeMode, (v) => this.updateSettings({panelSizeMode: v as PanelSizeMode})),
-                this.settingItem(this.i18n.panelScale, this.i18n.panelScaleTip,
-                    this.num(s.panelScale, PANEL_SCALE_MIN, PANEL_SCALE_MAX, 5, "%", (v) => this.updateSettings({panelScale: v}), this.i18n.panelScale)),
-                this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip,
-                    this.num(s.dialogWidth, DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}), this.i18n.setWidth)),
-                this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip,
-                    this.num(s.dialogHeight, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}), this.i18n.setHeight)),
-            ),
+            // T-6999：切换器窗口尺寸已统一移入「面板」标签的“面板窗口”分组——
+            // 外观页保留 皮肤 + 缩略图 两组，避免同一组尺寸字段在两个标签重复出现。
             this.settingGroupTitle(this.i18n.settingsGroupThumbnails),
             this.settingGroupCard(
                 this.settingItem(this.i18n.setColumns, this.i18n.setColumnsTip,
@@ -218,7 +207,20 @@ export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings
         return wrapper;
     }
 
-    // ===== 设置页 · 面板：显示方式、侧边栏布局、各 dock 面板开关 =====
+    // T-6999：面板窗口预览按钮——点击经宿主 openPanelPreview 打开对应面板
+    // 查看当前尺寸效果（单例守卫与 FAB 串行释放由宿主 openPlatformSurface 负责）。
+function buildPanelPreviewButton(this: SettingsSectionsHost, surface: "switcher" | "workbench" | "studio", surfaceLabel: string): HTMLElement {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "b3-button b3-button--text sw-settings__panel-preview";
+        button.textContent = this.i18n.panelSizePreview;
+        button.setAttribute("aria-label", `${this.i18n.panelSizePreview} · ${surfaceLabel}`);
+        button.title = this.i18n.panelSizePreviewTip;
+        button.addEventListener("click", () => this.openPanelPreview(surface));
+        return button;
+    }
+
+    // ===== 设置页 · 面板：面板窗口、显示方式、侧边栏布局、各 dock 面板开关 =====
 export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
         const dockOptions: Array<{value: DockDisplay, label: string}> = [
@@ -231,6 +233,61 @@ export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings):
             {value: "columns", label: this.i18n.sidebarColumnsAuto},
         ];
         // T-6872（RZ-2）：分组卡片；枚举改分段控件
+        // T-6999：三面板窗口尺寸统一到本标签——切换器（第一面板）与片段实验室
+        // （第三面板，桌面端）的窗口组在此渲染；工作台（第二面板）窗口组在下方
+        // buildSettingsHomePanel 的组件面板分组内。三组都带默认值提示与预览入口，
+        // 提示明确「设置页自身保持独立自适应」，避免误解面板尺寸会联动设置窗口。
+        const panelWindows = document.createElement("div");
+        panelWindows.append(this.settingGroupTitle(this.i18n.settingsGroupPanelWindows));
+        const defaultHint = document.createElement("p");
+        defaultHint.className = "sw-settings__tip sw-settings__panel-size-hint";
+        defaultHint.textContent = this.i18n.panelSizeDefaultHint;
+        defaultHint.setAttribute("role", "note");
+        // 切换器（第一面板）：沿用既有 panelSizeMode/panelScale/固定宽高 字段与文案
+        const switcherWindowCard = this.settingGroupCard(
+            this.settingSegmented(this.i18n.panelSizeMode, this.i18n.panelSizeModeTip, [
+                {value: "adaptive", label: this.i18n.panelSizeModeAdaptive},
+                {value: "custom", label: this.i18n.panelSizeModeCustom},
+                {value: "fullscreen", label: this.i18n.panelSizeModeFullscreen},
+            ], s.panelSizeMode, (v) => this.updateSettings({panelSizeMode: v as PanelSizeMode})),
+        );
+        if (s.panelSizeMode === "adaptive") {
+            switcherWindowCard.appendChild(this.settingItem(this.i18n.panelScale, this.i18n.panelScaleTip,
+                this.num(s.panelScale, PANEL_SCALE_MIN, PANEL_SCALE_MAX, 5, "%", (v) => this.updateSettings({panelScale: v}), this.i18n.panelScale)));
+        }
+        if (s.panelSizeMode === "custom") {
+            switcherWindowCard.appendChild(this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip,
+                this.num(s.dialogWidth, DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}), this.i18n.setWidth)));
+            switcherWindowCard.appendChild(this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip,
+                this.num(s.dialogHeight, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}), this.i18n.setHeight)));
+        }
+        switcherWindowCard.appendChild(defaultHint);
+        switcherWindowCard.appendChild(this.settingItem(this.i18n.panelSizePreview, this.i18n.panelSizePreviewTip,
+            buildPanelPreviewButton.call(this, "switcher", this.i18n.platformSwitcher)));
+        // T-6999：组标题沿用既有「切换器窗口」键（原外观页窗口组整组迁入，文案不变）
+        panelWindows.appendChild(this.settingGroupTitle(this.i18n.settingsGroupWindow));
+        panelWindows.appendChild(switcherWindowCard);
+        // 片段实验室（第三面板）：T-6986 尺寸模式；桌面专属表面，移动端设置不渲染本组
+        if (!this.isMobile) {
+            const studioWindowCard = this.settingGroupCard(
+                this.settingSegmented(this.i18n.setStudioSizeMode, this.i18n.setStudioSizeModeTip, [
+                    {value: "adaptive", label: this.i18n.panelSizeModeAdaptive},
+                    {value: "custom", label: this.i18n.panelSizeModeCustom},
+                    {value: "fullscreen", label: this.i18n.panelSizeModeFullscreen},
+                ], s.studioSizeMode, (v) => this.updateSettings({studioSizeMode: v as StudioSizeMode})),
+            );
+            if (s.studioSizeMode === "custom") {
+                studioWindowCard.appendChild(this.settingItem(this.i18n.setStudioWidth, this.i18n.setStudioWidthTip,
+                    this.num(s.studioWidth, DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({studioWidth: v}), this.i18n.setStudioWidth)));
+                studioWindowCard.appendChild(this.settingItem(this.i18n.setStudioHeight, this.i18n.setStudioHeightTip,
+                    this.num(s.studioHeight, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({studioHeight: v}), this.i18n.setStudioHeight)));
+            }
+            studioWindowCard.appendChild(this.settingItem(this.i18n.panelSizePreview, this.i18n.panelSizePreviewTip,
+                buildPanelPreviewButton.call(this, "studio", this.i18n.platformStudio)));
+            panelWindows.appendChild(this.settingGroupTitle(this.i18n.platformStudio));
+            panelWindows.appendChild(studioWindowCard);
+        }
+        wrapper.append(panelWindows);
         wrapper.append(
             this.settingGroupTitle(this.i18n.settingsGroupListSidebar),
             this.settingGroupCard(
@@ -307,6 +364,10 @@ export function buildSettingsHomePanel(this: SettingsSectionsHost, s: ISwSetting
             {value: "fullscreen", label: this.i18n.setHomeSizeModeFullscreen},
         ];
         // T-6872（RZ-2）：分组卡片；枚举改分段控件
+        const workbenchHint = document.createElement("p");
+        workbenchHint.className = "sw-settings__tip sw-settings__panel-size-hint";
+        workbenchHint.textContent = this.i18n.panelSizeDefaultHint;
+        workbenchHint.setAttribute("role", "note");
         wrapper.append(
             this.settingGroupTitle(this.i18n.settingsGroupComponents),
             this.settingGroupCard(
@@ -315,6 +376,10 @@ export function buildSettingsHomePanel(this: SettingsSectionsHost, s: ISwSetting
             this.settingGroupTitle(this.i18n.settingsGroupWorkbenchWindow),
             this.settingGroupCard(
                 this.settingSegmented(this.i18n.setHomeSizeMode, this.i18n.setHomeSizeModeTip, modeOptions, s.homeSizeMode, (v) => this.updateSettings({homeSizeMode: v as HomeSizeMode})),
+                // T-6999：默认值提示 + 预览入口（与切换器/实验室窗口组同构）
+                workbenchHint,
+                this.settingItem(this.i18n.panelSizePreview, this.i18n.panelSizePreviewTip,
+                    buildPanelPreviewButton.call(this, "workbench", this.i18n.platformWorkbench)),
             ),
         );
         if (s.homeSizeMode === "custom") {

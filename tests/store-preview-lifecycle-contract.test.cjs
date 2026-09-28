@@ -92,4 +92,5 @@ test('unavailable removal rerenders store', () => assert.match(storeUiSource, /t
 test('filter updates hidden state accessibly', () => assert.match(storeUiSource, /card\.setAttribute\("aria-hidden", String\(!visible\)\)/));
 test('filter restores focus to visible card', () => assert.match(storeUiSource, /nextCard\.focus\(\{preventScroll: true\}\)/));
 test('filter restores focus to search when no cards', () => assert.match(storeUiSource, /else searchInput\.focus\(\{preventScroll: true\}\)/));
-test('empty store exposes dedicated state', () => assert.match(storeUiSource,/root\.textContent = this\.i18n\.homeNoMoreModules/));
+// T-6967 S2：空目录不再整树清空——保留 chrome 并落 catalogEmpty 会话标记（横幅态）。
+test('empty store exposes dedicated state', () => assert.match(storeUiSource,/root\.dataset\.catalogEmpty = "true"/));

@@ -133,6 +133,13 @@ function normalizeSettings(saved, options = {}) {    const defaults = options.de
             : (defaults.homeSizeMode || "follow"),
         homeWidth: clamp(source.homeWidth, ...range("homeWidth"), defaults.homeWidth || 960),
         homeHeight: clamp(source.homeHeight, ...range("homeHeight"), defaults.homeHeight || 720),
+        // T-6986：片段实验室尺寸模式（D1 决断）——白名单外回落全屏（ADR 0080 默认不回退）
+        studioSizeMode: source.studioSizeMode === "adaptive" || source.studioSizeMode === "custom"
+            || source.studioSizeMode === "fullscreen"
+            ? source.studioSizeMode
+            : (defaults.studioSizeMode || "fullscreen"),
+        studioWidth: clamp(source.studioWidth, ...range("studioWidth"), defaults.studioWidth || 1120),
+        studioHeight: clamp(source.studioHeight, ...range("studioHeight"), defaults.studioHeight || 800),
         homePalette,
         panelScale: clamp(source.panelScale, ...range("panelScale"), defaults.panelScale),
         groupBy,

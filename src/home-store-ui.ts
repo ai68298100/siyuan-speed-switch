@@ -36,7 +36,7 @@ import {
     toggleHomeStoreSelection,
 } from "./home-store-model";
 import {createHomeModuleController} from "./home-controller";
-import {resolveMobileHomeSize, resolveHomeTileDefaultSize} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileDefaultSize, isLifeHeartbeatModule} from "./home-model";
 import {HOME_WIDGET_SIZES, HOME_WIDGET_SIZE_LABELS} from "./constants";
 import type {HomeWidgetSize} from "./constants";
 import {openHomeConfigForm} from "./home-config-form";
@@ -268,6 +268,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             }
             catalogPane.innerHTML = "";
             detailPane.innerHTML = "";
+            delete root.dataset.catalogEmpty;
             detailPane.classList.add("sw-home-store__detail--empty");
             root.dataset.batchMode = String(storeBatchMode);
             if (storeSelectedModule) root.dataset.selectedModule = storeSelectedModule;
@@ -339,7 +340,9 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             sortSelect.dataset.sort = storeSort;
             sortSelect.setAttribute("aria-controls", "sw-home-store-result-summary");
             sortSelect.addEventListener("change", () => { storeSort = normalizeHomeStoreSort(sortSelect.value); persistStoreState(); renderStore(); });
-            searchBar.appendChild(sortSelect);
+            // T-6967 S2：排序菜单收进筛选 chips 行尾（定稿原型「筛选一条化」）——
+            // 搜索行只留输入与说明入口；排序挂在 tabBar 同一视觉行，不再单独占一行。
+            // 原生 select 保留（键盘/读屏语义与 aria-controls 原样），仅换位置与紧凑样式。
             // T-6967 S1（定稿原型「筛选一条化」）：砍掉独立的密度/视图模式分段与重置视图
             // 按钮——密度/视图的模型纯函数与设置字段保留（跨会话数据不丢），呈现层不再
             // 提供入口；「清空搜索与筛选」出口收敛到空搜索状态内（clear-filters）。
@@ -541,7 +544,13 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 });
                 tabBar.appendChild(btn);
             });
-            storeFragment.appendChild(tabBar);
+            // T-6967 S2：筛选一条化——chips（tablist）与排序菜单同一视觉行；
+            // tablist 内只放 tab（ARIA 不混入非 tab 控件），排序在行尾 flex 定宽。
+            const filterBar = document.createElement("div");
+            filterBar.className = "sw-home-store__filter-bar";
+            filterBar.appendChild(tabBar);
+            filterBar.appendChild(sortSelect);
+            storeFragment.appendChild(filterBar);
             resultSummary = document.createElement("div");
             resultSummary.className = "sw-home-store__summary";
             resultSummary.id = "sw-home-store-result-summary";
@@ -732,28 +741,33 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                     chip.setAttribute("aria-label", label);
                     sourceMeta.appendChild(chip);
                 };
-                if (externalInfo) {
-                    addChip(this.i18n.homeStoreSource.replace("{source}", externalInfo.providerName), "source");
-                    const integrationKind = externalInfo.integration;
-                    const privacyKind = externalInfo.privacy;
-                    const networkLabel = integrationKind === "direct"
-                        ? this.i18n.homeStoreNetworkOffline
-                        : integrationKind === "local-bridge"
-                            ? this.i18n.homeStoreNetworkLocal
-                            : this.i18n.homeStoreNetworkOnline;
-                    addChip(networkLabel, integrationKind === "direct" ? "offline" : integrationKind === "local-bridge" ? "local" : "online");
-                    const privacyLabel = privacyKind === "location-only"
-                        ? this.i18n.homeStorePrivacyLocation
-                        : privacyKind === "local-only"
-                            ? this.i18n.homeStorePrivacyLocal
-                            : privacyKind === "endpoint-only"
-                                ? this.i18n.homeStorePrivacyEndpoint
-                                : this.i18n.homeStorePrivacyNone;
-                    addChip(privacyLabel, "privacy");
-                } else if (def.category !== "siyuan") {
-                    addChip(this.i18n.homeStorePluginSource.replace("{source}", def.author || this.i18n.homeStoreTabPlugin), "plugin");
-                } else {
-                    addChip(this.i18n.homeStoreBuiltInSource, "offline");
+                // T-6967 S2：来源/联网/隐私从详情窗格的 chips 形态升级为四行明文
+                // （buildDetailMeta），目录行变体继续输出 chips（作用域 CSS 行内隐藏，
+                // 供既有锚点/模型消费）；依赖/可配置/已添加等状态 chips 两变体都保留。
+                if (variant === "catalog") {
+                    if (externalInfo) {
+                        addChip(this.i18n.homeStoreSource.replace("{source}", externalInfo.providerName), "source");
+                        const integrationKind = externalInfo.integration;
+                        const privacyKind = externalInfo.privacy;
+                        const networkLabel = integrationKind === "direct"
+                            ? this.i18n.homeStoreNetworkOffline
+                            : integrationKind === "local-bridge"
+                                ? this.i18n.homeStoreNetworkLocal
+                                : this.i18n.homeStoreNetworkOnline;
+                        addChip(networkLabel, integrationKind === "direct" ? "offline" : integrationKind === "local-bridge" ? "local" : "online");
+                        const privacyLabel = privacyKind === "location-only"
+                            ? this.i18n.homeStorePrivacyLocation
+                            : privacyKind === "local-only"
+                                ? this.i18n.homeStorePrivacyLocal
+                                : privacyKind === "endpoint-only"
+                                    ? this.i18n.homeStorePrivacyEndpoint
+                                    : this.i18n.homeStorePrivacyNone;
+                        addChip(privacyLabel, "privacy");
+                    } else if (def.category !== "siyuan") {
+                        addChip(this.i18n.homeStorePluginSource.replace("{source}", def.author || this.i18n.homeStoreTabPlugin), "plugin");
+                    } else {
+                        addChip(this.i18n.homeStoreBuiltInSource, "offline");
+                    }
                 }
                 if (dependencyInfo) {
                     const dependencyChip = document.createElement("span");
@@ -1023,6 +1037,37 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
             this.saveHomeState(next);
             return true;
         };
+        // T-6967 S2：详情窗格元信息四行明文——数据来源 / 刷新 / 隐私 / 缓存。
+        // 全部取自既有纯模型（resolveHomeStoreSourceInfo / 心跳族登记 / 隐私标签），
+        // 缓存行只陈述框架级保证（联网组件失败保留旧值，见 external-widget-source-audit），
+        // 不编造逐组件 TTL 数字。文本节点渲染，零 HTML 拼接。
+        const buildDetailMeta = (moduleId: string, def: any) => {
+            const externalInfo = resolveHomeStoreSourceInfo(moduleId);
+            const meta = document.createElement("dl");
+            meta.className = "sw-home-store__detail-meta";
+            meta.dataset.moduleId = moduleId;
+            meta.setAttribute("role", "note");
+            meta.setAttribute("aria-label", this.i18n.homeStoreGuideHint);
+            const addRow = (label: string, value: string) => {
+                const row = document.createElement("div");
+                row.className = "sw-home-store__detail-meta-row";
+                const term = document.createElement("dt");
+                term.textContent = label;
+                const desc = document.createElement("dd");
+                desc.textContent = value;
+                row.append(term, desc);
+                meta.appendChild(row);
+            };
+            const sourceName = externalInfo?.providerName
+                || (def.category === "siyuan" ? this.i18n.homeStoreBuiltInSource : (def.author || this.i18n.homeStoreTabPlugin));
+            addRow(this.i18n.homeStoreMetaSource, sourceName);
+            addRow(this.i18n.homeStoreMetaRefresh, isLifeHeartbeatModule(moduleId) ? this.i18n.homeStoreRefreshHeartbeat : this.i18n.homeStoreRefreshManual);
+            addRow(this.i18n.homeStoreMetaPrivacy, resolveStorePrivacyLabel(externalInfo, this.i18n));
+            const networked = externalInfo?.integration === "http" || externalInfo?.integration === "local-bridge";
+            addRow(this.i18n.homeStoreMetaCache, networked ? this.i18n.homeStoreCacheBounded : this.i18n.homeStoreCacheNone);
+            return meta;
+        };
+
             // 按组渲染：组头（含数量）+ 组内网格；搜索过滤沿用卡片隐藏逻辑
             const readyGroups = new Map<string, Array<{moduleId: string; card: HTMLElement}>>();
             const readyGroupDescriptions = new Map<string, string>();
@@ -1234,9 +1279,41 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
             }
 
             if (ready.length === 0 && pending.length === 0) {
+                // T-6967 S2：目录级失败横幅——此前整树 textContent 清空会连带摧毁
+                // 搜索/chips/详情窗格与批量底栏。改为保留全部 chrome，横幅给出可理解
+                // 原因与手动重试（重试=重新枚举运行时并重绘，与 400ms 复扫同通道）。
                 root.dataset.readyCount = "0";
                 root.dataset.pendingCount = "0";
-                root.textContent = this.i18n.homeNoMoreModules;
+                root.dataset.catalogEmpty = "true";
+                // 空目录下「可用组件」大区头没有内容可带，随横幅一起隐藏
+                readyHeading.classList.add("fn__none");
+                readyHeading.setAttribute("aria-hidden", "true");
+                const failBanner = document.createElement("section");
+                failBanner.className = "sw-home-store__catalog-fail";
+                failBanner.dataset.state = "catalog-empty";
+                failBanner.setAttribute("role", "alert");
+                const failTitle = document.createElement("strong");
+                failTitle.textContent = this.i18n.homeStoreCatalogFailTitle;
+                const failHint = document.createElement("p");
+                failHint.textContent = this.i18n.homeStoreCatalogFailHint;
+                const failRetry = document.createElement("button");
+                failRetry.type = "button";
+                failRetry.className = "b3-button b3-button--outline sw-home-store__catalog-retry";
+                failRetry.dataset.action = "catalog-retry";
+                failRetry.textContent = this.i18n.homeRetry;
+                failRetry.setAttribute("aria-label", `${this.i18n.homeRetry} · ${this.i18n.homeStoreTitle}`);
+                failRetry.title = failRetry.getAttribute("aria-label") || "";
+                failRetry.addEventListener("click", () => {
+                    delete root.dataset.catalogEmpty;
+                    renderStore();
+                });
+                failBanner.append(failTitle, failHint, failRetry);
+                storeFragment.appendChild(failBanner);
+                catalogPane.appendChild(storeFragment);
+                const failHintPane = document.createElement("p");
+                failHintPane.className = "sw-home-store__detail-hint";
+                failHintPane.textContent = this.i18n.homeStoreDetailHint;
+                detailPane.appendChild(failHintPane);
                 restoreStoreView();
                 root.setAttribute("aria-busy", "false");
                 return;
@@ -1306,6 +1383,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                         sheetBar.appendChild(sheetBack);
                         detailPane.appendChild(sheetBar);
                     }
+                    detailPane.appendChild(buildDetailMeta(storeSelectedModule, detailDef));
                     detailPane.appendChild(buildReadyCard(storeSelectedModule, detailDef, "detail"));
                     detailPane.classList.remove("sw-home-store__detail--empty");
                     const detailNote = document.createElement("p");

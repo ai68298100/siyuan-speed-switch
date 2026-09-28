@@ -26,11 +26,15 @@ test('store records visible count', () => assert.match(storeUiSource, /root\.dat
 test('store records total count', () => assert.match(storeUiSource, /root\.dataset\.totalCount = String\(summary\.total\)/));
 test('store records added count', () => assert.match(storeUiSource, /root\.dataset\.addedCount = String\(summary\.added\)/));
 test('store clears busy state after render', () => assert.match(storeUiSource, /restoreStoreView\(\);\s*root\.setAttribute\("aria-busy", "false"\)/));
+// T-6967 S2：清空分支升级为目录失败横幅——chrome 保留、横幅可重试、busy 仍按
+// 「恢复视图之后解除」的顺序收尾。
 test('empty store clears busy state', () => {
     const i = storeUiSource.indexOf('root.dataset.pendingCount = "0";');
     assert.ok(i >= 0, '找不到 pendingCount 清零语句');
-    const window = storeUiSource.slice(i, i + 300);
-    assert.ok(window.includes('root.textContent = this.i18n.homeNoMoreModules;'), '清空分支须提示无更多模块');
+    const window = storeUiSource.slice(i, i + 2200);
+    assert.ok(window.includes('root.dataset.catalogEmpty = "true";'), '清空分支须落横幅态标记');
+    assert.ok(window.includes('sw-home-store__catalog-retry'), '清空分支须提供重试出口');
+    assert.ok(window.includes('catalogPane.appendChild(storeFragment);'), '清空分支须保留搜索/chips 等目录 chrome');
     const restore = window.indexOf('restoreStoreView();');
     assert.ok(restore >= 0, '清空分支须恢复视图');
     const busy = window.indexOf('root.setAttribute("aria-busy", "false")');
