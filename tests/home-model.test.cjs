@@ -126,7 +126,7 @@ test("home model migrates the duplicate host recent widget to recent documents",
     assert.equal(home.registerModules([]).some((item) => item.moduleId === "host-recent-docs"), false);
     assert.deepEqual(home.registerModules([]).find((item) => item.moduleId === "recent-documents").configSchema,
         [
-            {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+            {key: "limit", label: "显示条数", type: "number", min: 1, max: 8, defaults: 8},
             {key: "showPath", label: "显示文档路径", type: "select", options: ["是", "否"], defaults: "是"},
             {key: "showRank", label: "显示最近序号", type: "select", options: ["否", "是"], defaults: "否"},
         ]);

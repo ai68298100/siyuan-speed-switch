@@ -236,6 +236,23 @@ test('host recent docs preserve official order when timestamps are unavailable',
     assert.deepEqual(snapshot.items.map((item) => item.label), ["第一项", "第二项"]);
 });
 
+test('host recent docs add relative time and retain deleted history as unavailable', () => {
+    const now = new Date(2026, 8, 18, 15, 30).getTime();
+    const payload = okResponse([
+        {rootID: "20260917120002-abcdef", title: "昨天的文档", viewedAt: new Date(2026, 8, 17, 16, 40).getTime()},
+        {rootID: "20260918120001-abcdef", title: "已删除", viewedAt: new Date(2026, 8, 18, 14, 20).getTime()},
+    ]);
+    const snapshot = model.buildHostRecentDocsSnapshot(payload, {}, {
+        today: "今天", yesterday: "昨天", unavailable: "已失效",
+    }, now, "fresh", new Set(["20260917120002-abcdef"]));
+    assert.deepEqual(snapshot.items.find((item) => item.label === "昨天的文档"), {
+        label: "昨天的文档", value: "20260917120002-abcdef", secondary: "昨天 16:40",
+    });
+    assert.deepEqual(snapshot.items.find((item) => item.label === "已删除"), {
+        label: "已删除", value: "", disabled: true, secondary: "已失效 · 今天 14:20",
+    });
+});
+
 // ---------- T-6328 数据库导航 ----------
 test('database list projects av blocks with click-to-open values', () => {
     const rows = [
@@ -584,9 +601,9 @@ test('writing streak weekly n/m quota, rest-day exemption, and legacy parity (T-
 });
 
 // ---------- 通用边界 ----------
-test('every builder clamps limits into 1..12 and tolerates non-object configs', () => {
-    assert.equal(model.normalizePinnedDocsConfig({limit: 99}).limit, 12);
-    assert.equal(model.normalizePinnedDocsConfig(null).limit, 8);
+test('navigation builders clamp limits to their spec-card row caps and tolerate non-object configs', () => {
+    assert.equal(model.normalizePinnedDocsConfig({limit: 99}).limit, 6);
+    assert.equal(model.normalizePinnedDocsConfig(null).limit, 6);
     assert.equal(model.normalizeInboxConfig({page: -2}).page, 1);
     assert.equal(model.normalizeRecentUpdatesConfig({limit: 0}).limit, 1);
     assert.equal(model.normalizeDataHealthConfig({}).limit, 8);
@@ -596,7 +613,7 @@ test('every builder clamps limits into 1..12 and tolerates non-object configs', 
     assert.equal(model.normalizeOutlineWidgetConfig({maxDepth: 99}).maxDepth, 8);
     assert.equal(model.normalizeDocumentRelationsConfig({relation: '坏值'}).relation, '全部');
     assert.equal(model.normalizeTagListConfig({limit: 99}).limit, 12);
-    assert.equal(model.normalizeBookmarkListConfig({limit: 0}).limit, 1);
+    assert.equal(model.normalizeBookmarkListConfig({limit: 99}).limit, 6);
     assert.equal(model.normalizeClippedUnreadConfig({limit: 0}).limit, 1);
     assert.equal(model.normalizeOnThisDayConfig({limit: 99}).limit, 20);
     assert.equal(model.normalizeRecentDailyNotesConfig({days: 99}).days, 60);

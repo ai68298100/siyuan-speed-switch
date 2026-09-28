@@ -7,6 +7,10 @@ const HEATMAP_MAX_ITEMS = 371;
 const HARD_ITEM_CEILING = 400;
 const MAX_TEXT = 256;
 const STATUSES = new Set(["loading", "ready", "empty", "error"]);
+const NAVIGATION_LIST_MODULES = new Set([
+    "recent-documents", "pinned-docs", "favorites", "tags", "bookmarks", "document-sets",
+    "fixed-document", "current-document-outline", "document-relations-summary",
+]);
 let renderSequence = 0;
 
 function instanceHash(value) {
@@ -117,6 +121,7 @@ function normalizeHomeViewResult(value, options = {}) {
         const secondary = text(item?.secondary, 96);
         if (secondary) entry.secondary = secondary;
         if (typeof item?.done === "boolean") entry.done = item.done;
+        if (item?.disabled === true) entry.disabled = true;
         if (typeof item?.weekend === "boolean") entry.weekend = item.weekend;
         if (item?.outside === true) entry.outside = true;
         if (["off", "work"].includes(item?.holiday)) entry.holiday = item.holiday;
@@ -574,6 +579,7 @@ function renderHomeModuleView(doc, view, options = {}) {
             const button = doc.createElement("button");
             button.type = "button";
             button.className = "sw__home-module-item-action";
+            button.disabled = item.disabled === true;
             // 时钟的 value 每分钟/每秒都会变，焦点身份应绑定城市/标签而不是时间文本。
             const focusBase = showRowValues
                 ? (item.label || item.value || item.href || "item")
@@ -597,6 +603,18 @@ function renderHomeModuleView(doc, view, options = {}) {
                 rank.textContent = String(item.rank);
                 rank.setAttribute("aria-hidden", "true");
                 button.appendChild(rank);
+            }
+            if (NAVIGATION_LIST_MODULES.has(view.moduleId)) {
+                const itemIcon = doc.createElement("span");
+                itemIcon.className = "sw__home-module-item-icon";
+                itemIcon.setAttribute("aria-hidden", "true");
+                const rowIcon = renderModuleIcon(doc, view.icon);
+                if (rowIcon) {
+                    rowIcon.setAttribute("width", "18");
+                    rowIcon.setAttribute("height", "18");
+                    itemIcon.appendChild(rowIcon);
+                }
+                button.appendChild(itemIcon);
             }
             const itemLabel = doc.createElement("span");
             itemLabel.className = "sw__home-module-item-label";
@@ -637,7 +655,7 @@ function renderHomeModuleView(doc, view, options = {}) {
                 });
                 row.appendChild(check);
             }
-            if (options.onItem) button.addEventListener("click", () => options.onItem(item, view));
+            if (options.onItem && item.disabled !== true) button.addEventListener("click", () => options.onItem(item, view));
             if (Number.isFinite(item.count) && item.count > 0 && maxCount > 0) {
                 const barWrap = doc.createElement("span");
                 barWrap.className = "sw__home-item-bar";

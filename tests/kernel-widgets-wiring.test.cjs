@@ -54,7 +54,7 @@ test('each kernel widget adapter calls its own endpoint and guards invalid paylo
 
 test('inbox adapter degrades to a configured empty hint instead of a failure state', () => {
     const registration = indexSource.indexOf('register("inbox-shorthands"');
-    const window = indexSource.slice(registration, registration + 900);
+    const window = indexSource.slice(registration, registration + 3500);
     assert.match(window, /homeInboxUnavailable/, "云端失败必须归一为确定空态（不进失败退避）");
     assert.match(window, /normalizeInboxConfig\(config\)/);
     assert.match(window, /\{page: normalized\.page\}/, "必须把组件页码传给官方分页参数");
@@ -118,7 +118,7 @@ test('recent edits applies a validated time and notebook window with accurate to
 test('recent documents use the official host history endpoint', () => {
     const registration = indexSource.indexOf('register("recent-documents"');
     assert.ok(registration > 0);
-    const window = indexSource.slice(registration, registration + 900);
+    const window = indexSource.slice(registration, registration + 3500);
     assert.match(window, /\/api\/storage\/getRecentDocs/);
     assert.match(window, /stat: this\.i18n\.homeUnitDocs/);
     assert.match(window, /timeoutMs: 1200, cacheTtlMs: 1000/);

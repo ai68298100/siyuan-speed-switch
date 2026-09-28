@@ -12,7 +12,7 @@ const CONDITIONAL_MODULES = new Set([
 
 const DEFAULT_MODULES = Object.freeze([
     {moduleId: "recent-documents", title: "近期文档", icon: "iconHistory", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 8, defaults: 8},
         {key: "showPath", label: "显示文档路径", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRank", label: "显示最近序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
@@ -37,14 +37,14 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showPath", label: "显示文档路径", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "favorites", title: "收藏", icon: "iconStar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 8, defaults: 8},
         {key: "group", label: "收藏分组", type: "favorite-group", defaults: ""},
         {key: "showGroup", label: "显示所属分组", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showPath", label: "显示文档路径", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showUnavailable", label: "显示失效收藏", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "document-sets", title: "文档集", icon: "iconLayout", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "tall", "large"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 5, defaults: 5},
         {key: "sortBy", label: "排序方式", type: "select", options: ["最近使用", "名称", "文档数"], defaults: "最近使用"},
         {key: "showCount", label: "显示文档数", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showUpdated", label: "显示最近使用日期", type: "select", options: ["是", "否"], defaults: "是"},
@@ -58,7 +58,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showRank", label: "显示序号", type: "select", options: ["是", "否"], defaults: "否"},
     ]},
     {moduleId: "bookmarks", title: "书签", icon: "iconBookmark", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 6, defaults: 6},
         {key: "query", label: "筛选书签", type: "text", defaults: ""},
         {key: "sortBy", label: "排序方式", type: "select", options: ["数量", "名称"], defaults: "数量"},
         {key: "showCount", label: "显示块数量", type: "select", options: ["是", "否"], defaults: "是"},
@@ -271,14 +271,14 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "document-relations-summary", title: "文档关系摘要", icon: "iconGraph", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 6},
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 6, defaults: 6},
         {key: "relation", label: "关系类型", type: "select", options: ["全部", "子块", "引用"], defaults: "全部"},
         {key: "query", label: "筛选关系内容", type: "text", defaults: ""},
         {key: "showType", label: "显示关系类型", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRank", label: "显示序号", type: "select", options: ["是", "否"], defaults: "否"},
     ]},
     {moduleId: "current-document-outline", title: "当前文档大纲", icon: "iconList", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall", "wide"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "标题上限", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "limit", label: "标题上限", type: "number", min: 1, max: 8, defaults: 8},
         {key: "query", label: "筛选标题", type: "text", defaults: ""},
         {key: "maxDepth", label: "最大标题层级", type: "number", min: 1, max: 8, defaults: 8},
         {key: "showLevel", label: "显示标题层级", type: "select", options: ["是", "否"], defaults: "是"},
@@ -358,7 +358,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showRank", label: "显示排名", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "pinned-docs", title: "置顶文档", icon: "iconBookmark", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 6, defaults: 6},
         {key: "showPath", label: "显示文档路径", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showChildCount", label: "显示子文档数", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRank", label: "显示置顶序号", type: "select", options: ["否", "是"], defaults: "否"},
@@ -468,6 +468,16 @@ const HOME_TILE_MATERIALS = {
 // T-6969 Slice 2：每模块默认档位——添加组件时商店默认选中的档位（键 = 既有
 // HOME_WIDGET_SIZES 七档词汇，且必须在该模块 sizes 白名单内，否则回退）。
 const HOME_TILE_DEFAULT_SIZES = {
+    // T-6980 / T-6971 批次⑧：导航与历史组件按规格卡声明默认档。
+    'recent-documents': 'wide',
+    'pinned-docs': 'medium',
+    favorites: 'medium',
+    tags: 'small',
+    bookmarks: 'small',
+    'document-sets': 'medium',
+    'fixed-document': 'small',
+    'current-document-outline': 'wide',
+    'document-relations-summary': 'medium',
     'external-world-clock': 'full',
     'external-weather-open-meteo': 'wide',
     'external-air-quality': 'small',

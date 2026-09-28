@@ -58,7 +58,8 @@ test('fixed document validates ids, follows metadata, and keeps a custom title o
     const configured = model.buildFixedDocumentSnapshot([], {}, {configure: '请选择'});
     assert.equal(configured.emptyHint, '请选择');
     const missing = model.buildFixedDocumentSnapshot([], {docId: DOC_A}, {unavailable: '已失效'});
-    assert.equal(missing.emptyHint, '已失效');
+    assert.equal(missing.emptyHint, '');
+    assert.deepEqual(missing.items, [{label: '已失效', value: '', disabled: true, secondary: '已失效'}]);
     const snapshot = model.buildFixedDocumentSnapshot([
         {id: DOC_A, content: '最新标题', hpath: '/知识/最新标题'},
     ], {docId: DOC_A, title: '我的入口'}, {});

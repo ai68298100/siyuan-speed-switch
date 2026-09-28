@@ -5733,9 +5733,22 @@ const updatedMap: {[rootId: string]: string} = {};
         };
         register("recent-documents", this.i18n.homeRecentDocuments, "iconHistory", this.i18n.homeDescRecent, ["switch-protyle", "loaded-protyle", "destroy-protyle"], async (config) => {
             const json = await this.fetchKernelJson("/api/storage/getRecentDocs", {});
-            return buildHostRecentDocsSnapshot(json, config, {
+            const labels = {
                 title: this.i18n.homeRecentDocuments, empty: this.i18n.homeHostRecentEmpty, stat: this.i18n.homeUnitDocs,
-            }) || {emptyHint: this.i18n.homeHostRecentEmpty, items: []};
+                today: this.i18n.homeRecentToday, yesterday: this.i18n.homeRecentYesterday,
+                unavailable: this.i18n.homeRecentUnavailable,
+            };
+            const recent = buildHostRecentDocsSnapshot(json, config, labels);
+            if (!recent) throw new Error("invalid_recent_documents");
+            const ids = recent.items.map((item: {value?: string}) => String(item.value || "")).filter((id: string) => BLOCK_ID_RE.test(id));
+            if (ids.length === 0) return recent;
+            const quoted = ids.map((id: string) => `'${id}'`).join(",");
+            const metadata = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id FROM blocks WHERE type='d' AND id IN (${quoted}) LIMIT 12`,
+            });
+            if (!Array.isArray(metadata?.data)) throw new Error("invalid_recent_documents_metadata");
+            const availableIds = new Set(metadata.data.map((row: {id?: string}) => String(row?.id || "")));
+            return buildHostRecentDocsSnapshot(json, config, labels, Date.now(), "fresh", availableIds);
         }, {timeoutMs: 1200, cacheTtlMs: 1000});
         register("favorites", this.i18n.homeFavorites, "iconStar", this.i18n.homeDescFav, ["switch-protyle", "loaded-protyle", "destroy-protyle"], async (config) => {
             const favorites = this.getFavorites();
@@ -5778,6 +5791,7 @@ const updatedMap: {[rootId: string]: string} = {};
             if (!normalized.docId) return buildFixedDocumentSnapshot([], normalized, {
                 configure: this.i18n.homeFixedDocumentConfigHint,
                 unavailable: this.i18n.homeFixedDocumentUnavailable,
+                reconfigure: this.i18n.homeFixedDocumentReconfigureHint,
             });
             const json = await this.fetchKernelJson("/api/query/sql", {
                 stmt: `SELECT id, content, hpath FROM blocks WHERE type='d' AND id='${normalized.docId}' LIMIT 1`,
@@ -5786,6 +5800,7 @@ const updatedMap: {[rootId: string]: string} = {};
             return buildFixedDocumentSnapshot(json.data, normalized, {
                 configure: this.i18n.homeFixedDocumentConfigHint,
                 unavailable: this.i18n.homeFixedDocumentUnavailable,
+                reconfigure: this.i18n.homeFixedDocumentReconfigureHint,
             });
         }, {timeoutMs: 1200, cacheTtlMs: 1000});
         // 今日待办：默认读取“今日日记”文档中的任务块；开启全库扫描后才扩大到
@@ -6745,6 +6760,13 @@ const updatedMap: {[rootId: string]: string} = {};
         if (value.startsWith("set:")) {
             close();
             void this.restoreDocumentSetFromHome(value.slice(4));
+            return;
+        }
+        const bookmarkBlock = value.match(/^bookmark-block:(\d{14}-[0-9a-z]+):(\d{14}-[0-9a-z]+)$/i);
+        if (bookmarkBlock) {
+            close();
+            if (this.isMobile) void this.mobileOpenDoc(bookmarkBlock[2]);
+            else void openDocumentOnDesktop({rootId: bookmarkBlock[2], hitId: bookmarkBlock[1], app: this.app, openTab, logger});
             return;
         }
         if (value.startsWith("tag:") || value.startsWith("bookmark:")) {

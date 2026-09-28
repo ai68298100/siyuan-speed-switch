@@ -223,6 +223,34 @@
     &:hover::before { background: var(--sw-home-accent, var(--b3-theme-primary)); }
 }
 
+// T-6980 / T-6971 批次⑧导航列表：plain 信息型行解剖。
+// 只作用于本批九个内建模块，避免改变外部资讯与第三方模块的行高语义。
+.sw-home__cell:is([data-module-id="recent-documents"], [data-module-id="pinned-docs"], [data-module-id="favorites"], [data-module-id="bookmarks"], [data-module-id="document-sets"], [data-module-id="fixed-document"], [data-module-id="current-document-outline"], [data-module-id="document-relations-summary"]) {
+    .sw__home-module-list { gap: 0; }
+    .sw__home-module-item + .sw__home-module-item { border-top: 1px solid color-mix(in srgb, var(--b3-border-color) 62%, transparent); }
+    .sw__home-module-item-action {
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 7px;
+        min-height: 30px;
+        padding: 4px 6px;
+        border-left: 0;
+        text-align: start;
+    }
+    .sw__home-module-item-action:disabled { cursor: default; opacity: 0.72; }
+    .sw__home-module-item-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sw__home-module-item-icon { display: grid; width: 24px; height: 24px; place-items: center; color: var(--b3-theme-primary); }
+    .sw__home-module-item-secondary { min-width: 0; overflow: hidden; color: var(--b3-theme-on-surface-light); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+.sw-home__cell[data-module-id="tags"] {
+    .sw__home-module-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sw__home-module-item { border: 0; }
+    .sw__home-module-item-action { min-height: 28px; padding: 4px 9px; border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 22%, var(--b3-border-color)); border-radius: 999px; background: color-mix(in srgb, var(--b3-theme-primary) 7%, transparent); }
+    .sw__home-module-item-secondary { margin-inline-start: 4px; font-size: 10px; }
+}
+
 // 概览数字（stat hero）
 .sw__home-stat {
     display: flex;

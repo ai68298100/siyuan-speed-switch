@@ -62,7 +62,7 @@ function formatDateKey(value) {
 function normalizePinnedDocsConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
-        limit: clampLimit(source.limit, 8),
+        limit: Math.min(6, clampLimit(source.limit, 6)),
         showPath: source.showPath !== "否" && source.showPath !== false,
         showChildCount: source.showChildCount !== "否" && source.showChildCount !== false,
         showRank: source.showRank === "是" || source.showRank === true,
@@ -73,10 +73,11 @@ function normalizePinnedDocsConfig(value) {
 function buildPinnedDocsSnapshot(payload, config, labels = {}, now = Date.now(), status = "fresh") {
     const list = responseItems(payload);
     if (!list) return null;
+    const boundedList = list.slice(0, 64);
     const normalized = normalizePinnedDocsConfig(config);
     const items = [];
     let unavailable = 0;
-    for (const doc of list) {
+    for (const doc of boundedList) {
         if (!doc || typeof doc !== "object") continue;
         const id = boundedText(doc.id, 64);
         if (!/^\d{14}-[0-9a-z]+$/i.test(id)) continue;
@@ -94,13 +95,14 @@ function buildPinnedDocsSnapshot(payload, config, labels = {}, now = Date.now(),
         items.push({
             label: boundedText(doc.name, 128) || id,
             value: invalid ? "" : id,
+            ...(invalid ? {disabled: true} : {}),
             secondary: details.join(" · "),
             ...(normalized.showRank ? {rank: items.length + 1} : {}),
         });
     }
     const snapshot = snapshotOf(boundedText(labels.title, 64) || "置顶文档", items, labels, now, status, "还没有置顶文档");
     snapshot.stat = {
-        value: list.length > items.length ? `${items.length}/${list.length}` : String(items.length),
+        value: boundedList.length > items.length ? `${items.length}/${boundedList.length}` : String(items.length),
         label: unavailable > 0 ? `${boundedText(labels.stat, 24) || "置顶"} · ${unavailable} ${boundedText(labels.unavailableShort, 16) || "不可用"}` : boundedText(labels.stat, 32) || "置顶",
     };
     return snapshot;
@@ -360,13 +362,32 @@ function buildDataHealthSnapshot(payload, config, labels = {}, now = Date.now(),
 function normalizeHostRecentDocsConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
-        limit: clampLimit(source.limit, 8),
+        limit: Math.min(8, clampLimit(source.limit, 8)),
         showPath: source.showPath !== "否",
         showRank: source.showRank === "是",
     };
 }
 
-function buildHostRecentDocsSnapshot(payload, config, labels = {}, now = Date.now(), status = "fresh") {
+function recentDocTime(value, now, labels) {
+    const raw = Number(value);
+    if (!Number.isFinite(raw) || raw <= 0) return "";
+    if (!labels || (!labels.today && !labels.yesterday)) return "";
+    const compact = String(Math.trunc(raw));
+    const stamp = /^\d{14}$/.test(compact)
+        ? Date.UTC(Number(compact.slice(0, 4)), Number(compact.slice(4, 6)) - 1, Number(compact.slice(6, 8)), Number(compact.slice(8, 10)), Number(compact.slice(10, 12)), Number(compact.slice(12, 14)))
+        : raw < 1e11 ? raw * 1000 : raw;
+    const date = new Date(stamp);
+    const current = new Date(now);
+    if (Number.isNaN(date.getTime()) || Number.isNaN(current.getTime()) || date.getTime() > current.getTime() + 86400000) return "";
+    const day = new Date(current.getFullYear(), current.getMonth(), current.getDate()).getTime();
+    const itemDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const clock = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    if (itemDay === day) return `${boundedText(labels.today, 16) || "今天"} ${clock}`;
+    if (itemDay === new Date(current.getFullYear(), current.getMonth(), current.getDate() - 1).getTime()) return `${boundedText(labels.yesterday, 16) || "昨天"} ${clock}`;
+    return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function buildHostRecentDocsSnapshot(payload, config, labels = {}, now = Date.now(), status = "fresh", availableIds = null) {
     const docs = responseItems(payload);
     if (!docs) return null;
     const normalized = normalizeHostRecentDocsConfig(config);
@@ -394,12 +415,21 @@ function buildHostRecentDocsSnapshot(payload, config, labels = {}, now = Date.no
     const entries = [...byId.entries()].sort((a, b) => b[1].stamp - a[1].stamp || a[1].order - b[1].order);
     const items = entries
         .slice(0, normalized.limit)
-        .map(([id, entry], index) => ({
-            label: entry.title || id,
-            value: id,
-            ...(normalized.showPath && entry.path ? {secondary: entry.path} : {}),
-            ...(normalized.showRank ? {rank: index + 1} : {}),
-        }));
+        .map(([id, entry], index) => {
+            const available = !(availableIds instanceof Set) || availableIds.has(id);
+            const details = [];
+            if (!available) details.push(boundedText(labels.unavailable, 32) || "已失效");
+            if (normalized.showPath && entry.path) details.push(entry.path);
+            const time = recentDocTime(entry.stamp, now, labels);
+            if (time) details.push(time);
+            return {
+                label: entry.title || id,
+                value: available ? id : "",
+                ...(available ? {} : {disabled: true}),
+                ...(details.length ? {secondary: details.join(" · ")} : {}),
+                ...(normalized.showRank ? {rank: index + 1} : {}),
+            };
+        });
     const snapshot = snapshotOf(boundedText(labels.title, 64) || "最近文档", items, labels, now, status, "暂无最近打开的文档");
     snapshot.stat = {value: String(entries.length), label: boundedText(labels.stat, 32) || "篇文档"};
     return snapshot;
@@ -718,7 +748,7 @@ function normalizeOutlineWidgetConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const maxDepth = Math.trunc(Number(source.maxDepth));
     return {
-        limit: clampLimit(source.limit, 8),
+        limit: Math.min(8, clampLimit(source.limit, 8)),
         query: boundedText(source.query, 64),
         maxDepth: Number.isFinite(maxDepth) ? Math.min(8, Math.max(1, maxDepth)) : 8,
         showLevel: source.showLevel !== "否" && source.showLevel !== false,
@@ -765,7 +795,7 @@ function buildOutlineWidgetSnapshot(headings, config, labels = {}, now = Date.no
 function normalizeDocumentRelationsConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
-        limit: clampLimit(source.limit, 6),
+        limit: Math.min(6, clampLimit(source.limit, 6)),
         relation: ["子块", "引用"].includes(source.relation) ? source.relation : "全部",
         query: boundedText(source.query, 64),
         showType: source.showType !== "否" && source.showType !== false,
@@ -855,7 +885,7 @@ function buildTagListSnapshot(tags, config, labels = {}, now = Date.now(), statu
     const seen = new Set();
     const entries = flattenTagEntries(tags).filter((entry) => {
         const key = entry.path.toLocaleLowerCase();
-        if (seen.has(key) || (query && !key.includes(query))) return false;
+        if (entry.count === 0 || seen.has(key) || (query && !key.includes(query))) return false;
         seen.add(key);
         return true;
     });
@@ -877,7 +907,8 @@ function buildTagListSnapshot(tags, config, labels = {}, now = Date.now(), statu
 function normalizeBookmarkListConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
-        limit: clampLimit(source.limit, 8),
+        // 规格卡：small 书签行首屏最多 6 条；保留配置入口但不允许撑破小卡。
+        limit: Math.min(6, clampLimit(source.limit, 6)),
         query: boundedText(source.query, 64),
         sortBy: source.sortBy === "名称" ? "名称" : "数量",
         showCount: source.showCount !== "否" && source.showCount !== false,
@@ -900,7 +931,10 @@ function buildBookmarkListSnapshot(bookmarks, config, labels = {}, now = Date.no
         if (!normalized.showEmpty && count === 0) continue;
         const key = name.toLocaleLowerCase();
         const existing = byName.get(key);
-        if (!existing || count > existing.count) byName.set(key, {name, count, order: existing ? existing.order : order});
+        const block = Array.isArray(bookmark.blocks) ? bookmark.blocks.find((candidate) => candidate && typeof candidate === "object") : null;
+        const blockId = boundedText(block?.id || block?.blockId, 64);
+        const rootId = boundedText(block?.rootID || block?.rootId, 64);
+        if (!existing || count > existing.count) byName.set(key, {name, count, order: existing ? existing.order : order, blockId, rootId});
     }
     const entries = [...byName.values()];
     entries.sort((left, right) => normalized.sortBy === "名称"
@@ -908,7 +942,9 @@ function buildBookmarkListSnapshot(bookmarks, config, labels = {}, now = Date.no
         : right.count - left.count || compareText(left.name, right.name) || left.order - right.order);
     const items = entries.slice(0, normalized.limit).map((entry, index) => ({
         label: entry.name,
-        value: `bookmark:${entry.name}`,
+        value: entry.blockId && /^\d{14}-[0-9a-z]+$/i.test(entry.blockId) && /^\d{14}-[0-9a-z]+$/i.test(entry.rootId)
+            ? `bookmark-block:${entry.blockId}:${entry.rootId}`
+            : `bookmark:${entry.name}`,
         ...(normalized.showCount ? {secondary: entry.count > 0 ? `${entry.count} ${boundedText(labels.blocks, 24) || "个块"}` : (boundedText(labels.emptyEntry, 32) || "空书签")} : {}),
         ...(normalized.showRank ? {rank: index + 1} : {}),
     }));

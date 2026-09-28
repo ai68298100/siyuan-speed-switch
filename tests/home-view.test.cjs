@@ -381,6 +381,20 @@ test("home view done items render strikethrough style hooks", () => {
     assert.equal(root.querySelectorAll(".sw__home-module-item-action.is-done").length, 1);
 });
 
+test("home view keeps unavailable navigation rows visible but inert", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    let opened = false;
+    const view = buildHomeModuleView({moduleId: "recent-documents", title: "Recent"}, {
+        ok: true, snapshot: {items: [{label: "Deleted", value: "", disabled: true, secondary: "Unavailable"}]},
+    });
+    const root = renderHomeModuleView(dom.window.document, view, {onItem: () => { opened = true; }});
+    const button = root.querySelector(".sw__home-module-item-action");
+    assert.equal(button.disabled, true);
+    button.click();
+    assert.equal(opened, false);
+    assert.equal(button.textContent, "DeletedUnavailable");
+});
+
 
 test("home view renders config button only for configurable widgets", () => {
     const dom = new JSDOM("<!doctype html><body></body>");

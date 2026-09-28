@@ -25,7 +25,7 @@ function resolveFavoriteRootId(favorite) {
 function normalizeFavoritesWidgetConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
-        limit: limitOf(source.limit, 8),
+        limit: Math.min(8, limitOf(source.limit, 8)),
         group: text(source.group, 64),
         showGroup: source.showGroup !== "否" && source.showGroup !== false,
         showPath: source.showPath !== "否" && source.showPath !== false,
@@ -78,6 +78,7 @@ function buildFavoritesWidgetSnapshot(value, documents, openedKeys, config, labe
         items.push({
             label: text(favorite.title, 128) || text(document?.content, 128) || key,
             value: key,
+            ...(unavailable ? {disabled: true} : {}),
             secondary: parts.join(" · "),
         });
     });
@@ -98,7 +99,7 @@ function normalizeDocumentSetsWidgetConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const sortBy = ["名称", "文档数"].includes(source.sortBy) ? source.sortBy : "最近使用";
     return {
-        limit: limitOf(source.limit, 8),
+        limit: Math.min(5, limitOf(source.limit, 5)),
         sortBy,
         showCount: source.showCount !== "否" && source.showCount !== false,
         showUpdated: source.showUpdated !== "否" && source.showUpdated !== false,
@@ -150,7 +151,13 @@ function buildFixedDocumentSnapshot(documents, config, labels = {}) {
     if (!normalized.docId) return {items: [], emptyHint: text(labels.configure, 96) || "请先选择文档"};
     const rows = Array.isArray(documents) ? documents : [];
     const row = rows.find((candidate) => text(candidate?.id, 64) === normalized.docId);
-    if (!row) return {items: [], emptyHint: text(labels.unavailable, 96) || "绑定文档已不存在或不可用"};
+    if (!row) {
+        const unavailable = text(labels.unavailable, 96) || "绑定文档已不存在或不可用";
+        return {
+            items: [{label: unavailable, value: "", disabled: true, secondary: text(labels.reconfigure, 96) || unavailable}],
+            emptyHint: "",
+        };
+    }
     const path = normalized.showPath ? text(row.hpath || row.hPath, 96) : "";
     return {
         items: [{
