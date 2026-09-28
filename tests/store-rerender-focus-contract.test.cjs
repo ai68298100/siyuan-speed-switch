@@ -20,7 +20,7 @@ test('store rerender detects tab focus', () => assert.match(storeUiSource, /acti
 test('store rerender detects group focus', () => assert.match(storeUiSource, /activeElement\.closest<HTMLElement>\("\.sw-home-store__group-toggle"\)/));
 test('store rerender detects search focus', () => assert.match(storeUiSource, /activeElement\.matches\("\.sw-home-store__search input"\)/));
 test('store rerender detects sort focus', () => assert.match(storeUiSource,/activeElement\.matches\("\.sw-home-store__sort"\)/));
-test('store rerender clears the old DOM', () => assert.match(storeUiSource, /root\.innerHTML = ""/));
+test('store rerender clears the old DOM', () => assert.match(storeUiSource, /catalogPane\.innerHTML = ""/));
 test('store rerender has a restoration helper', () => assert.match(storeUiSource, /const restoreStoreView = \(\) =>/));
 test('store rerender bounds scroll restoration', () => assert.match(storeUiSource, /root\.scrollTop = Math\.min\(previousScrollTop, root\.scrollHeight\)/));
 test('store rerender searches visible cards', () => assert.match(storeUiSource, /root\.querySelectorAll<HTMLElement>\("\.sw-home-store__card"\)/));

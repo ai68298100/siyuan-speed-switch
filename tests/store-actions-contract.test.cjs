@@ -16,7 +16,7 @@ const base={topLevel: true};
 test('store size controls use a labelled group', () => assert.match(storeUiSource, /tiles\.setAttribute\("role", "group"\)/));
 test('store size controls keep their module id', () => assert.match(storeUiSource, /tiles\.dataset\.moduleId = moduleId/));
 test('store size controls expose selected size via the module preset (T-6969 slice 2)', () => assert.match(storeUiSource, /tiles.dataset.selectedSize = added?.size || preferredSize/));
-test('store size label has a stable id', () => assert.match(storeUiSource, /sizeLabel\.id = `sw-home-store-size-label-\$\{moduleId\}`/));
+test('store size label has a stable id', () => assert.match(storeUiSource, /sizeLabel\.id = `sw-home-store-size-label-\$\{moduleId\}\$\{idSuffix\}`/));
 test('store size group references its label', () => assert.match(storeUiSource, /tiles\.setAttribute\("aria-labelledby", sizeLabel\.id\)/));
 test('store size buttons declare button type', () => assert.match(storeUiSource, /const tile = document\.createElement\("button"\);\s*tile\.type = "button"/));
 test('store size buttons expose selected state data', () => assert.match(storeUiSource, /tile\.dataset\.selected = String\(sizeKey ===/));
@@ -38,7 +38,7 @@ test('store source chips expose their kind', () => assert.match(storeUiSource, /
 test('store source chips have accessible labels', () => assert.match(storeUiSource, /chip\.setAttribute\("aria-label", label\)/));
 test('store card records supported sizes', () => assert.match(storeUiSource, /card\.dataset\.supportedSizes = supported\.join\(","\)/));
 test('store card records current size', () => assert.match(storeUiSource, /card\.dataset\.currentSize = added\?\.size \|\| ""/));
-test('store card status has stable id', () => assert.match(storeUiSource, /status\.id = `sw-home-store-status-\$\{moduleId\}`/));
+test('store card status has stable id', () => assert.match(storeUiSource, /status\.id = `sw-home-store-status-\$\{moduleId\}\$\{idSuffix\}`/));
 test('store card status records state', () => assert.match(storeUiSource, /status\.dataset\.state = added \? "added" : "available"/));
 test('store card status is live', () => assert.match(storeUiSource, /status\.setAttribute\("aria-live", "polite"\)/));
 test('store card references status description', () => assert.match(storeUiSource, /card\.setAttribute\("aria-describedby", status\.id\)/));

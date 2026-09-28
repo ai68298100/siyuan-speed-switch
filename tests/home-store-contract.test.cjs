@@ -20,7 +20,7 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(storeUiSource, /selectedTile\?\.classList\.remove\("is-selected"\)/);
     assert.match(storeUiSource, /sw-home-store__availability/);
     assert.match(storeUiSource, /homeStoreAvailabilityConditional/);
-    assert.match(storeUiSource, /homeStoreTabConditional/);
+    assert.match(storeUiSource, /sw-home-store__availability--\$\{availability\}/); // T-6967：条件可用改由行内徽标表达（chips 收敛）
     // 2026-09-16（D-395）修正：此处原为 /card\.dataset\.availability === availabilityFilter/
     // 与 /card\.dataset\.added === "true"/，两句文本只存在于 home-store-ui.ts 的行尾注释
     // 里（并由两个 `void x;` 空转局部变量"培育"），扫描前剥离注释后立刻失败——即本门禁

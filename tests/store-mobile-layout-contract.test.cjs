@@ -437,13 +437,13 @@ test('ready card exposes accessible summary label', () => assert.match(storeSour
 test('ready card icon has viewBox', () => assert.match(storeSource,/icon\.setAttribute\("viewBox", "0 0 24 24"\)/));
 test('ready card icon is hidden from assistive tech', () => assert.match(storeSource,/icon\.setAttribute\("aria-hidden", "true"\)/));
 test('ready card title uses fallback module id', () => assert.match(storeSource,/title\.textContent = def\.title \|\| moduleId/));
-test('ready card title has stable id', () => assert.match(storeSource,/title\.id = `sw-home-store-title-\$\{moduleId\}`/));
+test('ready card title has stable id', () => assert.match(storeSource,/title\.id = `sw-home-store-title-\$\{moduleId\}\$\{idSuffix\}`/));
 test('ready card references title with aria-labelledby', () => assert.match(storeSource,/card\.setAttribute\("aria-labelledby", title\.id\)/));
 test('conditional badge exposes accessible label', () => assert.match(storeSource,/badge\.setAttribute\("aria-label", badge\.textContent\)/));
 test('conditional badge exposes tooltip', () => assert.match(storeSource,/badge\.title = badge\.textContent/));
 test('ready card support text has accessible label', () => assert.match(storeSource,/support\.setAttribute\("aria-label", this\.i18n\.homeStoreSupportedSurfaces\)/));
 test('ready card support text has tooltip', () => assert.match(storeSource,/support\.title = support\.textContent/));
-test('ready card status has stable id', () => assert.match(storeSource,/status\.id = `sw-home-store-status-\$\{moduleId\}`/));
+test('ready card status has stable id', () => assert.match(storeSource,/status\.id = `sw-home-store-status-\$\{moduleId\}\$\{idSuffix\}`/));
 test('ready card status records added state', () => assert.match(storeSource,/status\.dataset\.state = added \? "added" : "available"/));
 test('ready card status is polite live', () => assert.match(storeSource,/status\.setAttribute\("aria-live", "polite"\)/));
 test('ready card status is atomic', () => assert.match(storeSource,/status\.setAttribute\("aria-atomic", "true"\)/));
@@ -460,7 +460,7 @@ test('preview size boxes record size', () => assert.match(storeSource,/box\.data
 test('preview size boxes expose title', () => assert.match(storeSource,/box\.title = HOME_WIDGET_SIZE_LABELS/));
 test('size group has stable module id', () => assert.match(storeSource,/tiles\.dataset\.moduleId = moduleId/));
 test('size group has selected size state', () => assert.match(storeSource,/tiles\.dataset\.selectedSize = added\?\.size \|\| preferredSize/));
-test('size label has stable id', () => assert.match(storeSource,/sizeLabel\.id = `sw-home-store-size-label-\$\{moduleId\}`/));
+test('size label has stable id', () => assert.match(storeSource,/sizeLabel\.id = `sw-home-store-size-label-\$\{moduleId\}\$\{idSuffix\}`/));
 test('size group references its label', () => assert.match(storeSource,/tiles\.setAttribute\("aria-labelledby", sizeLabel\.id\)/));
 test('size button has accessible hint', () => assert.match(storeSource,/tile\.setAttribute\("aria-label", this\.i18n\.homeStoreSizeHint/));
 test('size button controls action', () => assert.match(storeSource,/tile\.setAttribute\("aria-controls", actionId\)/));
@@ -653,14 +653,14 @@ test('store group filter hides empty group grid', () => assert.match(storeSource
 test('store group filter preserves collapsed state', () => assert.match(storeSource,/grid\.classList\.toggle\("fn__none", heading\.dataset\.collapsed === "true"\)/));
 test('store group filter exposes heading aria hidden', () => assert.match(storeSource,/heading\.setAttribute\("aria-hidden", String\(!visible\)\)/));
 test('store group filter exposes grid aria hidden', () => assert.match(storeSource,/grid\.setAttribute\("aria-hidden", String\(!visible \|\| heading\.dataset\.collapsed === "true"\)\)/));
-test('store section filter handles ready groups', () => assert.match(storeSource,/heading\.dataset\.section === "ready"\s*\? Array\.from\(root\.querySelectorAll<HTMLElement>\("\.sw-home-store__group"\)\)/));
+test('store section filter handles ready groups', () => assert.match(storeSource,/heading\.dataset\.section === "ready"\s*\? Array\.from\(catalogPane\.querySelectorAll<HTMLElement>\("\.sw-home-store__group"\)\)/));
 test('store section filter handles pending cards', () => assert.match(storeSource,/: Array\.from\(section\.children\)\.some\(\(card\) => !card\.classList\.contains\("fn__none"\)\)/));
 test('store section filter hides empty section heading', () => assert.match(storeSource,/heading\.classList\.toggle\("fn__none", !visible\);\s*heading\.setAttribute\("aria-hidden"/));
 test('store section filter hides non-ready section grid', () => assert.match(storeSource,/if \(heading\.dataset\.section !== "ready"\) section\.classList\.toggle\("fn__none", !visible\)/));
-test('store visible card summary scans all cards', () => assert.match(storeSource,/Array\.from\(root\.querySelectorAll<HTMLElement>\("\.sw-home-store__card"\)\)\s*\.some\(\(card\) => !card\.classList\.contains\("fn__none"\)\)/));
+test('store visible card summary scans all cards', () => assert.match(storeSource,/Array\.from\(catalogPane\.querySelectorAll<HTMLElement>\("\.sw-home-store__card"\)\)\s*\.some\(\(card\) => !card\.classList\.contains\("fn__none"\)\)/));
 test('store filtered card focus detects hidden card', () => assert.match(storeSource,/const focusedCard = focusedBeforeFilter\?\.closest<HTMLElement>\("\.sw-home-store__card"\)/));
 test('store filtered focus skips hidden cards', () => assert.match(storeSource,/if \(focusedCard && focusedCard\.classList\.contains\("fn__none"\)\)/));
-test('store filtered focus chooses visible card', () => assert.match(storeSource,/root\.querySelector<HTMLElement>\("\.sw-home-store__card:not\(\.fn__none\)"\)/));
+test('store filtered focus chooses visible card', () => assert.match(storeSource,/catalogPane\.querySelector<HTMLElement>\("\.sw-home-store__card:not\(\.fn__none\)"\)/));
 test('store filtered focus falls back to search', () => assert.match(storeSource,/else searchInput\.focus\(\{preventScroll: true\}\)/));
 test('store empty filter toggles visibility from card presence', () => assert.match(storeSource,/filterEmptyState\?\.classList\.toggle\("fn__none", hasVisibleCards\)/));
 test('store empty filter announces hidden state', () => assert.match(storeSource,/filterEmptyState\?\.setAttribute\("aria-hidden", String\(hasVisibleCards\)\)/));
@@ -675,7 +675,7 @@ test('store result summary records empty state', () => assert.match(storeSource,
 test('store root records visible count', () => assert.match(storeSource,/root\.dataset\.visibleCount = String\(summary\.visible\)/));
 test('store root records total count', () => assert.match(storeSource,/root\.dataset\.totalCount = String\(summary\.total\)/));
 test('store root records added count', () => assert.match(storeSource,/root\.dataset\.addedCount = String\(summary\.added\)/));
-test('store tab counts derive from card datasets', () => assert.match(storeSource,/const tabCounts = buildHomeStoreTabCounts\(Array\.from\(root\.querySelectorAll<HTMLElement>\("\.sw-home-store__card"\)\)\.map\(\(card\) => card\.dataset\)\)/));
+test('store tab counts derive from card datasets', () => assert.match(storeSource,/const tabCounts = buildHomeStoreTabCounts\(Array\.from\(catalogPane\.querySelectorAll<HTMLElement>\("\.sw-home-store__card"\)\)\.map\(\(card\) => card\.dataset\)\)/));
 test('store tab count label includes count', () => assert.match(storeSource,/button\.textContent = `\$\{button\.dataset\.tabLabel \|\| ""\} · \$\{count\}`/));
 test('store tab count dataset stays synchronized', () => assert.match(storeSource,/button\.dataset\.count = String\(count\)/));
 test('store tab count aria label stays synchronized', () => assert.match(storeSource,/button\.setAttribute\("aria-label", `\$\{button\.dataset\.tabLabel \|\| ""\} · \$\{count\}`\)/));
@@ -689,7 +689,7 @@ test('store clear filters reapplies model before focus', () => assert.match(stor
 // T-4074~T-4125: search, sorting, render restoration and provider lifecycle contracts.
 test('store captures dialog opener', () => assert.match(storeSource,/const opener = document\.activeElement instanceof HTMLElement \? document\.activeElement : null/));
 test('store dialog uses localized title', () => assert.match(storeSource,/title: this\.i18n\.homeStoreTitle/));
-test('store desktop width is viewport bounded', () => assert.match(storeSource,/Math\.min\(960, Math\.round\(window\.innerWidth \* 0\.78\)\)/));
+test('store desktop width is viewport bounded', () => assert.match(storeSource,/Math\.min\(1120, Math\.round\(window\.innerWidth \* 0\.86\)\)/));
 test('store desktop height is viewport bounded', () => assert.match(storeSource,/Math\.min\(720, Math\.round\(window\.innerHeight \* 0\.84\)\)/));
 test('store aborts safely when root is missing', () => assert.match(storeSource,/const root = storeDialog\.element\.querySelector<HTMLElement>\("\.sw-home-store"\);\s*if \(!root\) return/));
 test('store root uses region role', () => assert.match(storeSource,/root\.setAttribute\("role", "region"\)/));
@@ -708,8 +708,8 @@ test('store render captures focused tab identity', () => assert.match(storeSourc
 test('store render captures focused group identity', () => assert.match(storeSource,/else if \(group\?\.dataset\.group\) \{\s*focusKind = "group";\s*focusValue = group\.dataset\.group/));
 test('store render recognizes focused search input', () => { const i = storeSource.indexOf('activeElement.matches(".sw-home-store__search input")'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 300); assert.ok(w.includes('focusKind = "search"'), 'search 焦点须记录 focusKind'); });
 test('store render recognizes focused sort control', () => { const i = storeSource.indexOf('activeElement.matches(".sw-home-store__sort")'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 300); assert.ok(w.includes('focusKind = "sort"'), 'sort 焦点须记录 focusKind'); });
-test('store render clears stale DOM before rebuild', () => assert.match(storeSource,/root\.innerHTML = "";\s*(?:\/\/[^\n]*\n\s*)*const storeFragment = document\.createDocumentFragment\(\);\s*const state = this\.getHomeState\(\)/));
-test('store render mounts the assembled fragment once', () => assert.match(storeSource,/root\.appendChild\(storeFragment\);\s*applyFilter\(\)/));
+test('store render clears stale DOM before rebuild', () => assert.match(storeSource,/catalogPane\.innerHTML = "";(?:[^\n]*\n){1,10}\s*const storeFragment = document\.createDocumentFragment\(\);\s*const state = this\.getHomeState\(\)/));
+test('store render mounts the assembled fragment once', () => assert.match(storeSource,/catalogPane\.appendChild\(storeFragment\)/));
 test('store render reads current home state', () => assert.match(secondPanelSource, /const state = this\.getHomeState\(\)/));
 test('store render scopes instances to device layout', () => assert.match(secondPanelSource, /\(state\.layouts\[device\] \|\| \[\]\) as Array<any>/));
 test('store render resolves layout instance safely', () => assert.match(storeSource,/state\.instances\.find\(\(candidate: any\) => candidate\.instanceId === entry\.instanceId\)/));
@@ -734,10 +734,10 @@ test('store sort change normalizes, persists, and rerenders', () => assert.match
 test('store restore clamps scroll to rebuilt height', () => assert.match(storeSource,/root\.scrollTop = Math\.min\(previousScrollTop, root\.scrollHeight\)/));
 test('store restore finds card by module identity', () => assert.match(storeSource,/find\(\(card\) => card\.dataset\.moduleId === focusValue && !card\.classList\.contains\("fn__none"\)\)/));
 test('store restore focuses target without scrolling', () => assert.match(storeSource,/if \(target\) target\.focus\(\{preventScroll: true\}\)/));
-test('store performs initial render immediately', () => assert.match(storeSource,/\r?\n        renderStore\(\);\r?\n        const handleModuleChange/));
+test('store performs initial render immediately', () => assert.match(storeSource,/\r?\n        renderStore\(\);\r?\n(?:[^\n]*\n){1,14}\s*const handleModuleChange = \(\) => {/));
 test('store module refresh ignores detached roots', () => assert.match(storeSource,/const handleModuleChange = \(\) => \{\s*if \(!root\.isConnected\) return/));
 test('store module refresh rerenders and notifies', () => assert.match(storeSource,/if \(!root\.isConnected\) return;\s*renderStore\(\);\s*onChanged\(\)/));
 test('store registers module change listener', () => assert.match(secondPanelSource, /this\.homeModuleChangeListeners\.add\(handleModuleChange\)/));
 test('store provider rescan is delayed and connection guarded', () => assert.match(storeSource,/window\.setTimeout\(\(\) => \{\s*if \(root\.isConnected\) renderStore\(\);\s*\}, 400\)/));
-test('store destroy clears timer and module listener', () => assert.match(storeSource,/window\.clearTimeout\(rescanTimer\);\s*this\.homeModuleChangeListeners\.delete\(handleModuleChange\)/));
+test('store destroy clears timer and module listener', () => assert.match(storeSource,/window\.clearTimeout\(rescanTimer\);(?:\s*root\.removeEventListener\("keydown", onStoreKeydown\);)?\s*this\.homeModuleChangeListeners\.delete\(handleModuleChange\)/));
 test('store destroy releases listener then restores opener focus', () => assert.match(storeSource,/this\.homeModuleChangeListeners\.delete\(handleModuleChange\);\s*if \(opener\?\.isConnected\) opener\.focus\(\)/));

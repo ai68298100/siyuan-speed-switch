@@ -24,7 +24,7 @@ test('filter records the current sort', () => assert.match(storeUiSource, /root\
 test('filter remembers the focused element', () => assert.match(storeUiSource, /const focusedBeforeFilter = document\.activeElement instanceof HTMLElement/));
 test('filter records match state on cards', () => assert.match(storeUiSource, /card\.dataset\.filterMatch = String\(visible\)/));
 test('filter detects a focused card', () => assert.match(storeUiSource, /const focusedCard = focusedBeforeFilter\?\.closest<HTMLElement>\("\.sw-home-store__card"\)/));
-test('filter restores focus to the next visible card', () => assert.match(storeUiSource, /const nextCard = root\.querySelector<HTMLElement>\("\.sw-home-store__card:not\(\.fn__none\)"\)/));
+test('filter restores focus to the next visible card', () => assert.match(storeUiSource, /const nextCard = catalogPane\.querySelector<HTMLElement>\("\.sw-home-store__card:not\(\.fn__none\)"\)/));
 test('filter focuses search when no card remains', () => assert.match(storeUiSource, /else searchInput\.focus\(\{preventScroll: true\}\)/));
 test('tab activation records aria current', () => assert.match(storeUiSource, /candidate\.setAttribute\("aria-current", active \? "page" : "false"\)/));
 test('tabs initialize aria current', () => assert.match(storeUiSource, /btn\.setAttribute\("aria-current", tab\.key === storeTab \? "page" : "false"\)/));

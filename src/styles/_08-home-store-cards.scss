@@ -591,3 +591,139 @@
         }
     }
 }
+
+// ==================== T-6967 S1：主从结构（定稿原型 2026-09-27） ====================
+// 左目录（搜索 + chips + 行列表）+ 右详情窗格。既有卡片 DOM 复用：目录窗格作用域
+// 把选择钮/来源 chips/预览/尺寸瓦片 display:none —— 行 = 图标 + 名称 + 描述 + 状态
+//（G3：列表行零按钮，主色「添加」胶囊唯一出现在详情窗格）。
+.sw-home-store:has(.sw-home-store__layout) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+}
+
+.sw-home-store__layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+    position: relative;
+}
+
+.sw-home-store__catalog {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 12px 14px 16px;
+    border-right: 1px solid var(--b3-border-color);
+}
+
+.sw-home-store__detail {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 14px 16px 18px;
+}
+
+// 目录行化：非行内信息一律收起（display:none 不进 a11y 树、不占焦点序、不接收点击）
+.sw-home-store__catalog .sw-home-store__card {
+    cursor: pointer;
+}
+
+.sw-home-store__catalog .sw-home-store__card:hover {
+    background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+}
+
+.sw-home-store__catalog .sw-home-store__card.is-active {
+    background: color-mix(in srgb, var(--b3-theme-primary) 12%, var(--b3-theme-surface, transparent));
+    box-shadow: inset 2px 0 0 var(--b3-theme-primary);
+}
+
+.sw-home-store__catalog .sw-home-store__card .sw-home-store__support,
+.sw-home-store__catalog .sw-home-store__card .sw-home-store__select,
+.sw-home-store__catalog .sw-home-store__card .sw-home-store__source-meta,
+.sw-home-store__catalog .sw-home-store__card .sw-home-store__preview,
+.sw-home-store__catalog .sw-home-store__card .sw-home-store__sizes {
+    display: none;
+}
+
+// 已添加行：状态前置 ✓（G3——行内零按钮，用符号表达已添加）
+.sw-home-store__catalog .sw-home-store__card .sw-home-store__status.is-added::before {
+    content: "✓ ";
+    color: var(--b3-theme-success, var(--b3-theme-primary));
+}
+
+.sw-home-store__detail--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sw-home-store__detail-hint {
+    margin: 0;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12.5px;
+    text-align: center;
+}
+
+.sw-home-store__detail-note {
+    margin: 10px 2px 0;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+// 批量模式底栏（Ctrl+B 进入）：已选计数 + 取消 + 批量添加
+.sw-home-store__batch-bar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-top: 1px solid var(--b3-border-color);
+    background: var(--b3-theme-surface);
+}
+
+.sw-home-store__batch-count {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--b3-theme-on-surface);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+// 批量模式恢复行内选择钮（普通模式目录行零按钮）
+.sw-home-store[data-batch-mode="true"] .sw-home-store__catalog .sw-home-store__card .sw-home-store__select {
+    display: inline-flex;
+}
+
+// 移动端：单列列表 + 底部 sheet 详情（44px 命中区沿用既有触控规则）
+.sw-home-store[data-device="mobile"] .sw-home-store__layout {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.sw-home-store[data-device="mobile"] .sw-home-store__detail {
+    position: absolute;
+    inset: auto 0 0 0;
+    max-height: 76%;
+    border-top: 1px solid var(--b3-border-color);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -12px 32px color-mix(in srgb, var(--b3-theme-on-background) 18%, transparent);
+    display: none;
+    z-index: 2;
+}
+
+.sw-home-store[data-device="mobile"][data-detail-open="true"] .sw-home-store__detail {
+    display: block;
+}
+
+.sw-home-store__sheet-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 6px;
+}
+
+.sw-home-store__sheet-back {
+    min-height: 44px;
+}

@@ -192,20 +192,28 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
         const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         // T-6479：商店弹窗的定时器与监听器释放同样挂到宿主 destroyCallback 上。
         let disposeStore: () => void = () => undefined;
+        // T-6967 S1（定稿原型）：主从结构——左目录（搜索+chips+行列表）+ 右详情窗格。
+        // 目录沿用既有卡片 DOM（作用域 CSS 行化），详情窗格渲染选中组件的完整卡片。
         const storeDialog = new Dialog({
             title: this.i18n.homeStoreTitle,
-            content: '<div class="speed-switch sw-home-store"></div>',
-            width: this.isMobile ? "min(680px, 94vw)" : `${Math.min(960, Math.round(window.innerWidth * 0.78))}px`,
+            content: '<div class="speed-switch sw-home-store"><div class="sw-home-store__layout"><div class="sw-home-store__catalog"></div><aside class="sw-home-store__detail sw-home-store__detail--empty"></aside></div></div>',
+            width: this.isMobile ? "min(680px, 94vw)" : `${Math.min(1120, Math.round(window.innerWidth * 0.86))}px`,
             height: this.isMobile ? "min(560px, 85vh)" : `${Math.min(720, Math.round(window.innerHeight * 0.84))}px`,
             destroyCallback: () => disposeStore(),
         });
         const root = storeDialog.element.querySelector<HTMLElement>(".sw-home-store");
         if (!root) return;
+        const catalogPane = root.querySelector<HTMLElement>(".sw-home-store__catalog");
+        const detailPane = root.querySelector<HTMLElement>(".sw-home-store__detail");
+        if (!catalogPane || !detailPane) return;
         root.setAttribute("role", "region");
         root.setAttribute("aria-label", this.i18n.homeStoreTitle);
         root.dataset.device = device;
         let storeQuery = "";
         let storeTab = "all";
+        // T-6967 S1：详情窗格当前选中的组件（默认首个就绪组件）；批量模式开关。
+        let storeSelectedModule = "";
+        let storeBatchMode = false;
         // T-6851：视图状态自设置载入（跨会话记忆）；变更即回写
         const persistedStoreState = this.getSettings().homeStore || {};
         let storeSort = persistedStoreState.sort || "relevance";
@@ -228,6 +236,8 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 collapsedGroups: [...collapsedGroups],
             }});
         };
+
+
 
         const renderStore = () => {
             root.setAttribute("aria-busy", "true");
@@ -256,7 +266,12 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                     focusKind = "sort";
                 }
             }
-            root.innerHTML = "";
+            catalogPane.innerHTML = "";
+            detailPane.innerHTML = "";
+            detailPane.classList.add("sw-home-store__detail--empty");
+            root.dataset.batchMode = String(storeBatchMode);
+            if (storeSelectedModule) root.dataset.selectedModule = storeSelectedModule;
+            else delete root.dataset.selectedModule;
             // 秒开（D-382）：全部区块在离屏 fragment 中装配，最后一次挂载，避免逐组重排
             const storeFragment = document.createDocumentFragment();
             const state = this.getHomeState();
@@ -325,51 +340,9 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             sortSelect.setAttribute("aria-controls", "sw-home-store-result-summary");
             sortSelect.addEventListener("change", () => { storeSort = normalizeHomeStoreSort(sortSelect.value); persistStoreState(); renderStore(); });
             searchBar.appendChild(sortSelect);
-            const densityButton = document.createElement("button");
-            densityButton.type = "button";
-            densityButton.className = "b3-button b3-button--outline sw-home-store__density";
-            densityButton.dataset.action = "toggle-density";
-            const densityLabel = resolveHomeStoreDensityLabel(storeDensity, {compact: this.i18n.homeStoreDensityCompact, comfortable: this.i18n.homeStoreDensityComfortable});
-            densityButton.textContent = densityLabel;
-            densityButton.setAttribute("aria-label", `${this.i18n.homeStoreDensity} · ${densityLabel}`);
-            densityButton.title = densityButton.getAttribute("aria-label") || "";
-            densityButton.setAttribute("aria-pressed", String(storeDensity === "compact"));
-            densityButton.addEventListener("click", () => { storeDensity = storeDensity === "compact" ? "comfortable" : "compact"; persistStoreState(); renderStore(); });
-            searchBar.appendChild(densityButton);
-            const viewButton = document.createElement("button");
-            viewButton.type = "button";
-            viewButton.className = "b3-button b3-button--outline sw-home-store__view-mode";
-            viewButton.dataset.action = "toggle-view-mode";
-            const viewLabels: Record<string, string> = {grid: "网格", list: "列表", compact: "紧凑"};
-            viewButton.textContent = resolveHomeStoreViewModeLabel(storeViewMode, viewLabels);
-            viewButton.setAttribute("aria-label", `视图：${viewButton.textContent}`);
-            viewButton.setAttribute("aria-pressed", String(storeViewMode !== "grid"));
-            viewButton.addEventListener("click", () => {
-                storeViewMode = normalizeHomeStoreViewMode(storeViewMode === "grid" ? "list" : storeViewMode === "list" ? "compact" : "grid");
-                root.dataset.viewMode = storeViewMode;
-                persistStoreState();
-                renderStore();
-            });
-            searchBar.appendChild(viewButton);
-            const selectionSummary = buildHomeStoreSelectionSummary(selectedStoreModules, [], {none: "未选择", some: "已选择", all: "已全选"});
-            const clearSelectionButton = document.createElement("button");
-            clearSelectionButton.type = "button";
-            clearSelectionButton.className = "b3-button b3-button--text sw-home-store__clear-selection";
-            clearSelectionButton.dataset.action = "clear-selection";
-            clearSelectionButton.textContent = selectionSummary.selected ? `清空选择 (${selectionSummary.selected})` : "批量选择";
-            clearSelectionButton.disabled = selectionSummary.selected === 0;
-            clearSelectionButton.setAttribute("aria-label", clearSelectionButton.textContent);
-            clearSelectionButton.addEventListener("click", () => { selectedStoreModules = []; renderStore(); });
-            searchBar.appendChild(clearSelectionButton);
-            const resetViewButton = document.createElement("button");
-            resetViewButton.type = "button";
-            resetViewButton.className = "b3-button b3-button--text sw-home-store__reset-view";
-            resetViewButton.dataset.action = "reset-view";
-            resetViewButton.textContent = this.i18n.homeStoreResetView;
-            resetViewButton.setAttribute("aria-label", this.i18n.homeStoreResetView);
-            resetViewButton.title = this.i18n.homeStoreResetView;
-            resetViewButton.addEventListener("click", () => { storeQuery = ""; storeTab = "all"; storeSort = "relevance"; storeDensity = "comfortable"; storeViewMode = "grid"; selectedStoreModules = []; collapsedGroups.clear(); persistStoreState(); renderStore(); });
-            searchBar.appendChild(resetViewButton);
+            // T-6967 S1（定稿原型「筛选一条化」）：砍掉独立的密度/视图模式分段与重置视图
+            // 按钮——密度/视图的模型纯函数与设置字段保留（跨会话数据不丢），呈现层不再
+            // 提供入口；「清空搜索与筛选」出口收敛到空搜索状态内（clear-filters）。
             const guideButton = document.createElement("button");
             guideButton.type = "button";
             guideButton.className = "b3-button b3-button--outline sw-home-store__guide";
@@ -396,13 +369,14 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 // 此前这里有两个 `void x;` 空转局部变量（值算完即丢），存在的唯一理由
                 // 是让"源码扫描类"门禁读到旧表达式文本——而那些文本其实躺在行尾注释
                 // 里，门禁一直在读注释（2026-09-16 扫描前剥离注释后暴露，见 D-395）。
-                root.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
+                // T-6967 S1：筛选只作用于目录窗格——详情窗格的完整卡片不随搜索隐藏。
+                catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
                     const visible = matchesHomeStoreTokens(card.dataset, query, filter);
                     card.classList.toggle("fn__none", !visible);
                     card.setAttribute("aria-hidden", String(!visible));
                     card.dataset.filterMatch = String(visible);
                 });
-                root.querySelectorAll<HTMLElement>(".sw-home-store__group").forEach((heading) => {
+                catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__group").forEach((heading) => {
                     const grid = heading.nextElementSibling;
                     if (!grid) return;
                     const visible = Array.from(grid.children).some((card) => !card.classList.contains("fn__none"));
@@ -416,25 +390,25 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                     const section = heading.nextElementSibling;
                     if (!section) return;
                     const visible = heading.dataset.section === "ready"
-                        ? Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__group"))
+                        ? Array.from(catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__group"))
                             .some((group) => !group.classList.contains("fn__none"))
                         : Array.from(section.children).some((card) => !card.classList.contains("fn__none"));
                     heading.classList.toggle("fn__none", !visible);
                     heading.setAttribute("aria-hidden", String(!visible));
                     if (heading.dataset.section !== "ready") section.classList.toggle("fn__none", !visible);
                 });
-                const hasVisibleCards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card"))
+                const hasVisibleCards = Array.from(catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__card"))
                     .some((card) => !card.classList.contains("fn__none"));
                 const focusedCard = focusedBeforeFilter?.closest<HTMLElement>(".sw-home-store__card");
                 if (focusedCard && focusedCard.classList.contains("fn__none")) {
-                    const nextCard = root.querySelector<HTMLElement>(".sw-home-store__card:not(.fn__none)");
+                    const nextCard = catalogPane.querySelector<HTMLElement>(".sw-home-store__card:not(.fn__none)");
                     if (nextCard) nextCard.focus({preventScroll: true});
                     else searchInput.focus({preventScroll: true});
                 }
                 filterEmptyState?.classList.toggle("fn__none", hasVisibleCards);
                 filterEmptyState?.setAttribute("aria-hidden", String(hasVisibleCards));
                 if (resultSummary) {
-                    const cards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card"));
+                    const cards = Array.from(catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__card"));
                     const summary = summarizeHomeStoreCards(cards.map((card) => card.dataset), query, filter);
                     // Legacy summary contract: this.i18n.homeStoreResultSummary.replace("{visible}", String(summary.visible)).replace("{total}", String(summary.total)).replace("{added}", String(summary.added));
                     resultSummary.textContent = buildHomeStoreResultSummary(summary, this.i18n.homeStoreResultSummary);
@@ -446,7 +420,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                     root.dataset.totalCount = String(summary.total);
                     root.dataset.addedCount = String(summary.added);
                 }
-                const tabCounts = buildHomeStoreTabCounts(Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card")).map((card) => card.dataset));
+                const tabCounts = buildHomeStoreTabCounts(Array.from(catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__card")).map((card) => card.dataset));
                 tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((button) => {
                     const key = button.dataset.tabKey || "all";
                     const count = tabCounts[key as keyof typeof tabCounts] ?? 0;
@@ -518,18 +492,16 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 root.dataset.focusKind = focusKind;
                 if (focusValue) root.dataset.focusValue = focusValue;
             };
-            const tabs: Array<{key: string; label: string; category?: string; availability?: string; integration?: string; addedOnly?: boolean; recommendedOnly?: boolean; configurableOnly?: boolean; dependency?: string}> = [
+            // T-6967 S1（定稿原型）：筛选 chips 收敛为六枚——全部 / 内置 / 外部 API /
+            // 本机服务 / 需安装 / 已添加（带计数，沿用既有 tab 语义与键盘方向导航）。
+            // 离线组件属内置（行内中性能力 chip 表达「完全离线」），不再单设页签；
+            // 推荐/可配置/插件/条件可用由详情窗格与行内 chip 表达，不再占筛选位。
+const tabs: Array<{key: string; label: string; category?: string; availability?: string; integration?: string; addedOnly?: boolean; recommendedOnly?: boolean; configurableOnly?: boolean; dependency?: string}> = [
                 {key: "all", label: this.i18n.homeStoreTabAll},
-                {key: "recommended", label: this.i18n.homeStoreTabRecommended, recommendedOnly: true},
-                {key: "configurable", label: this.i18n.homeStoreTabConfigurable, configurableOnly: true},
                 {key: "builtin", label: this.i18n.homeStoreTabBuiltin, category: "builtin"},
-                {key: "offline", label: this.i18n.homeStoreTabOffline, integration: "offline"},
-                {key: "local", label: this.i18n.homeStoreTabLocal, integration: "local"},
                 {key: "network", label: this.i18n.homeStoreTabNetwork, integration: "network"},
-                {key: "plugin", label: this.i18n.homeStoreTabPlugin, category: "plugin"},
-                {key: "conditional", label: this.i18n.homeStoreTabConditional, availability: "conditional"},
+                {key: "local", label: this.i18n.homeStoreTabLocal, integration: "local"},
                 {key: "requires", label: this.i18n.homeStoreTabRequires, dependency: "required"},
-                {key: "optional", label: this.i18n.homeStoreTabOptional, dependency: "optional"},
                 {key: "added", label: this.i18n.homeStoreTabAdded, addedOnly: true},
             ];
             tabs.forEach((tab, tabIndex) => {
@@ -646,7 +618,11 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             const ready = sortHomeStoreCards([...activeIds].map((moduleId) => ({moduleId, def: defs.get(moduleId), search: `${defs.get(moduleId)?.title || moduleId}`, category: defs.get(moduleId)?.category === "siyuan" ? "builtin" : "plugin", availability: defs.get(moduleId)?.availability || "ready", added: instanceByModule.has(moduleId)})), storeSort)
                 .filter((item) => !!item.def);
 
-            const buildReadyCard = (moduleId: string, def: any) => {
+            // T-6967 S1：卡片按变体构建——catalog（目录行，作用域 CSS 行化动作区，
+            // id 保持原样供既有锚点/恢复焦点逻辑使用）与 detail（详情窗格完整卡，
+            // id 加 -detail 后缀避免与目录内同组件卡片的 aria 引用冲突）。
+            const buildReadyCard = (moduleId: string, def: any, variant: "catalog" | "detail" = "catalog") => {
+                const idSuffix = variant === "detail" ? "-detail" : "";
                 const externalInfo = resolveHomeStoreSourceInfo(moduleId);
                 const dependencyInfo = resolveHomeStoreDependencyInfo(moduleId);
                 const dependencySummary = buildHomeStoreDependencySummary(moduleId, {
@@ -704,7 +680,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 const copy = document.createElement("div");
                 const title = document.createElement("strong");
                 title.textContent = def.title || moduleId;
-                title.id = `sw-home-store-title-${moduleId}`;
+                title.id = `sw-home-store-title-${moduleId}${idSuffix}`;
                 card.setAttribute("aria-labelledby", title.id);
                 const availability = def.availability === "conditional" || def.availability === "external" ? def.availability : "";
                 if (availability) {
@@ -732,7 +708,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 support.title = support.textContent;
                 const status = document.createElement("small");
                 status.className = "sw-home-store__status" + (added ? " is-added" : "");
-                status.id = `sw-home-store-status-${moduleId}`;
+                status.id = `sw-home-store-status-${moduleId}${idSuffix}`;
                 status.dataset.state = added ? "added" : "available";
                 status.setAttribute("aria-live", "polite");
                 status.setAttribute("aria-atomic", "true");
@@ -860,10 +836,10 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 tiles.dataset.moduleId = moduleId;
                 const preferredSize = resolveHomeTileDefaultSize(moduleId, supported, "medium");
                 tiles.dataset.selectedSize = added?.size || preferredSize;
-                const actionId = `sw-home-store-action-${moduleId}`;
+                const actionId = `sw-home-store-action-${moduleId}${idSuffix}`;
                 const sizeLabel = document.createElement("span");
                 sizeLabel.className = "sw-home-store__choose-size";
-                sizeLabel.id = `sw-home-store-size-label-${moduleId}`;
+                sizeLabel.id = `sw-home-store-size-label-${moduleId}${idSuffix}`;
                 sizeLabel.textContent = this.i18n.homeStoreChooseSize;
                 tiles.appendChild(sizeLabel);
                 tiles.setAttribute("aria-labelledby", sizeLabel.id);
@@ -1000,9 +976,53 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 previewButton.onclick = () => openStoreWidgetPreview.call(this, moduleId, def, device);
                 tiles.appendChild(previewButton);
                 card.appendChild(tiles);
+                // T-6967 S1：目录行点击 = 选中进入详情窗格；批量模式下行点击 = 选中/取消。
+                // 隐藏控件（visibility:hidden）不接收指针事件，行内零按钮语义不破。
+                if (variant === "catalog") {
+                    card.addEventListener("click", (event) => {
+                        if (event.target instanceof HTMLElement && event.target.closest("button, a, input, select")) return;
+                        if (storeBatchMode) {
+                            selectedStoreModules = toggleHomeStoreSelection(selectedStoreModules, moduleId);
+                            renderStore();
+                            return;
+                        }
+                        if (storeSelectedModule === moduleId) return;
+                        storeSelectedModule = moduleId;
+                        // 移动端 sheet：行点击即带出详情，返回按钮关闭
+                        if (device === "mobile") root.dataset.detailOpen = "true";
+                        renderStore();
+                    });
+                    card.addEventListener("keydown", (event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        if (event.target !== card) return;
+                        event.preventDefault();
+                        if (storeBatchMode) {
+                            selectedStoreModules = toggleHomeStoreSelection(selectedStoreModules, moduleId);
+                            renderStore();
+                            return;
+                        }
+                        const detailAdd = detailPane.querySelector<HTMLButtonElement>(`.sw-home-store__add[data-module-id="${moduleId}"]`);
+                        if (detailAdd && !detailAdd.disabled) detailAdd.click();
+                    });
+                }
                 return card;
             };
 
+        // T-6967 S1：批量添加——按商店默认档（resolveHomeTileDefaultSize）入当前面板；
+        // 已在面板中的组件跳过。返回是否真的新增。
+        const addModuleWithPreferredSize = (moduleId: string, def: any) => {
+            const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+            const sizeKey = resolveHomeTileDefaultSize(moduleId, supported, "medium");
+            const preset = HOME_WIDGET_SIZES[(sizeKey || "medium") as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+            const next = this.getHomeState();
+            const layoutList = (next.layouts[device] || []) as Array<any>;
+            if (layoutList.some((candidate) => candidate.instanceId === moduleId)) return false;
+            (next.instances as Array<any>).push({instanceId: moduleId, moduleId, config: {}, enabled: true});
+            layoutList.push({instanceId: moduleId, x: 0, y: 0, w: preset.w, h: preset.h, collapsed: false, size: sizeKey});
+            next.layouts[device] = layoutList;
+            this.saveHomeState(next);
+            return true;
+        };
             // 按组渲染：组头（含数量）+ 组内网格；搜索过滤沿用卡片隐藏逻辑
             const readyGroups = new Map<string, Array<{moduleId: string; card: HTMLElement}>>();
             const readyGroupDescriptions = new Map<string, string>();
@@ -1256,13 +1276,110 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             });
             filterEmptyState.append(emptyText, clearFilters);
             storeFragment.appendChild(filterEmptyState);
-            root.appendChild(storeFragment);
+            // T-6967 S1：目录内容挂进左窗格；详情窗格渲染选中组件；批量模式底栏。
+            catalogPane.appendChild(storeFragment);
+            // 详情默认选中：已选组件仍在目录中则保持，否则取首个就绪组件
+            if (!storeSelectedModule || !ready.some(({moduleId}) => moduleId === storeSelectedModule)) {
+                storeSelectedModule = ready[0]?.moduleId || "";
+            }
+            // 目录内选中行高亮（行化后主色只走左侧竖条与浅底，不占胶囊）
+            if (storeSelectedModule) {
+                const activeCard = catalogPane.querySelector<HTMLElement>(`.sw-home-store__card[data-module-id="${storeSelectedModule}"]`);
+                activeCard?.classList.add("is-active");
+                activeCard?.setAttribute("aria-current", "true");
+            }
+            if (storeSelectedModule) {
+                const detailDef = defs.get(storeSelectedModule);
+                if (detailDef) {
+                    if (device === "mobile") {
+                        const sheetBar = document.createElement("div");
+                        sheetBar.className = "sw-home-store__sheet-bar";
+                        const sheetBack = document.createElement("button");
+                        sheetBack.type = "button";
+                        sheetBack.className = "b3-button b3-button--text sw-home-store__sheet-back";
+                        sheetBack.dataset.action = "close-detail";
+                        sheetBack.textContent = "← " + this.i18n.homeStoreBackToList;
+                        sheetBack.setAttribute("aria-label", this.i18n.homeStoreBackToList);
+                        sheetBack.addEventListener("click", () => {
+                            delete root.dataset.detailOpen;
+                        });
+                        sheetBar.appendChild(sheetBack);
+                        detailPane.appendChild(sheetBar);
+                    }
+                    detailPane.appendChild(buildReadyCard(storeSelectedModule, detailDef, "detail"));
+                    detailPane.classList.remove("sw-home-store__detail--empty");
+                    const detailNote = document.createElement("p");
+                    detailNote.className = "sw-home-store__detail-note";
+                    detailNote.textContent = this.i18n.homeStoreDetailNote;
+                    detailPane.appendChild(detailNote);
+                }
+            } else {
+                const detailHint = document.createElement("p");
+                detailHint.className = "sw-home-store__detail-hint";
+                detailHint.textContent = this.i18n.homeStoreDetailHint;
+                detailPane.appendChild(detailHint);
+            }
+            // 批量模式底栏（Ctrl+B 进入）：已选计数 + 取消 + 批量添加（默认档）
+            const previousBatchBar = root.querySelector(".sw-home-store__batch-bar");
+            previousBatchBar?.remove();
+            if (storeBatchMode) {
+                const batchBar = document.createElement("div");
+                batchBar.className = "sw-home-store__batch-bar";
+                batchBar.setAttribute("role", "toolbar");
+                batchBar.setAttribute("aria-label", this.i18n.homeStoreBatchBar);
+                const batchCount = document.createElement("span");
+                batchCount.className = "sw-home-store__batch-count";
+                batchCount.textContent = selectedStoreModules.length > 0
+                    ? `已选 ${selectedStoreModules.length}`
+                    : "点击组件行选择";
+                batchBar.appendChild(batchCount);
+                const batchCancelButton = document.createElement("button");
+                batchCancelButton.type = "button";
+                batchCancelButton.className = "b3-button b3-button--text sw-home-store__batch-cancel";
+                batchCancelButton.dataset.action = "batch-cancel";
+                batchCancelButton.textContent = "取消";
+                batchCancelButton.addEventListener("click", () => {
+                    storeBatchMode = false;
+                    selectedStoreModules = [];
+                    renderStore();
+                });
+                const batchAddButton = document.createElement("button");
+                batchAddButton.type = "button";
+                batchAddButton.className = "b3-button sw-home-store__batch-add";
+                batchAddButton.dataset.action = "batch-add";
+                batchAddButton.textContent = this.i18n.homeStoreBatchAdd;
+                batchAddButton.disabled = selectedStoreModules.length === 0;
+                batchAddButton.addEventListener("click", () => {
+                    let addedCount = 0;
+                    selectedStoreModules.forEach((moduleId) => {
+                        const def = defs.get(moduleId);
+                        if (def && addModuleWithPreferredSize(moduleId, def)) addedCount += 1;
+                    });
+                    selectedStoreModules = [];
+                    storeBatchMode = false;
+                    if (addedCount > 0) showMessage(`${this.i18n.homeStoreAdd} ${addedCount}`);
+                    renderStore();
+                    onChanged();
+                });
+                batchBar.append(batchCancelButton, batchAddButton);
+                root.appendChild(batchBar);
+            }
             applyFilter();
             restoreStoreView();
             root.setAttribute("aria-busy", "false");
         };
 
         renderStore();
+        // T-6967 S1（定稿原型）：Ctrl+B / Cmd+B 切换批量模式——底栏常驻，行点击改选。
+        const onStoreKeydown = (event: KeyboardEvent) => {
+            if (!(event.ctrlKey || event.metaKey)) return;
+            if (event.key !== "b" && event.key !== "B") return;
+            event.preventDefault();
+            storeBatchMode = !storeBatchMode;
+            if (!storeBatchMode) selectedStoreModules = [];
+            renderStore();
+        };
+        root.addEventListener("keydown", onStoreKeydown);
         const handleModuleChange = () => {
             if (!root.isConnected) return;
             renderStore();
@@ -1278,6 +1395,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             if (storeReleased) return;
             storeReleased = true;
             window.clearTimeout(rescanTimer);
+            root.removeEventListener("keydown", onStoreKeydown);
             this.homeModuleChangeListeners.delete(handleModuleChange);
             if (opener?.isConnected) opener.focus();
         };
