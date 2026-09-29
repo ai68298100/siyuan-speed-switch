@@ -983,6 +983,10 @@ interface IOpenHistoryEntry {
 }
 
 export default class SpeedSwitchPlugin extends Plugin {
+    // T-7049：siyuan 1.2.8 把基类 Plugin.i18n 松化为 Record<string, JSONValue>；
+    // 本插件的 zh-CN/en 资源值恒为字符串（i18n 死键门禁保证），在此单点收窄回
+    // Record<string, string> —— 全部 this.i18n.<key> 调用点随之恢复 string 类型。
+    declare i18n: Record<string, string>;
     private isMobile = false;
     private snippetStudioDialog: Dialog | null = null;
     private snippetStudioSession: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null; recentIds?: string[]} = {draft: null, baseline: null};
