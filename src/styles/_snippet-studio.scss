@@ -314,3 +314,79 @@
         font-variant-numeric: tabular-nums;
     }
 }
+
+// ==================== T-6987/T-6988：能力回执行与 CSS 覆盖诊断 ====================
+.sw-studio__preview-receipt {
+    margin: 0 0 8px;
+    padding: 6px 10px;
+    border: 1px dashed var(--b3-border-color);
+    border-radius: 8px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11.5px;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+
+    // 基线对照视图：主题档位视觉区分（弱化为中性），文字仍承担主要语义
+    &[data-theme="baseline"] {
+        border-style: solid;
+        color: var(--b3-theme-on-surface);
+    }
+}
+
+.sw-studio__diagnostics {
+    margin: 8px 0 0;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--b3-theme-surface) 72%, transparent);
+    font-size: 12px;
+
+    &[hidden] { display: none; }
+}
+
+.sw-studio__diagnostics-summary {
+    padding: 8px 10px;
+    color: var(--b3-theme-on-background);
+    cursor: pointer;
+    user-select: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.sw-studio__diagnostics-body {
+    max-height: 200px;
+    padding: 0 10px 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.sw-studio__diagnostics-row {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: baseline;
+    padding: 2px 0;
+
+    .sw-studio__diagnostics-line {
+        color: var(--b3-theme-on-surface-light);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .sw-studio__diagnostics-selector {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-family: var(--b3-font-family-code, monospace);
+        font-size: 11px;
+    }
+
+    .sw-studio__diagnostics-verdict {
+        &[data-verdict="hit"] { color: var(--b3-theme-success, var(--b3-theme-primary)); }
+        &[data-verdict="miss"] { color: var(--b3-theme-warning, #a76618); }
+        &[data-verdict="unknown"] { color: var(--b3-theme-on-surface-light); }
+        &[data-verdict="error"] { color: var(--b3-theme-error); font-weight: 600; }
+    }
+}
+
+.sw-studio__diagnostics-empty {
+    margin: 4px 0 0;
+    color: var(--b3-theme-on-surface-light);
+}

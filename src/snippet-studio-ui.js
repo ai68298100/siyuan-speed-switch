@@ -3,7 +3,7 @@ const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCata
 const {buildSnippetDiff, summarizeDiff, applyDiffHunks} = require("./snippet-diff.js");
 const {lintSnippet} = require("./snippet-lint.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
-const {createSnippetPreview} = require("./snippet-studio-preview.js");
+const {createSnippetPreview, resolvePreviewCapability, formatPreviewCapability, analyzeSelectorDiagnostics} = require("./snippet-studio-preview.js");
 const {createSnippetAIClient} = require("./snippet-studio-ai.js");
 
 // T-6978：预览样例与探针文案共用一份构造——主编辑器实时预览与商店预览同源，
@@ -174,6 +174,24 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetPreviewLoading: locale.i18n.snippetPreviewLoading,
         snippetPreviewReady: locale.i18n.snippetPreviewReady,
         snippetPreviewLang: locale.i18n.snippetPreviewLang,
+        // T-6987/T-6988：能力回执与覆盖诊断文案（静态发现表登记，供 i18n 门禁扫描）
+        snippetCapabilitySceneLabel: locale.i18n.snippetCapabilitySceneLabel,
+        snippetCapabilityWidthLabel: locale.i18n.snippetCapabilityWidthLabel,
+        snippetCapabilityThemeLabel: locale.i18n.snippetCapabilityThemeLabel,
+        snippetCapabilityProbeOn: locale.i18n.snippetCapabilityProbeOn,
+        snippetCapabilityProbeOff: locale.i18n.snippetCapabilityProbeOff,
+        snippetCapabilityScriptCss: locale.i18n.snippetCapabilityScriptCss,
+        snippetCapabilityScriptJs: locale.i18n.snippetCapabilityScriptJs,
+        snippetCapabilityNetwork: locale.i18n.snippetCapabilityNetwork,
+        snippetCapabilitySemantics: locale.i18n.snippetCapabilitySemantics,
+        snippetCapabilitySingleView: locale.i18n.snippetCapabilitySingleView,
+        snippetDiagnostics: locale.i18n.snippetDiagnostics,
+        snippetDiagnosticsHit: locale.i18n.snippetDiagnosticsHit,
+        snippetDiagnosticsMiss: locale.i18n.snippetDiagnosticsMiss,
+        snippetDiagnosticsUnknown: locale.i18n.snippetDiagnosticsUnknown,
+        snippetDiagnosticsError: locale.i18n.snippetDiagnosticsError,
+        snippetDiagnosticsEmpty: locale.i18n.snippetDiagnosticsEmpty,
+        snippetDiagnosticsTruncated: locale.i18n.snippetDiagnosticsTruncated,
         snippetRefresh: locale.i18n.snippetRefresh,
         snippetResetPreview: locale.i18n.snippetResetPreview,
         snippetRunJS: locale.i18n.snippetRunJS,
@@ -320,7 +338,17 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     previewLoading.append(node("span", "sw-studio__spinner"), node("span", "", t("snippetPreviewLoading")));
     previewShell.append(previewContainer, previewLoading);
     const previewHint = node("p", "sw-studio__hint", t("snippetPreviewHint"));
-    previewSection.append(previewToolbar, previewShell, previewHint);
+    // T-6987：能力回执行——场景/宽度/主题/探针/脚本/网络/语义边界每次预览如实呈现。
+    const previewReceipt = node("div", "sw-studio__preview-receipt");
+    previewReceipt.setAttribute("role", "status");
+    previewReceipt.setAttribute("aria-live", "polite");
+    // T-6988：CSS 覆盖诊断——命中/可能未命中/未知三态与错误行列，原生 details 折叠。
+    const diagnosticsDetails = node("details", "sw-studio__diagnostics");
+    const diagnosticsSummary = node("summary", "sw-studio__diagnostics-summary");
+    const diagnosticsBody = node("div", "sw-studio__diagnostics-body");
+    diagnosticsDetails.append(diagnosticsSummary, diagnosticsBody);
+    diagnosticsDetails.hidden = true;
+    previewSection.append(previewToolbar, previewReceipt, previewShell, previewHint, diagnosticsDetails);
     const lower = node("div", "sw-studio__lower");
     const details = node("section", "sw-studio__details");
     const detailsTitle = node("h2", "sw-studio__section-title", t("snippetAbout"));
@@ -770,6 +798,68 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         previewState.textContent = t("snippetPreviewLoading");
         previewState.className = "sw-studio__state-badge is-loading";
         previewHint.textContent = draft.type === "js" ? `${t("snippetPreviewHint")} ${t("snippetJSPreviewUnavailable")}` : t("snippetPreviewHint");
+        // T-6987：能力回执——纯模型白名单解析 + 人读格式；探针命中数与预览同源计算。
+        const capability = resolvePreviewCapability({
+            type: draft.type, scene: previewScene, width: previewWidth,
+            dark, baseline: showOriginal,
+            probeHits: draft.type === "css" && !showOriginal ? analyzeCssCoverage(content) : [],
+            containerWidth: previewContainer.clientWidth,
+        });
+        previewReceipt.textContent = formatPreviewCapability(capability, {
+            scene: sceneSelect.options[sceneSelect.selectedIndex]?.textContent || capability.scene,
+            width: widthSelect.options[widthSelect.selectedIndex]?.textContent || capability.viewport.id,
+            theme: dark ? t("snippetDarkPreview") : t("snippetCompare"),
+        }, {
+            probeOn: t("snippetCapabilityProbeOn"),
+            probeOff: t("snippetCapabilityProbeOff"),
+            scriptCss: t("snippetCapabilityScriptCss"),
+            scriptJs: t("snippetCapabilityScriptJs"),
+            network: t("snippetCapabilityNetwork"),
+            semantics: t("snippetCapabilitySemantics"),
+            singleView: t("snippetCapabilitySingleView"),
+            sceneLabel: t("snippetCapabilitySceneLabel"),
+            widthLabel: t("snippetCapabilityWidthLabel"),
+            themeLabel: t("snippetCapabilityThemeLabel"),
+        });
+        previewReceipt.dataset.theme = capability.theme;
+        // T-6988：覆盖诊断——仅 CSS 预览；JS 片段无样式可诊断，面板隐藏。
+        if (draft.type !== "css") {
+            diagnosticsDetails.hidden = true;
+        } else {
+            const diagnostics = analyzeSelectorDiagnostics(content);
+            const counts = diagnostics.counts;
+            diagnosticsSummary.textContent = `${t("snippetDiagnostics")} · ${t("snippetDiagnosticsHit")} ${counts.hit} · ${t("snippetDiagnosticsMiss")} ${counts.miss} · ${t("snippetDiagnosticsUnknown")} ${counts.unknown}` + (diagnostics.errors.length ? ` · ${t("snippetDiagnosticsError")} ${diagnostics.errors.length}` : "");
+            diagnosticsBody.textContent = "";
+            if (counts.selectors === 0 && diagnostics.errors.length === 0) {
+                diagnosticsBody.appendChild(node("p", "sw-studio__diagnostics-empty", t("snippetDiagnosticsEmpty")));
+            }
+            diagnostics.rows.forEach((row) => {
+                const line = node("div", "sw-studio__diagnostics-row is-" + row.verdict);
+                const where = node("span", "sw-studio__diagnostics-line", `L${row.line}`);
+                const selector = node("code", "sw-studio__diagnostics-selector", row.selector);
+                // 三态文案静态引用（动态拼接键会被死键门禁拦截）
+                const verdictLabel = row.verdict === "hit" ? t("snippetDiagnosticsHit")
+                    : row.verdict === "miss" ? t("snippetDiagnosticsMiss") : t("snippetDiagnosticsUnknown");
+                const verdict = node("span", "sw-studio__diagnostics-verdict", verdictLabel);
+                verdict.dataset.verdict = row.verdict;
+                if (row.atRule) where.title = `@${row.atRule}`;
+                line.append(where, selector, verdict);
+                diagnosticsBody.appendChild(line);
+            });
+            diagnostics.errors.forEach((error) => {
+                const line = node("div", "sw-studio__diagnostics-row is-error");
+                const where = node("span", "sw-studio__diagnostics-line", `L${error.line}:${error.column}`);
+                const selector = node("code", "sw-studio__diagnostics-selector", error.message);
+                const verdict = node("span", "sw-studio__diagnostics-verdict", t("snippetDiagnosticsError"));
+                verdict.dataset.verdict = "error";
+                line.append(where, selector, verdict);
+                diagnosticsBody.appendChild(line);
+            });
+            if (diagnostics.truncated) {
+                diagnosticsBody.appendChild(node("p", "sw-studio__diagnostics-empty", t("snippetDiagnosticsTruncated")));
+            }
+            diagnosticsDetails.hidden = false;
+        }
         // Compare uses the selected saved code, not a second unscoped host style.
         preview.render({type: draft.type, content, dark, runJS: !showOriginal && runJS, scene: previewScene, width: previewWidth});
     }

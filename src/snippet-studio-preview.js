@@ -32,6 +32,63 @@ function resolvePreviewWidth(widthId, containerWidth) {
     return tier.width;
 }
 
+// ==================== T-6987：预览契约 v2（能力回执纯模型） ====================
+// SceneId/ViewportId/ThemeProfile 全部白名单化；固定可用组合；每次预览输出一条
+// 冻结的能力回执（场景/宽度/主题/探针/脚本/网络/语义边界），UI 只渲染不计算。
+// 主题档位：light / dark / baseline（基线对照=原始样例、关探针、强制亮色语义）。
+const SNIPPET_PREVIEW_THEMES = ["light", "dark", "baseline"];
+
+function normalizePreviewTheme(theme) {
+    return SNIPPET_PREVIEW_THEMES.includes(theme) ? theme : "light";
+}
+
+function resolvePreviewCapability({type = "css", scene = "reading", width = "auto", dark = false, baseline = false, probeHits = [], containerWidth = 0} = {}) {
+    const normalizedScene = normalizePreviewScene(scene);
+    const theme = baseline ? "baseline" : normalizePreviewTheme(dark ? "dark" : "light");
+    const tier = SNIPPET_PREVIEW_WIDTHS.find((item) => item.id === width) || null;
+    const viewportId = tier ? tier.id : "auto";
+    const appliedWidth = resolvePreviewWidth(viewportId, containerWidth);
+    const probeOn = type !== "js" && !baseline;
+    const hits = probeOn && Array.isArray(probeHits)
+        ? Object.freeze(probeHits.filter((id) => typeof id === "string").slice(0, 24))
+        : Object.freeze([]);
+    return Object.freeze({
+        type: type === "js" ? "js" : "css",
+        scene: normalizedScene,
+        viewport: Object.freeze({id: viewportId, appliedWidth}),
+        theme,
+        probe: Object.freeze({on: probeOn, hits, count: hits.length}),
+        // css 模式脚本完全禁用；js 模式不执行片段，仅注入错误引导 bootstrap。
+        script: type === "js" ? "error-bootstrap-only" : "blocked",
+        network: "none",
+        semantics: "approximation",
+    });
+}
+
+// 能力回执的人读格式：names = {scene, width, theme}（调用方从选择器选项文本取，
+// 天然跟随 i18n）；boundary = 固定边界文案（探针/脚本/网络/语义/单视图回退）。
+function formatPreviewCapability(capability, names = {}, boundary = {}) {
+    const text = (key, fallback) => String(boundary[key] || fallback);
+    const widthLabel = capability.viewport.appliedWidth > 0
+        ? `${names.width || capability.viewport.id} · ${capability.viewport.appliedWidth}px`
+        : `${names.width || capability.viewport.id}（${text("singleView", "容器不足，单视图")}）`;
+    const probeLabel = capability.probe.on
+        ? text("probeOn", "探针：命中 {n} 项").replace("{n}", String(capability.probe.count))
+        : text("probeOff", "探针：关（基线对照）");
+    const scriptLabel = capability.script === "blocked"
+        ? text("scriptCss", "脚本：禁用")
+        : text("scriptJs", "脚本：仅错误引导");
+    return [
+        `${text("sceneLabel", "场景")} ${names.scene || capability.scene}`,
+        `${text("widthLabel", "宽度")} ${widthLabel}`,
+        `${text("themeLabel", "主题")} ${names.theme || capability.theme}`,
+        probeLabel,
+        scriptLabel,
+        text("network", "网络：无"),
+        text("semantics", "语义近似预览，不代表当前笔记"),
+    ].join(" · ");
+}
+
 // ==================== T-6978：CSS 覆盖探针（预览内容跟随片段选择器） ====================
 // 用户片段通常只针对部分元素（如只调 h1-h6、只调列表）；固定样例覆盖不到的元素
 // 看不到效果。剥离注释/字符串后按词边界检测选择器特征，命中的元素类型以「探针区块」
@@ -63,6 +120,136 @@ function analyzeCssCoverage(content) {
         if (pattern.test(stripped)) hits.push(id);
     }
     return hits;
+}
+
+// ==================== T-6988：CSS 覆盖诊断（有界 selector 分层分析） ====================
+// 从 T-6978 的正则特征探针升级为按规则的结构化诊断：把片段文本按花括号切分出
+// 选择器前缀（字符串安全、记录行号、@media/@supports 归属），逐选择器输出
+// 命中 / 可能未命中 / 未知 三态与错误行列。有界：规则数/选择器长度/文本长度/
+// 错误数/行数全部封顶；不做完整 CSS 解析，不引入 stylelint。
+const SELECTOR_DIAGNOSTICS_LIMITS = Object.freeze({
+    maxContentLength: 65536,
+    maxRules: 200,
+    maxSelectorLength: 200,
+    maxErrors: 3,
+    maxRows: 24,
+});
+
+// 静态样例中始终可见的「基础特征」——选择器命中它们即视为命中（无需探针区块）。
+const CSS_BASE_FEATURES = /(^|[^a-zA-Z0-9_-])(h1|h2|p|table|blockquote)(?![a-zA-Z0-9_-])|\.bq(?![a-zA-Z0-9_-])|data-type="code"|\.code-block|button|input|select(?![a-zA-Z0-9_-])/;
+
+// 可识别但样例可能没有的 SiYuan 惯用前缀/属性——命中即「可能未命中」而非「未知」。
+const CSS_KNOWN_PREFIXES = /(?:^|[^a-zA-Z0-9_-])(?:\.protyle-|\.b3-|\.list--|\.li\b|data-type="|data-subtype=")/;
+
+function analyzeSelectorDiagnostics(content) {
+    const limits = SELECTOR_DIAGNOSTICS_LIMITS;
+    const source = String(content || "");
+    const text = source.length > limits.maxContentLength ? source.slice(0, limits.maxContentLength) : source;
+    const rows = [];
+    const errors = [];
+    const counts = {hit: 0, miss: 0, unknown: 0, selectors: 0, rules: 0};
+    let truncated = false;
+    let depth = 0;
+    let selectorBuffer = "";
+    let selectorLine = 1;
+    let line = 1;
+    let column = 0;
+    let atRule = "";
+    let inString = "";
+    let inComment = false;
+    let rulesCapped = false;
+    const pushError = (message) => {
+        if (errors.length >= limits.maxErrors) return;
+        errors.push({line, column: column + 1, message});
+    };
+    const classifySelector = (rawSelector) => {
+        const selector = rawSelector.trim().slice(0, limits.maxSelectorLength);
+        if (!selector) return;
+        if (counts.selectors >= limits.maxRules) {
+            truncated = true;
+            return;
+        }
+        counts.selectors += 1;
+        const features = [];
+        for (const [id, pattern] of Object.entries(CSS_PROBE_PATTERNS)) {
+            if (pattern.test(selector)) features.push(id);
+        }
+        const baseHit = CSS_BASE_FEATURES.test(selector);
+        const hasAttribute = /\[[^\]]+\]/.test(selector);
+        const hasPseudo = /::?[a-zA-Z-]+/.test(selector);
+        const isComplex = /[>+~]|\s/.test(selector.replace(/\[[^\]]*\]/g, " "));
+        const recognizableUnknown = !features.length && !baseHit && CSS_KNOWN_PREFIXES.test(selector);
+        const verdict = features.length || baseHit ? "hit" : recognizableUnknown ? "miss" : "unknown";
+        counts[verdict] += 1;
+        if (rows.length < limits.maxRows) {
+            rows.push({selector, line: selectorLine, atRule, verdict, features, attribute: hasAttribute, pseudo: hasPseudo, complex: isComplex});
+        }
+    };
+    for (let index = 0; index < text.length; index += 1) {
+        const char = text[index];
+        if (char === "\n") {
+            line += 1;
+            column = 0;
+        } else {
+            column += 1;
+        }
+        if (inString) {
+            if (char === "\\") index += 1;
+            else if (char === inString) inString = "";
+            selectorBuffer += char;
+            continue;
+        }
+        // 注释状态机：注释内的 { } 引号一律不参与结构（换行计数已在上方处理）；
+        // 字符串分支在前——字符串里的 /* 是内容不是注释起点。
+        if (inComment) {
+            if (char === "*" && text[index + 1] === "/") {
+                inComment = false;
+                index += 1;
+            }
+            continue;
+        }
+        if (char === "/" && text[index + 1] === "*") {
+            inComment = true;
+            index += 1;
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            inString = char;
+            selectorBuffer += char;
+            continue;
+        }
+        if (char === "{") {
+            const header = selectorBuffer.trim();
+            if (header.startsWith("@")) {
+                atRule = /^@media\b/.test(header) ? "media" : /^@supports\b/.test(header) ? "supports" : "other";
+            } else {
+                if (!rulesCapped) {
+                    counts.rules += 1;
+                    if (counts.rules >= limits.maxRules) rulesCapped = true;
+                }
+                header.split(",").forEach((part) => classifySelector(part));
+            }
+            selectorBuffer = "";
+            depth += 1;
+            continue;
+        }
+        if (char === "}") {
+            if (depth <= 0) pushError("多余的右花括号");
+            else depth -= 1;
+            if (depth === 0) atRule = "";
+            selectorBuffer = "";
+            continue;
+        }
+        if (char === ";" && depth === 0) {
+            // 顶层散落声明（如孤立的 `color:red;`）按无规则选择器处理，不进诊断
+            selectorBuffer = "";
+            continue;
+        }
+        if (!selectorBuffer.trim() && !/\s/.test(char)) selectorLine = line;
+        selectorBuffer += char;
+    }
+    if (depth > 0) pushError("缺少右花括号");
+    return {rows, counts, errors, truncated, limits};
 }
 
 // 假块 ID：格式对齐思源（14 位时间戳 + 7 位随机）；仅用于让
@@ -206,4 +393,4 @@ function createSnippetPreview(container, {title, labels, onError = () => {}, onR
     };
 }
 
-module.exports = {SNIPPET_PREVIEW_SCENES, SNIPPET_PREVIEW_WIDTHS, normalizePreviewScene, resolvePreviewWidth, analyzeCssCoverage, stripCssNoise, buildSnippetPreviewDocument, createSnippetPreview};
+module.exports = {SNIPPET_PREVIEW_SCENES, SNIPPET_PREVIEW_WIDTHS, SNIPPET_PREVIEW_THEMES, normalizePreviewScene, normalizePreviewTheme, resolvePreviewWidth, resolvePreviewCapability, formatPreviewCapability, analyzeCssCoverage, analyzeSelectorDiagnostics, SELECTOR_DIAGNOSTICS_LIMITS, stripCssNoise, buildSnippetPreviewDocument, createSnippetPreview};
