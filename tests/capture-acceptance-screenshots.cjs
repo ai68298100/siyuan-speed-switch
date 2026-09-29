@@ -71,6 +71,11 @@ const CASES = [
     {id: "workbench-dark", theme: "dark", action: 'window.__plugin.openPlatformSurface("workbench")'},
     {id: "studio-light", theme: "light", action: 'window.__plugin.openPlatformSurface("studio")'},
     {id: "studio-dark", theme: "dark", action: 'window.__plugin.openPlatformSurface("studio")'},
+    // T-7036 本地部分：响应式矩阵——工作台在窄视口/竖屏/短横屏下的结构性证据
+    //（dvh 浮层、网格收缩、移动降级类；真实宿主观感归 B-005）。
+    {id: "workbench-narrow", theme: "light", viewport: {width: 420, height: 768}, action: 'window.__plugin.openPlatformSurface("workbench")'},
+    {id: "workbench-portrait", theme: "light", viewport: {width: 390, height: 844}, action: 'window.__plugin.openPlatformSurface("workbench")'},
+    {id: "workbench-landscape-short", theme: "light", viewport: {width: 844, height: 360}, action: 'window.__plugin.openPlatformSurface("workbench")'},
 ];
 
 const candidates = [process.env.BROWSER_PATH,
@@ -113,6 +118,12 @@ async function main() {
         };
         await send("Page.enable");
         await send("Emulation.setDeviceMetricsOverride", {width: 1366, height: 768, deviceScaleFactor: 1, mobile: false});
+        // T-7036 本地部分：逐 case 应用视口（响应式矩阵——窄视口/竖屏/短横屏）
+        const applyViewport = (viewport) => {
+            if (!viewport) return;
+            void send("Emulation.setDeviceMetricsOverride", {
+                width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: false});
+        };
         for (const entry of CASES) {
             const page = path.join(artifactDir, `page-${entry.theme}.html`);
             if (!fs.existsSync(page)) fs.writeFileSync(page, pageHtml(entry.theme));
@@ -124,6 +135,7 @@ async function main() {
             }
             const state = await evalJs("window.__bootState || 'loading'");
             if (state !== "booted") { failures.push(`${entry.id}: boot ${state}`); continue; }
+            applyViewport(entry.viewport);
             await evalJs(entry.action);
             await delay(600);
             const shot = await send("Page.captureScreenshot", {format: "png"});

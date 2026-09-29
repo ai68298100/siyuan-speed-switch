@@ -14,6 +14,12 @@ test("screenshot infra: capture tool, npm script and matrix coverage exist (T-70
     for (const caseId of ["switcher-light", "switcher-dark", "workbench-light", "workbench-dark", "studio-light", "studio-dark"]) {
         assert.ok(captureScript.includes(`id: "${caseId}"`), `矩阵必须含 ${caseId}`);
     }
+    // T-7036 本地部分：响应式矩阵（窄视口/竖屏/短横屏）——逐 case 视口覆写
+    for (const caseId of ["workbench-narrow", "workbench-portrait", "workbench-landscape-short"]) {
+        assert.ok(captureScript.includes(`id: "${caseId}"`), `响应式矩阵必须含 ${caseId}`);
+    }
+    assert.match(captureScript, /const applyViewport = \(viewport\) => \{/, "逐 case 视口覆写必须存在");
+    assert.match(captureScript, /applyViewport\(entry\.viewport\);/, "响应式 case 必须实际应用视口");
     // 主题区分能力：明暗两套近似调色板必须在 harness 中定义
     assert.match(captureScript, /light: "--b3-theme-primary:/, "明色调色板必须定义");
     assert.match(captureScript, /dark: "--b3-theme-primary:/, "暗色调色板必须定义");
