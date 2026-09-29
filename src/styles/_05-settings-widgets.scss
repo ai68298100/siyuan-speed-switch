@@ -1566,3 +1566,38 @@
         font-weight: 600;
     }
 }
+
+// ==================== T-7054 F 批次：阅读/订阅家族视觉增强 ====================
+// RSS 五组件行流基础样式已由 T-6971 批次⑥交付（hairline 分隔+meta 排版），
+// 本批次补充其余四组件专属样式 + RSS 五组件标题排版微调。
+
+// 每日放送（media viewType）：标题排版
+.sw-home__cell[data-module-id="external-anime-bangumi"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// iCal 日程：日程条目增强
+.sw-home__cell[data-module-id="external-ical-events"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 每日引言：引言文字排版——italic + 首行 indent
+.sw-home__cell[data-module-id="external-quote-daily"] {
+    .sw__home-module-item-label {
+        font-style: italic;
+        line-height: 1.6;
+    }
+}
+
+// 剪藏未读：未读数突出
+.sw-home__cell[data-module-id="clipped-unread"] {
+    .sw__home-stat-value {
+        font-size: 1.4em;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+}
