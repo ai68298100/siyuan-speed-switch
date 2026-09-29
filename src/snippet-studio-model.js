@@ -365,6 +365,72 @@ const BUILTIN_SNIPPETS = Object.freeze([
             "}",
         ].join("\n"),
     },
+    {
+        id: "swss-builtin-eyecare", nameKey: "snippetBuiltinEyecareName", descriptionKey: "snippetBuiltinEyecareDescription",
+        category: "theme", type: "css", source: "builtin",
+        content: [
+            ".protyle-wysiwyg {",
+            "  --b3-theme-background: #f5f0e8;",
+            "  --b3-theme-surface: #ede8dc;",
+            "  --b3-theme-background-light: #f0ebe2;",
+            "  background: var(--b3-theme-background, #f5f0e8);",
+            "}",
+        ].join("\n"),
+    },
+    {
+        id: "swss-builtin-lineheight", nameKey: "snippetBuiltinLineheightName", descriptionKey: "snippetBuiltinLineheightDescription",
+        category: "typography", type: "css", source: "builtin",
+        content: [
+            ".protyle-wysiwyg [data-type=\"NodeParagraph\"] {",
+            "  line-height: 2.1;",
+            "  margin-block: 0.4em;",
+            "}",
+            ".protyle-wysiwyg [data-type=\"NodeList\"] {",
+            "  line-height: 1.9;",
+            "}",
+        ].join("\n"),
+    },
+    {
+        id: "swss-builtin-hicon", nameKey: "snippetBuiltinHiconName", descriptionKey: "snippetBuiltinHiconDescription",
+        category: "heading", type: "css", source: "builtin",
+        content: [
+            ".protyle-wysiwyg h1[data-type=\"NodeHeading\"]::before { content: \"📘 \"; }",
+            ".protyle-wysiwyg h2[data-type=\"NodeHeading\"]::before { content: \"📗 \"; }",
+            ".protyle-wysiwyg h3[data-type=\"NodeHeading\"]::before { content: \"📙 \"; }",
+        ].join("\n"),
+    },
+    {
+        id: "swss-builtin-cardpara", nameKey: "snippetBuiltinCardparaName", descriptionKey: "snippetBuiltinCardparaDescription",
+        category: "layout", type: "css", source: "builtin",
+        content: [
+            ".protyle-wysiwyg [data-type=\"NodeParagraph\"] {",
+            "  border-radius: 8px;",
+            "  padding: 0.5em 0.8em;",
+            "  margin-block: 0.35em;",
+            "  background: color-mix(in srgb, var(--b3-theme-surface, #f5f5f5) 60%, transparent);",
+            "  transition: background 0.15s ease;",
+            "}",
+            ".protyle-wysiwyg [data-type=\"NodeParagraph\"]:hover {",
+            "  background: color-mix(in srgb, var(--b3-theme-primary, #3575f0) 4%, transparent);",
+            "}",
+        ].join("\n"),
+    },
+    {
+        id: "swss-builtin-code_theme", nameKey: "snippetBuiltinCodeThemeName", descriptionKey: "snippetBuiltinCodeThemeDescription",
+        category: "code", type: "css", source: "builtin",
+        content: [
+            ".protyle-wysiwyg [data-type=\"NodeCodeBlock\"] {",
+            "  border-radius: 12px;",
+            "  border: none;",
+            "  box-shadow: 0 2px 8px rgba(0,0,0,0.1);",
+            "  background: color-mix(in srgb, var(--b3-theme-background, #fff) 92%, var(--b3-theme-primary, #3575f0) 4%);",
+            "}",
+            ".protyle-wysiwyg [data-type=\"NodeCodeBlock\"] .protyle-action {",
+            "  border-radius: 12px 12px 0 0;",
+            "  background: color-mix(in srgb, var(--b3-theme-primary, #3575f0) 8%, transparent);",
+            "}",
+        ].join("\n"),
+    },
 ].map((entry) => Object.freeze(entry)));
 
 /** Caller may attach localized name/description and its own native entries. */
