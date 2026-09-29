@@ -154,8 +154,10 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // T-6967 S2（2026-09-29 第二批）：external-widget-model 入图——15 分钟心跳族清单
     // 上收为唯一登记处，second-panel-ui 与 home-store-ui 同源消费，实测 72；上限按
     // 同口径校准 71→72（先例 T-6814/T-6950），zip 余量随本批复核（见 release-readiness 快照）。
+    // T-7025：snippet-recycle 经 storage-migration（主图）入图，实测 73；上限校准 72→73
+    // （ADR 0100 数据层，记账于 dev-plan 审计批六），zip 余量随本批复核。
     // 包体复核：raw 1024 KiB 自律线、zip 硬上限与压缩条目线均独立审查（见 release-readiness 快照）。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 71, `production graph grew to ${graph.size} modules; audited ceiling is 71`);
+    assert.ok(graph.size <= 72, `production graph grew to ${graph.size} modules; audited ceiling is 72`);
 });

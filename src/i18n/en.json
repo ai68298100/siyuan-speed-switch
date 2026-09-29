@@ -736,6 +736,7 @@
   "storageKeyQuickActions": "Quick actions",
   "storageKeyQuickActionsDefaults": "Quick actions defaults marker",
   "storageKeyDocumentSets": "Document sets",
+  "storageKeySnippetRecycle": "Snippet recycle bin",
   "storageKeyRssRead": "RSS read state",
   "storageKeySchemaVersion": "Storage schema version stamp",
   "storageSchemaTitle": "Storage schema health",

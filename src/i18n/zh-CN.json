@@ -736,6 +736,7 @@
   "storageKeyQuickActions": "快捷入口",
   "storageKeyQuickActionsDefaults": "快捷入口默认值标记",
   "storageKeyDocumentSets": "文档集",
+  "storageKeySnippetRecycle": "片段回收站",
   "storageKeyRssRead": "RSS 已读状态",
   "storageKeySchemaVersion": "存储结构版本戳",
   "storageSchemaTitle": "存储结构健康",

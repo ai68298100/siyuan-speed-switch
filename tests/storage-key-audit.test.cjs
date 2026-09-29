@@ -91,6 +91,7 @@ test('storage: every persisted key has a sanitize path before use', () => {
         SCHEMA_VERSION_KEY: ['stampStorageSchemaVersion'],
         RSS_READ_KEY: ['normalizeRssReadState'],
         RELATED_SWR_KEY: ['normalizeRelatedSwrStore'],
+        SNIPPET_RECYCLE_KEY: ['normalizeRecycleStore'],
     };
     const registered = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY) = "/g)].map((m) => m[1]);
     const unknown = Object.keys(sanitizeAllowlist).filter((key) => !registered.includes(key));

@@ -3,6 +3,7 @@ const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCata
 const {buildSnippetDiff, summarizeDiff, applyDiffHunks} = require("./snippet-diff.js");
 const {lintSnippet} = require("./snippet-lint.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
+const {buildRecycleEntry, appendRecycleEntry} = require("./snippet-recycle.js");
 const {createSnippetPreview, resolvePreviewCapability, formatPreviewCapability, analyzeSelectorDiagnostics, analyzeCssCoverage} = require("./snippet-studio-preview.js");
 const {createSnippetAIClient} = require("./snippet-studio-ai.js");
 
@@ -35,7 +36,7 @@ function previewLabels(t) {
 }
 
 /** Experimental singleton view; native snippets remain the only saved copy. */
-function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = createSnippetStore({getSnippetSettings: () => getConfig()?.snippet}), ai = createSnippetAIClient(), session = {draft: null, baseline: null}, platform = null, onBack = () => {}, objectId = ""} = {}) {
+function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = createSnippetStore({getSnippetSettings: () => getConfig()?.snippet}), ai = createSnippetAIClient(), session = {draft: null, baseline: null}, platform = null, onBack = () => {}, objectId = "", recycle = null} = {}) {
     const doc = root.ownerDocument;
     const win = doc.defaultView;
     // Keep the locale surface statically discoverable by the repository i18n
@@ -1200,6 +1201,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         });
         const reloadButton = node("button", "b3-button b3-button--cancel", t("snippetConflictReload"));
         reloadButton.addEventListener("click", () => {
+            // T-7025（ADR 0100）D1：冲突放弃重载——被丢弃的本地草稿登记入站
+            //（冲突副本路径已另存禁用副本，不重复入站）。
+            if (recycle && draft.content) {
+                try {
+                    const dropped = buildRecycleEntry({origin: "conflict", snippetId: baseline?.id || "", name: draft.name, type: draft.type, content: draft.content}, Date.now());
+                    if (dropped) recycle.save(appendRecycleEntry(recycle.load(), dropped));
+                } catch (_) { /* 登记失败不影响只读重载 */ }
+            }
             dialog.destroy();
             if (latestEntry) {
                 choose(latestEntry, latestEntry);
@@ -1293,9 +1302,18 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         syncFields();
         const previous = baseline ? {...baseline} : null;
         const input = {...draft, id: baseline?.id || newId(), enabled: actionName === "toggle" ? !baseline?.enabled : baseline?.enabled === true};
+        // T-7025（ADR 0100）D1/D2：写前捕获旧快照（overwrite=内容确有变化的旧版本 /
+        // delete=删除前快照），原生写入确认成功后才登记；登记失败只影响回收站
+        // 完整性，不回滚原生写入、不虚报原生操作失败。
+        const recycleCandidate = recycle && previous && (actionName === "delete" || (actionName === "save" && previous.content !== input.content))
+            ? buildRecycleEntry({origin: actionName === "delete" ? "delete" : "overwrite", snippetId: previous.id, name: previous.name, type: previous.type, content: previous.content}, Date.now())
+            : null;
         try {
             const next = await store.mutate(previous, actionName, input);
             if (disposed) return false;
+            if (recycleCandidate && recycle) {
+                try { recycle.save(appendRecycleEntry(recycle.load(), recycleCandidate)); } catch (_) { /* 登记失败如实留空，不影响原生成功回执 */ }
+            }
             snippets = next;
             const saved = next.find((item) => item.id === input.id) || null;
             choose(saved || {name: "", type: "css", content: ""}, saved);

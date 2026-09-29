@@ -44,7 +44,7 @@ test('storage compatibility matrix exists and is a non-trivial document', () => 
     assert.ok(fs.existsSync(docsPath), 'docs/storage-compatibility-matrix.md must exist');
     const source = documentSource();
     assert.ok(source.length > 2000, 'the audit document must actually contain the matrix, not a stub');
-    assert.match(source, /15 个 key/, 'the document must state the authoritative key count');
+    assert.match(source, /17 个 key/, 'the document must state the authoritative key count');
 });
 
 test('documented key list equals the code registry in both directions', () => {
@@ -53,13 +53,13 @@ test('documented key list equals the code registry in both directions', () => {
     let match;
     while ((match = re.exec(constantsSource)) !== null) codeKeys.set(match[1], match[2]);
     // 审计面非空自检：空集合会让下面的比对恒真（gate-audit-checklist 模式 ④）
-    assert.equal(codeKeys.size, 16, 'constants.ts must define exactly 16 storage keys');
-    assert.equal(KEY_ORDER.length, 16, 'storage-migration KEY_ORDER must stay at 16');
+    assert.equal(codeKeys.size, 17, 'constants.ts must define exactly 17 storage keys');
+    assert.equal(KEY_ORDER.length, 17, 'storage-migration KEY_ORDER must stay at 17');
 
     const documented = new Set();
     const docRe = /`(sw_[a-z_]+)`/g;
     while ((match = docRe.exec(documentSource())) !== null) documented.add(match[1]);
-    assert.ok(documented.size >= 16, `the document must enumerate every key by literal, found ${documented.size}`);
+    assert.ok(documented.size >= 17, `the document must enumerate every key by literal, found ${documented.size}`);
 
     const codeValues = new Set(codeKeys.values());
     assert.deepEqual([...codeValues].filter((key) => !documented.has(key)), [], 'every registered key must appear in the audit document');
@@ -72,7 +72,7 @@ test('documented classification (handled vs inspect) matches storage-migration',
     const re = /^\|\s*\d+\s*\|\s*`(sw_[a-z_]+)`\s*\|\s*`[A-Z_]+`\s*\|\s*([a-z]+)\s*\|/gm;
     let match;
     while ((match = re.exec(documentSource())) !== null) rows.set(match[1], match[2]);
-    assert.ok(rows.size >= 15, `expected at least 14 classified rows, found ${rows.size}`);
+    assert.ok(rows.size >= 16, `expected at least 14 classified rows, found ${rows.size}`);
 
     for (const key of INSPECTED_KEYS) {
         assert.equal(rows.get(key), 'inspect', `${key} is inspected in code and must be documented as inspect`);

@@ -22,6 +22,7 @@
 | **v0.24.0（D-401）** | **14** | + `sw_schema_version`（存储版本戳，见第 2 节末行） |
 | **v0.24.0（T-6685）** | **15** | + `sw_rss_read`（RSS 已读状态，见第 2 节末两行） |
 | **v0.37.0（T-6840）** | **16** | + `sw_related_swr`（关联内容 SWR 持久缓存，见第 2 节末行） |
+| **v0.44.0（T-7025，ADR 0100）** | **17** | + `sw_snippet_recycle`（片段回收站，见第 2 节末行） |
 
 复现命令：
 
@@ -33,7 +34,7 @@ for t in $(git tag --sort=creatordate); do
 done
 ```
 
-**因此本审计以代码为准：16 个 key。** 该数字由门禁钉住（见第 4 节），不会随文档漂移。
+**因此本审计以代码为准：17 个 key。** 该数字由门禁钉住（见第 4 节），不会随文档漂移。
 
 ## 1. 唯一登记处
 
@@ -46,7 +47,7 @@ done
 
 `KEY_ORDER = HANDLED_KEYS ∪ INSPECTED_KEYS ∪ META_KEYS` 是**拼接**而非独立字面量，因此「分类集与报告 key 集合不可能漂移」。`sw_thumb_cache` 从 inspect 毕业到 handled 时，报告里它的位置从第 13 位前移到第 11 位，但 key 集合与总数完全不变，下游只读快照无需改动。
 
-## 2. 15 个 key：迁移函数与容量边界
+## 2. 17 个 key：迁移函数与容量边界
 
 `分类` 列含义：**handled** = 进入迁移 `data`（宿主可据此覆盖）；**inspect** = 只报形状、不进 `data`（深度迁移由宿主读取路径负责）。
 
@@ -68,6 +69,7 @@ done
 | 14 | `sw_schema_version` | `SCHEMA_VERSION_KEY` | meta | `stampStorageSchemaVersion`（onload 落戳，D-401） | index.ts | 单值：`STORAGE_SCHEMA_VERSION`（当前 1） | v0.24.0 |
 | 15 | `sw_rss_read` | `RSS_READ_KEY` | handled | `normalizeRssReadState`（rss-model，有界 200 条） | rss-model.js | 200 条（`RSS_READ_STATE_MAX`） | v0.24.0 |
 | 16 | `sw_related_swr` | `RELATED_SWR_KEY` | handled | `normalizeRelatedSwrStore`（related-content-model，版本/年龄/去重/有界） | related-content-model.js | 8 条（`RELATED_SWR_MAX_ENTRIES`）、7 天年龄上界（`RELATED_SWR_MAX_AGE_MS`） | v0.37.0 |
+| 17 | `sw_snippet_recycle` | `SNIPPET_RECYCLE_KEY` | handled | `normalizeRecycleStore`（snippet-recycle，版本戳/畸形丢弃） | snippet-recycle.js | 50 条（`SNIPPET_RECYCLE_MAX_ENTRIES`）、30 天年龄（`SNIPPET_RECYCLE_MAX_AGE_MS`）、256 KiB 总量（`SNIPPET_RECYCLE_MAX_BYTES`） | v0.44.0 |
 
 `meta` 分类（D-401 新增）：不承载业务数据，永不进入迁移 `data`（写入完全由 onload 落戳函数管理）。演练判定：缺失 → missing；损坏（非 ≥1 整数）→ reset；等于当前版本 → kept；小于当前版本 → migrated（未来版本迁移入口）；大于当前版本 → kept 且值原样保留（疑似降级，保留证据，onload 侧 `logger.warn` 告警并记录 `storageSchemaDowngradeFrom`）。
 
@@ -120,7 +122,7 @@ done
 | 门禁 | 覆盖 |
 | --- | --- |
 | `tests/storage-key-audit.test.cjs` | key 常量唯一登记处、`loadData`/`saveData` 只用 `*_KEY`、每个 key 的清洗函数**被调用**（非仅声明）、检查项数 = 注册项数 |
-| `tests/storage-migration.test.cjs` | 16 个 key 的分类与总数不可漂移、per-key 迁移契约、端型上限三处同源、演练对宿主清洗结果是不动点 |
+| `tests/storage-migration.test.cjs` | 17 个 key 的分类与总数不可漂移、per-key 迁移契约、端型上限三处同源、演练对宿主清洗结果是不动点 |
 | `tests/storage-compatibility-matrix.test.cjs` | **本文件与代码一致**：文档列出的 key 集合、上限值必须与 `constants.ts` / `DEFAULT_LIMITS` 双向匹配 |
 | `tests/storage-migration.test.cjs`（源码扫描） | 扫描前剥离注释（`tests/source-scan.cjs`），防止「调用被注释掉」仍通过 |
 

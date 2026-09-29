@@ -78,6 +78,7 @@ import {collectSettingsSearchEntries, collectEntryGroups, searchSettingsIndex} f
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet, orderDocumentSetRestoreEntries} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
+import {normalizeRecycleStore} from "./snippet-recycle";
 import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, encodeSurfaceFocusSource, resolveSurfaceFocusRestoreTarget, buildSurfaceContextCaption, projectSnippetObjects, filterSnippetObjects, normalizeModuleVisibility, isSurfaceModuleEnabled, filterSurfacesByVisibility} from "./platform-surface-model";
 import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
@@ -206,6 +207,7 @@ import {
     SETTINGS_KEY,
     THUMB_CACHE_KEY,
     RELATED_SWR_KEY,
+    SNIPPET_RECYCLE_KEY,
     FAV_COLLAPSED_KEY,
     QUICK_ACTIONS_KEY,
     QUICK_ACTIONS_DEFAULTS_KEY,
@@ -3796,7 +3798,19 @@ export default class SpeedSwitchPlugin extends Plugin {
             holder.controller = mountSnippetStudio(root, {
                 i18n: this.i18n as unknown as Record<string, string>,
                 getConfig: () => (window as {siyuan?: {config?: unknown}}).siyuan?.config || {},
+
                 session: this.snippetStudioSession,
+                // T-7025（ADR 0100）：回收站持久化通道——插件侧 sw_snippet_recycle key，
+                // 写入走防抖队列；归一/去重/三限淘汰在 snippet-recycle 纯模型（写入侧
+                // appendRecycleEntry 先归一；启动侧 runStorageMigration 已归一），此处裸存取
+                // 避免主图增长（production graph 上限 71，契约钉住）。
+                recycle: {
+                    load: () => normalizeRecycleStore(this.data[SNIPPET_RECYCLE_KEY]),
+                    save: (next: unknown) => {
+                        this.data[SNIPPET_RECYCLE_KEY] = next;
+                        this.saveDataDebounced(SNIPPET_RECYCLE_KEY);
+                    },
+                },
                 objectId: !context?.objectKind || context.objectKind === "snippet" ? context.objectId || "" : "",
                 platform: {
                     labels: this.getPlatformSurfaceLabels(),

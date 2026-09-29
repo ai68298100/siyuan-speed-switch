@@ -18,6 +18,7 @@
 //    数据完整性缺口的 key——超限/损坏条目原本永远不会被清理。
 const {capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, normalizeThumbCache} = require("./util.js");
 const {normalizeClosedEntries} = require("./recent-closed.js");
+const {normalizeRecycleStore} = require("./snippet-recycle");
 const {sanitizeQuickActions, migrateQuickActionDefaults, QUICK_ACTION_DEFAULTS_VERSION} = require("./quick-actions.js");
 const {normalizeDocumentSets} = require("./document-sets.js");
 const {normalizeRssReadState} = require("./rss-model.js");
@@ -53,6 +54,7 @@ const HANDLED_KEYS = Object.freeze([
     "sw_thumb_cache",
     "sw_rss_read",
     "sw_related_swr",
+    "sw_snippet_recycle",
 ]);
 
 const INSPECTED_KEYS = Object.freeze([
@@ -72,6 +74,8 @@ const META_KEYS = Object.freeze([
 // 集合与总数完全不变，totals 结构也不变，所以下游只读快照无需改动。
 // sw_schema_version 追加在末位（meta 分组），agent storageHealth 的计数上限
 // 与 KEY_ORDER 总数同步为 14（agent-capabilities.js）。
+// T-7025：sw_snippet_recycle 追加在 handled 分组末位（KEY_ORDER 总数 16→17，
+// 计数契约与存储页登记同步演进）。
 const KEY_ORDER = Object.freeze([...HANDLED_KEYS, ...INSPECTED_KEYS, ...META_KEYS]);
 
 const NOTE_MAX = 80;
@@ -181,6 +185,15 @@ const HANDLERS = {
         // T-6685 已读状态：委托 rss-model 归一化（有界 200 条、键 ≤128、时间戳合法）
         const state = normalizeRssReadState(value);
         return {value: state, status: state.changed ? "cleaned" : "kept", kept: Object.keys(state.seen).length, removed: 0, note: state.changed ? boundNote("read state bounded and normalized") : ""};
+    },
+    "sw_snippet_recycle": (value) => {
+        // T-7025（ADR 0100）回收站：委托 snippet-recycle 归一化（版本戳/畸形丢弃/
+        // 三限淘汰 数量50·30天·256KiB）；非法版本整体重置为空 store。
+        const store = normalizeRecycleStore(value);
+        const inputCount = value && typeof value === "object" && Array.isArray(value.entries) ? value.entries.length : 0;
+        const changed = inputCount !== store.entries.length
+            || (value && typeof value === "object" && value.version !== store.version);
+        return {value: store, status: changed ? "cleaned" : "kept", kept: store.entries.length, removed: 0, note: changed ? boundNote("recycle bin bounded, deduped or reset") : ""};
     },
     "sw_related_swr": (value) => {
         // T-6840 关联 SWR：委托 related-content-model 归一化（版本戳/7 天年龄/

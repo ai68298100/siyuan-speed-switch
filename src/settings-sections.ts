@@ -6,7 +6,7 @@
 // ISwSettings/IFavoriteItem 等类型经 import type 引用（编译期擦除，无运行时循环依赖）。
 import {Dialog, getAllTabs, openTab, showMessage} from "siyuan";
 import {logger} from "./logger";
-import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY, RELATED_SWR_KEY, RSS_READ_KEY, SCHEMA_VERSION_KEY} from "./constants";
+import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY, RELATED_SWR_KEY, RSS_READ_KEY, SCHEMA_VERSION_KEY, SNIPPET_RECYCLE_KEY} from "./constants";
 import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
 import {diffConfigPackGroups, configPackBaselineSignature, normalizeConfigPackImport} from "./config-pack-model";
 import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport, documentSetRestoreReportToMarkdown, orderDocumentSetRestoreEntries, diffDocumentSetVersion} from "./document-sets";
@@ -1659,6 +1659,7 @@ const STORAGE_KEY_GROUPS: ReadonlyArray<{labelKey: string, keys: ReadonlyArray<{
         labelKey: "storageGroupSystem",
         keys: [
             {key: RSS_READ_KEY, labelKey: "storageKeyRssRead"},
+            {key: SNIPPET_RECYCLE_KEY, labelKey: "storageKeySnippetRecycle"},
             {key: SCHEMA_VERSION_KEY, labelKey: "storageKeySchemaVersion"},
         ],
     },
@@ -1774,6 +1775,7 @@ export function buildSettingsStorage(this: SettingsSectionsHost): HTMLElement {
             storageKeyQuickActionsDefaults: this.i18n.storageKeyQuickActionsDefaults,
             storageKeyDocumentSets: this.i18n.storageKeyDocumentSets,
             storageKeyRssRead: this.i18n.storageKeyRssRead,
+            storageKeySnippetRecycle: this.i18n.storageKeySnippetRecycle,
             storageKeySchemaVersion: this.i18n.storageKeySchemaVersion,
         };
         for (const group of STORAGE_KEY_GROUPS) {
