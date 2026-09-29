@@ -1386,3 +1386,59 @@
     background: var(--b3-theme-surface);
     color: var(--b3-theme-on-surface);
 }
+
+// ==================== T-7054 B 批次：日历/日记家族视觉增强 ====================
+// 六组件专属排版与视觉层级提升——通过 data-module-id 作用域，不波及通用列表。
+
+// 今日日记：日期加重 + 首条强调
+.sw-home__cell[data-module-id="today-journal"] {
+    .sw__home-module-item:first-child .sw__home-module-item-label {
+        font-weight: 600;
+    }
+
+    .sw__home-stat-value {
+        font-size: 1.3em;
+        font-weight: 700;
+    }
+}
+
+// 本月日记：统计数字增强
+.sw-home__cell[data-module-id="journal-monthly"] {
+    .sw__home-stat-value {
+        font-size: 1.5em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 近期日记：日期行弱化——标题突出、日期退为 secondary
+.sw-home__cell[data-module-id="recent-daily-notes"] {
+    .sw__home-module-item-action {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+    }
+
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 往年今日：年份标注突出——主色小徽标感
+.sw-home__cell[data-module-id="on-this-day"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+
+    .sw__home-module-item-secondary {
+        font-weight: 600;
+        color: var(--b3-theme-primary);
+    }
+}
+
+// 近期预约：时间紧迫感——首条加重
+.sw-home__cell[data-module-id="today-reservations"] {
+    .sw__home-module-item:first-child .sw__home-module-item-label {
+        font-weight: 600;
+    }
+}
