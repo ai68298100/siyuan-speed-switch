@@ -9,7 +9,9 @@ const model = readSourceFile('src/snippet-studio-model.js');
 const hostSource = readSourceFile('src/snippet-studio-host.js');
 
 test('conflict wiring: save conflicts open the decidable conflict dialog', () => {
-    assert.match(uiSource, /String\(error\?\.message \|\| ""\) === "snippet-conflict"\)\s*void openConflictDialog\(\);/,
+    // T-7045 演进：冲突分支先落错误回执再打开可决策界面（此前为单行 void 调用，
+    // 待确认态重构时冲突语义保持不变，仅分支结构变化）。
+    assert.match(uiSource, /if \(String\(error\?\.message \|\| ""\) === "snippet-conflict"\) \{\s*\n\s*setStatus\(errorText\(error\), "error"\);\s*\n\s*void openConflictDialog\(\);/,
         '写前/写后冲突必须打开冲突界面');
     assert.ok(hostSource.includes('snippet-conflict'), '宿主必须保留 snippet-conflict 错误语义');
 });

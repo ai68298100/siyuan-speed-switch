@@ -64,20 +64,29 @@ function createSnippetStore({fetchImpl = fetch, timeoutMs = 10000,
                 readSnippetFlags();
                 const latest = await read();
                 const next = buildSnippetMutation(latest, baseline, action, draft);
-                await request("/api/snippet/setSnippet", {snippets: next});
-                // Read the flags after the whole-list write so a concurrent
-                // settings change is less likely to be overwritten by this
-                // refresh notification. The endpoint still has no CAS; ADR
-                // 0078 records that final read/write window explicitly.
-                const flags = readSnippetFlags();
-                // SiYuan's native UI follows the list write with this endpoint.
-                // It broadcasts setSnippet so every window runs renderSnippet.
-                await request("/api/setting/setSnippet", flags);
-                const confirmed = await read();
-                const expected = JSON.stringify(projectSnippetListForWire(next));
-                const actual = JSON.stringify(projectSnippetListForWire(confirmed));
-                if (actual !== expected) throw new Error("snippet-conflict");
-                return confirmed;
+                // T-7045：列表写入之后的任何失败（通知/回读/校验的超时或异常）都带
+                // writeLanded 标——写入可能已生效，UI 必须只读核对而不是伪报普通失败；
+                // snippet-conflict 保留既有可决策语义，不打标。
+                const tagLanded = (error) => {
+                    if (String(error?.message || "") !== "snippet-conflict") error.writeLanded = true;
+                    throw error;
+                };
+                try {
+                    await request("/api/snippet/setSnippet", {snippets: next});
+                    // Read the flags after the whole-list write so a concurrent
+                    // settings change is less likely to be overwritten by this
+                    // refresh notification. The endpoint still has no CAS; ADR
+                    // 0078 records that final read/write window explicitly.
+                    const flags = readSnippetFlags();
+                    // SiYuan's native UI follows the list write with this endpoint.
+                    // It broadcasts setSnippet so every window runs renderSnippet.
+                    await request("/api/setting/setSnippet", flags);
+                    const confirmed = await read();
+                    const expected = JSON.stringify(projectSnippetListForWire(next));
+                    const actual = JSON.stringify(projectSnippetListForWire(confirmed));
+                    if (actual !== expected) throw new Error("snippet-conflict");
+                    return confirmed;
+                } catch (error) { tagLanded(error); }
             });
             tail = run;
             return run;

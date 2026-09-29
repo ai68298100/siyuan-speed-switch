@@ -1264,6 +1264,8 @@
   ,"snippetDiffRoundBase": "This round's changes vs the previous candidate"
   ,"snippetDiffDegraded": "Snippet too long for a line diff; applying replaces the whole block."
   ,"snippetPaneDraft": "Draft"
+  ,"snippetPendingConfirm": "The write may have landed; verifying read-only…"
+  ,"snippetPendingUnverified": "The write may have landed but could not be confirmed: refresh the snippet list to verify before retrying."
   ,"snippetPaneSaved": "Saved"
   ,"snippetPaneSavedEmpty": "No saved version yet; it appears here as the baseline after saving"
   ,"snippetRecycle": "Recycle bin"

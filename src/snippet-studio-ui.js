@@ -178,6 +178,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetNew: locale.i18n.snippetNew,
         snippetNoResults: locale.i18n.snippetNoResults,
         snippetPaneDraft: locale.i18n.snippetPaneDraft,
+        snippetPendingConfirm: locale.i18n.snippetPendingConfirm,
+        snippetPendingUnverified: locale.i18n.snippetPendingUnverified,
         snippetPaneSaved: locale.i18n.snippetPaneSaved,
         snippetPaneSavedEmpty: locale.i18n.snippetPaneSavedEmpty,
         snippetRecycle: locale.i18n.snippetRecycle,
@@ -1332,11 +1334,39 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             return true;
             return true;
         } catch (error) {
-            if (!disposed) {
+            if (disposed) return false;
+            // T-6958：写前比对或写后确认发现冲突——打开可决策冲突界面
+            if (String(error?.message || "") === "snippet-conflict") {
                 setStatus(errorText(error), "error");
-                // T-6958：写前比对或写后确认发现冲突——打开可决策冲突界面
-                if (String(error?.message || "") === "snippet-conflict") void openConflictDialog();
+                void openConflictDialog();
+                return false;
             }
+            // T-7045：写入可能已生效但回执未确认——待确认回执 + 只读核对；核对
+            // 一致（save/toggle 须条目存在且名称内容一致；delete 须条目已消失）才
+            // 登记回收站并给成功回执，未核对到则诚实停留并允许用户刷新后重试。
+            if (error?.writeLanded && recycle) {
+                setStatus(t("snippetPendingConfirm"), "busy");
+                syncFields();
+                try {
+                    const latest = await store.read();
+                    if (disposed) return false;
+                    const landed = latest.find((item) => item.id === input.id);
+                    const confirmedNow = actionName === "delete" ? !landed : (!!landed && landed.name === input.name && landed.content === input.content);
+                    if (confirmedNow) {
+                        snippets = latest;
+                        if (recycleCandidate) {
+                            try { recycle.save(appendRecycleEntry(recycle.load(), recycleCandidate)); } catch (_) { /* 登记失败如实留空 */ }
+                        }
+                        const saved = actionName === "delete" ? null : latest.find((item) => item.id === input.id) || null;
+                        choose(saved || {name: "", type: "css", content: ""}, saved);
+                        setStatus(t(input.type === "js" ? "snippetJSReload" : "snippetSaved"), "ready");
+                        return true;
+                    }
+                } catch (_) { /* 核对失败走下方未确认回执 */ }
+                setStatus(t("snippetPendingUnverified"), "error");
+                return false;
+            }
+            setStatus(errorText(error), "error");
             return false;
         }
         finally { busy = false; if (!disposed) syncFields(); }

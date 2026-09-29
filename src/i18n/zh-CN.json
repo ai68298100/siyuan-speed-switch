@@ -1264,6 +1264,8 @@
   "snippetDiffRoundBase": "本轮改动相对上一轮候选",
   "snippetDiffDegraded": "片段过长，接受后整块替换（不逐行对比）",
   "snippetPaneDraft": "草稿",
+  "snippetPendingConfirm": "写入可能已生效，正在只读核对…",
+  "snippetPendingUnverified": "写入可能已生效但未能确认：请刷新片段列表核对结果后再重试。",
   "snippetPaneSaved": "已保存",
   "snippetPaneSavedEmpty": "尚无已保存版本；保存后此处显示基线效果",
   "snippetRecycle": "回收站",
