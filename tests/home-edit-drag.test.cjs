@@ -43,3 +43,29 @@ test('edit drag wiring: keyboard reorder refocuses and shared model across three
     assert.doesNotMatch(panelSource, /list\.splice\(from, 1\)/, '不得残留内联 splice 重排');
     assert.ok(zh.homeDragMove && en.homeDragMove, '把手文案必须双语齐备');
 });
+
+// T-7030 切片③④：边缘自动滚动与移动端防误触——增量计算在纯函数，滚动循环随
+// 拖拽结束取消；拖拽期间声明 data-prevent-swipe（宿主手势 L1 契约）结束即摘除。
+const {computeEdgeScrollDelta} = require('../src/home-model.js');
+
+test('edit drag edge scroll: pure delta honors edge zones and bounds', () => {
+    assert.equal(computeEdgeScrollDelta(10, 600, 100, 500), -14, '上缘区给负增量');
+    assert.equal(computeEdgeScrollDelta(590, 600, 100, 500), 14, '下缘区给正增量');
+    assert.equal(computeEdgeScrollDelta(300, 600, 100, 500), 0, '中区不滚动');
+    assert.equal(computeEdgeScrollDelta(10, 600, 0, 500), 0, '已到顶不再负滚');
+    assert.equal(computeEdgeScrollDelta(590, 600, 500, 500), 0, '已到底不再正滚');
+    assert.equal(computeEdgeScrollDelta(10, 600, 0, 0), 0, '不可滚容器恒零');
+});
+
+test('edit drag slices 3-4: edge loop and swipe guard wiring', () => {
+    assert.match(panelSource, /const delta = computeEdgeScrollDelta\(lastClientY - rect\.top, rect\.height, scrollContainer\.scrollTop, maxScrollTop\);/,
+        '边缘增量必须走纯模型');
+    // 负向验证教训：只钉「循环定义存在」时摘除驱动调用仍绿（存在≠被驱动）——
+    // 必须钉住 onMove 内的驱动调用点（邻接锚定）。
+    assert.match(panelSource, /updateHover\(move\.clientX, move\.clientY\);\s*\n\s*ensureEdgeLoop\(\);/,
+        'onMove 必须实际驱动边缘滚动循环');
+    assert.match(panelSource, /edgeFrame = window\.requestAnimationFrame\(applyEdgeScroll\);/, '边缘滚动必须逐帧续驱');
+    assert.match(panelSource, /if \(edgeFrame\) window\.cancelAnimationFrame\(edgeFrame\);/, '拖拽结束必须取消边缘滚动帧');
+    assert.match(panelSource, /if \(on\) cell\.setAttribute\("data-prevent-swipe", "true"\);/, '拖拽激活必须声明防误触契约');
+    assert.match(panelSource, /cell\.removeAttribute\("data-prevent-swipe"\);/, '拖拽结束必须摘除防误触声明');
+});

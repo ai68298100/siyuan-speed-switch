@@ -9,7 +9,7 @@ import type {EventBus, TEventBus} from "siyuan";
 import {HOME_WIDGET_SIZES, PANEL_SCALE_DEFAULT, PANEL_SIZE_MIN_PX} from "./constants";
 import type {HomeSizeMode, HomeWidgetSize} from "./constants";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries, buildHomeHealthReport, buildHomeDiagnosticSummary, formatHealthTime} from "./home-controller";
-import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, LIFE_HEARTBEAT_MODULE_IDS} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, LIFE_HEARTBEAT_MODULE_IDS} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
 import {createLayoutHistory, layoutSnapshotOf, pushLayoutHistory, undoLayoutHistory, redoLayoutHistory, canUndoLayoutHistory, canRedoLayoutHistory, peekUndoLabel, peekRedoLabel, reconcileLayoutSnapshot} from "./home-layout-history";
 import {openHomeConfigForm} from "./home-config-form";
@@ -607,8 +607,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         const fresh = root.querySelector<HTMLElement>(`.sw-home__cell[data-instance-id="${inst.instanceId}"]`);
                         fresh?.focus({preventScroll: false});
                     };
-                    // 桌面端 Pointer 拖拽（把手触发）+落点虚影+Esc 取消——替换 HTML5 DnD
-                    //（DnD 触控不可用、无取消、无落点预览）；手机端保留上移/下移按钮。
+                    // 全端 Pointer 拖拽（把手触发）+落点虚影+Esc 取消+边缘自动滚动+防误触
+                    // 声明——替换 HTML5 DnD；键盘重排仅桌面（手机无物理键盘）。
                     if (!this.isMobile) {
                         cell.tabIndex = 0;
 
@@ -665,23 +665,68 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             const startY = event.clientY;
                             let active = false;
                             let hoverId: string | null = null;
+                            let lastKnownX = startX;
+                            let lastClientY = startY;
+                            let edgeFrame = 0;
                             const clearDropHint = () => grid.querySelectorAll<HTMLElement>(".sw-home__cell--dragover").forEach((el) => el.classList.remove("sw-home__cell--dragover"));
-                            const onMove = (move: PointerEvent) => {
-                                if (!active && Math.hypot(move.clientX - startX, move.clientY - startY) < 6) return;
-                                active = true;
+                            const updateHover = (clientX: number, clientY: number) => {
                                 cell.classList.add("sw-home__cell--dragging");
-                                const hovered = document.elementFromPoint(move.clientX, move.clientY)?.closest<HTMLElement>(".sw-home__cell");
+                                const hovered = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>(".sw-home__cell");
                                 clearDropHint();
                                 hoverId = hovered && hovered !== cell ? hovered.dataset.instanceId || null : null;
                                 if (hoverId) hovered!.classList.add("sw-home__cell--dragover");
+                            };
+                            // T-7030 切片④：拖拽期间声明防误触（宿主左滑/右滑手势 L1 契约，
+                            // 与悬浮球 data-prevent-swipe 同一语义），结束/取消即摘除。
+                            const setSwipeGuard = (on: boolean) => {
+                                if (on) cell.setAttribute("data-prevent-swipe", "true");
+                                else cell.removeAttribute("data-prevent-swipe");
+                            };
+                            // T-7030 切片③：指针贴滚动容器上/下缘时逐帧自动滚动，滚动后按
+                            // 最后指针位置重算落点虚影（增量计算在 home-model 纯函数）。
+                            const scrollContainer = (() => {
+                                let node: HTMLElement | null = grid.parentElement;
+                                while (node) {
+                                    if (node.scrollHeight > node.clientHeight + 1 && node.clientHeight > 0) return node;
+                                    node = node.parentElement;
+                                }
+                                return null;
+                            })();
+                            const applyEdgeScroll = () => {
+                                edgeFrame = 0;
+                                if (!dragCleanup || !scrollContainer) return;
+                                const rect = scrollContainer.getBoundingClientRect();
+                                const maxScrollTop = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+                                const delta = computeEdgeScrollDelta(lastClientY - rect.top, rect.height, scrollContainer.scrollTop, maxScrollTop);
+                                if (delta === 0) return;
+                                scrollContainer.scrollTop += delta;
+                                updateHover(lastKnownX, lastClientY);
+                                if (computeEdgeScrollDelta(lastClientY - rect.top, rect.height, scrollContainer.scrollTop, maxScrollTop) !== 0) {
+                                    edgeFrame = window.requestAnimationFrame(applyEdgeScroll);
+                                }
+                            };
+                            const ensureEdgeLoop = () => {
+                                if (!edgeFrame && scrollContainer) edgeFrame = window.requestAnimationFrame(applyEdgeScroll);
+                            };
+                            const onMove = (move: PointerEvent) => {
+                                lastKnownX = move.clientX;
+                                lastClientY = move.clientY;
+                                if (!active && Math.hypot(move.clientX - startX, move.clientY - startY) < 6) return;
+                                if (!active) setSwipeGuard(true);
+                                active = true;
+                                updateHover(move.clientX, move.clientY);
+                                ensureEdgeLoop();
                             };
                             const finish = (commit: boolean) => {
                                 window.removeEventListener("pointermove", onMove);
                                 window.removeEventListener("pointerup", onUp);
                                 window.removeEventListener("pointercancel", onCancel);
                                 window.removeEventListener("keydown", onKey, true);
+                                if (edgeFrame) window.cancelAnimationFrame(edgeFrame);
+                                edgeFrame = 0;
                                 clearDropHint();
                                 cell.classList.remove("sw-home__cell--dragging");
+                                cell.removeAttribute("data-prevent-swipe");
                                 dragCleanup = null;
                                 if (commit && active && hoverId && hoverId !== inst.instanceId) {
                                     commitMove(moveLayoutEntry((this.getHomeState().layouts[device] || []) as Array<any>, inst.instanceId, hoverId));

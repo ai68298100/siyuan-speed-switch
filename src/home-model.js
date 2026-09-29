@@ -537,6 +537,14 @@ const HOME_TILE_DEFAULT_SIZES = {
 // T-7030：编辑态重排纯函数——拖拽落点与键盘/按钮移动共用一套索引计算。
 // 语义与既有 drop 处理一致：先摘除 from 再插入 to（以缩短后的下标为准）；
 // 输入不可变（复制后拼接），同位/越界/找不到一律 moved=false 原样返回。
+// T-7030 切片③：拖拽边缘自动滚动增量——指针距滚动容器上/下缘 edgeSize 内时
+// 给出固定速度增量（上负下正），已到边界（scrollTop 到顶/底或不可滚）返回 0。
+function computeEdgeScrollDelta(offsetY, viewportHeight, scrollTop, maxScrollTop, edgeSize = 48, speed = 14) {
+    if (!Number.isFinite(offsetY) || !Number.isFinite(viewportHeight) || maxScrollTop <= 0) return 0;
+    if (offsetY <= edgeSize) return scrollTop <= 0 ? 0 : -speed;
+    if (offsetY >= viewportHeight - edgeSize) return scrollTop >= maxScrollTop ? 0 : speed;
+    return 0;
+}
 function moveLayoutEntry(list, fromId, toId) {
     const items = (Array.isArray(list) ? list : []).slice();
     const from = items.findIndex((entry) => entry && entry.instanceId === fromId);
@@ -947,4 +955,4 @@ function isLifeHeartbeatModule(moduleId) {
     return LIFE_HEARTBEAT_MODULE_IDS.includes(typeof moduleId === "string" ? moduleId : "");
 }
 
-module.exports = {LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+module.exports = {LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
