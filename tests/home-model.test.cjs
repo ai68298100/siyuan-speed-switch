@@ -281,3 +281,26 @@ test("GitHub contribution module is declared as a heatmap view", () => {
     assert.ok(github, "external-github-contrib registered");
     assert.equal(github.viewType, "heatmap", "rendered by the heatmap renderer");
 });
+
+// T-7069：第三方注册组件（registerHomeModule）必须能带允许名单通过归一化——
+// calendar#17 宿主侧事故：商店添加 → getHomeState() 归一化 → 第三方组件被清除。
+test("home state: allowlist retains runtime-registered third-party modules through normalization and migration (T-7069)", () => {
+    const thirdParty = {moduleId: "calendar-recent-periodic", instanceId: "calendar-recent-periodic", enabled: true, config: {}};
+    const layouts = {desktop: [{instanceId: "calendar-recent-periodic", x: 0, y: 0, w: 4, h: 4, collapsed: false}]};
+    // 无允许名单（旧行为）：未注册的第三方 moduleId 必须被清除，layout 随之滤除
+    const purged = home.normalizeHomeState({instances: [thirdParty], layouts});
+    assert.equal(purged.instances.length, 0, "未进允许名单的未知 moduleId 必须被清除");
+    assert.equal(purged.layouts.desktop.length, 0, "被清除实例的 layout 必须随之滤除");
+    // 带允许名单：实例与 layout 全保留
+    const kept = home.normalizeHomeState({instances: [thirdParty], layouts}, new Set(["calendar-recent-periodic"]));
+    assert.deepEqual(kept.instances, [thirdParty], "允许名单内的第三方实例必须保留");
+    assert.equal(kept.layouts.desktop.length, 1, "允许名单内实例的 layout 必须保留");
+    assert.equal(kept.layouts.desktop[0].instanceId, "calendar-recent-periodic");
+    assert.equal(kept.layouts.desktop[0].w, 4);
+    // 允许名单不豁免内置去重与未知moduleId清洗之外的字段规范化
+    const migrated = home.migrateHomeState({instances: [thirdParty], layouts}, new Set(["calendar-recent-periodic"]));
+    assert.deepEqual(migrated.instances, [thirdParty], "迁移路径必须同样透传允许名单");
+    // 名单收窄（unregister 后）：组件下架即恢复清洗
+    const afterUnregister = home.normalizeHomeState({instances: [thirdParty], layouts}, new Set());
+    assert.equal(afterUnregister.instances.length, 0, "unregister 后必须恢复清洗，防止持久化数据无限增长");
+});

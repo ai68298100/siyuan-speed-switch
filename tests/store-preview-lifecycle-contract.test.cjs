@@ -84,7 +84,7 @@ test('configure button opens config form', () => assert.match(storeUiSource, /co
 test('remove button carries remove action', () => assert.match(storeUiSource, /removeButton\.dataset\.action = "remove"/));
 test('remove button invokes instance removal', () => assert.match(storeUiSource, /removeButton\.onclick = \(\) => \{ this\.removeHomeInstance\(added\.instanceId\)/));
 test('preview button exposes dialog semantics', () => assert.match(storeUiSource,/previewButton\.setAttribute\("aria-haspopup", "dialog"\)/));
-test('preview button opens selected module', () => assert.match(storeUiSource, /previewButton\.onclick = \(\) => openStoreWidgetPreview\.call\(this, moduleId, def, device\)/));
+test('preview button opens selected module with chosen size (T-7069)', () => assert.match(storeUiSource, /previewButton\.onclick = \(\) => openStoreWidgetPreview\.call\(this, moduleId, def, device, selectedTile\?\.dataset\.size \|\| card\.dataset\.currentSize \|\| ""\)/));
 test('group toggle exposes expanded state', () => assert.match(storeUiSource, /groupToggle\.setAttribute\("aria-expanded", String\(!collapsedGroups\.has\(label\)\)\)/));
 test('group toggle controls group grid', () => assert.match(storeUiSource, /groupToggle\.setAttribute\("aria-controls", groupId\)/));
 test('unavailable pending cards expose explicit removal', () => assert.match(storeUiSource, /removeButton\.dataset\.action = "remove-unavailable"/));

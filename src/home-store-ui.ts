@@ -67,10 +67,11 @@ export interface HomeStoreUiHost {
     openHomeWidgetGuide(): void;
 }
 
-export function openStoreWidgetPreview(this: HomeStoreUiHost, moduleId: string, def: any, device: "desktop" | "sidebar" | "mobile") {
+export function openStoreWidgetPreview(this: HomeStoreUiHost, moduleId: string, def: any, device: "desktop" | "sidebar" | "mobile", preferredSize = "") {
         const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         const sizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
-        const sizeKey = sizes.includes("medium") ? "medium" : sizes[0];
+        // T-7069：预览必须反映用户所选尺寸（calendar#17 独立问题——此前恒为 medium）。
+        const sizeKey = preferredSize && sizes.includes(preferredSize) ? preferredSize : (sizes.includes("medium") ? "medium" : sizes[0]);
         const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
         // T-6479：关闭一律走宿主 Dialog 的 destroyCallback（petal siyuan.d.ts:874；
         // 宿主 dialog/index.ts:134-151 在所有关闭路径上触发且有重入保护）。
@@ -987,7 +988,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 previewButton.setAttribute("aria-label", `${this.i18n.homeStorePreview} · ${def.title || moduleId}`);
                 previewButton.setAttribute("aria-haspopup", "dialog");
                 previewButton.title = previewButton.getAttribute("aria-label") || "";
-                previewButton.onclick = () => openStoreWidgetPreview.call(this, moduleId, def, device);
+                previewButton.onclick = () => openStoreWidgetPreview.call(this, moduleId, def, device, selectedTile?.dataset.size || card.dataset.currentSize || "");
                 tiles.appendChild(previewButton);
                 card.appendChild(tiles);
                 // T-6967 S1：目录行点击 = 选中进入详情窗格；批量模式下行点击 = 选中/取消。

@@ -280,7 +280,7 @@ test('store guide external link prevents opener access', () => assert.match(sour
 test('store guide exposes the local document path', () => assert.match(source, /note\.textContent = "docs\/component-store-guide\.md"/));
 test('store preview captures its opener', () => assert.match(storeSource,/const opener = document\.activeElement instanceof HTMLElement \? document\.activeElement : null/));
 test('store preview falls back to medium size list', () => assert.match(secondPanelSource, /def\.sizes\.length > 0 \? def\.sizes : \["medium"\]/));
-test('store preview prefers a declared medium size', () => assert.match(storeSource,/const sizeKey = sizes\.includes\("medium"\) \? "medium" : sizes\[0\]/));
+test('store preview prefers selected size, then declared medium size (T-7069, calendar#17)', () => assert.match(storeSource,/const sizeKey = preferredSize && sizes\.includes\(preferredSize\) \? preferredSize : \(sizes\.includes\("medium"\) \? "medium" : sizes\[0\]\)/));
 test('store preview dialog includes component title', () => assert.match(storeSource,/title: `\$\{this\.i18n\.homeStorePreview\} · \$\{def\.title \|\| moduleId\}`/));
 test('store preview mobile width is viewport bounded', () => assert.match(source, /this\.isMobile \? "min\(420px, 92vw\)"/));
 test('store preview mobile height is viewport bounded', () => assert.match(storeSource,/this\.isMobile \? "min\(560px, 80vh\)"/));
@@ -484,7 +484,7 @@ test('size button exposes position', () => assert.match(storeSource,/tile\.setAt
 test('size selection updates action label', () => assert.match(storeSource,/addButton\.setAttribute\("aria-label", `\$\{added \? this\.i18n\.homeStoreApplySize : this\.i18n\.homeStoreAdd\}/));
 test('add action describes size label', () => assert.match(storeSource,/addButton\.setAttribute\("aria-describedby", sizeLabel\.id\)/));
 test('preview action announces dialog', () => assert.match(storeSource,/previewButton\.setAttribute\("aria-haspopup", "dialog"\)/));
-test('preview action invokes live preview', () => assert.match(storeSource, /previewButton\.onclick = \(\) => openStoreWidgetPreview\.call\(this, moduleId, def, device\)/));
+test('preview action invokes live preview with chosen size (T-7069)', () => assert.match(storeSource, /previewButton\.onclick = \(\) => openStoreWidgetPreview\.call\(this, moduleId, def, device, selectedTile\?\.dataset\.size \|\| card\.dataset\.currentSize \|\| ""\)/));
 
 // T-3935~T-3974: add/apply/configure/remove transition contracts.
 test('size selection removes previous selected class', () => assert.match(storeSource,/selectedTile\?\.classList\.remove\("is-selected"\)/));

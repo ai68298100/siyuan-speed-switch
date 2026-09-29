@@ -756,7 +756,7 @@ function modulesForDevice(definitions, device) {
     return registerModules(definitions).filter((module) => module.supportedDevices.includes(target));
 }
 
-function normalizeInstances(value, definitions = DEFAULT_MODULES) {
+function normalizeInstances(value, definitions = DEFAULT_MODULES, allowedModuleIds = null) {
     const known = new Map(registerModules(definitions).map((item) => [item.moduleId, item]));
     const seen = new Set();
     const seenInstanceIds = new Set();
@@ -764,7 +764,9 @@ function normalizeInstances(value, definitions = DEFAULT_MODULES) {
         if (!item || typeof item !== "object") return items;
         const rawModuleId = text(item.moduleId, 64);
         const moduleId = LEGACY_MODULE_ALIASES[rawModuleId] || rawModuleId;
-        if (!known.has(moduleId) || seen.has(moduleId)) return items;
+        // T-7069：运行时注册的第三方组件（registerHomeModule，calendar#17）不在
+        // 内置定义表里，归一化时必须按允许名单保留，否则商店添加即被清除。
+        if ((!known.has(moduleId) && !(allowedModuleIds && allowedModuleIds.has(moduleId))) || seen.has(moduleId)) return items;
         const instanceId = text(item.instanceId, 64) || moduleId;
         if (seenInstanceIds.has(instanceId)) return items;
         seen.add(moduleId);
@@ -774,9 +776,14 @@ function normalizeInstances(value, definitions = DEFAULT_MODULES) {
     }, []);
 }
 
-function normalizeHomeState(value) {
+/**
+ * @param {unknown} value
+ * @param {Set<string> | null} [allowedModuleIds]
+ * @returns {{schemaVersion: number, instances: Array<{instanceId: string, moduleId: string, enabled: boolean, config: Record<string, unknown>}>, layouts: Record<string, Array<{instanceId: string, x: number, y: number, w: number, h: number, collapsed: boolean}>>}}
+ */
+function normalizeHomeState(value, allowedModuleIds = null) {
     const source = value && typeof value === "object" ? value : {};
-    const instances = normalizeInstances(source.instances);
+    const instances = normalizeInstances(source.instances, DEFAULT_MODULES, allowedModuleIds);
     const layouts = {};
     DEVICES.forEach((device) => {
         const entries = source.layouts?.[device];
@@ -795,12 +802,12 @@ function normalizeHomeState(value) {
     return {schemaVersion: HOME_SCHEMA_VERSION, instances, layouts};
 }
 
-function migrateHomeState(value) {
+function migrateHomeState(value, allowedModuleIds = null) {
     const source = value && typeof value === "object" ? value : {};
     const migrated = normalizeHomeState({
         instances: source.instances || source.widgets || [],
         layouts: source.layouts || {desktop: source.layout || []},
-    });
+    }, allowedModuleIds);
     return migrated;
 }
 

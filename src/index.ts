@@ -6874,7 +6874,9 @@ const updatedMap: {[rootId: string]: string} = {};
     }
 
     private getHomeState() {
-        return normalizeHomeState(this.data[HOME_STATE_KEY]);
+        // T-7069：第三方注册组件（registerHomeModule → homeThirdPartyIds）必须进入
+        // 归一化允许名单，否则商店添加 → getHomeState() → 运行时组件被清除（calendar#17）。
+        return normalizeHomeState(this.data[HOME_STATE_KEY], this.homeThirdPartyIds);
     }
 
     private saveHomeState(state: { schemaVersion: number; instances: unknown[]; layouts: Record<string, unknown[]> }) {

@@ -95,3 +95,17 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(storeUiSource, /resolveHomeStorePreviewKind,/);
     assert.match(storeUiSource,/p-calendar-grid/);
 });
+
+// T-7069：calendar#17 宿主侧修复契约——第三方组件不被归一化清除 + 预览反映所选尺寸。
+test("third-party home modules survive host normalization and store preview honors selected size (T-7069, calendar#17)", () => {
+    // P1：getHomeState 必须把 homeThirdPartyIds 纳入归一化允许名单
+    assert.match(source, /return normalizeHomeState\(this\.data\[HOME_STATE_KEY\], this\.homeThirdPartyIds\);/,
+        "getHomeState 必须透传 homeThirdPartyIds 允许名单（否则商店添加即被清除）");
+    assert.match(source, /registerHomeModule[\s\S]{0,2200}?this\.homeThirdPartyIds\.add\(moduleId\);/,
+        "registerHomeModule 成功后必须登记允许名单");
+    // P2：预览对话框必须优先用户所选尺寸，而非恒 medium
+    assert.match(storeUiSource, /const sizeKey = preferredSize && sizes\.includes\(preferredSize\) \? preferredSize : \(sizes\.includes\("medium"\) \? "medium" : sizes\[0\]\);/,
+        "预览尺寸必须优先用户所选档位");
+    assert.match(storeUiSource, /openStoreWidgetPreview\.call\(this, moduleId, def, device, selectedTile\?\.dataset\.size \|\| card\.dataset\.currentSize \|\| ""\)/,
+        "预览按钮必须传卡片当前选中/已添加尺寸（邻接锚定）");
+});
