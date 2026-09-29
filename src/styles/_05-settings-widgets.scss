@@ -1691,3 +1691,92 @@
         font-variant-numeric: tabular-nums;
     }
 }
+
+// ==================== T-7054 H 批次：导航/文档家族视觉增强 ====================
+
+// 近期文档：文档名加重
+.sw-home__cell[data-module-id="recent-documents"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 置顶文档：📌标记 + 标题加重
+.sw-home__cell[data-module-id="pinned-docs"] {
+    .sw__home-module-item-label {
+        font-weight: 600;
+    }
+}
+
+// 收藏：星标关联增强
+.sw-home__cell[data-module-id="favorites"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 文档集：集合名加重
+.sw-home__cell[data-module-id="document-sets"] {
+    .sw__home-module-item-label {
+        font-weight: 600;
+    }
+}
+
+// 标签：标签数量排版
+.sw-home__cell[data-module-id="tags"] {
+    .sw__home-module-item-value {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+    }
+}
+
+// 书签：书签标题加重
+.sw-home__cell[data-module-id="bookmarks"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 指定文档：文档名加重
+.sw-home__cell[data-module-id="fixed-document"] {
+    .sw__home-module-item-label {
+        font-weight: 600;
+    }
+}
+
+// 当前文档大纲：大纲标题层级增强
+.sw-home__cell[data-module-id="current-document-outline"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 文档关系摘要：关系类型弱化
+.sw-home__cell[data-module-id="document-relations-summary"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 近期编辑：编辑时间弱化 + 文档名加重
+.sw-home__cell[data-module-id="recent-edits"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 最近更新：更新时间排版
+.sw-home__cell[data-module-id="recent-updates"] {
+    .sw__home-module-item-secondary {
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 数据健康：健康数值排版
+.sw-home__cell[data-module-id="data-health"] {
+    .sw__home-stat-value {
+        font-size: 1.3em;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+}
