@@ -206,8 +206,8 @@ node scripts/design-screenshots.cjs   # 原型重放截图（可选）
 5. **根目录 Markdown 受预算门禁约束**（数量 8 / 单文件 150 KiB / 合计 300 KiB，见 `tests/root-doc-budget.test.cjs`）：新文档一律放 `docs/`。
 6. **慎写"只读契约 … 向后兼容 vX"字样**：`tests/protocol-compat-claim.test.cjs` 扫描 `docs/**`（排除 `docs/archive/`）并要求版本声明唯一一致、不高于当前版本；写错会红且表述会被读成对外承诺。
 7. **源码扫描会剥注释**：读源码走 `tests/source-scan.cjs` 的 `readSourceText/readSourceFile`；注释不是契约，契约要落在可读扇区或断言里。
-8. **包体预算**：zip 512 KiB 线，2026-09-27 余约 16 KiB；UI 增量按批复核，超线先复核再动。
-9. **i18n 与存储**：key 必须 zh-CN/en 成对加且被 src 引用（死 key 门禁）；存储 key 恒 13（`KEY_ORDER` 字面量钉住），改动按 `docs/storage-compatibility-matrix.md` 迁移。
+8. **包体预算**：zip 上限与余量见 `docs/release-readiness.md` 最新快照；UI 增量按批复核，超线先复核再动。
+9. **i18n 与存储**：key 必须 zh-CN/en 成对加且被 src 引用（死 key 门禁）；持久化 key 总数 17（`KEY_ORDER` 字面量钉住，逐项见 `docs/storage-compatibility-matrix.md`），新增 key 按 D-401 仪式走迁移+矩阵登记。
 10. **原型落后于生产是常态**：实现前用生产代码核实（例：三手势绑定、过滤 chips、设置标签数），别把原型当现状。
 11. **样式只能顺序切片**：新主题域开新切片并在入口 `@use` 清单登记。
 12. **提交前 `git status --short` 逐行核对**（临时脚本曾被 `git add -A` 误提交）。
