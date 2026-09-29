@@ -23,6 +23,8 @@ import type {ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, Platfor
 export interface SecondPanelUiHost {
     i18n: Record<string, string>;
     isMobile: boolean;
+    // T-6975：日记月探测（快跳）只读 SQL 查询
+    fetchKernelJson: (url: string, options?: Record<string, unknown>) => Promise<{data?: Array<Record<string, unknown>>} | null>;
     // 类静态 HOME_ACCENTS 不进入 this 参数模式，由宿主以实例字段转发
     homeAccents: readonly string[];
     homeRuntime: ReturnType<typeof createHomeRuntime>;
@@ -189,6 +191,42 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             homeControllers.splice(0).forEach((entry) => entry.dispose());
             // T-6879（T-6874b）：回执条聚合——ok/total 正常 + 失败计数；
             // 单元健康由 refresh 包装器写回 data-sw-health，此处只读 DOM 聚合。
+            // T-6975：从当前偏移按 step（±1 月）向外查找最近有日记的月份（±24 钳制内），
+            // 命中即应用并强制刷新；找不到给诚实回执。探测 SQL 与主读取同条件（含
+            // dailynote 属性或标题前缀两种日记形态），缺失日记绝不创建。
+            const jumpToNearestJournalMonth = async (targetInst: {config: Record<string, unknown>; instanceId: string}, targetController: {refresh: (config: unknown, options?: {force: boolean}) => Promise<unknown>} | null, step: number) => {
+                const current = Math.trunc(Number(targetInst.config?.monthOffset) || 0);
+                const stepDirection = step < 0 ? -1 : 1;
+                for (let offset = current + stepDirection; offset * stepDirection <= 24; offset += stepDirection) {
+                    const now = new Date();
+                    const base = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+                    const prefix = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-`;
+                    const attrPrefix = `custom-dailynote-${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}`;
+                    try {
+                        const json = await this.fetchKernelJson("/api/query/sql", {
+                            stmt: `SELECT b.id FROM blocks b LEFT JOIN attributes a ON a.block_id=b.id AND a.name GLOB '${attrPrefix}[0-3][0-9]' WHERE b.type='d' AND (a.name IS NOT NULL OR b.content LIKE '${prefix}%') LIMIT 1`,
+                        });
+                        if ((json?.data || []).length > 0) {
+                            applyJournalMonthOffset(targetInst, targetController, offset);
+                            return;
+                        }
+                    } catch (_) {
+                        break;
+                    }
+                }
+                showMessage(this.i18n.homeCalendarJumpNone, 3000, "info");
+            };
+            const applyJournalMonthOffset = (targetInst: {config: Record<string, unknown>; instanceId: string}, targetController: {refresh: (config: unknown, options?: {force: boolean}) => Promise<unknown>} | null, offset: number) => {
+                const next = Math.min(24, Math.max(-24, Math.trunc(Number(offset) || 0)));
+                targetInst.config = {...(targetInst.config || {}), monthOffset: next};
+                const persisted = this.getHomeState();
+                const target = (persisted.instances as Array<any>).find((candidate) => candidate.instanceId === targetInst.instanceId);
+                if (target) {
+                    target.config = {...(target.config || {}), monthOffset: next};
+                    this.saveHomeState(persisted);
+                }
+                void targetController?.refresh(targetInst.config, {force: true});
+            };
             const updateWorkbenchReceipt = () => {
                 const receipt = root.querySelector<HTMLElement>(".sw-home__receipt");
                 if (!receipt) return;
@@ -608,9 +646,22 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         nextMonth: this.i18n.homeCalendarNextMonth,
                         today: this.i18n.homeCalendarToday,
                         hasJournal: this.i18n.homeCalendarHasJournal,
+                        previousJournal: this.i18n.homeCalendarJumpPrev,
+                        nextJournal: this.i18n.homeCalendarJumpNext,
+                        periodPicker: this.i18n.homeCalendarPeriodPicker,
                     },
                     calendarWeekdays: this.i18n.homeCalendarWeekdays,
                     onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),
+                    onCalendarJump: (step: number) => { void jumpToNearestJournalMonth(inst, controller, step); },
+                    onCalendarPeriod: (offset: number) => { applyJournalMonthOffset(inst, controller, offset); },
+                    calendarPeriodOptions: (() => {
+                        const now = new Date();
+                        return Array.from({length: 49}, (_unused, index) => {
+                            const offset = index - 24;
+                            const base = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+                            return {offset, label: `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}`};
+                        });
+                    })(),
                     onCalendarNavigate: (direction: number) => {
                         const current = Math.trunc(Number(inst.config?.monthOffset) || 0);
                         const next = direction === 0 ? 0 : Math.min(24, Math.max(-24, current + (direction < 0 ? -1 : 1)));

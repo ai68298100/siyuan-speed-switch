@@ -370,7 +370,7 @@ declare module "./home-runtime" {
 
 declare module "./home-view" {
     export function buildHomeModuleView(module: unknown, result: unknown, options?: {collapsed?: boolean}): unknown;
-    export function renderHomeModuleView(doc: unknown, view: unknown, options?: {labels?: Record<string, string>; onToggle?: (view: unknown) => void; onItem?: (item: unknown, view: unknown) => void; onCalendarNavigate?: (direction: number, view: unknown) => void; onRetry?: (view: unknown) => void}): unknown;
+    export function renderHomeModuleView(doc: unknown, view: unknown, options?: {labels?: Record<string, string>; onToggle?: (view: unknown) => void; onItem?: (item: unknown, view: unknown) => void; onCalendarNavigate?: (direction: number, view: unknown) => void; onCalendarJump?: (step: number, view: unknown) => void; onCalendarPeriod?: (offset: number, view: unknown) => void; calendarPeriodOptions?: Array<{offset: number; label: string}>; onRetry?: (view: unknown) => void}): unknown;
 }
 declare module "./home-controller" {
     export function createHomeModuleController(options: Record<string, unknown>): {
@@ -6620,6 +6620,12 @@ const updatedMap: {[rootId: string]: string} = {};
                 : weekdays;
             return {
                 title, items, calendarWeekdays,
+                calendarOffset: normalized.monthOffset,
+                calendarPeriodOptions: Array.from({length: 49}, (_unused, index) => {
+                    const offset = index - 24;
+                    const base = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+                    return {offset, label: `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}`};
+                }),
                 stat: {value: String(journalByDay.size), label: this.i18n.homeStatMonthlyJournals},
             };
         }, {timeoutMs: 2000, cacheTtlMs: 1500});

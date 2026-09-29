@@ -143,6 +143,8 @@ function normalizeHomeViewResult(value, options = {}) {
         reason: text(source.reason, 32),
         title: text(rawSnapshot.title, 64),
         calendarWeekdays: text(rawSnapshot.calendarWeekdays, 7),
+        // T-6975：日历当前月份偏移（快照→视图透传，供期间选择器回显当前值）
+        calendarOffset: Number.isFinite(rawSnapshot.calendarOffset) ? Math.trunc(rawSnapshot.calendarOffset) : 0,
         ...(text(rawSnapshot.emptyHint, 96) ? {emptyHint: text(rawSnapshot.emptyHint, 96)} : {}),
         updatedAt: Number.isFinite(rawSnapshot.updatedAt) ? rawSnapshot.updatedAt : 0,
         sourceHealth: ["fresh", "cached", "stale"].includes(rawSnapshot.sourceHealth) ? rawSnapshot.sourceHealth : "",
@@ -200,6 +202,7 @@ function buildHomeModuleView(module, result, options = {}) {
         sourceHealth: normalized.sourceHealth,
         items: normalized.items,
         ...(normalized.calendarWeekdays.length === 7 ? {calendarWeekdays: normalized.calendarWeekdays} : {}),
+        calendarOffset: Number.isFinite(normalized.calendarOffset) ? normalized.calendarOffset : 0,
         // T-6925（真机反馈）：快照数据标题与定义标题相同时不再重复渲染——手机端
         // 窄头部里标题列被挤成首字、旁挂完整同文案的"叠字"即源于此。
         ...(normalized.title && normalized.title !== title ? {contextTitle: normalized.title} : {}),
@@ -424,7 +427,47 @@ function renderHomeModuleView(doc, view, options = {}) {
             const period = doc.createElement("strong");
             period.className = "sw__home-calendar-period";
             period.textContent = view.contextTitle || "";
-            nav.append(button(labels.previousMonth, -1), period, button(labels.today, 0), button(labels.nextMonth, 1));
+            // T-6975：快跳——«/» 跳转最近上一个/下一个有日记的月份（跳空档可跨月，
+            // 由宿主按月探测）；期间选择器直达任意月份（±24 钳制内）。缺失日记绝不创建。
+            // 宿主未提供 onCalendarJump 回调时不渲染（不得出现无操作的假入口，v0.43.2 教训）。
+            const jump = (step, focusKey, label) => {
+                const control = doc.createElement("button");
+                control.type = "button";
+                control.className = "b3-button b3-button--text sw__home-calendar-nav-button";
+                control.setAttribute("aria-label", label || "");
+                control.textContent = step < 0 ? "«" : "»";
+                control.dataset.focusKey = focusKey;
+                control.addEventListener("click", () => options.onCalendarJump?.(step, view));
+                return control;
+            };
+            const jumpButtons = typeof options.onCalendarJump === "function"
+                ? [jump(-1, "calendar-jump-prev", labels.previousJournal), jump(1, "calendar-jump-next", labels.nextJournal)]
+                : [];
+            nav.append(
+                button(labels.previousMonth, -1),
+                ...jumpButtons.slice(0, 1),
+                period,
+                button(labels.today, 0),
+                button(labels.nextMonth, 1),
+                ...jumpButtons.slice(1),
+            );
+            if (typeof options.onCalendarPeriod === "function" && Array.isArray(options.calendarPeriodOptions) && options.calendarPeriodOptions.length > 0) {
+                const periodSelect = doc.createElement("select");
+                periodSelect.className = "b3-select sw__home-calendar-period-select";
+                periodSelect.setAttribute("aria-label", labels.periodPicker || "");
+                options.calendarPeriodOptions.forEach((option) => {
+                    const opt = doc.createElement("option");
+                    opt.value = String(option.offset);
+                    opt.textContent = option.label || "";
+                    if (option.offset === view.calendarOffset) opt.selected = true;
+                    periodSelect.appendChild(opt);
+                });
+                periodSelect.addEventListener("change", () => {
+                    const offset = Math.trunc(Number(periodSelect.value) || 0);
+                    options.onCalendarPeriod?.(offset, view);
+                });
+                nav.append(periodSelect);
+            }
             body.appendChild(nav);
         }
         const grid = doc.createElement("div");

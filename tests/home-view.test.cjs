@@ -31,6 +31,7 @@ test("home view builds a stable accessible module contract", () => {
         moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan", status: "ready", cached: false,
         reason: "", updatedAt: 0, sourceHealth: "", stat: null, items: [{label: "One", value: "", href: "", command: ""}], viewType: "", configurable: false, collapsed: true,
         role: "region", ariaBusy: false,
+        calendarOffset: 0,
     });
     assert.equal(buildHomeModuleView(null, {}), null);
 });
