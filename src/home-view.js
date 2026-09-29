@@ -150,6 +150,8 @@ function normalizeHomeViewResult(value, options = {}) {
         calendarOffset: Number.isFinite(rawSnapshot.calendarOffset) ? Math.trunc(rawSnapshot.calendarOffset) : 0,
         // T-7054 A 批次：日进度百分比透传（local-time 进度条渲染源）
         dayProgress: Number.isFinite(rawSnapshot.dayProgress) ? Math.min(100, Math.max(0, Math.trunc(rawSnapshot.dayProgress))) : -1,
+        // T-7054 A 批次：倒数日里程碑徽标透传（imminent/month/hundred）
+        ...(typeof rawSnapshot.milestone === "string" && rawSnapshot.milestone ? {milestone: rawSnapshot.milestone} : {}),
         ...(text(rawSnapshot.emptyHint, 96) ? {emptyHint: text(rawSnapshot.emptyHint, 96)} : {}),
         updatedAt: Number.isFinite(rawSnapshot.updatedAt) ? rawSnapshot.updatedAt : 0,
         sourceHealth: ["fresh", "cached", "stale"].includes(rawSnapshot.sourceHealth) ? rawSnapshot.sourceHealth : "",
@@ -209,6 +211,7 @@ function buildHomeModuleView(module, result, options = {}) {
         ...(normalized.calendarWeekdays.length === 7 ? {calendarWeekdays: normalized.calendarWeekdays} : {}),
         calendarOffset: Number.isFinite(normalized.calendarOffset) ? normalized.calendarOffset : 0,
         dayProgress: Number.isFinite(normalized.dayProgress) ? normalized.dayProgress : -1,
+        ...(normalized.milestone ? {milestone: normalized.milestone} : {}),
         // T-6925（真机反馈）：快照数据标题与定义标题相同时不再重复渲染——手机端
         // 窄头部里标题列被挤成首字、旁挂完整同文案的"叠字"即源于此。
         ...(normalized.title && normalized.title !== title ? {contextTitle: normalized.title} : {}),
@@ -345,6 +348,15 @@ function renderHomeModuleView(doc, view, options = {}) {
         label.textContent = view.stat.label || "";
         copy.append(value, label);
         hero.appendChild(copy);
+        // T-7054 A 批次：倒数日里程碑徽标——按剩余天数分档展示
+        if (view.milestone) {
+            const badge = doc.createElement("span");
+            badge.className = `sw__home-stat-milestone is-${view.milestone}`;
+            badge.setAttribute("role", "note");
+            const milestoneLabels = {imminent: labels.milestoneImminent || "", month: labels.milestoneMonth || "", hundred: labels.milestoneHundred || ""};
+            badge.textContent = milestoneLabels[view.milestone] || "";
+            hero.appendChild(badge);
+        }
         if (view.stat.arc && Number.isFinite(view.stat.arc.value) && Number.isFinite(view.stat.arc.max) && view.stat.arc.max > 0) {
             const arc = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
             const ratio = Math.min(1, Math.max(0, view.stat.arc.value / view.stat.arc.max));

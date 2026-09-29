@@ -211,9 +211,16 @@ function buildCountdownSnapshot(now = new Date(), config = {}, labels = {}) {
     const yearlyMark = normalized.repeat === "yearly" && typeof labels.yearly === "string" ? labels.yearly : "";
     const content = [title, yearlyMark];
     if (normalized.showTargetDate) content.push(displayDate);
+    // T-7054 A 批次：里程碑徽标——按剩余天数分档（即将到来/百天内/半年内）
+    const absDays = Math.abs(days);
+    const milestone = days >= 0 && absDays <= 7 ? "imminent"
+        : days >= 0 && absDays <= 30 ? "month"
+        : days >= 0 && absDays <= 100 ? "hundred"
+        : "";
     return {
         stat: applyEmphasis({value: days === 0 ? "0" : String(Math.abs(days)), label: dayLabel}, normalized.emphasis),
         items: [{label: content.filter(Boolean).join(" · "), value: ""}],
+        ...(milestone ? {milestone} : {}),
     };
 }
 
