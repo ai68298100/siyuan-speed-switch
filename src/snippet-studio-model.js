@@ -532,6 +532,42 @@ const BUILTIN_SNIPPETS = Object.freeze([
             "}",
         ].join("\n"),
     },
+    {
+        id: "swss-builtin-taskdone", nameKey: "snippetBuiltinTaskdoneName", descriptionKey: "snippetBuiltinTaskdoneDescription",
+        category: "list", type: "css", source: "builtin",
+        content: [
+            ".protyle-wysiwyg [data-type=\"NodeTaskListItem\"][data-subtype=\"t\"] {",
+            "  color: color-mix(in srgb, var(--b3-theme-on-background, #333) 55%, transparent);",
+            "  text-decoration: line-through;",
+            "  text-decoration-color: color-mix(in srgb, var(--b3-theme-on-background, #333) 35%, transparent);",
+            "}",
+        ].join("\n"),
+    },
+    {
+        id: "swss-builtin-thead", nameKey: "snippetBuiltinTheadName", descriptionKey: "snippetBuiltinTheadDescription",
+        category: "table", type: "css", source: "builtin",
+        content: [
+            ".protyle-wysiwyg table th {",
+            "  font-weight: 600;",
+            "  background: color-mix(in srgb, var(--b3-theme-primary, #3575f0) 6%, transparent);",
+            "  border-bottom: 2px solid color-mix(in srgb, var(--b3-theme-primary, #3575f0) 35%, transparent);",
+            "}",
+        ].join("\n"),
+    },
+    {
+        id: "swss-builtin-scrollbar", nameKey: "snippetBuiltinScrollbarName", descriptionKey: "snippetBuiltinScrollbarDescription",
+        category: "layout", type: "css", source: "builtin",
+        content: [
+            ".protyle-wysiwyg ::-webkit-scrollbar { width: 8px; height: 8px; }",
+            ".protyle-wysiwyg ::-webkit-scrollbar-thumb {",
+            "  border-radius: 4px;",
+            "  background: color-mix(in srgb, var(--b3-theme-on-background, #333) 20%, transparent);",
+            "}",
+            ".protyle-wysiwyg ::-webkit-scrollbar-thumb:hover {",
+            "  background: color-mix(in srgb, var(--b3-theme-primary, #3575f0) 40%, transparent);",
+            "}",
+        ].join("\n"),
+    },
 ].map((entry) => Object.freeze(entry)));
 
 /** Caller may attach localized name/description and its own native entries. */
