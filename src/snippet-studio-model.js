@@ -489,6 +489,49 @@ const BUILTIN_SNIPPETS = Object.freeze([
             "}",
         ].join("\n"),
     },
+    {
+        id: "swss-builtin-mark", nameKey: "snippetBuiltinMarkName", descriptionKey: "snippetBuiltinMarkDescription",
+        category: "typography", type: "css", source: "builtin",
+        content: [
+            ".protyle-wysiwyg mark {",
+            "  padding: 1px 4px;",
+            "  border-radius: 4px;",
+            "  background: color-mix(in srgb, var(--b3-theme-primary, #3575f0) 18%, transparent);",
+            "  color: inherit;",
+            "  transition: background 0.15s ease;",
+            "}",
+            ".protyle-wysiwyg mark:hover {",
+            "  background: color-mix(in srgb, var(--b3-theme-primary, #3575f0) 32%, transparent);",
+            "}",
+        ].join("\n"),
+    },
+    {
+        id: "swss-builtin-kbd", nameKey: "snippetBuiltinKbdName", descriptionKey: "snippetBuiltinKbdDescription",
+        category: "code", type: "css", source: "builtin",
+        content: [
+            ".protyle-wysiwyg kbd {",
+            "  padding: 2px 6px;",
+            "  border-radius: 6px;",
+            "  font-size: 0.85em;",
+            "  background: color-mix(in srgb, var(--b3-theme-surface, #f5f5f5) 82%, var(--b3-theme-primary, #3575f0) 6%);",
+            "  border: 1px solid color-mix(in srgb, var(--b3-theme-on-background, #333) 20%, transparent);",
+            "  box-shadow: 0 1px 0 color-mix(in srgb, var(--b3-theme-on-background, #333) 15%, transparent);",
+            "}",
+        ].join("\n"),
+    },
+    {
+        id: "swss-builtin-imgzoom", nameKey: "snippetBuiltinImgzoomName", descriptionKey: "snippetBuiltinImgzoomDescription",
+        category: "image", type: "css", source: "builtin",
+        content: [
+            ".protyle-wysiwyg [data-type=\"NodeImage\"] img {",
+            "  transition: transform 0.2s ease, box-shadow 0.2s ease;",
+            "}",
+            ".protyle-wysiwyg [data-type=\"NodeImage\"]:hover img {",
+            "  transform: scale(1.01);",
+            "  box-shadow: 0 4px 16px color-mix(in srgb, var(--b3-theme-primary, #3575f0) 12%, transparent);",
+            "}",
+        ].join("\n"),
+    },
 ].map((entry) => Object.freeze(entry)));
 
 /** Caller may attach localized name/description and its own native entries. */
