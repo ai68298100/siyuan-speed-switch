@@ -1601,3 +1601,93 @@
         font-variant-numeric: tabular-nums;
     }
 }
+
+// ==================== T-7054 G 批次：统计/图表家族视觉增强 ====================
+
+// GitHub 贡献：热力图格线精细 + 统计数字排版
+.sw-home__cell[data-module-id="external-github-contrib"] {
+    .sw__home-stat-value {
+        font-size: 1.3em;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 打卡摘要：汇总数排版
+.sw-home__cell[data-module-id="checkin-summary"] {
+    .sw__home-stat-value {
+        font-size: 1.4em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 今日打卡：打卡数突出
+.sw-home__cell[data-module-id="checkin-today"] {
+    .sw__home-stat-value {
+        font-size: 1.6em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 连续打卡：连续天数突出
+.sw-home__cell[data-module-id="checkin-streak"] {
+    .sw__home-stat-value {
+        font-size: 1.8em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 打卡热力图：格线间距优化
+.sw-home__cell[data-module-id="checkin-year-heatmap"] {
+    .sw__home-stat-value {
+        font-size: 1.2em;
+        font-weight: 600;
+    }
+}
+
+// 本周打卡：周内分布数字排版
+.sw-home__cell[data-module-id="checkin-weekly"] {
+    .sw__home-stat-value {
+        font-size: 1.4em;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 打卡场合：场合数排版
+.sw-home__cell[data-module-id="checkin-occasions"] {
+    .sw__home-stat-value {
+        font-size: 1.2em;
+        font-weight: 600;
+    }
+}
+
+// 本月打卡：月度计数排版
+.sw-home__cell[data-module-id="checkin-monthly"] {
+    .sw__home-stat-value {
+        font-size: 1.4em;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 使用时长：时长占比突出
+.sw-home__cell[data-module-id="external-activitywatch-time"] {
+    .sw__home-stat-value {
+        font-size: 1.5em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 汇率参考：汇率数字排版
+.sw-home__cell[data-module-id="external-fx-frankfurter"] {
+    .sw__home-stat-value {
+        font-size: 1.4em;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+}
