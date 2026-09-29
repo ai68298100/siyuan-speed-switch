@@ -1780,3 +1780,51 @@
         font-variant-numeric: tabular-nums;
     }
 }
+
+// ==================== T-7054 I 批次：工具家族视觉增强（最终批） ====================
+
+// 数据库：条目数排版
+.sw-home__cell[data-module-id="database-list"] {
+    .sw__home-module-item-value {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+    }
+}
+
+// 数据库表格：行数排版
+.sw-home__cell[data-module-id="database-table"] {
+    .sw__home-module-item-value {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+    }
+}
+
+// 已存筛选：筛选名加重
+.sw-home__cell[data-module-id="saved-searches"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 插件命令：命令名等宽
+.sw-home__cell[data-module-id="plugin-commands"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 收集箱：收件数排版
+.sw-home__cell[data-module-id="inbox-shorthands"] {
+    .sw__home-stat-value {
+        font-size: 1.3em;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 随机回顾：回顾文档加重
+.sw-home__cell[data-module-id="random-review"] {
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
