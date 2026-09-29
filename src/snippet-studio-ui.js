@@ -106,6 +106,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetBuiltinCardparaDescription: locale.i18n.snippetBuiltinCardparaDescription,
         snippetBuiltinCodeThemeName: locale.i18n.snippetBuiltinCodeThemeName,
         snippetBuiltinCodeThemeDescription: locale.i18n.snippetBuiltinCodeThemeDescription,
+        snippetBuiltinInlinecodeName: locale.i18n.snippetBuiltinInlinecodeName,
+        snippetBuiltinInlinecodeDescription: locale.i18n.snippetBuiltinInlinecodeDescription,
+        snippetBuiltinLinkName: locale.i18n.snippetBuiltinLinkName,
+        snippetBuiltinLinkDescription: locale.i18n.snippetBuiltinLinkDescription,
+        snippetBuiltinTaskName: locale.i18n.snippetBuiltinTaskName,
+        snippetBuiltinTaskDescription: locale.i18n.snippetBuiltinTaskDescription,
+        snippetBuiltinZebraName: locale.i18n.snippetBuiltinZebraName,
+        snippetBuiltinZebraDescription: locale.i18n.snippetBuiltinZebraDescription,
         snippetBuiltinTagDescription: locale.i18n.snippetBuiltinTagDescription,
         snippetBuiltinTypographyName: locale.i18n.snippetBuiltinTypographyName,
         snippetCancelled: locale.i18n.snippetCancelled,
@@ -120,6 +128,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetCategoryCustom: locale.i18n.snippetCategoryCustom,
         snippetCategoryFocus: locale.i18n.snippetCategoryFocus,
         snippetCategoryFont: locale.i18n.snippetCategoryFont,
+        snippetCategoryQuote: locale.i18n.snippetCategoryQuote,
+        snippetCategoryImage: locale.i18n.snippetCategoryImage,
+        snippetCategoryHeading: locale.i18n.snippetCategoryHeading,
+        snippetCategoryList: locale.i18n.snippetCategoryList,
+        snippetCategoryDivider: locale.i18n.snippetCategoryDivider,
+        snippetCategoryTag: locale.i18n.snippetCategoryTag,
+        snippetCategoryTheme: locale.i18n.snippetCategoryTheme,
+        snippetCategoryLayout: locale.i18n.snippetCategoryLayout,
         snippetCategoryTable: locale.i18n.snippetCategoryTable,
         snippetCategoryTypography: locale.i18n.snippetCategoryTypography,
         snippetChoose: locale.i18n.snippetChoose,
@@ -1600,7 +1616,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         query.setAttribute("aria-label", t("snippetSearch"));
         const source = select("snippetSource", [["", "snippetAllSources"], ["builtin", "snippetBuiltins"], ["native", "snippetMine"]]);
         const language = select("snippetType", [["", "snippetAllTypes"], ["css", "snippetCSS"], ["js", "snippetJS"]]);
-        const category = select("snippetCategory", [["", "snippetAllCategories"], ["typography", "snippetCategoryTypography"], ["table", "snippetCategoryTable"], ["focus", "snippetCategoryFocus"], ["code", "snippetCategoryCode"], ["font", "snippetCategoryFont"], ["custom", "snippetCategoryCustom"]]);
+        const category = select("snippetCategory", [["", "snippetAllCategories"], ["typography", "snippetCategoryTypography"], ["table", "snippetCategoryTable"], ["focus", "snippetCategoryFocus"], ["code", "snippetCategoryCode"], ["font", "snippetCategoryFont"], ["quote", "snippetCategoryQuote"], ["image", "snippetCategoryImage"], ["heading", "snippetCategoryHeading"], ["list", "snippetCategoryList"], ["divider", "snippetCategoryDivider"], ["tag", "snippetCategoryTag"], ["theme", "snippetCategoryTheme"], ["layout", "snippetCategoryLayout"], ["custom", "snippetCategoryCustom"]]);
         filters.append(query, source, language, category);
         const list = node("div", "sw-studio__catalog");
         const more = action("snippetMore", () => { limit += 40; render(); });

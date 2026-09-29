@@ -162,10 +162,10 @@ test("snippet save: rejects oversized drafts, ID substitution and malformed muta
     assert.throws(() => buildSnippetMutation(null, null, "save", native()), /snippet-invalid-data/);
 });
 
-test("snippet catalog: ships sixteen inert original CSS examples with complete categories", () => {
-    assert.equal(BUILTIN_SNIPPETS.length, 16);
-    assert.equal(new Set(BUILTIN_SNIPPETS.map((entry) => entry.id)).size, 16);
-    assert.deepEqual(BUILTIN_SNIPPETS.map((entry) => entry.category), ["typography", "table", "focus", "code", "font", "quote", "image", "heading", "list", "divider", "tag", "theme", "typography", "heading", "layout", "code"]);
+test("snippet catalog: ships twenty inert original CSS examples with complete categories", () => {
+    assert.equal(BUILTIN_SNIPPETS.length, 20);
+    assert.equal(new Set(BUILTIN_SNIPPETS.map((entry) => entry.id)).size, 20);
+    assert.deepEqual(BUILTIN_SNIPPETS.map((entry) => entry.category), ["typography", "table", "focus", "code", "font", "quote", "image", "heading", "list", "divider", "tag", "theme", "typography", "heading", "layout", "code", "code", "typography", "list", "table"]);
     for (const entry of BUILTIN_SNIPPETS) {
         assert.equal(entry.type, "css");
         assert.equal(entry.source, "builtin");
@@ -180,12 +180,12 @@ test("snippet catalog: ships sixteen inert original CSS examples with complete c
 
 test("snippet catalog: combines localized keyword, source, type and category filters", () => {
     const catalog = [...BUILTIN_SNIPPETS, {id: "local-one", name: "CUSTOM 字体", description: "Test description", content: "console.log(1)", category: "font", type: "js", source: "native"}];
-    assert.equal(filterSnippetCatalog(catalog).length, 17);
+    assert.equal(filterSnippetCatalog(catalog).length, 21);
     assert.deepEqual(filterSnippetCatalog(catalog, {source: "native", type: "js", category: "font", query: "custom 字体"}).map((item) => item.id), ["local-one"]);
     assert.deepEqual(filterSnippetCatalog(catalog, {source: "builtin", type: "css", category: "font"}).map((item) => item.id), ["swss-builtin-font"]);
     assert.equal(filterSnippetCatalog(catalog, {query: " GEORGIA ", source: "builtin"}).length, 1);
     assert.equal(filterSnippetCatalog(catalog, {query: "unfindable"}).length, 0);
-    assert.equal(filterSnippetCatalog(catalog, {source: "all", type: "all", category: "all"}).length, 17);
+    assert.equal(filterSnippetCatalog(catalog, {source: "all", type: "all", category: "all"}).length, 21);
     assert.deepEqual(filterSnippetCatalog(null), []);
 });
 
