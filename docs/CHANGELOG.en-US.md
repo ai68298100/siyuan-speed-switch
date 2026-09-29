@@ -4,6 +4,20 @@
 > releases; new entries are appended here at release time. 中文完整历史见 [`docs/CHANGELOG.md`](./CHANGELOG.md)。
 
 ## Changelog (full history)
+### v0.43.0 (2026-09-29)
+
+- **Widget store S2 (T-6967)**: sort menu moved into the filter chip row; detail-pane meta upgraded to four plain rows (source/refresh/privacy/cache); empty catalog keeps the full chrome and shows a failure banner with retry; network/local/offline capability chips neutralized; mobile filter chips scroll horizontally with snap.
+- **Panel size unification (T-6986/T-6999)**: the snippet lab gains fullscreen/adaptive/fixed size modes (fullscreen stays the default); switcher/workbench/lab window settings are unified under the "Panels" tab with default-value notes and preview buttons.
+- **Settings search & storage health (T-7002/T-7004)**: full combobox semantics, desktop first focus, in-page `/` and Ctrl+K jump, explicit clear button, group filter chips and panel-group path badges; the storage tab now lists all 15 persistent keys (five bilingual groups) with usage bars, schema version health (three states incl. downgrade protection) and cache management with a confirm-guarded thumbnail cache clear.
+- **Settings save receipts & undo (T-7003)**: three-state save status (pending/saved/failed with retry — failures are no longer silent), a 20-step "undo last change" stack, per-group restore-to-defaults (whitelist-validated, undoable), and scene-preserving rebuilds when settings change from other entries.
+- **Switcher rerender scene preservation (T-7009)**: sort changes and async data refreshes no longer jump the scroll or steal focus from the search box or cards.
+- **Workbench health retry busy state (T-7011)**: per-row in-flight busy with double-click protection; rows settle back into their real status group.
+- **Snippet preview chain (T-6987~T-6990)**: a frozen capability receipt (scene/width/theme/probe/scripts/network/semantics/token snapshot); a bounded selector-coverage diagnostics panel (hit / may-miss / unknown + error positions, comment- and string-safe); probe features 10→17 (callout/columns/formula placeholder/attributes/database placeholder/blocked media placeholder/document title — all static, zero remote); read-only builtin theme token snapshots (external injection ignored).
+- **Floating ball (T-7014)**: closing a dialog restores focus to the control that opened it (ball/topbar) instead of dropping it to the page.
+- **Acceptance & wording (T-7015)**: the current scene preset shows a "Current" badge instead of a no-op Apply button; quick-bar switcher wording unified with the surface name; full-page acceptance matrix and the third-panel R3 integration matrix published (all five orphaned design-review findings closed).
+- **Bundle lines**: ADR 0098 — raw self-discipline line 1120→1152 KiB, archive ceiling 544→576 KiB; multi-chunk stable naming registered as a candidate task.
+- **Verification boundary**: full suite **6535/6535** (+50 over v0.42.0); `tsc` clean; 24+ negative-injection groups all failed precisely and were byte-restored; browser screenshot matrix and real Android/desktop acceptance remain post-poned per B-004/B-005 (candidate task T-7020).
+
 ### v0.42.0 (2026-09-29)
 
 - **Unified platform shell contract (T-7012)**: `PLATFORM_SURFACE_ENTRIES` grew 8→12 (adds `topbar-context-menu`, `plugin-command`, `quick-action`, `floating-ball` — previously silently dropped as unknown); all four SurfaceNav mounts plus snippet chips and toolbar buttons now carry the current query; `PlatformSurfaceContext` gained a bounded `focusSource` recorded on leave and restored (object row or search box) via a macrotask on return; `openSetting` accepts `returnTo` so closing Settings returns to the originating surface.

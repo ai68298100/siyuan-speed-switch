@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.42.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.43.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
@@ -330,11 +330,22 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.42.0` (released 2026-09-29; unified platform shell contract, switcher card focus model, workbench rerender transaction, and settings component-panel grouping folded into the Panels tab; Release assets are built automatically by the workflow).
+The current version is `v0.43.0` (released 2026-09-29; widget store S2 finish, unified panel window settings, settings search/storage health/save receipts & undo, switcher rerender scene preservation, snippet preview chain — capability receipt, coverage diagnostics, extended probes, read-only theme tokens — and floating-ball focus restoration; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
+
+### v0.43.0 (2026-09-29)
+
+- **Widget store S2 (T-6967)**: sort menu into the filter row; detail meta as four plain rows; empty-catalog failure banner with retry; neutral capability chips; mobile chip snapping.
+- **Panel size unification (T-6986/T-6999)**: the snippet lab gains fullscreen/adaptive/fixed modes (default fullscreen); window settings unified under the Panels tab with preview buttons.
+- **Settings deepening (T-7002/T-7003/T-7004)**: full combobox search with in-page `/` & Ctrl+K jump, group filter chips and path badges; storage tab with all-keys bilingual groups, usage bars, schema health and cache management; three-state save receipts with retry, a 20-step undo stack, per-group restore-to-defaults, and scene-preserving external rebuilds.
+- **Switcher & workbench (T-7009/T-7011)**: async rerenders no longer jump or steal focus; health-detail retries show in-flight state and settle into real groups.
+- **Snippet preview chain (T-6987~T-6990)**: capability receipt, CSS coverage diagnostics (three verdicts + error positions), probe content extended to 17 features (callout/columns/formula/attributes/database/blocked media/document title), read-only theme token snapshots.
+- **Floating ball (T-7014)**: dialog close restores focus to the originating control.
+- **Acceptance (T-7015)**: current scene preset shows a "Current" badge; quick-bar switcher wording unified; full-page acceptance matrix and R3 integration matrix published.
+- **Verification**: full suite **6535/6535**; real-device/kernel acceptance still tracked in [BLOCKERS.md](BLOCKERS.md).
 
 ### v0.42.0 (2026-09-29)
 
