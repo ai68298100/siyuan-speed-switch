@@ -32,6 +32,7 @@ test("home view builds a stable accessible module contract", () => {
         reason: "", updatedAt: 0, sourceHealth: "", stat: null, items: [{label: "One", value: "", href: "", command: ""}], viewType: "", configurable: false, collapsed: true,
         role: "region", ariaBusy: false,
         calendarOffset: 0,
+        dayProgress: -1,
     });
     assert.equal(buildHomeModuleView(null, {}), null);
 });

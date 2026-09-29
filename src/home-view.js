@@ -129,6 +129,9 @@ function normalizeHomeViewResult(value, options = {}) {
         // level 由模型层量化（如 GitHub 贡献的 0~4 档），视图只透传不重写阈值，避免第二事实源；-1 = 窗口外。
         if (Number.isFinite(item?.level)) entry.level = Math.min(4, Math.max(-1, Math.trunc(item.level)));
         if (Number.isFinite(item?.rank) && item.rank > 0) entry.rank = Math.min(9999, Math.trunc(item.rank));
+        // T-7054 A 批次：世界时钟昼夜指示与 UTC 偏移透传
+        if (typeof item?.isDay === "boolean") entry.isDay = item.isDay;
+        if (typeof item?.utcOffset === "string") entry.utcOffset = item.utcOffset;
         return entry;
     }).filter((item) => options.keepEmptyItems === true || item.label || item.value || item.href);
     const explicitStatus = STATUSES.has(source.status) ? source.status : "";
@@ -145,6 +148,8 @@ function normalizeHomeViewResult(value, options = {}) {
         calendarWeekdays: text(rawSnapshot.calendarWeekdays, 7),
         // T-6975：日历当前月份偏移（快照→视图透传，供期间选择器回显当前值）
         calendarOffset: Number.isFinite(rawSnapshot.calendarOffset) ? Math.trunc(rawSnapshot.calendarOffset) : 0,
+        // T-7054 A 批次：日进度百分比透传（local-time 进度条渲染源）
+        dayProgress: Number.isFinite(rawSnapshot.dayProgress) ? Math.min(100, Math.max(0, Math.trunc(rawSnapshot.dayProgress))) : -1,
         ...(text(rawSnapshot.emptyHint, 96) ? {emptyHint: text(rawSnapshot.emptyHint, 96)} : {}),
         updatedAt: Number.isFinite(rawSnapshot.updatedAt) ? rawSnapshot.updatedAt : 0,
         sourceHealth: ["fresh", "cached", "stale"].includes(rawSnapshot.sourceHealth) ? rawSnapshot.sourceHealth : "",
@@ -203,6 +208,7 @@ function buildHomeModuleView(module, result, options = {}) {
         items: normalized.items,
         ...(normalized.calendarWeekdays.length === 7 ? {calendarWeekdays: normalized.calendarWeekdays} : {}),
         calendarOffset: Number.isFinite(normalized.calendarOffset) ? normalized.calendarOffset : 0,
+        dayProgress: Number.isFinite(normalized.dayProgress) ? normalized.dayProgress : -1,
         // T-6925（真机反馈）：快照数据标题与定义标题相同时不再重复渲染——手机端
         // 窄头部里标题列被挤成首字、旁挂完整同文案的"叠字"即源于此。
         ...(normalized.title && normalized.title !== title ? {contextTitle: normalized.title} : {}),
@@ -663,6 +669,14 @@ function renderHomeModuleView(doc, view, options = {}) {
             itemLabel.className = "sw__home-module-item-label";
             itemLabel.textContent = item.label || item.value || item.href || "";
             button.appendChild(itemLabel);
+            // T-7054 A 批次：世界时钟昼夜指示器——日间暖黄渐变/夜间深蓝渐变圆形
+            if (typeof item.isDay === "boolean") {
+                const dn = doc.createElement("span");
+                dn.className = "sw__home-calendar-daynight " + (item.isDay ? "is-day" : "is-night");
+                dn.setAttribute("aria-hidden", "true");
+                dn.textContent = item.isDay ? "☀" : "🌙";
+                button.prepend(dn);
+            }
             let itemValue = null;
             if (showRowValues && item.label && item.value) {
                 itemValue = doc.createElement("span");
@@ -712,6 +726,21 @@ function renderHomeModuleView(doc, view, options = {}) {
             list.appendChild(row);
         });
         body.appendChild(list);
+        // T-7054 A 批次：时间与日期组件日进度条——当日已过百分比可视化
+        if (view.moduleId === "external-local-time" && view.dayProgress >= 0) {
+            const progress = doc.createElement("div");
+            progress.className = "sw__home-day-progress";
+            progress.setAttribute("role", "progressbar");
+            progress.setAttribute("aria-valuenow", String(view.dayProgress));
+            progress.setAttribute("aria-valuemin", "0");
+            progress.setAttribute("aria-valuemax", "100");
+            progress.setAttribute("aria-label", `Day progress ${view.dayProgress}%`);
+            const bar = doc.createElement("div");
+            bar.className = "sw__home-day-progress-bar";
+            bar.style.width = `${view.dayProgress}%`;
+            progress.appendChild(bar);
+            body.appendChild(progress);
+        }
     } else {
         if (view.status === "loading") {
             const skeleton = doc.createElement("div");

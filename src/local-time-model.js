@@ -43,12 +43,15 @@ function buildLocalTimeSnapshot(date = new Date(), locale = "zh-CN", labels = {}
             value: "",
         });
     }
+    // T-7054 A 批次：日进度百分比——当日 0:00 起已过时间占比，供进度条渲染
+    const secondsToday = value.getHours() * 3600 + value.getMinutes() * 60 + value.getSeconds();
+    const dayProgress = Math.round((secondsToday / 86400) * 100);
     const stat = {
         value: new Intl.DateTimeFormat(safeLocale, timeOptions).format(value),
         label: typeof labels.localTime === "string" ? labels.localTime.slice(0, 32) : "",
     };
     if (normalized.emphasis !== "standard") stat.emphasis = normalized.emphasis;
-    return {stat, items};
+    return {stat, items, dayProgress};
 }
 
 // ---------- T-6433/T-6456 年度进度：日历日语义 + 年/季/月周期 ----------
@@ -468,9 +471,15 @@ function buildWorldClockSnapshot(date = new Date(), config = {}, labels = {}) {
             : boundedZoneLabel(zone.split("/").pop().replace(/_/g, " "));
         const offset = zone === "local" ? "" : zoneShortName(resolved, value, locale);
         const marker = zone === "local" ? "" : dayWord(zoneDayDelta(localParts, zoneDateParts(resolved, value, locale)));
+        // T-7054 A 批次：昼夜判定（6:00-18:00 为白天）+ UTC 偏移文本
+        const zoneParts = zoneDateParts(resolved, value, locale);
+        const isDay = zoneParts.hour >= 6 && zoneParts.hour < 18;
+        const utcOffset = offset || "";
         return {
             label: marker ? `${city} · ${marker}` : city,
             value: offset ? `${timeIn(resolved)} ${offset}` : timeIn(resolved),
+            isDay,
+            utcOffset,
         };
     });
     return {stat: {value: rows[0]?.value || "", label: boundedZoneLabel(labels.worldClock) || "世界时钟"}, items: rows};
