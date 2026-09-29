@@ -9,7 +9,7 @@ import type {EventBus, TEventBus} from "siyuan";
 import {HOME_WIDGET_SIZES, PANEL_SCALE_DEFAULT, PANEL_SIZE_MIN_PX} from "./constants";
 import type {HomeSizeMode, HomeWidgetSize} from "./constants";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries, buildHomeHealthReport, buildHomeDiagnosticSummary, formatHealthTime} from "./home-controller";
-import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, LIFE_HEARTBEAT_MODULE_IDS} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, LIFE_HEARTBEAT_MODULE_IDS} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
 import {createLayoutHistory, layoutSnapshotOf, pushLayoutHistory, undoLayoutHistory, redoLayoutHistory, canUndoLayoutHistory, canRedoLayoutHistory, peekUndoLabel, peekRedoLabel, reconcileLayoutSnapshot} from "./home-layout-history";
 import {openHomeConfigForm} from "./home-config-form";
@@ -595,37 +595,31 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 grid.appendChild(cell);
 
                 if (editing) {
-                    // 桌面端拖拽排序（dense 布局自动归位）；手机端用上移/下移按钮
+                    // T-7030：实例标识供拖拽落点/键盘重排/重绘回焦寻址
+                    cell.dataset.instanceId = inst.instanceId;
+                    const commitMove = (result: {list: Array<any>; moved: boolean}) => {
+                        if (!result.moved) return;
+                        const next = this.getHomeState();
+                        next.layouts[device] = result.list;
+                        this.saveHomeState(next);
+                        layoutOpLabel = this.i18n.homeHistoryMove;
+                        renderPanel();
+                        const fresh = root.querySelector<HTMLElement>(`.sw-home__cell[data-instance-id="${inst.instanceId}"]`);
+                        fresh?.focus({preventScroll: false});
+                    };
+                    // 桌面端 Pointer 拖拽（把手触发）+落点虚影+Esc 取消——替换 HTML5 DnD
+                    //（DnD 触控不可用、无取消、无落点预览）；手机端保留上移/下移按钮。
                     if (!this.isMobile) {
-                        cell.draggable = true;
-                        cell.addEventListener("dragstart", (event) => {
-                            event.dataTransfer?.setData("text/sw-home-instance", inst.instanceId);
-                            event.dataTransfer!.effectAllowed = "move";
-                            cell.classList.add("sw-home__cell--dragging");
-                        });
-                        cell.addEventListener("dragend", () => cell.classList.remove("sw-home__cell--dragging"));
-                        cell.addEventListener("dragover", (event) => {
-                            event.preventDefault();
-                            event.dataTransfer!.dropEffect = "move";
-                            cell.classList.add("sw-home__cell--dragover");
-                        });
-                        cell.addEventListener("dragleave", () => cell.classList.remove("sw-home__cell--dragover"));
-                        cell.addEventListener("drop", (event) => {
-                            event.preventDefault();
-                            cell.classList.remove("sw-home__cell--dragover");
-                            const draggedId = event.dataTransfer?.getData("text/sw-home-instance");
-                            if (!draggedId || draggedId === inst.instanceId) return;
-                            const next = this.getHomeState();
-                            const list = (next.layouts[device] || []) as Array<any>;
-                            const from = list.findIndex((candidate) => candidate.instanceId === draggedId);
-                            const to = list.findIndex((candidate) => candidate.instanceId === inst.instanceId);
-                            if (from < 0 || to < 0) return;
-                            const [moved] = list.splice(from, 1);
-                            list.splice(to, 0, moved);
-                            next.layouts[device] = list;
-                            this.saveHomeState(next);
-                            layoutOpLabel = this.i18n.homeHistoryMove;
-                            renderPanel();
+                        cell.tabIndex = 0;
+
+
+                        // T-7030 切片②：键盘重排——Ctrl/Cmd+方向键移动当前卡，重绘后回焦
+                        cell.addEventListener("keydown", (key) => {
+                            if (!(key.ctrlKey || key.metaKey)) return;
+                            const delta = key.key === "ArrowLeft" || key.key === "ArrowUp" ? -1 : key.key === "ArrowRight" || key.key === "ArrowDown" ? 1 : 0;
+                            if (!delta) return;
+                            key.preventDefault();
+                            commitMove(moveLayoutEntryByOffset((this.getHomeState().layouts[device] || []) as Array<any>, inst.instanceId, delta));
                         });
                     }
                     const persistLayout = (patch: Record<string, unknown>) => {
@@ -660,6 +654,53 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         });
                         toolsChildren.push(configButton);
                     }
+                        const dragHandle = tool(this.i18n.homeDragMove, () => undefined);
+                        dragHandle.classList.add("sw-home__tool--drag");
+                        toolsChildren.unshift(dragHandle);
+                        let dragCleanup: (() => void) | null = null;
+                        dragHandle.addEventListener("pointerdown", (event) => {
+                            if (dragCleanup || event.button !== 0) return;
+                            event.preventDefault();
+                            const startX = event.clientX;
+                            const startY = event.clientY;
+                            let active = false;
+                            let hoverId: string | null = null;
+                            const clearDropHint = () => grid.querySelectorAll<HTMLElement>(".sw-home__cell--dragover").forEach((el) => el.classList.remove("sw-home__cell--dragover"));
+                            const onMove = (move: PointerEvent) => {
+                                if (!active && Math.hypot(move.clientX - startX, move.clientY - startY) < 6) return;
+                                active = true;
+                                cell.classList.add("sw-home__cell--dragging");
+                                const hovered = document.elementFromPoint(move.clientX, move.clientY)?.closest<HTMLElement>(".sw-home__cell");
+                                clearDropHint();
+                                hoverId = hovered && hovered !== cell ? hovered.dataset.instanceId || null : null;
+                                if (hoverId) hovered!.classList.add("sw-home__cell--dragover");
+                            };
+                            const finish = (commit: boolean) => {
+                                window.removeEventListener("pointermove", onMove);
+                                window.removeEventListener("pointerup", onUp);
+                                window.removeEventListener("pointercancel", onCancel);
+                                window.removeEventListener("keydown", onKey, true);
+                                clearDropHint();
+                                cell.classList.remove("sw-home__cell--dragging");
+                                dragCleanup = null;
+                                if (commit && active && hoverId && hoverId !== inst.instanceId) {
+                                    commitMove(moveLayoutEntry((this.getHomeState().layouts[device] || []) as Array<any>, inst.instanceId, hoverId));
+                                }
+                            };
+                            const onUp = () => finish(true);
+                            const onCancel = () => finish(false);
+                            const onKey = (key: KeyboardEvent) => {
+                                if (key.key !== "Escape") return;
+                                key.preventDefault();
+                                key.stopPropagation();
+                                finish(false);
+                            };
+                            window.addEventListener("pointermove", onMove);
+                            window.addEventListener("pointerup", onUp);
+                            window.addEventListener("pointercancel", onCancel);
+                            window.addEventListener("keydown", onKey, true);
+                            dragCleanup = () => finish(false);
+                        });
                     const sizeButton = tool(this.i18n.homeSize, () => undefined);
                     sizeButton.addEventListener("click", () => {
                         this.openHomeSizeMenu(sizeButton, supported, sizeKey, (picked) => {
@@ -673,13 +714,11 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         ...toolsChildren,
                         sizeButton,
                         tool(this.i18n.homeMoveUp, () => {
+                            // T-7030：按钮/键盘/拖拽共用同一重排纯模型
                             const next = this.getHomeState();
-                            const list = (next.layouts[device] || []) as Array<any>;
-                            const index = list.findIndex((candidate) => candidate.instanceId === inst.instanceId);
-                            if (index > 0) {
-                                const [moved] = list.splice(index, 1);
-                                list.splice(index - 1, 0, moved);
-                                next.layouts[device] = list;
+                            const result = moveLayoutEntryByOffset((next.layouts[device] || []) as Array<any>, inst.instanceId, -1);
+                            if (result.moved) {
+                                next.layouts[device] = result.list;
                                 this.saveHomeState(next);
                                 layoutOpLabel = this.i18n.homeHistoryMove;
                                 renderPanel();
@@ -687,12 +726,9 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         }),
                         tool(this.i18n.homeMoveDown, () => {
                             const next = this.getHomeState();
-                            const list = (next.layouts[device] || []) as Array<any>;
-                            const index = list.findIndex((candidate) => candidate.instanceId === inst.instanceId);
-                            if (index >= 0 && index < list.length - 1) {
-                                const [moved] = list.splice(index, 1);
-                                list.splice(index + 1, 0, moved);
-                                next.layouts[device] = list;
+                            const result = moveLayoutEntryByOffset((next.layouts[device] || []) as Array<any>, inst.instanceId, 1);
+                            if (result.moved) {
+                                next.layouts[device] = result.list;
                                 this.saveHomeState(next);
                                 layoutOpLabel = this.i18n.homeHistoryMove;
                                 renderPanel();

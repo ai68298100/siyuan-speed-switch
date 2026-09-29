@@ -534,6 +534,28 @@ const HOME_TILE_DEFAULT_SIZES = {
 
 // T-6969 Slice 3（ADR 0091）：X 英雄位约束——每面板至多 1 个 full 档；超出者
 // 降级为 large（8×5）。纯函数：返回降级数量，调用方决定是否落盘。
+// T-7030：编辑态重排纯函数——拖拽落点与键盘/按钮移动共用一套索引计算。
+// 语义与既有 drop 处理一致：先摘除 from 再插入 to（以缩短后的下标为准）；
+// 输入不可变（复制后拼接），同位/越界/找不到一律 moved=false 原样返回。
+function moveLayoutEntry(list, fromId, toId) {
+    const items = (Array.isArray(list) ? list : []).slice();
+    const from = items.findIndex((entry) => entry && entry.instanceId === fromId);
+    const to = items.findIndex((entry) => entry && entry.instanceId === toId);
+    if (from < 0 || to < 0 || from === to) return {list: items, moved: false};
+    const [moved] = items.splice(from, 1);
+    items.splice(to, 0, moved);
+    return {list: items, moved: true};
+}
+
+function moveLayoutEntryByOffset(list, instanceId, delta) {
+    const items = (Array.isArray(list) ? list : []).slice();
+    const index = items.findIndex((entry) => entry && entry.instanceId === instanceId);
+    const to = index + delta;
+    if (index < 0 || to < 0 || to >= items.length || delta === 0) return {list: items, moved: false};
+    const [moved] = items.splice(index, 1);
+    items.splice(to, 0, moved);
+    return {list: items, moved: true};
+}
 function enforceHomeHeroConstraint(list) {
     const entries = Array.isArray(list) ? list : [];
     let seen = false;
@@ -925,4 +947,4 @@ function isLifeHeartbeatModule(moduleId) {
     return LIFE_HEARTBEAT_MODULE_IDS.includes(typeof moduleId === "string" ? moduleId : "");
 }
 
-module.exports = {LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+module.exports = {LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};

@@ -1203,3 +1203,13 @@
         white-space: nowrap;
     }
 }
+
+// T-7030：拖动把手——grab 光标 + 触屏不触发滚动手势
+.sw-home .sw-home__tool--drag {
+    cursor: grab;
+    touch-action: none;
+}
+
+.sw-home .sw-home__tool--drag:active {
+    cursor: grabbing;
+}
