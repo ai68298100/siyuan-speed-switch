@@ -1442,3 +1442,44 @@
         font-weight: 600;
     }
 }
+
+// ==================== T-7054 C 批次：天气/环境家族视觉增强 ====================
+
+// 近期天气：温度大号突出 + 天气描述弱化
+.sw-home__cell[data-module-id="external-weather-open-meteo"] {
+    .sw__home-stat-value {
+        font-size: 1.8em;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 空气质量：AQI 数值突出 + 等级色阶兼容
+.sw-home__cell[data-module-id="external-air-quality"] {
+    .sw__home-stat-value {
+        font-size: 1.6em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 设备电量：百分比大号 + 低电量视觉暗示由健康 chip 表达
+.sw-home__cell[data-module-id="external-device-battery"] {
+    .sw__home-stat-value {
+        font-size: 1.8em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 服务状态：状态值增强
+.sw-home__cell[data-module-id="external-status-uptimekuma"] {
+    .sw__home-stat-value {
+        font-size: 1.3em;
+        font-weight: 600;
+    }
+}
