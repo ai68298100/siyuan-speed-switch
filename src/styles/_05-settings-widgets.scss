@@ -1263,3 +1263,66 @@
     font-size: 12px;
     color: var(--b3-theme-on-surface);
 }
+
+// ==================== T-7054 A 批次：时钟/时间家族视觉增强 ====================
+// 年度进度 SVG 环形（track+progress）、时间数字排版增强、
+// 倒数日大数字、世界时钟行布局。
+
+// 年度进度 SVG 环形进度条：track 半透明边框色，progress 主色圆角端点。
+.sw__home-stat-arc {
+    width: 40px;
+    height: 40px;
+
+    .sw__home-stat-arc-track {
+        fill: none;
+        stroke: color-mix(in srgb, var(--b3-theme-on-surface) 12%, transparent);
+        stroke-width: 3.5;
+    }
+
+    .sw__home-stat-arc-progress {
+        fill: none;
+        stroke: var(--b3-theme-primary);
+        stroke-width: 3.5;
+        stroke-linecap: round;
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
+    }
+}
+
+// 时间与日期：大数字精细化——粗体大号、秒数缩小偏色、AM/PM 弱化。
+.sw-home__cell[data-module-id="external-local-time"] {
+    .sw__home-stat-value {
+        font-size: 1.8em;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+    }
+
+    .sw__home-module-item-value {
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+}
+
+// 世界时钟：城市行增强——时间右侧对齐加粗、城市名称加重。
+.sw-home__cell[data-module-id="external-world-clock"] {
+    .sw__home-module-item-label {
+        font-weight: 600;
+    }
+
+    .sw__home-module-item-value {
+        font-size: 1.15em;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+}
+
+// 倒数日：大号天数突出显示。
+.sw-home__cell[data-module-id="countdown"] {
+    .sw__home-stat-value {
+        font-size: 2em;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1;
+    }
+}
