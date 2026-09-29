@@ -32,7 +32,7 @@ function getGlobalQuickActions() {
     return GLOBAL_QUICK_ACTIONS.map((item) => ({...item}));
 }
 const BUILTIN_QUICK_ACTIONS = [
-    {id: "switcher", label: "切换", langKey: "actionSwitcher", icon: "iconLayout", kind: "builtin", value: "switcher", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
+    {id: "switcher", label: "切换器", langKey: "actionSwitcher", icon: "iconLayout", kind: "builtin", value: "switcher", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
     {id: "search", label: "搜索", langKey: "actionSearch", icon: "iconSearch", kind: "builtin", value: "search", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
     {id: "journal", label: "日记", langKey: "actionJournal", icon: "iconCalendar", kind: "builtin", value: "journal", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
     {id: "settings", label: "设置", langKey: "actionSettings", icon: "iconSettings", kind: "builtin", value: "settings", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},

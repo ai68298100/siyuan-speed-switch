@@ -1113,6 +1113,18 @@
             white-space: nowrap;
         }
 
+        // T-7015（F3 收口）：当前场景「当前」徽标——状态用文字而非按钮表达
+        .sw-floating-ball-settings__preset-current {
+            flex: none;
+            padding: 2px 8px;
+            border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 32%, transparent);
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+            color: var(--b3-theme-primary);
+            font-size: 10.5px;
+            line-height: 1.5;
+        }
+
         .b3-button { flex: 0 0 auto; min-height: 32px; padding: 2px 8px; }
     }
 

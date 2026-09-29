@@ -2432,23 +2432,34 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             return;
         }
         presets.forEach((preset: any) => {
+            // T-7015（设计审查 F3 收口）：当前场景行不再提供「应用」——对已生效
+            // 配置重复应用是无效动作；以「当前」徽标表达状态，删除出口保留。
+            const isCurrent = preset.id === config.currentPresetId;
             const row = document.createElement("div");
-            row.className = "sw-floating-ball-settings__preset-item" + (preset.id === config.currentPresetId ? " is-current" : "");
+            row.className = "sw-floating-ball-settings__preset-item" + (isCurrent ? " is-current" : "");
             const name = document.createElement("span");
             name.className = "sw-floating-ball-settings__preset-name";
             name.textContent = preset.name;
-            const apply = document.createElement("button");
-            apply.type = "button";
-            apply.className = "b3-button b3-button--text";
-            apply.textContent = this.i18n.floatingBallPresetApply;
-            apply.addEventListener("click", () => {
-                const result = applyFloatingBallPreset(this.getSettings().floatingBall, preset.id);
-                if (!result.preset) return;
-                if (persist(result.config)) {
-                    renderActions();
-                    renderPresets();
-                }
-            });
+            if (isCurrent) {
+                const badge = document.createElement("span");
+                badge.className = "sw-floating-ball-settings__preset-current";
+                badge.textContent = this.i18n.floatingBallPresetCurrent;
+                row.append(name, badge);
+            } else {
+                const apply = document.createElement("button");
+                apply.type = "button";
+                apply.className = "b3-button b3-button--text";
+                apply.textContent = this.i18n.floatingBallPresetApply;
+                apply.addEventListener("click", () => {
+                    const result = applyFloatingBallPreset(this.getSettings().floatingBall, preset.id);
+                    if (!result.preset) return;
+                    if (persist(result.config)) {
+                        renderActions();
+                        renderPresets();
+                    }
+                });
+                row.append(name, apply);
+            }
             const remove = document.createElement("button");
             remove.type = "button";
             remove.className = "b3-button b3-button--text";
@@ -2460,7 +2471,7 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
                     renderPresets();
                 }
             });
-            row.append(name, apply, remove);
+            row.append(remove);
             presetList.appendChild(row);
         });
     };

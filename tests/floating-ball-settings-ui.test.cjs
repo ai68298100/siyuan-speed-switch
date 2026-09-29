@@ -645,3 +645,22 @@ test("quick-action settings legacy array transfer preserves floating-ball config
     assert.equal(JSON.stringify(ui.state.floatingBall), before,
         "legacy transfer only changes the shared action catalog, not floating-ball switches/positions/descriptors");
 });
+
+// T-7015（设计审查孤儿 F3/M1 收口）
+test("preset rows: the current scene shows a badge instead of a no-op apply button (F3)", () => {
+    const ui = readSourceFile("src/settings-sections.ts");
+    assert.match(ui, /if \(isCurrent\) \{\s*\n\s*const badge = document\.createElement\("span"\);\s*\n\s*badge\.className = "sw-floating-ball-settings__preset-current";/,
+        "当前场景行必须渲染「当前」徽标");
+    assert.match(ui, /row\.append\(name, badge\);/, "当前行：徽标随行渲染");
+    assert.match(ui, /row\.append\(name, apply\);/, "非当前行：应用按钮保留");
+    assert.match(ui, /row\.append\(remove\);/, "删除出口保留（所有行）");
+    assert.ok(i18n.floatingBallPresetCurrent === "当前", "徽标文案必须存在");
+});
+
+test("quickbar switcher wording is unified with the surface name (M1)", () => {
+    assert.equal(i18n.quickBuiltinSwitcher, "切换器", "快捷条内建切换器文案统一为表面名");
+    assert.equal(i18n.actionSwitcher, "切换器", "快捷动作目录切换器文案统一为表面名");
+    const catalog = readSourceFile("src/quick-actions.js");
+    assert.match(catalog, /\{id: "switcher", label: "切换器",/, "内建目录回退 label 同步统一");
+});
+
