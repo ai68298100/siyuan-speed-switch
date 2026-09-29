@@ -436,6 +436,37 @@ test("floating ball host honors yieldToModals off and releases each dialog callb
     assert.equal(host.fabModalDepth, 0);
 });
 
+test("floating ball dialog channel restores focus to the host origin control (T-7014)", (t) => {
+    const {host, document} = mount(t, {});
+    const origin = document.createElement("button");
+    document.body.appendChild(origin);
+    origin.focus();
+    assert.equal(document.activeElement, origin, "前置：来源控件持有焦点");
+    const release = host.suspendFABForDialog();
+    // suspend 不改变当前焦点；弹窗移除后焦点回落 body（用 blur 模拟）
+    origin.blur();
+    assert.equal(document.activeElement, document.body, "模拟弹窗移除后焦点回落 body");
+    release();
+    assert.equal(document.activeElement, origin, "焦点回落 body 时必须恢复到来源控件");
+
+    // 来源随弹窗销毁（已断开）时诚实放弃
+    const transient = document.createElement("button");
+    document.body.appendChild(transient);
+    transient.focus();
+    const release2 = host.suspendFABForDialog();
+    transient.remove();
+    release2();
+    assert.notEqual(document.activeElement, transient, "已断开的来源不得恢复");
+
+    // 用户已自行聚焦别处时诚实放弃（不抢焦点）
+    const elsewhere = document.createElement("input");
+    document.body.appendChild(elsewhere);
+    elsewhere.focus();
+    const release3 = host.suspendFABForDialog();
+    elsewhere.focus();
+    release3();
+    assert.equal(document.activeElement, elsewhere, "用户已聚焦别处时不得抢占焦点");
+});
 test("floating ball host tracks nested dialogs while surfaces are enabled and modal preference changes", (t) => {
     const {host, calls, config} = mount(t, {mobile: true});
     const outer = host.suspendFABForDialog();

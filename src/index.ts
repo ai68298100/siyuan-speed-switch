@@ -12313,6 +12313,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 日记笔记本选择弹窗时，调用方 Promise 会永久挂起。
         const modalControllers = [...this.floatingBallUis.values()];
         const shouldYield = this.getSettings().floatingBall?.behavior?.yieldToModals !== false;
+        // T-7014（T-7012 留账收口）：宿主来源焦点恢复——弹窗打开前记录来源控件
+        // （悬浮球本体/顶栏按钮/面包屑等），关闭释放时若焦点已回落 body 且来源
+        // 仍在文档中，把焦点送回来源控件，不再丢给 body。鸭子类型判断
+        // （isConnected + focus），不依赖 HTMLElement 全局（宿主测试沙箱无此全局）。
+        const activeCandidate = document.activeElement as HTMLElement | null;
+        const focusOrigin = activeCandidate && typeof activeCandidate.focus === "function" && activeCandidate.isConnected
+            ? activeCandidate
+            : null;
         // Count dialogs even when no ball exists yet: enabling a surface from
         // Settings must not put a newly mounted ball above that dialog.
         this.fabModalDepth += 1;
@@ -12330,6 +12338,16 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             if (this.fabModalDepth === 0) {
                 this.floatingBallUis.forEach((controller) => controller.setSuspended(false));
                 this.fabElement?.classList.remove("sw__fab--hidden");
+            }
+            // 焦点已回落 body（弹窗收走了焦点又被移除）且来源仍连接时才恢复；
+            // 用户已自行聚焦别处或来源随弹窗销毁时诚实放弃。
+            if (focusOrigin?.isConnected
+                && (document.activeElement === document.body || document.activeElement == null)) {
+                try {
+                    focusOrigin.focus({preventScroll: true});
+                } catch (_) {
+                    focusOrigin.focus();
+                }
             }
         };
     }
