@@ -78,7 +78,7 @@ import {collectSettingsSearchEntries, collectEntryGroups, searchSettingsIndex} f
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet, orderDocumentSetRestoreEntries} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
-import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, encodeSurfaceFocusSource, resolveSurfaceFocusRestoreTarget, buildSurfaceContextCaption, projectSnippetObjects, filterSnippetObjects} from "./platform-surface-model";
+import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, encodeSurfaceFocusSource, resolveSurfaceFocusRestoreTarget, buildSurfaceContextCaption, projectSnippetObjects, filterSnippetObjects, normalizeModuleVisibility, isSurfaceModuleEnabled, filterSurfacesByVisibility} from "./platform-surface-model";
 import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
@@ -768,6 +768,9 @@ export type IOverlayClose = () => void;
 
 // 默认设置（可被用户设置覆盖）
 const DEFAULT_SETTINGS: ISwSettings = {
+    // T-7026（ADR 0099）：模块可见性——「启用=可见且可进入」单一语义；切换器为平台根
+    // 恒启用不设开关；缺省全开，旧配置零迁移。
+    moduleVisibility: {workbench: true, studio: true, floatingBall: true},
     dialogWidth: 880,      // 固定尺寸模式的宽度 px
     dialogHeight: 600,     // 固定尺寸模式的高度 px
     panelSizeMode: "fullscreen", // 面板尺寸模式：fullscreen=全屏（ADR 0080 默认，三表面内容优先）/ adaptive=屏幕比例自适应 / custom=固定尺寸
@@ -824,6 +827,8 @@ export type SidebarLayout = "enlarge" | "columns";
 const SIDEBAR_LAYOUT_LIST: SidebarLayout[] = ["enlarge", "columns"];
 
 export interface ISwSettings {
+    // T-7026（ADR 0099）：模块可见性——「启用=可见且可进入」单一语义；切换器恒启用。
+    moduleVisibility: {workbench: boolean; studio: boolean; floatingBall: boolean};
     dialogWidth: number;
     dialogHeight: number;
     panelSizeMode: PanelSizeMode; // 面板尺寸模式
@@ -1091,21 +1096,21 @@ export default class SpeedSwitchPlugin extends Plugin {
             title: this.i18n.switchTabs,
             position: "right",
             contextMenu: (menu) => {
+                // T-7026（ADR 0099）D3：顶栏收敛为唯一平台入口——菜单动态列出全部已启用
+                // 表面 + 设置；工作台/实验室仍可经 SurfaceNav、快捷动作、命令进入。
                 menu.addItem({
                     icon: "iconSettings",
                     label: this.i18n.settings,
                     click: () => void this.openSetting(),
                 });
-                menu.addItem({
-                    icon: "iconLayoutHome",
-                    label: this.i18n.secondPanel,
-                    click: () => openSecondPanel.call(this),
-                });
-                menu.addItem({
-                    icon: "iconCode",
-                    label: this.i18n.platformStudio,
-                    click: () => this.openPlatformSurface("studio", "switcher", {entry: "topbar-context-menu"}),
-                });
+                for (const surface of this.getAvailablePlatformSurfaces()) {
+                    if (surface === "switcher") continue;
+                    menu.addItem({
+                        icon: surface === "workbench" ? "iconLayoutHome" : "iconCode",
+                        label: this.platformSurfaceDisplayName(surface),
+                        click: () => this.openPlatformSurface(surface, "switcher", {entry: "topbar-context-menu"}),
+                    });
+                }
             },
             callback: () => {
                 this.showSwitcher();
@@ -1113,35 +1118,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         };
         this.addTopBar(switcherTopBar);
 
-        // 第二面板顶栏入口：与切换器并列，一键直达聚合面板（dashboard 变体图标，与 iconLayout 同族）
-        const secondPanelTopBar: {icon: string; title: string; position: "right"; contextMenu: TopBarContextMenu; callback: () => void} = {
-            icon: "iconLayoutHome",
-            title: this.i18n.secondPanel,
-            position: "right",
-            contextMenu: (menu) => {
-                menu.addItem({
-                    icon: "iconSettings",
-                    label: this.i18n.settings,
-                    click: () => void this.openSetting(),
-                });
-                menu.addItem({
-                    icon: "iconLayout",
-                    label: this.i18n.switchTabs,
-                    click: () => {
-                        this.showSwitcher();
-                    },
-                });
-                menu.addItem({
-                    icon: "iconCode",
-                    label: this.i18n.platformStudio,
-                    click: () => this.openPlatformSurface("studio", "workbench", {entry: "topbar-context-menu"}),
-                });
-            },
-            callback: () => {
-                openSecondPanel.call(this);
-            },
-        };
-        this.addTopBar(secondPanelTopBar);
+        // T-7026（ADR 0099）D3：第二面板顶栏入口已收敛——顶栏只保留切换器这一个统一
+        // 平台入口；工作台经 SurfaceNav/快捷动作/命令/统一入口菜单四条路径进入。
 
         // 注册侧边栏 dock 面板（桌面）与手机端入口（顶栏 + FAB），互斥
         if (!this.isMobile) {
@@ -3609,6 +3587,12 @@ export default class SpeedSwitchPlugin extends Plugin {
      */
     public openPlatformSurface(surface: PlatformSurface, returnTo: PlatformSurface = "switcher", context?: PlatformSurfaceContext | null) {
         if (this.isUnloading) return;
+        // T-7026（ADR 0099）：路由层唯一校验点——禁用模块的残留调用（命令/Agent 动作/
+        // 会话回跳）诚实回执拒绝，不静默也不降级打开；已打开窗口保留至用户关闭（D5）。
+        if (!this.getAvailablePlatformSurfaces().includes(surface)) {
+            showMessage(this.i18n.moduleDisabledReceipt.replace("{x}", this.platformSurfaceDisplayName(surface)));
+            return;
+        }
         this.notePlatformSurface(surface, context);
         if (surface === "switcher") {
             this.showSwitcher(false, returnTo, context);
@@ -3636,7 +3620,17 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 当前端的可用表面清单：片段实验室仍是桌面专属（ADR 0078），移动端只有切换器/工作台。
     public getAvailablePlatformSurfaces(): PlatformSurface[] {
-        return this.isMobile ? ["switcher", "workbench"] : [...PLATFORM_SURFACES];
+        // T-7026（ADR 0099）：端侧可用 ∩ 模块启用——SurfaceNav available、悬浮球回退
+        // 目标、设置预览入口等消费方经此自动继承模块过滤。
+        const base = this.isMobile ? ["switcher", "workbench"] as PlatformSurface[] : [...PLATFORM_SURFACES];
+        return filterSurfacesByVisibility(base, this.getSettings().moduleVisibility);
+    }
+
+    // T-7026（ADR 0099）：表面显示名——路由拒绝回执与顶栏菜单共用同一文案源。
+    private platformSurfaceDisplayName(surface: PlatformSurface): string {
+        if (surface === "workbench") return this.i18n.secondPanel;
+        if (surface === "studio") return this.i18n.platformStudio;
+        return this.i18n.platformSwitcher;
     }
 
     // T-6869（ADR 0079 §7）：悬浮球轻触=打开平台并恢复上次表面；上次表面在当前端
@@ -5111,6 +5105,15 @@ const updatedMap: {[rootId: string]: string} = {};
         host.appendChild(svg);
     }
 
+    // T-7026（ADR 0099）D7：模块级快捷动作可用性——仅覆盖平台表面类内建动作，
+    // 第三方 provider 动作不经此判定（其能力声明自有契约）。
+    private moduleActionEnabled(value: string): boolean {
+        const visibility = this.getSettings().moduleVisibility;
+        if (!visibility) return true;
+        if (value === "home") return visibility.workbench !== false;
+        if (value === "snippet-studio") return visibility.studio !== false;
+        return true;
+    }
     private renderQuickActions(container: HTMLElement, surface: "desktop" | "sidebar" | "mobile", searchInput: HTMLInputElement | null, close: () => void, selector = ".sw__quick-actions") {
         const host = container.querySelector<HTMLElement>(selector);
         if (!host) return;
@@ -5139,6 +5142,9 @@ const updatedMap: {[rootId: string]: string} = {};
         if (collapsed && !isRightRail) return;
         const actions = this.getQuickActions()
             .filter((action) => shouldRenderQuickAction(action, surface, "switcher", this.getQuickActionDeclaredTargets(action)))
+            // T-7026（ADR 0099）D7：模块级快捷动作过滤——禁用模块的动作不出现在
+            // 工具栏/更多面板/悬浮球面板（执行侧由路由层校验兜底）。
+            .filter((action) => this.moduleActionEnabled(action.value))
             .sort((a, b) => a.order - b.order);
         // The same action host is used by desktop, sidebar, and mobile. Only
         // hide it when the current surface has no enabled actions; hiding all
@@ -12377,6 +12383,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     /** Refresh all spatial entries after settings/data or host layout changes. */
     private updateFloatingBallVisibility() {
         const settings = this.getSettings();
+        // T-7026（ADR 0099）D6：模块级关闭则任何端都不挂载（叠加既有 per-surface 开关）；
+        // 已挂载的控制器幂等销毁，重新开启后经 updateFloatingBallVisibility 恢复。
+        if (settings.moduleVisibility?.floatingBall === false) {
+            (Object.freeze(["desktop", "sidebar", "mobile"]) as FloatingBallSurface[])
+                .forEach((surface) => this.destroyFloatingBallSurface(surface));
+            return;
+        }
         const config = settings.floatingBall || {};
         const enabled = (surface: FloatingBallSurface) => Boolean(config.enabled?.[surface]);
         // ADR 0072: the sidebar portal is withdrawn (it duplicated the

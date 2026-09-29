@@ -1,4 +1,5 @@
 "use strict";
+const {normalizeModuleVisibility} = require("./platform-surface-model");
 
 const {normalizeFloatingBallConfig} = require("./floating-ball-model.js");
 
@@ -192,6 +193,8 @@ function normalizeSettings(saved, options = {}) {    const defaults = options.de
         quickActionsCollapsedDesktopRight: bool("quickActionsCollapsedDesktopRight"),
         quickActionsCollapsedSidebar: bool("quickActionsCollapsedSidebar"),
         quickActionsCollapsedMobile: bool("quickActionsCollapsedMobile"),
+        // T-7026（ADR 0099）：模块可见性归一——缺省全开，非法值逐键回落。
+        moduleVisibility: normalizeModuleVisibility(source.moduleVisibility),
     };
 }
 

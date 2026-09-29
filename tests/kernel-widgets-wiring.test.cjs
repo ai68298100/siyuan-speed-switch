@@ -267,13 +267,16 @@ test('catalog registers all six kernel widgets as read-only builtins', () => {
     }
 });
 
-test('both top bar icons expose a right-click context menu (v3.8.4 addTopBar)', () => {
+test('single unified top bar entry exposes a dynamic context menu (v3.8.4 addTopBar, T-7026)', () => {
+    // T-7026（ADR 0099 D3）：顶栏收敛为唯一平台入口——旧「切换器+第二面板」双入口
+    // 契约随模块可见性一并演进；菜单动态列出全部已启用表面 + 设置。
     const menus = indexSource.match(/contextMenu: \(menu\) =>/g) || [];
-    assert.equal(menus.length, 2, "切换器与第二面板两个顶栏图标都要有右键菜单");
+    assert.equal(menus.length, 1, "顶栏必须只保留统一平台入口一个 contextMenu");
     const switcherAt = indexSource.indexOf('contextMenu: (menu) =>');
-    const switcherWindow = indexSource.slice(switcherAt, switcherAt + 500);
+    const switcherWindow = indexSource.slice(switcherAt, switcherAt + 600);
     assert.match(switcherWindow, /openSetting/);
-    assert.match(switcherWindow, /openSecondPanel\.call\(this\)/);
+    assert.match(switcherWindow, /for \(const surface of this\.getAvailablePlatformSurfaces\(\)\)/,
+        "统一入口菜单必须动态列出已启用表面");
 });
 
 test('command palette exposes settings and journal commands through the safe guard', () => {

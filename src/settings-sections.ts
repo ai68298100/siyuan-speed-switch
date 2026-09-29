@@ -61,6 +61,7 @@ declare module "./quick-actions-ui" {
 export interface SettingsSectionsHost {
     // 宿主字段
     i18n: Record<string, string>;
+    updateFloatingBallVisibility?: () => void; // T-7026：悬浮球模块开关变化后重算挂载（宿主可选能力）
     isMobile: boolean;
     isUnloading: boolean;
     favCollapsed: Set<string>;
@@ -355,6 +356,46 @@ export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings):
         // 组件面板调色与工作台窗口尺寸不再挂在不可达的 homePanel 死键上。
         // 分组标题与分段控件复用既有双语键；设置搜索索引按生产 DOM 扫描，自动覆盖。
         wrapper.appendChild(buildSettingsHomePanel.call(this, s));
+        // T-7026（ADR 0099）：模块管理——「启用=可见且可进入」单一语义；切换器为平台根
+        // 不设开关（防锁死保底）。悬浮球关闭后任何端不再挂载，已开面板保留至用户关闭。
+        const moduleVisibility = s.moduleVisibility || {workbench: true, studio: true, floatingBall: true};
+        const moduleToggles = document.createElement("div");
+        moduleToggles.className = "sw-setting__docks b3-label__text";
+        const moduleRows: Array<{key: "workbench" | "studio" | "floatingBall"; label: string}> = [
+            {key: "workbench", label: this.i18n.moduleWorkbench},
+            {key: "studio", label: this.i18n.moduleStudio},
+            {key: "floatingBall", label: this.i18n.moduleFloatingBall},
+        ];
+        moduleRows.forEach(({key, label}) => {
+            const row = document.createElement("div");
+            row.className = "sw-setting__dock-item";
+            const toggle = document.createElement("label");
+            toggle.className = "b3-switch sw-switch";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = moduleVisibility[key] !== false;
+            checkbox.dataset.moduleKey = key;
+            checkbox.addEventListener("change", () => {
+                const current = this.getSettings().moduleVisibility || {workbench: true, studio: true, floatingBall: true};
+                const next = {...current, [key]: checkbox.checked};
+                this.updateSettings({moduleVisibility: next});
+                if (key === "floatingBall") this.updateFloatingBallVisibility?.();
+            });
+            const knob = document.createElement("span");
+            toggle.appendChild(checkbox);
+            toggle.appendChild(knob);
+            const title = document.createElement("span");
+            title.textContent = label;
+            row.appendChild(toggle);
+            row.appendChild(title);
+            moduleToggles.appendChild(row);
+        });
+        wrapper.append(
+            this.settingGroupTitle(this.i18n.settingsGroupModules),
+            this.settingGroupCard(
+                this.settingItem(this.i18n.settingsGroupModules, this.i18n.moduleVisibilityHint, moduleToggles, true),
+            ),
+        );
         return wrapper;
     }
 

@@ -187,7 +187,38 @@ function projectWidgetObject(instance, definition, health = "loading", hasOpen =
     };
 }
 
+// T-7026（ADR 0099）：模块可见性——「启用=可见且可进入」单一语义；切换器是
+// 平台根永启用，可开关模块为 workbench/studio/floatingBall 三项（缺省全开）。
+const MODULE_TOGGLE_KEYS = Object.freeze(["workbench", "studio", "floatingBall"]);
+
+/** 归一模块可见性对象：非对象/缺字段/非法值逐键回落 true（缺省全开，旧配置零迁移）。 */
+function normalizeModuleVisibility(value) {
+    const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const out = {};
+    for (const key of MODULE_TOGGLE_KEYS) {
+        out[key] = source[key] !== false;
+    }
+    return out;
+}
+
+/** 表面是否可进入：switcher 恒启用；其余按模块开关判定。 */
+function isSurfaceModuleEnabled(surface, visibility) {
+    if (surface === "switcher") return true;
+    if (surface === "workbench") return normalizeModuleVisibility(visibility).workbench;
+    if (surface === "studio") return normalizeModuleVisibility(visibility).studio;
+    return false;
+}
+
+/** 按模块开关过滤端侧可用表面清单（保序、去重不必要——输入已是白名单子集）。 */
+function filterSurfacesByVisibility(surfaces, visibility) {
+    return (Array.isArray(surfaces) ? surfaces : []).filter((surface) => isSurfaceModuleEnabled(surface, visibility));
+}
+
 module.exports = {
+    MODULE_TOGGLE_KEYS,
+    normalizeModuleVisibility,
+    isSurfaceModuleEnabled,
+    filterSurfacesByVisibility,
     PLATFORM_SURFACE_IDS,
     PLATFORM_SURFACE_ENTRIES,
     PLATFORM_OBJECT_KINDS,
