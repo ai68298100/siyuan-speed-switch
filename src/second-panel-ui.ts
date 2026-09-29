@@ -9,7 +9,7 @@ import type {EventBus, TEventBus} from "siyuan";
 import {HOME_WIDGET_SIZES, PANEL_SCALE_DEFAULT, PANEL_SIZE_MIN_PX} from "./constants";
 import type {HomeSizeMode, HomeWidgetSize} from "./constants";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries, buildHomeHealthReport, buildHomeDiagnosticSummary, formatHealthTime} from "./home-controller";
-import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, LIFE_HEARTBEAT_MODULE_IDS} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, DEFAULT_MODULES, resolveHomeTileDefaultSize, LIFE_HEARTBEAT_MODULE_IDS} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
 import {createLayoutHistory, layoutSnapshotOf, pushLayoutHistory, undoLayoutHistory, redoLayoutHistory, canUndoLayoutHistory, canRedoLayoutHistory, peekUndoLabel, peekRedoLabel, reconcileLayoutSnapshot} from "./home-layout-history";
 import {openHomeConfigForm} from "./home-config-form";
@@ -414,14 +414,88 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 const empty = document.createElement("div");
                 empty.className = "sw-home__empty";
                 empty.setAttribute("role", "status");
+                // T-7033：空态分层——(a) 无任何组件源；(b) 有源未添加（推荐+恢复默认+说明）。
+                const hasSources = defs.size > 0;
                 const emptyText = document.createElement("p");
-                emptyText.textContent = this.i18n.homeEmpty;
+                emptyText.textContent = hasSources ? this.i18n.homeEmpty : this.i18n.homeEmptyNoSource;
+                empty.append(emptyText);
+                if (hasSources) {
+                    // 默认材质/档位由组件目录声明（ADR 0091 语言指针，非第二套视觉）
+                    const tierHint = document.createElement("p");
+                    tierHint.className = "sw-home__hint";
+                    tierHint.textContent = this.i18n.homeEmptyTierHint;
+                    empty.append(tierHint);
+                    const existingModules = new Set((this.getHomeState().instances as Array<any>).map((candidate: any) => candidate.moduleId));
+                    const defaultOrder = DEFAULT_MODULES.map((candidate) => candidate.moduleId);
+                    const candidates = [...defs.keys()]
+                        .filter((moduleId) => !existingModules.has(moduleId))
+                        .sort((a, b) => (defaultOrder.indexOf(a) + 1 || 99) - (defaultOrder.indexOf(b) + 1 || 99))
+                        .slice(0, 3);
+                    if (candidates.length > 0) {
+                        const recRow = document.createElement("div");
+                        recRow.className = "sw-home__empty-recs";
+                        const recLabel = document.createElement("p");
+                        recLabel.className = "sw-home__empty-recs-label";
+                        recLabel.textContent = this.i18n.homeEmptyRecommended;
+                        recRow.append(recLabel);
+                        candidates.forEach((moduleId) => {
+                            const candidateDef = defs.get(moduleId)!;
+                            const add = document.createElement("button");
+                            add.type = "button";
+                            add.className = "b3-button b3-button--outline sw-home__empty-rec";
+                            add.textContent = candidateDef.title || moduleId;
+                            add.addEventListener("click", () => {
+                                // 可取消/可回退：走与商店一致的添加管线（默认档实例），可随时移除
+                                const next = this.getHomeState();
+                                const layoutList = (next.layouts[device] || []) as Array<any>;
+                                const supported: string[] = Array.isArray(candidateDef.sizes) && candidateDef.sizes.length > 0 ? candidateDef.sizes : ["medium"];
+                                const sizeKey = resolveHomeTileDefaultSize(moduleId, supported, "medium");
+                                const preset2 = HOME_WIDGET_SIZES[(sizeKey || "medium") as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+                                (next.instances as Array<any>).push({instanceId: moduleId, moduleId, config: {}, enabled: true});
+                                layoutList.push({instanceId: moduleId, x: 0, y: 0, w: preset2.w, h: preset2.h, collapsed: false, size: sizeKey});
+                                next.layouts[device] = layoutList;
+                                this.saveHomeState(next);
+                                layoutOpLabel = this.i18n.homeHistoryUpdate;
+                                renderPanel();
+                            });
+                            recRow.append(add);
+                        });
+                        empty.append(recRow);
+                    }
+                    // 恢复默认布局：空态下仅重建默认模块实例与布局（不动 provider 数据；
+                    // 已存在同模块实例的不再重复创建实例，只补布局条目）
+                    const restore = document.createElement("button");
+                    restore.type = "button";
+                    restore.className = "b3-button b3-button--outline sw-home__empty-restore";
+                    restore.textContent = this.i18n.homeEmptyRestoreDefault;
+                    restore.addEventListener("click", () => {
+                        const next = this.getHomeState();
+                        const layoutList: Array<any> = [];
+                        const seenModules = new Set((next.instances as Array<any>).map((candidate: any) => candidate.moduleId));
+                        DEFAULT_MODULES.forEach((candidate) => {
+                            const candidateDef = defs.get(candidate.moduleId);
+                            if (!candidateDef) return;
+                            const supported: string[] = Array.isArray(candidateDef.sizes) && candidateDef.sizes.length > 0 ? candidateDef.sizes : ["medium"];
+                            const sizeKey = resolveHomeTileDefaultSize(candidate.moduleId, supported, "medium");
+                            const preset2 = HOME_WIDGET_SIZES[(sizeKey || "medium") as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+                            if (!seenModules.has(candidate.moduleId)) {
+                                (next.instances as Array<any>).push({instanceId: candidate.moduleId, moduleId: candidate.moduleId, config: {}, enabled: true});
+                            }
+                            layoutList.push({instanceId: candidate.moduleId, x: 0, y: 0, w: preset2.w, h: preset2.h, collapsed: false, size: sizeKey});
+                        });
+                        next.layouts[device] = layoutList;
+                        this.saveHomeState(next);
+                        layoutOpLabel = this.i18n.homeHistoryUpdate;
+                        renderPanel();
+                    });
+                    empty.append(restore);
+                }
                 const openStore = document.createElement("button");
                 openStore.type = "button";
                 openStore.className = "b3-button b3-button--outline sw-home__empty-store";
                 openStore.textContent = this.i18n.homeEmptyOpenStore;
                 openStore.addEventListener("click", () => openHomeWidgetStore.call(this, device, renderPanel));
-                empty.append(emptyText, openStore);
+                empty.append(openStore);
                 grid.appendChild(empty);
             }
             const controllers = homeControllers;

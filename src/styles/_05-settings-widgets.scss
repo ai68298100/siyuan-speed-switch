@@ -1230,3 +1230,19 @@
     margin: 0;
     overflow-wrap: anywhere;
 }
+
+// T-7033：空态引导——推荐行与恢复默认按钮（分层文案见 second-panel-ui 空态块）。
+.sw-home .sw-home__empty-recs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 4px 0 0;
+}
+
+.sw-home .sw-home__empty-recs-label {
+    margin: 0;
+    font-size: 12px;
+    color: var(--b3-theme-on-surface);
+}
