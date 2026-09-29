@@ -652,7 +652,10 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
     nav.setAttribute("aria-label", options.labels.contextLabel);
     PLATFORM_SURFACES.forEach((surface) => {
         if (!available.has(surface)) return;
+        // T-7015c（用户反馈）：非当前表面必须可导航——onNavigate 缺失时宁可不渲染，
+        // 绝不输出「看起来像入口的灰字 span」（用户实测被报告为「按钮点了没用」）。
         const navigable = surface !== options.surface && typeof options.onNavigate === "function";
+        if (surface !== options.surface && !navigable) return;
         const control = doc.createElement(navigable ? "button" : "span");
         control.className = "sw-platform-surface-nav__item";
         control.dataset.surface = surface;

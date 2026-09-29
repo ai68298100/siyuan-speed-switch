@@ -974,6 +974,18 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
     assert.match(chromeMount, /close\.className = "b3-button b3-button--text sw-platform-header__close";/, 'chrome must render a top-right close button');
     assert.match(chromeMount, /close\.addEventListener\("click", \(\) => options\.onClose\?\.\(\)\)/,
         'close button must invoke the supplied surface close action');
+    // T-7015b（用户反馈：关闭钮要更明显）：必须带边框/底色的实感钮 + hover 强调。
+    {
+        const {declaresIn} = require('./css-block-scan.cjs');
+        const shellScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_platform-shell.scss'));
+        const base = {topLevel: true};
+        assert.ok(declaresIn(shellScss, '.sw-platform-header__close', /border: 1px solid var\(--sw-platform-line/, base),
+            'close button must carry a visible border');
+        assert.ok(declaresIn(shellScss, '.sw-platform-header__close', /background: var\(--sw-platform-surface/, base),
+            'close button must carry an opaque surface background');
+        assert.ok(declaresIn(shellScss, '.sw-platform-header__close:hover', /border-color: var\(--sw-platform-accent/, base),
+            'close button hover must use the accent border');
+    }
     // 切换器是首个消费点：上下文栏常驻 Tab/1-9/Enter/Alt 预览。
     assert.match(indexSource, /kbdHints: \["Tab", "1-9", "Enter", this\.i18n\.platformKbdPreview\]/,
         'desktop switcher chrome must pass the keyboard hints');
@@ -1077,6 +1089,11 @@ test('switcher polish: kbd-skinned digit badges and preview status badge (T-6873
         assert.ok(declaresIn(scope, selector, /border: 1px solid var\(--b3-border-color\)/), `${selector} must carry a hairline border`);
         assert.ok(declaresIn(scope, selector, /font-family:\s*var\(--b3-font-family-code/), `${selector} must use the code font`);
     }
+    // T-7015b（用户实测：角标被卡片 overflow:hidden 裁掉半个数字）：角标必须
+    // 内嵌（非负 top），绝不悬出可裁剪容器。
+    assert.ok(declaresIn(badgeScss, '.sw__card[data-sw-digit]::after', /top:\s*4px/), 'card badge must sit inside the card');
+    assert.ok(declaresIn(badgeScss, '.sw__doc-item[data-sw-digit]::after', /top:\s*3px/), 'doc-item badge must sit inside the row');
+    assert.doesNotMatch(badgeScss, /top:\s*-\dpx[^}]*attr\(data-sw-digit\)/, 'badge must not hang outside a clipping container');
     // 预览窗格状态徽标：loading→ready 两态推进，经平台六态徽标原语产出。
     assert.match(docSearchUi, /import \{createPlatformStatus\} from "\.\/platform-dom"/,
         'doc-search-ui must import the platform status primitive');
@@ -1210,6 +1227,17 @@ test('surfaces default to fullscreen with optional sizes (T-6877, ADR 0080; T-69
         'the workbench keeps its follow/adaptive/custom/fullscreen options');
 });
 
+
+// T-7015c（用户实测：工作台 SurfaceNav「片段实验室」呈灰字不可点）：
+test("platform chrome: non-current surfaces never render as fake entries (T-7015c)", () => {
+    // mountPlatformChrome：非当前表面在 onNavigate 缺失时必须跳过渲染，
+    // 绝不输出「看起来像入口的灰字 span」。
+    assert.match(indexSource, /if \(surface !== options\.surface && !navigable\) return;/,
+        "非当前表面无导航处理时必须跳过渲染（诚实降级）");
+    // 现有四条装配路径全部传入 onNavigate（结构性防回退）。
+    const secondPanel = readSourceText(path.join(__dirname, "..", "src", "second-panel-ui.ts"));
+    assert.match(secondPanel, /onNavigate: navigatePlatformSurface,/, "工作台 chrome 必须传 onNavigate");
+});
 test('cross-surface snippet objects: query results and studio selection (T-6878/T-6979)', () => {
     const {declaresIn} = require('./css-block-scan.cjs');
     const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));

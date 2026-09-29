@@ -4,7 +4,14 @@
 > releases; new entries are appended here at release time. 中文完整历史见 [`docs/CHANGELOG.md`](./CHANGELOG.md)。
 
 ## Changelog (full history)
-### v0.43.1 (2026-09-29)
+### v0.43.2 (2026-09-29)
+
+- **Panel entry discoverability & honesty (user-reported)**: non-current SurfaceNav items now render as bordered pills by default (previously bare gray text with no hover affordance); structurally, any assembly path missing its navigate handler **skips rendering** the non-current item entirely — a gray fake entry can no longer exist. Real-click cross-panel switching (fullscreen switcher/workbench → snippet lab, adaptive/fixed size branches) is now pinned as a release-gate smoke driven by CDP in real Chromium, asserting mount state, fullscreen sizing, z-order, and zero fake entries per case.
+- **Digit badge fix**: the 1-9 badges on switcher cards used to straddle the card border and were clipped to half a digit by the card's overflow; they now sit fully inside the card's top-right corner (doc-result badges likewise).
+- **Close button prominence**: the top-right close button on all panels upgrades from a bare icon to a bordered, surface-filled button with an accent hover.
+- **Verification**: full suite **6538/6538**; `tsc` clean; new gates include negative injections (honest-rendering guard removal, badge clipping regression, close-button revert — all precise reds with byte-restores).
+
+
 
 - **Hotfix: the snippet lab (third panel) could not be opened** — the v0.43.0 capability-receipt wiring (T-6987) called the probe-coverage analyzer `analyzeCssCoverage` in the UI without importing it; the lazy studio chunk threw a `ReferenceError` on first render and the mount fell back to the switcher. The import is fixed and verified by new mount-level regression tests covering the full chain (mount → first render → capability receipt → editing → diagnostics verdicts and error positions).
 - **Test-coverage gap closed**: the studio UI previously had only source-scan contracts (no code execution); a real `snippet-studio-mount` test (jsdom + siyuan stub) now runs the whole UI so construction/first-render errors fail inside the test chain.

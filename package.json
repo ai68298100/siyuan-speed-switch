@@ -1,6 +1,6 @@
 {
   "name": "siyuan-speed-switch",
-  "version": "0.43.1",
+  "version": "0.43.2",
   "description": "SiYuan plugin: switch opened tabs with thumbnails like Windows Alt+Tab.",
   "main": "index.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "test:smoke:layout": "node tests/mobile-toolbar-layout.cjs",
     "test:smoke:browser": "node tests/chromium-style-smoke.cjs",
     "test:smoke:floating-ball": "node tests/floating-ball-browser-smoke.cjs",
-    "verify:release": "pnpm exec tsc --noEmit && pnpm repro:audit && pnpm test && pnpm run release:check && pnpm run quality:audit && pnpm run integration:audit && pnpm test:smoke && pnpm test:smoke:layout && pnpm test:smoke:browser && pnpm test:smoke:floating-ball",
+    "verify:release": "pnpm exec tsc --noEmit && pnpm repro:audit && pnpm test && pnpm run release:check && pnpm run quality:audit && pnpm run integration:audit && pnpm test:smoke && pnpm test:smoke:layout && pnpm test:smoke:browser && pnpm test:smoke:floating-ball && pnpm test:smoke:surface-switch",
     "readiness:snapshot": "node scripts/readiness-snapshot.cjs",
     "release:check": "node scripts/check-release-readiness.cjs",
     "release:audit": "node scripts/release-batch-audit.cjs",
@@ -20,7 +20,8 @@
     "integration:audit": "node scripts/integration-boundary-audit.cjs",
     "fixtures": "node scripts/serve-acceptance-fixtures.cjs 8000",
     "test:e2e": "playwright test --config playwright.e2e.config.mjs",
-    "test:e2e:readonly": "playwright test --config playwright.e2e.readonly.config.mjs"
+    "test:e2e:readonly": "playwright test --config playwright.e2e.readonly.config.mjs",
+    "test:smoke:surface-switch": "node tests/surface-switch-browser-smoke.cjs"
   },
   "keywords": [
     "siyuan",

@@ -161,7 +161,17 @@
     height: 32px;
     min-width: 32px;
     padding: 0;
+    // T-7015b（用户反馈）：关闭钮从纯文本钮升级为带边框/底色的实感钮——
+    // 位置本就在 header 最右，此前只是无背景小图标，可发现性不足。
+    border: 1px solid var(--sw-platform-line, var(--b3-border-color));
     border-radius: var(--b3-border-radius);
+    background: var(--sw-platform-surface, var(--b3-theme-surface));
+    transition: border-color $sw-dur-base $sw-ease, background $sw-dur-base $sw-ease;
+
+    &:hover {
+        border-color: var(--sw-platform-accent, var(--b3-theme-primary));
+        background: color-mix(in srgb, var(--sw-platform-accent, var(--b3-theme-primary)) 12%, transparent);
+    }
 }
 
 .sw-platform-header__close svg { width: 18px; height: 18px; }
@@ -185,7 +195,9 @@
     flex: 0 0 auto;
     min-height: 36px;
     padding: 6px 11px;
-    border: 1px solid transparent;
+    // T-7015c（用户反馈）：非当前项默认给淡边框胶囊——静态观感即可辨认「这是
+    // 可点的按钮」，不再依赖 hover 才显形（按钮可发现性）。
+    border: 1px solid color-mix(in srgb, var(--sw-platform-line, var(--b3-border-color)) 72%, transparent);
     border-radius: var(--sw-platform-radius-sm);
     color: var(--sw-platform-text-muted);
     background: transparent;
