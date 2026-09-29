@@ -69,6 +69,13 @@ body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(
 </head>
 <body>
 <div style="margin:16px;padding:10px 14px;border:1px dashed #98a;border-radius:8px;font:13px/1.6 system-ui;color:#445">
+  <strong>大库性能条款（T-6977，ADR 对齐 ui-handbook §9）</strong>：本批次组件为列表型——遵循三模式：
+  ①异步计数补齐（列表先出、计数「…」占位不等于零、失败显示未知）；
+  ②虚拟滚动预案（上限放宽到 100+ 前必须先落窗口化方案并带验收证据，禁止裸放上限）；
+  ③刷新期旧列表保持可见、仅变化行局部更新、失败保留旧值并标注。
+</div>
+
+<div style="margin:16px;padding:10px 14px;border:1px dashed #98a;border-radius:8px;font:13px/1.6 system-ui;color:#445">
   <strong>生产档位对照（ADR 0101）</strong>：本卡的 S/M/L/X 仅为设计审查速记，产品语义以七档为准——
   S→<code>small</code> · M→<code>medium</code> · L→<code>large</code> · X→<code>full</code>；
   卡面出现的 <code>tall</code>/<code>wide</code>/<code>xs</code> 直接采用七档词。完整词汇：xs(2×3)/small(4×3)/medium(4×4)/tall(4×6)/wide(8×3)/large(8×5)/full(12×6)。
