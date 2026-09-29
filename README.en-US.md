@@ -8,8 +8,20 @@ LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**.
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
+## Xiaolv Plugins And Community
+
+The four plugins currently developed under the Xiaolv series are:
+
+- **小驴雷切** (LvSpeed Switch): the unified switching and work-context platform
+- **小驴打卡**
+- **小驴人脉**
+- **小驴拾遗**
+
+QQ community group: **871707735**
+
 ## Table of Contents
 
+- [Xiaolv Plugins And Community](#xiaolv-plugins-and-community)
 - [Core Capabilities](#core-capabilities)
 - [Widget Panel: 58 Out-Of-The-Box Widgets](#widget-panel-58-out-of-the-box-widgets)
 - [SiYuan Agent Capabilities](#siyuan-agent-capabilities)
@@ -79,7 +91,7 @@ Search requests use a 180 ms debounce, bounded in-memory cache, request-version 
 - **Peek open**: `Alt+click` a search result to peek at it in a read-only preview tab before committing.
 - **Digit direct access**: the first nine visible cards carry digit badges; press the matching key to open.
 - **Document set version history**: overwrites keep the last 3 versions, roll back to any of them (reversible); Essentials receipts are part of the restore summary.
-- **Migratable config pack**: export/import a versioned pack of whitelisted settings + document sets; import validates everything then applies atomically.
+- **Migratable config pack**: export/import a versioned pack of whitelisted settings + document sets; import validates the whole pack, applies groups with per-item receipts, and does not claim an atomic multi-key transaction.
 - **Mobile floating-ball anti-misfire**: layered with the host `data-prevent-swipe` contract, touch-stream interception, and drag-time scroll-chain blocking; dragging the ball no longer triggers SiYuan edge swipes, while swipes elsewhere keep working.
 
 ### Panels, Journal, And Quick Actions
@@ -426,7 +438,7 @@ Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；En
 - **Preview open**: Alt+click opens search results as read-only preview tabs.
 - **Document set version history & rollback**: overwrites keep the last 3 versions, any of them can be restored reversibly; restore summary includes Essentials receipts; scene presets persist into document sets.
 - **Dynamic favorite groups**: tag + notebook scope + updated-window parameterized queries.
-- **Density tier & config pack**: compact density switch; one-click export/import of a versioned config pack (atomic apply).
+- **Density tier & config pack**: compact density switch; one-click export/import of a versioned config pack (grouped apply with per-item receipts; no atomic multi-key transaction claim).
 - **Mobile floating-ball anti-misfire**: `data-prevent-swipe` contract + touch-stream interception + drag-time scroll-chain blocking; dragging the ball no longer triggers SiYuan edge swipes, while swipes elsewhere keep working.
 - **Real-instance E2E channel**: 6 real-kernel acceptance specs (desktop/mobile/readonly), plus ADR 0077 (1024 KiB raw line) and provider protocol metadata.
 ### v0.30.1 (2026-09-22)
