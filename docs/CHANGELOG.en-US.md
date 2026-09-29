@@ -4,6 +4,12 @@
 > releases; new entries are appended here at release time. 中文完整历史见 [`docs/CHANGELOG.md`](./CHANGELOG.md)。
 
 ## Changelog (full history)
+### v0.43.1 (2026-09-29)
+
+- **Hotfix: the snippet lab (third panel) could not be opened** — the v0.43.0 capability-receipt wiring (T-6987) called the probe-coverage analyzer `analyzeCssCoverage` in the UI without importing it; the lazy studio chunk threw a `ReferenceError` on first render and the mount fell back to the switcher. The import is fixed and verified by new mount-level regression tests covering the full chain (mount → first render → capability receipt → editing → diagnostics verdicts and error positions).
+- **Test-coverage gap closed**: the studio UI previously had only source-scan contracts (no code execution); a real `snippet-studio-mount` test (jsdom + siyuan stub) now runs the whole UI so construction/first-render errors fail inside the test chain.
+- **Verification**: full suite **6537/6537**; `tsc` clean; release gates green.
+
 ### v0.43.0 (2026-09-29)
 
 - **Widget store S2 (T-6967)**: sort menu moved into the filter chip row; detail-pane meta upgraded to four plain rows (source/refresh/privacy/cache); empty catalog keeps the full chrome and shows a failure banner with retry; network/local/offline capability chips neutralized; mobile filter chips scroll horizontally with snap.
