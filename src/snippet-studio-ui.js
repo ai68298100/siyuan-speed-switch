@@ -3,7 +3,7 @@ const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCata
 const {buildSnippetDiff, summarizeDiff, applyDiffHunks} = require("./snippet-diff.js");
 const {lintSnippet} = require("./snippet-lint.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
-const {buildRecycleEntry, appendRecycleEntry} = require("./snippet-recycle.js");
+const {buildRecycleEntry, appendRecycleEntry, purgeRecycleEntry, normalizeRecycleStore} = require("./snippet-recycle.js");
 const {createSnippetPreview, resolvePreviewCapability, formatPreviewCapability, analyzeSelectorDiagnostics, analyzeCssCoverage} = require("./snippet-studio-preview.js");
 const {createSnippetAIClient} = require("./snippet-studio-ai.js");
 
@@ -180,6 +180,17 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetPaneDraft: locale.i18n.snippetPaneDraft,
         snippetPaneSaved: locale.i18n.snippetPaneSaved,
         snippetPaneSavedEmpty: locale.i18n.snippetPaneSavedEmpty,
+        snippetRecycle: locale.i18n.snippetRecycle,
+        snippetRecycleClear: locale.i18n.snippetRecycleClear,
+        snippetRecycleClearConfirm: locale.i18n.snippetRecycleClearConfirm,
+        snippetRecycleEmpty: locale.i18n.snippetRecycleEmpty,
+        snippetRecycleOriginConflict: locale.i18n.snippetRecycleOriginConflict,
+        snippetRecycleOriginDelete: locale.i18n.snippetRecycleOriginDelete,
+        snippetRecycleOriginOverwrite: locale.i18n.snippetRecycleOriginOverwrite,
+        snippetRecyclePurge: locale.i18n.snippetRecyclePurge,
+        snippetRecyclePurgeConfirm: locale.i18n.snippetRecyclePurgeConfirm,
+        snippetRecycleRestore: locale.i18n.snippetRecycleRestore,
+        snippetRecycleRestored: locale.i18n.snippetRecycleRestored,
         snippetPreview: locale.i18n.snippetPreview,
         snippetPreviewError: locale.i18n.snippetPreviewError,
         snippetPreviewHint: locale.i18n.snippetPreviewHint,
@@ -1417,6 +1428,71 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         root.scrollTop = pickerScrollTop.root;
         layout.scrollTop = pickerScrollTop.layout;
     }
+    // T-7025 第二阶段：回收站视图——列表（名称/类型/来源/日期/大小）、恢复为新
+    // 草稿（过 guardLeave 脏稿守卫，choose(value, null) 落禁用态、不自动启用）、
+    // 永久删除/清空二次确认并如实回执（ADR 0100 D5）。Esc/外点仅关闭视图。
+    function openRecycleViewer() {
+        const overlay = node("div", "sw-studio__picker sw-studio__recycle");
+        overlay.setAttribute("role", "dialog");
+        overlay.setAttribute("aria-modal", "true");
+        overlay.setAttribute("aria-label", t("snippetRecycle"));
+        const sheet = node("section", "sw-studio__picker-sheet");
+        const head = node("div", "sw-studio__section-bar");
+        const list = node("div", "sw-studio__catalog");
+        const renderList = () => {
+            const entries = recycle.load().entries || [];
+            list.replaceChildren();
+            if (!entries.length) list.append(node("p", "sw-studio__hint", t("snippetRecycleEmpty")));
+            for (const entry of entries) {
+                const row = node("div", "sw-studio__recycle-item");
+                const main = node("div", "sw-studio__recycle-main");
+                const title = node("div", "sw-studio__recycle-title");
+                title.append(
+                    node("span", "sw-studio__catalog-kind", entry.type.toUpperCase()),
+                    node("strong", "", entry.name),
+                    node("span", "sw-studio__tag", t(entry.origin === "delete" ? "snippetRecycleOriginDelete" : entry.origin === "conflict" ? "snippetRecycleOriginConflict" : "snippetRecycleOriginOverwrite")),
+                );
+                main.append(title, node("span", "sw-studio__hint", `${new Date(entry.createdAt).toLocaleString()} · ${formatBytes(entry.size)}`));
+                const actionsBox = node("div", "sw-studio__recycle-actions");
+                const restoreButton = action("snippetRecycleRestore", () => {
+                    guardLeave(() => {
+                        choose({name: entry.name, type: entry.type, content: entry.content}, null);
+                        overlay.remove();
+                        setStatus(t("snippetRecycleRestored"), "ready");
+                    });
+                });
+                const purgeButton = action("snippetRecyclePurge", () => {
+                    if (!win.confirm(t("snippetRecyclePurgeConfirm"))) return;
+                    recycle.save(purgeRecycleEntry(recycle.load(), entry.recId));
+                    setStatus(t("snippetRecycle"), "ready");
+                    renderList();
+                });
+                actionsBox.append(restoreButton, purgeButton);
+                row.append(main, actionsBox);
+                list.appendChild(row);
+            }
+        };
+        const clearButton = action("snippetRecycleClear", () => {
+            if (!win.confirm(t("snippetRecycleClearConfirm"))) return;
+            recycle.save(normalizeRecycleStore(null));
+            setStatus(t("snippetRecycle"), "ready");
+            renderList();
+        });
+        head.append(node("strong", "", t("snippetRecycle")), clearButton, action("snippetClose", () => overlay.remove()));
+        sheet.append(head, list);
+        overlay.appendChild(sheet);
+        root.appendChild(overlay);
+        renderList();
+        overlay.addEventListener("click", (event) => {
+            if (event.target === overlay) overlay.remove();
+        });
+        overlay.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            event.stopPropagation();
+            overlay.remove();
+        });
+    }
     function openPicker() {
         if (picker || busy) return;
         pickerScrollTop = {root: root.scrollTop, layout: layout.scrollTop};
@@ -1426,7 +1502,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         picker.setAttribute("aria-label", t("snippetChoose"));
         const sheet = node("section", "sw-studio__picker-sheet");
         const head = node("div", "sw-studio__section-bar");
-        head.append(node("strong", "", t("snippetChoose")), action("snippetClose", closePicker));
+        // T-7025 第二阶段：目录浮层头部提供回收站入口
+        head.append(node("strong", "", t("snippetChoose")), action("snippetRecycle", () => openRecycleViewer()), action("snippetClose", closePicker));
         const recentItems = (session.recentIds || []).map((id) => snippets.find((item) => item.id === id)).filter(Boolean);
         const recent = node("div", "sw-studio__recent");
         if (recentItems.length) {

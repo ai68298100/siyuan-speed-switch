@@ -403,3 +403,40 @@
     margin: 4px 0 0;
     color: var(--b3-theme-on-surface-light);
 }
+
+// T-7025 第二阶段：回收站视图——行式条目（类型徽标+名称+来源 tag+日期/大小）
+// 与行内动作；复用 picker sheet 布局，仅补行解剖样式。
+.sw-studio__recycle-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--studio-line);
+}
+
+.sw-studio__recycle-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.sw-studio__recycle-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+
+    strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.sw-studio__recycle-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 6px;
+}

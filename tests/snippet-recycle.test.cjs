@@ -2,6 +2,8 @@
 // 三入口接线（覆盖保存/删除/冲突放弃）、D-401 存储通道。
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const {readSourceFile} = require('./source-scan.cjs');
 const {
     buildRecycleEntry, normalizeRecycleStore, appendRecycleEntry, purgeRecycleEntry,
@@ -51,4 +53,24 @@ test('recycle wiring: three capture points and the plugin-side storage channel',
     assert.match(indexSource, /load: \(\) => normalizeRecycleStore\(this\.data\[SNIPPET_RECYCLE_KEY\]\)/,
         '持久化必须走 sw_snippet_recycle 插件侧 key（读取路径归一，满足 sanitize 审计）');
     assert.match(indexSource, /this\.saveDataDebounced\(SNIPPET_RECYCLE_KEY\);/, '写入必须走防抖队列');
+});
+
+// T-7025 第二阶段：回收站视图契约——目录浮层入口、恢复过脏稿守卫落禁用草稿、
+// 永久删除/清空二次确认、来源标签与双语键齐备。
+const zhLang = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'), 'utf8'));
+const enLang = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n', 'en.json'), 'utf8'));
+
+test('recycle view: picker entry, guarded restore and confirmed destructive actions (T-7025 phase 2)', () => {
+    assert.match(uiSource, /action\("snippetRecycle", \(\) => openRecycleViewer\(\)\)/,
+        '目录浮层必须提供回收站入口');
+    assert.match(uiSource, /guardLeave\(\(\) => \{\s*\n\s*choose\(\{name: entry\.name, type: entry\.type, content: entry\.content\}, null\);/,
+        '恢复必须过脏稿守卫且以非原生形态落禁用草稿（不自动启用）');
+    assert.match(uiSource, /if \(!win\.confirm\(t\("snippetRecyclePurgeConfirm"\)\)\) return;/,
+        '永久删除必须二次确认');
+    assert.match(uiSource, /if \(!win\.confirm\(t\("snippetRecycleClearConfirm"\)\)\) return;/,
+        '清空必须二次确认');
+    assert.match(uiSource, /recycle\.save\(normalizeRecycleStore\(null\)\);/, '清空必须走纯模型重置');
+    for (const key of ["snippetRecycle", "snippetRecycleEmpty", "snippetRecycleRestore", "snippetRecyclePurge", "snippetRecyclePurgeConfirm", "snippetRecycleClear", "snippetRecycleClearConfirm", "snippetRecycleRestored", "snippetRecycleOriginOverwrite", "snippetRecycleOriginDelete", "snippetRecycleOriginConflict"]) {
+        assert.ok(zhLang[key] && enLang[key], `i18n 键 ${key} 必须双语齐备`);
+    }
 });
