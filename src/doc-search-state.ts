@@ -13,8 +13,9 @@ export interface DocSearchState {
     filters: WeakMap<HTMLElement, IDocSearchFilters>;
     /** 每个 scroll 元素已解析的笔记本 ID → 名称 */
     notebookNames: WeakMap<HTMLElement, Map<string, string>>;
-    /** 路径筛选代际标记：自增使过期响应失效（竞态保护，此语义不得退化） */
-    pathGeneration: number;
+    /** T-7043：路径筛选代际按 surface/session（scrollElement）隔离——桌面/侧栏/移动
+     * 互不作废对方在途请求；同表面重开路径菜单才作废自己的旧请求（竞态保护语义不变） */
+    pathGenerations: WeakMap<HTMLElement, number>;
     /** 每个 scroll 元素已预取的路径标题 */
     pathTitles: WeakMap<HTMLElement, Map<string, string>>;
     /** T-6802：每个 scroll 元素当前查询的运算符解析结果（精确短语/排除项/普通词） */
@@ -42,7 +43,7 @@ export function createDocSearchState(): DocSearchState {
         activeSessions: new Set(),
         filters: new WeakMap(),
         notebookNames: new WeakMap(),
-        pathGeneration: 0,
+        pathGenerations: new WeakMap(),
         pathTitles: new WeakMap(),
         parsedQueries: new WeakMap(),
         chipFilters: new WeakMap(),

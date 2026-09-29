@@ -924,6 +924,49 @@ test('switcher focus model: cards are real focus targets and chips are an honest
         'chips 不得残留 aria-selected（tablist 专属属性）');
 });
 
+// T-7042：chips 键盘路径与同级行补钉——cycleSearchChip 曾写 aria-selected，
+// 与 applySearchChips 的 aria-pressed 按钮组语义分裂（T-7007 契约只钉住点击路径，
+// 键盘路径漏网）；快速捕获目标按钮组同错一并收口。
+test('switcher focus model: chip keyboard path and capture targets use aria-pressed (T-7042)', () => {
+    const cycleSlice = indexSource.slice(
+        indexSource.indexOf('private cycleSearchChip('),
+        indexSource.indexOf('private pickCardByPosition('),
+    );
+    assert.match(cycleSlice, /el\.setAttribute\("aria-pressed", String\(active\)\);/,
+        'chips 键盘循环必须与点击路径同为 aria-pressed');
+    assert.doesNotMatch(cycleSlice, /aria-selected/,
+        'chips 键盘路径不得残留 aria-selected');
+    const targetSlice = indexSource.slice(
+        indexSource.indexOf('const setActiveTarget = (next: CaptureTarget) => {'),
+        indexSource.indexOf('const setActiveTarget') >= 0
+            ? indexSource.indexOf('updatePreview();', indexSource.indexOf('const setActiveTarget'))
+            : -1,
+    );
+    assert.match(targetSlice, /el\.setAttribute\("aria-pressed", String\(key === target\)\);/,
+        '快速捕获目标按钮组必须用 aria-pressed 表达单选');
+    assert.doesNotMatch(targetSlice, /aria-selected/,
+        '快速捕获目标按钮组不得残留 aria-selected');
+});
+
+// T-7041：侧栏独立日记入口（ROADMAP §2.2 三端必备）——桌面弹窗与手机快捷动作均有
+// 日记入口，侧栏工具栏此前缺失；复用共享 openJournal 命令，不新增第二套实现。
+test('sidebar toolbar parity: independent journal entry reuses the shared openJournal command (T-7041)', () => {
+    const sidebarHtml = indexSource.slice(
+        indexSource.indexOf('private buildSidebarHtml(): string {'),
+        indexSource.indexOf('private observeSidebarResize('),
+    );
+    assert.match(sidebarHtml, /class="b3-button b3-button--text sw__icon-btn sw__journal-btn"/,
+        '侧栏工具栏必须有独立日记按钮');
+    assert.match(sidebarHtml, /aria-label="\$\{this\.i18n\.journalBtn\}"/,
+        '日记按钮可访问名称必须与桌面同 i18n 键');
+    const toolbar = indexSource.slice(
+        indexSource.indexOf('private bindSidebarToolbarEvents('),
+        indexSource.indexOf('private scheduleSidebarRefresh('),
+    );
+    assert.match(toolbar, /element\.querySelector\("\.sw__journal-btn"\)\?\.addEventListener\("click", \(\) => \{\s*\n\s*this\.openJournal\(\);/,
+        '侧栏日记必须走共享 openJournal 命令（不新增实现）');
+});
+
 // T-7010：第二面板 renderPanel 重绘事务——捕获滚动锚与聚焦现场，挂载后恢复。
 test('workbench rerender transaction: capture scroll and focus before rebuild, restore after mount (T-7010)', () => {
     const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));

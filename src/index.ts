@@ -2644,7 +2644,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             target = next;
             targetButtons.forEach(({key, el}) => {
                 el.classList.toggle("sw__target--active", key === target);
-                el.setAttribute("aria-selected", String(key === target));
+                // T-7042：同 chips 收口——单选按钮组用 aria-pressed，不用 tablist 专属 aria-selected
+                el.setAttribute("aria-pressed", String(key === target));
             });
             updatePreview();
         };
@@ -11477,7 +11478,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         row.querySelectorAll<HTMLElement>(".sw__search-chip").forEach((el) => {
             const active = el.dataset.chip === next;
             el.classList.toggle("is-active", active);
-            el.setAttribute("aria-selected", String(active));
+            // T-7042：键盘路径与点击路径同语义——chips 是按钮组（aria-pressed），
+            // aria-selected 是 tablist 专属属性，普通按钮上读屏会忽略
+            el.setAttribute("aria-pressed", String(active));
         });
     }
 
@@ -12452,6 +12455,17 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             ? this.docSearchState.filters.get(previousScrollElement)
             : undefined;
         const previousSearchQuery = element.querySelector<HTMLInputElement>(".sw__search")?.value || "";
+        // T-7038：重绘现场事务——全量重建前捕获滚动与焦点卡片。浮层由
+        // sidebarHistoryDropdownDispose 统一关闭（T-7040 已并入排序浮层），
+        // 分组折叠状态存宿主级 Set 天然存活；此处补滚动与焦点两要素。
+        const previousScrollTop = previousScrollElement?.scrollTop ?? 0;
+        const sidebarActive = element.ownerDocument.activeElement;
+        const sidebarFocus = sidebarActive && typeof (sidebarActive as HTMLElement).closest === "function"
+            ? sidebarActive as HTMLElement : null;
+        const focusInSidebar = !!previousScrollElement && !!sidebarFocus && previousScrollElement.contains(sidebarFocus);
+        const previousFocusCardId = focusInSidebar
+            ? sidebarFocus!.closest(".sw__card")?.getAttribute("data-tab-id") || null
+            : null;
         if (previousScrollElement) {
             disposeDocSearchSession.call(this, previousScrollElement);
         }
@@ -12495,6 +12509,17 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             this.docSearchState.filters.set(scrollElement, Object.freeze({...previousSearchFilters}));
         }
         this.renderList(scrollElement, tabs, activeTab, listOpts, this.getSettings().sortBy, updatedMap);
+        // T-7038：恢复现场——滚动按内容高度钳制复位（首帧 previousScrollTop 为 0 属无操作）；
+        // 焦点卡片按 tabId 找回，找不到诚实放弃；焦点原在滚动区外（搜索框/浮层）不抢焦点。
+        if (previousScrollTop > 0) {
+            scrollElement.scrollTop = Math.min(previousScrollTop, Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight));
+        }
+        if (focusInSidebar && previousFocusCardId) {
+            const sceneCards = scrollElement.querySelectorAll<HTMLElement>(".sw__card[data-tab-id]");
+            for (const card of sceneCards) {
+                if (card.dataset.tabId === previousFocusCardId) { card.focus({preventScroll: true}); break; }
+            }
+        }
 
         // 侧栏共用 blocks.updated；非排序模式只刷新卡片信息，避免破坏搜索过滤。
         this.loadUpdatedMap(tabs).then((map) => {
@@ -12540,6 +12565,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             </button>
         </div>
         <div class="sw__history-dd sw__history-dd--icon"></div>
+        <button type="button" class="b3-button b3-button--text sw__icon-btn sw__journal-btn" aria-label="${this.i18n.journalBtn}" title="${this.i18n.journalBtn}">
+            <svg width="16" height="16"><use xlink:href="#iconCalendar"></use></svg>
+        </button>
         <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}" title="${this.i18n.settings}">
             <svg width="16" height="16"><use xlink:href="#iconSettings"></use></svg>
         </button>
@@ -12621,6 +12649,12 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
         element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             this.openSetting();
+        });
+
+        // T-7041：侧栏独立日记入口（ROADMAP §2.2 三端必备）——复用桌面同一命令
+        // openJournal，不新增第二套实现；侧栏是 dock 面板无需先销毁
+        element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {
+            this.openJournal();
         });
 
         const backTopBtn = element.querySelector<HTMLElement>(".sw__back-top");

@@ -48,19 +48,21 @@ export interface DocSearchUiHost {
     activateTabForReuse(rootId: string, onClose?: IOverlayClose): boolean;
 }
 
-export async function loadDocSearchPathChildren(this: DocSearchUiHost, notebook: string, path: string, generation: number) {
+export async function loadDocSearchPathChildren(this: DocSearchUiHost, notebook: string, path: string, generation: number, scrollElement: HTMLElement) {
         const input = {notebook, path, limit: MAX_PATH_ITEMS};
         const request = buildPathFilterListRequest(input);
         const cancelled = () => normalizePathFilterProbeOutcome({kind: "cancelled"}, input);
         if (!request) return normalizePathFilterProbeOutcome({kind: "response", payload: null}, input);
-        if (generation !== this.docSearchState.pathGeneration) return cancelled();
+        // T-7043：代际按 scrollElement（surface/session）比对——全局单值会让桌面/
+        // 侧栏/移动互相对方的在途路径请求作废
+        if (generation !== this.docSearchState.pathGenerations.get(scrollElement)) return cancelled();
         let payload: unknown = null;
         try {
             payload = await this.fetchKernelJson("/api/filetree/listDocsByPath", request.body);
         } catch (_) {
             payload = null;
         }
-        if (generation !== this.docSearchState.pathGeneration) return cancelled();
+        if (generation !== this.docSearchState.pathGenerations.get(scrollElement)) return cancelled();
         if (payload === null || payload === undefined) {
             return normalizePathFilterProbeOutcome({kind: "unavailable"}, input);
         }
@@ -119,7 +121,10 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
         // v0.18 路径筛选（T-103）：逐级浏览目录并选择路径前缀。
         // 每次打开自增代际标记，使在途请求作废（内核辅助函数不接受外部 signal）。
         const openPathMenu = (notebook: string, path: string) => {
-            const generation = ++this.docSearchState.pathGeneration;
+            // T-7043：代际按 scrollElement（surface/session）自增——只作废本表面的在途请求
+            const previousGeneration = this.docSearchState.pathGenerations.get(scrollElement) || 0;
+            const generation = previousGeneration + 1;
+            this.docSearchState.pathGenerations.set(scrollElement, generation);
             const rect = button.getBoundingClientRect();
             const position = {x: rect.left, y: rect.bottom};
             const openAsMenu = (items: IMenu[]) => {
@@ -130,8 +135,8 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
                 menu.open(position);
             };
             openAsMenu([{label: this.i18n.searchPathLoading, disabled: true}]);
-            void loadDocSearchPathChildren.call(this, notebook, path, generation).then((result: DocSearchPathProbe) => {
-                if (!button.isConnected || generation !== this.docSearchState.pathGeneration) return;
+            void loadDocSearchPathChildren.call(this, notebook, path, generation, scrollElement).then((result: DocSearchPathProbe) => {
+                if (!button.isConnected || generation !== this.docSearchState.pathGenerations.get(scrollElement)) return;
                 const items: IMenu[] = [];
                 if (!result.ok) {
                     items.push({

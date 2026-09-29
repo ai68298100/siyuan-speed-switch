@@ -456,6 +456,15 @@ export function renderMobileList(this: MobileSwitcherUiHost, scrollElement: HTML
                 reusable.set(card.dataset.tabId, card);
             }
         });
+        // T-7039：重绘现场保持——清空前捕获滚动与焦点卡片；焦点在滚动区外
+        // （搜索框/打开中的 sheet，均在 body 层）不抢焦点、仅保滚动。
+        // 异步 notebook/更新时间补全触发的整表重建不再跳顶丢焦点。
+        const sceneActive = scrollElement.ownerDocument.activeElement;
+        const sceneFocus = sceneActive && typeof (sceneActive as HTMLElement).closest === "function"
+            ? sceneActive as HTMLElement : null;
+        const focusInList = !!sceneFocus && scrollElement.contains(sceneFocus);
+        const focusCardId = focusInList ? sceneFocus!.closest(".sw__card")?.getAttribute("data-tab-id") || null : null;
+        const scrollTopBefore = scrollElement.scrollTop;
         scrollElement.innerHTML = "";
         const settings = this.getSettings();
         scrollElement.style.setProperty("--sw-thumb-height", `${settings.mobileThumbHeight}px`);
@@ -542,6 +551,16 @@ export function renderMobileList(this: MobileSwitcherUiHost, scrollElement: HTML
                     if (!scrollElement.isConnected || notebooks.length === 0) return;
                     renderMobileList.call(this, scrollElement, tabs, activeTab, opts, sortBy, updatedMap);
                 });
+            }
+        }
+
+        // T-7039：恢复现场——滚动按内容高度钳制复位（首帧 scrollTop 为 0 属无操作）；
+        // 焦点卡片按 tabId 找回（DOM 复用移动的是同一元素），找不到诚实放弃不猜焦点。
+        scrollElement.scrollTop = Math.min(scrollTopBefore, Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight));
+        if (focusCardId) {
+            const sceneCards = scrollElement.querySelectorAll<HTMLElement>(".sw__card[data-tab-id]");
+            for (const card of sceneCards) {
+                if (card.dataset.tabId === focusCardId) { card.focus({preventScroll: true}); break; }
             }
         }
 
