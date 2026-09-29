@@ -9,6 +9,7 @@ const {readSourceFile} = require('./source-scan.cjs');
 const {moveLayoutEntry, moveLayoutEntryByOffset} = require('../src/home-model.js');
 
 const panelSource = readSourceFile('src/second-panel-ui.ts');
+const cssSource = readSourceFile('src/styles/_05-settings-widgets.scss');
 const zh = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'), 'utf8'));
 const en = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n', 'en.json'), 'utf8'));
 
@@ -68,4 +69,29 @@ test('edit drag slices 3-4: edge loop and swipe guard wiring', () => {
     assert.match(panelSource, /if \(edgeFrame\) window\.cancelAnimationFrame\(edgeFrame\);/, '拖拽结束必须取消边缘滚动帧');
     assert.match(panelSource, /if \(on\) cell\.setAttribute\("data-prevent-swipe", "true"\);/, '拖拽激活必须声明防误触契约');
     assert.match(panelSource, /cell\.removeAttribute\("data-prevent-swipe"\);/, '拖拽结束必须摘除防误触声明');
+});
+
+test('edit drag entry: cell long-press enters the shared drag pipeline (T-7068)', () => {
+    // 双入口共享同一启动器：把手直拉与长按都必须落在 beginDrag 上（存在≠被调用，邻接钉住）
+    assert.match(panelSource, /const beginDrag = \(event: \{button: number; clientX: number; clientY: number; preventDefault: \(\) => void\}\) => \{/,
+        '拖拽启动器必须提取为 beginDrag 供双入口共用');
+    assert.match(panelSource, /dragHandle\.addEventListener\("pointerdown", beginDrag\);/,
+        '把手直拉必须接到 beginDrag');
+    // 长按守卫：鼠标旁路、工具按钮旁路、进行中旁路
+    assert.match(panelSource, /if \(event\.pointerType === "mouse"\) return;/, '鼠标必须旁路长按（走把手，不抢选择）');
+    assert.match(panelSource, /\?\.closest\("\.sw-home__tool"\)\) return;/, '工具按钮必须旁路长按（保留点击语义）');
+    assert.match(panelSource, /if \(dragCleanup \|\| holdTimer\) return;/, '拖拽进行中必须旁路长按');
+    // 触发条件：520ms 静置 + 位移 ≤6px 才进入；位移超限/抬起/取消即撤销
+    assert.match(panelSource, /Math\.hypot\(move\.clientX - holdOrigin\.x, move\.clientY - holdOrigin\.y\) > 6\) cancelHold\(\);/,
+        '长按位移超限必须撤销');
+    assert.match(panelSource, /beginDrag\(\{button: 0, clientX: origin\.x, clientY: origin\.y, preventDefault: \(\) => undefined\}\);/,
+        '长按触发必须实际调用 beginDrag（邻接锚定）');
+    assert.match(panelSource, /cell\.classList\.add\("sw-home__cell--hold"\);/, '长按按压态必须可见（主色描边）');
+    assert.match(panelSource, /cell\.classList\.remove\("sw-home__cell--hold"\);/, '长按结束必须摘除按压态');
+    // 全局监听自清理（与拖拽 finish 同一卫生标准）
+    assert.match(panelSource, /window\.removeEventListener\("pointermove", onHoldMove\);\s*\n\s*window\.removeEventListener\("pointerup", onHoldUp\);\s*\n\s*window\.removeEventListener\("pointercancel", onHoldUp\);/,
+        '长按全局监听必须在撤销时自清理');
+    // 触屏滚动契约：单元格 pan-y 保纵向滚动，按压态收紧为 none
+    assert.match(cssSource, /\.sw-home__cell \{[^}]*touch-action: pan-y;/s, '单元格必须保纵向滚动（pan-y）');
+    assert.match(cssSource, /\.sw-home \.sw-home__cell--hold \{[^}]*touch-action: none;/s, '按压态必须收紧手势');
 });

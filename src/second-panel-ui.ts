@@ -811,7 +811,9 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         dragHandle.classList.add("sw-home__tool--drag");
                         toolsChildren.unshift(dragHandle);
                         let dragCleanup: (() => void) | null = null;
-                        dragHandle.addEventListener("pointerdown", (event) => {
+                        // T-7068：拖拽启动器——把手直拉与单元格长按两个入口共用同一管线
+                        // （落点虚影/Escape 取消/防误触/贴缘自动滚动，均沿用 T-7030 既有契约）。
+                        const beginDrag = (event: {button: number; clientX: number; clientY: number; preventDefault: () => void}) => {
                             if (dragCleanup || event.button !== 0) return;
                             event.preventDefault();
                             const startX = event.clientX;
@@ -898,6 +900,40 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             window.addEventListener("pointercancel", onCancel);
                             window.addEventListener("keydown", onKey, true);
                             dragCleanup = () => finish(false);
+                        };
+                        dragHandle.addEventListener("pointerdown", beginDrag);
+                        // T-7068：移动端长按单元格任意处进入拖拽——520ms 静置且位移 ≤6px
+                        // 才触发；鼠标走把手不抢选择，工具按钮不抢点击；触发即摘除按压态。
+                        let holdTimer = 0;
+                        let holdOrigin: {x: number; y: number} | null = null;
+                        cell.addEventListener("pointerdown", (event) => {
+                            if (dragCleanup || holdTimer) return;
+                            if (event.pointerType === "mouse") return;
+                            if ((event.target as HTMLElement | null)?.closest(".sw-home__tool")) return;
+                            holdOrigin = {x: event.clientX, y: event.clientY};
+                            cell.classList.add("sw-home__cell--hold");
+                            const cancelHold = () => {
+                                if (!holdTimer) return;
+                                window.clearTimeout(holdTimer);
+                                holdTimer = 0;
+                                cell.classList.remove("sw-home__cell--hold");
+                                window.removeEventListener("pointermove", onHoldMove);
+                                window.removeEventListener("pointerup", onHoldUp);
+                                window.removeEventListener("pointercancel", onHoldUp);
+                            };
+                            const onHoldMove = (move: PointerEvent) => {
+                                if (holdOrigin && Math.hypot(move.clientX - holdOrigin.x, move.clientY - holdOrigin.y) > 6) cancelHold();
+                            };
+                            const onHoldUp = () => cancelHold();
+                            window.addEventListener("pointermove", onHoldMove);
+                            window.addEventListener("pointerup", onHoldUp);
+                            window.addEventListener("pointercancel", onHoldUp);
+                            holdTimer = window.setTimeout(() => {
+                                const origin = holdOrigin;
+                                cancelHold();
+                                if (!origin) return;
+                                beginDrag({button: 0, clientX: origin.x, clientY: origin.y, preventDefault: () => undefined});
+                            }, 520);
                         });
                     const sizeButton = tool(this.i18n.homeSize, () => undefined);
                     sizeButton.addEventListener("click", () => {

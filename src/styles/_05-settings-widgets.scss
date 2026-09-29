@@ -615,6 +615,8 @@
     border: 0.5px solid color-mix(in srgb, var(--b3-theme-background) 60%, var(--b3-border-color));
     background: color-mix(in srgb, var(--b3-theme-surface) 88%, transparent);
     backdrop-filter: blur(20px);
+    // T-7068：触屏保纵向滚动原生；长按按压态收紧手势尽量让拖位移交（引擎支持度有差异）
+    touch-action: pan-y;
     -webkit-backdrop-filter: blur(20px);
     box-shadow:
         0 1px 3px color-mix(in srgb, #000 6%, transparent),
@@ -1229,6 +1231,12 @@
 
 .sw-home .sw-home__tool--drag:active {
     cursor: grabbing;
+}
+
+// T-7068：移动端长按进入拖拽的按压反馈——主色描边提示"按住即拖"。
+.sw-home .sw-home__cell--hold {
+    touch-action: none;
+    outline: 1px solid var(--sw-home-accent, var(--b3-theme-primary, #3575f0));
 }
 // T-7031：provider 卸载占位——诚实状态（虚线描边+文案），编辑态附移除出口。
 .sw-home .sw-home__cell--unavailable {
