@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>A 批次原型：时钟/时间家族（4 组件 UI 重构）</title>
+<style>
+:root {
+    --bg: #ffffff; --surface: #f5f5f5; --bg-light: #fafafa;
+    --on-bg: #1f1f1f; --on-surface: #3f3f3f; --primary: #3575f0;
+    --primary-lightest: #dce6fc; --border: #e0e0e0; --radius: 18px;
+    --font: system-ui, -apple-system, sans-serif;
+}
+[data-theme="dark"] { --bg:#1e1e1e; --surface:#2a2a2a; --bg-light:#252525; --on-bg:#ddd; --on-surface:#bbb; --primary:#5b8cf0; --primary-lightest:#1f2a44; --border:#3f3f3f; }
+* { box-sizing: border-box; margin: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--on-bg); padding: 24px; }
+h1 { font-size: 20px; margin-bottom: 4px; }
+.sub { font-size: 12px; color: var(--on-surface); margin-bottom: 20px; }
+h2 { font-size: 14px; margin: 20px 0 8px; color: var(--primary); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.card { background: var(--surface); border-radius: var(--radius); padding: 16px; min-height: 120px; }
+.label { font-size: 10px; color: var(--on-surface); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+.full { grid-column: 1 / -1; }
+.theme-toggle { position: fixed; top: 12px; right: 12px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--on-bg); cursor: pointer; font-size: 12px; }
+
+/* ===== 时间与日期（重构后） ===== */
+.lt-hero { display: flex; align-items: baseline; gap: 4px; }
+.lt-time { font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+.lt-sec { font-size: 18px; font-weight: 400; color: var(--primary); font-variant-numeric: tabular-nums; }
+.lt-ampm { font-size: 13px; color: var(--on-surface); }
+.lt-date { font-size: 13px; margin-top: 4px; color: var(--on-surface); }
+.lt-day-progress { margin-top: 10px; }
+.lt-bar { height: 4px; border-radius: 2px; background: var(--border); position: relative; }
+.lt-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; background: var(--primary); }
+.lt-pct { font-size: 10px; color: var(--on-surface); margin-top: 2px; text-align: right; }
+.lt-tz { font-size: 11px; color: var(--on-surface); margin-top: 6px; }
+
+/* ===== 世界时钟（重构后） ===== */
+.wc-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.wc-row:last-child { border-bottom: none; }
+.wc-city { font-size: 13px; font-weight: 600; min-width: 56px; }
+.wc-time { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin-left: auto; }
+.wc-offset { font-size: 11px; color: var(--on-surface); min-width: 40px; text-align: right; }
+.wc-daynight { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+.wc-daynight.is-day { background: #fff3cd; }
+.wc-daynight.is-night { background: #2c3e50; color: #ecf0f1; }
+
+/* ===== 年度进度（重构后） ===== */
+.yp-stats { display: flex; gap: 16px; margin-top: 8px; }
+.yp-stat { text-align: center; }
+.yp-stat-val { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.yp-stat-label { font-size: 10px; color: var(--on-surface); }
+.yp-ring { display: flex; align-items: center; gap: 14px; }
+.yp-ring svg { width: 72px; height: 72px; }
+.yp-ring-bg { fill: none; stroke: var(--border); stroke-width: 6; }
+.yp-ring-fg { fill: none; stroke: var(--primary); stroke-width: 6; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; }
+.yp-ring-pct { font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: central; fill: var(--on-bg); }
+
+/* ===== 倒数日（重构后） ===== */
+.cd-days { font-size: 36px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cd-unit { font-size: 14px; color: var(--on-surface); font-weight: 400; }
+.cd-target { font-size: 12px; color: var(--on-surface); margin-top: 4px; }
+.cd-progress { margin-top: 8px; }
+.cd-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-top: 4px; }
+.cd-badge.is-far { background: var(--primary-lightest); color: var(--primary); }
+.cd-badge.is-near { background: #fff3cd; color: #856404; }
+.cd-badge.is-today { background: #f8d7da; color: #721c24; }
+</style>
+</head>
+<body>
+<h1>A 批次原型：时钟/时间家族</h1>
+<p class="sub">4 组件 UI 重构原型 · 明暗双主题（右上角切换）· 真实数据 mock</p>
+<button class="theme-toggle" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">切换主题</button>
+
+<h2>时间与日期（external-local-time · dark 材质 · M 档）</h2>
+<div class="grid">
+    <div class="card">
+        <div class="label">重构后：秒数独立色 + 日进度弧 + 时区标注</div>
+        <div class="lt-hero">
+            <span class="lt-time">14:23</span><span class="lt-sec">45</span><span class="lt-ampm">PM</span>
+        </div>
+        <div class="lt-date">2026年9月30日 星期三</div>
+        <div class="lt-tz">UTC+8 · Asia/Shanghai</div>
+        <div class="lt-day-progress">
+            <div class="lt-bar"><div class="lt-fill" style="width:60%"></div></div>
+            <div class="lt-pct">今日已过 60%</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="label">旧版对照</div>
+        <div style="font-size:36px;font-weight:700;">14:23:45</div>
+        <div style="font-size:13px;color:var(--on-surface);margin-top:4px;">2026年9月30日 星期三</div>
+    </div>
+</div>
+
+<h2>世界时钟（external-world-clock · dark 材质 · M 档）</h2>
+<div class="grid">
+    <div class="card full">
+        <div class="label">重构后：昼夜指示 + 偏移量 + 城市行</div>
+        <div class="wc-row"><span class="wc-daynight is-day">☀</span><span class="wc-city">东京</span><span class="wc-offset">UTC+9</span><span class="wc-time">15:23</span></div>
+        <div class="wc-row"><span class="wc-daynight is-day">☀</span><span class="wc-city">伦敦</span><span class="wc-offset">UTC+1</span><span class="wc-time">07:23</span></div>
+        <div class="wc-row"><span class="wc-daynight is-night">🌙</span><span class="wc-city">纽约</span><span class="wc-offset">UTC-4</span><span class="wc-time">02:23</span></div>
+    </div>
+</div>
+
+<h2>年度进度（year-progress · plain 材质 · S 档）</h2>
+<div class="grid">
+    <div class="card">
+        <div class="label">重构后：SVG 环形 + 三维统计</div>
+        <div class="yp-ring">
+            <svg viewBox="0 0 72 72">
+                <circle class="yp-ring-bg" cx="36" cy="36" r="30"/>
+                <circle class="yp-ring-fg" cx="36" cy="36" r="30" stroke-dasharray="188.5" stroke-dashoffset="54.7"/>
+                <text class="yp-ring-pct" x="36" y="36">71%</text>
+            </svg>
+            <div class="yp-stats">
+                <div class="yp-stat"><div class="yp-stat-val">273</div><div class="yp-stat-label">已过</div></div>
+                <div class="yp-stat"><div class="yp-stat-val">93</div><div class="yp-stat-label">剩余</div></div>
+                <div class="yp-stat"><div class="yp-stat-val">366</div><div class="yp-stat-label">总天数</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="label">旧版对照</div>
+        <div style="font-size:13px;">2026 年已过 71%</div>
+        <div style="height:8px;background:var(--border);border-radius:4px;margin-top:8px;"><div style="width:71%;height:100%;background:var(--primary);border-radius:4px;"></div></div>
+    </div>
+</div>
+
+<h2>倒数日（countdown · accent 材质 · S 档）</h2>
+<div class="grid">
+    <div class="card">
+        <div class="label">重构后：进度条 + 里程碑徽标</div>
+        <div class="cd-days">127<span class="cd-unit"> 天</span></div>
+        <div class="cd-target">距离 2027-02-04</div>
+        <div class="cd-progress">
+            <div class="lt-bar"><div class="lt-fill" style="width:65%"></div></div>
+        </div>
+        <span class="cd-badge is-near">100 天里程碑已过</span>
+    </div>
+    <div class="card">
+        <div class="label">旧版对照</div>
+        <div style="font-size:28px;font-weight:700;">127 天</div>
+        <div style="font-size:12px;color:var(--on-surface);">距离 2027-02-04</div>
+    </div>
+</div>
+
+</body>
+</html>
