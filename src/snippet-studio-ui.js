@@ -189,7 +189,6 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetCapabilityProbeOn: locale.i18n.snippetCapabilityProbeOn,
         snippetCapabilityProbeOff: locale.i18n.snippetCapabilityProbeOff,
         snippetCapabilityScriptCss: locale.i18n.snippetCapabilityScriptCss,
-        snippetCapabilityScriptJs: locale.i18n.snippetCapabilityScriptJs,
         snippetCapabilityNetwork: locale.i18n.snippetCapabilityNetwork,
         snippetCapabilitySemantics: locale.i18n.snippetCapabilitySemantics,
         snippetCapabilitySingleView: locale.i18n.snippetCapabilitySingleView,
@@ -217,7 +216,6 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetCapabilityTokenBaseline: locale.i18n.snippetCapabilityTokenBaseline,
         snippetRefresh: locale.i18n.snippetRefresh,
         snippetResetPreview: locale.i18n.snippetResetPreview,
-        snippetRunJS: locale.i18n.snippetRunJS,
         snippetSample: locale.i18n.snippetSample,
         snippetSampleButton: locale.i18n.snippetSampleButton,
         snippetSampleCode: locale.i18n.snippetSampleCode,
@@ -350,16 +348,16 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     compareButton.setAttribute("aria-pressed", "false");
     const themeButton = action("snippetDarkPreview", () => { dark = !dark; themeButton.setAttribute("aria-pressed", String(dark)); renderPreview(); });
     themeButton.setAttribute("aria-pressed", String(dark));
-    const runButton = action("snippetRunJS", () => { setStatus(t("snippetJSPreviewUnavailable"), "blocked"); });
-    runButton.disabled = true;
-    const stopButton = action("snippetResetPreview", () => renderPreview(false));
-    runButton.title = t("snippetJSPreviewUnavailable");
+    // T-7022：「运行 JavaScript」按钮已移除（T-6996 JS 维持 blocked，执行能力在
+    // 预览模块层封死）——按钮的存在本身构成执行暗示；不可用提示保留在预览提示行
+    // 与五条能力说明中。
+    const stopButton = action("snippetResetPreview", () => renderPreview());
     // T-6960：场景与宽度选择——固定白名单场景 + 有限宽度档位，宽度不足回退单视图
     const sceneSelect = select("snippetScene", [["reading", "snippetSceneReading"], ["table", "snippetSceneTable"], ["controls", "snippetSceneControls"]]);
     sceneSelect.addEventListener("change", () => { previewScene = sceneSelect.value; renderPreview(); });
     const widthSelect = select("snippetPreviewWidth", [["auto", "snippetWidthAuto"], ["narrow", "snippetWidthNarrow"], ["medium", "snippetWidthMedium"], ["wide", "snippetWidthWide"]]);
     widthSelect.addEventListener("change", () => { previewWidth = widthSelect.value; renderPreview(); });
-    previewToolbar.append(previewLead, compareButton, themeButton, sceneSelect, widthSelect, runButton, stopButton);
+    previewToolbar.append(previewLead, compareButton, themeButton, sceneSelect, widthSelect, stopButton);
     const previewShell = node("div", "sw-studio__preview");
     const previewContainer = node("div", "sw-studio__preview-canvas");
     const previewLoading = node("div", "sw-studio__preview-loading");
@@ -776,12 +774,6 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         headerState.className = `sw-studio__state-badge ${stateClass}`;
         editorMeta.textContent = `${formatBytes(bytes)} · ${lines} ${t("snippetLines")}`;
         previewType.textContent = draft.type.toUpperCase();
-        runButton.hidden = draft.type !== "js";
-        // A synchronous user script can freeze the host WebView even inside a
-        // sandboxed iframe. Keep JS preview visible as a planned affordance,
-        // but do not execute it until a terminable worker-based runner exists.
-        runButton.disabled = true;
-        runButton.title = t("snippetJSPreviewUnavailable");
         compareButton.disabled = busy || !baseline;
         compareButton.title = baseline ? t("snippetCompare") : t("snippetCompareUnavailable");
         if (!baseline) {
@@ -816,7 +808,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         updateAIActions();
         updateAIMode();
     }
-    function renderPreview(runJS = false) {
+    function renderPreview() {
         clearTimeout(previewTimer);
         if (disposed) return;
         const content = showOriginal ? original : draft.content;
@@ -841,7 +833,6 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             probeOn: t("snippetCapabilityProbeOn"),
             probeOff: t("snippetCapabilityProbeOff"),
             scriptCss: t("snippetCapabilityScriptCss"),
-            scriptJs: t("snippetCapabilityScriptJs"),
             network: t("snippetCapabilityNetwork"),
             tokenProfile: t("snippetCapabilityTokenProfile"),
             tokenBaseline: t("snippetCapabilityTokenBaseline"),
@@ -891,7 +882,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             diagnosticsDetails.hidden = false;
         }
         // Compare uses the selected saved code, not a second unscoped host style.
-        preview.render({type: draft.type, content, dark, runJS: !showOriginal && runJS, scene: previewScene, width: previewWidth});
+        preview.render({type: draft.type, content, dark, scene: previewScene, width: previewWidth});
     }
     function changed() {
         revision += 1;

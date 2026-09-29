@@ -41,7 +41,9 @@ test('capability: whitelists scene/viewport/theme and freezes the receipt (T-698
     assert.equal(baseline.probe.on, false, '基线对照必须关探针');
     assert.deepEqual(baseline.probe.hits, []);
     const js = resolvePreviewCapability({type: "js"});
-    assert.equal(js.script, "error-bootstrap-only", 'JS 预览只注入错误引导，不执行片段');
+    // T-7022：JS 执行能力封死后，JS 片段预览与 CSS 同为完全禁脚本（错误引导
+    // bootstrap 通道随执行能力一并移除）。
+    assert.equal(js.script, "blocked", 'JS 预览脚本边界必须与 CSS 同为完全禁用');
 });
 
 test('formatPreviewCapability carries every boundary label (T-6987)', () => {
@@ -122,4 +124,22 @@ test('studio UI renders the receipt and diagnostics panel from the pure models (
     assert.match(uiSource, /diagnostics\.errors\.forEach\(\(error\) => \{/, '错误行列必须渲染');
     // 回执样式存在于产物样式源
     assert.ok(declaresIn(css, '.sw-studio__preview-receipt', /border: 1px dashed/, base));
+});
+
+// T-7022：预览模块硬封死 JS 执行——T-6996 用户决策维持 blocked。曾存在 runJS=true
+// 可达 allow-scripts + data: 脚本注入的分支；UI 按钮 disabled 不构成安全契约，
+// 边界必须由预览模块唯一决定。
+test('preview module hard-seals JS execution (T-7022)', () => {
+    assert.doesNotMatch(previewSource, /allow-scripts/, '沙箱不得出现 allow-scripts');
+    assert.doesNotMatch(previewSource, /runJS/, '预览模型不得再接受 runJS 输入');
+    assert.doesNotMatch(previewSource, /<script/, '预览文档不得生成 script 元素');
+    assert.doesNotMatch(previewSource, /error-bootstrap-only/, '能力回执不得再声明脚本执行档');
+    assert.match(previewSource, /script: "blocked",/, '能力回执脚本边界恒为 blocked');
+    const policyMatch = previewSource.match(/const policy = `([^`]+)`;/);
+    assert.ok(policyMatch, 'CSP 策略必须存在');
+    assert.match(policyMatch[1], /script-src 'none';/, 'CSP script-src 必须恒为 none');
+    assert.doesNotMatch(policyMatch[1], /script-src \$\{/, 'CSP script-src 不得再动态插值');
+    assert.match(uiSource, /preview\.render\(\{type: draft\.type, content, dark, scene: previewScene, width: previewWidth\}\);/, 'UI 渲染不得传 runJS');
+    assert.doesNotMatch(uiSource, /snippetRunJS/, 'UI 不得残留执行暗示按钮文案');
+    assert.doesNotMatch(uiSource, /runButton/, 'UI 不得残留 runButton 引用');
 });

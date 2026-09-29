@@ -109,7 +109,7 @@
 - **Preview open**: Alt+click opens search results as read-only preview tabs (doc.mode preview).
 - **Document set version history & rollback**: overwrites keep the last 3 versions (FIFO), any of them restorable reversibly; restore summary includes Essentials receipts; scene presets persist into document sets (presetId layering).
 - **Dynamic favorite groups**: tag + notebook scope + updated-window (7/30/90 whitelist) parameterized queries.
-- **Density tier & config pack**: compact/comfortable density switch; one-click export/import of a versioned config pack (atomic apply after whole-pack validation).
+- **Density tier & config pack**: compact/comfortable density switch; one-click export/import of a versioned config pack (grouped apply with per-item receipts after whole-pack validation; multi-key persistence is not atomic).
 - **Mobile floating-ball anti-misfire**: `data-prevent-swipe` official contract (L1) + capture-phase touch interception (L2) + drag-time scroll-chain blocking (L3); dragging the ball no longer triggers SiYuan edge swipes; off-edge docking and fling-up summon.
 - **History dropdown balance**: per-section top-8 with expand-all; journals no longer bury recently closed.
 - **Real-instance E2E channel**: 6 real-kernel acceptance specs; ADR 0077 (1024 KiB raw line); provider protocol metadata; GBK mojibake comment cleanup.

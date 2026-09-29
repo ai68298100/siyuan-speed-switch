@@ -58,8 +58,9 @@ function resolvePreviewCapability({type = "css", scene = "reading", width = "aut
         viewport: Object.freeze({id: viewportId, appliedWidth}),
         theme,
         probe: Object.freeze({on: probeOn, hits, count: hits.length}),
-        // css 模式脚本完全禁用；js 模式不执行片段，仅注入错误引导 bootstrap。
-        script: type === "js" ? "error-bootstrap-only" : "blocked",
+        // T-7022：两类片段的脚本边界统一为 blocked——js 片段不再注入错误引导
+        // bootstrap（该通道随 JS 执行能力一并封死），预览文档零脚本元素。
+        script: "blocked",
         network: "none",
         semantics: "approximation",
         // T-6990：主题 token 只读内置快照（基线对照沿用亮色快照，不注入宿主 CSS）。
@@ -77,9 +78,8 @@ function formatPreviewCapability(capability, names = {}, boundary = {}) {
     const probeLabel = capability.probe.on
         ? text("probeOn", "探针：命中 {n} 项").replace("{n}", String(capability.probe.count))
         : text("probeOff", "探针：关（基线对照）");
-    const scriptLabel = capability.script === "blocked"
-        ? text("scriptCss", "脚本：禁用")
-        : text("scriptJs", "脚本：仅错误引导");
+    // T-7022：脚本边界恒为 blocked，标签统一走 scriptCss 通道（不再区分 js 分支）
+    const scriptLabel = text("scriptCss", "脚本：禁用");
     const tokenLabel = capability.tokenSource === "none"
         ? text("tokenBaseline", "主题 token：基线（无覆盖）")
         : text("tokenProfile", "主题 token：内置快照（只读）");
@@ -418,23 +418,22 @@ function renderThemeTokens(profile) {
     return Object.entries(profile.tokens).map(([key, value]) => `${key}:${value}`).join(";");
 }
 
-function buildSnippetPreviewDocument({type = "css", content = "", dark = false, baseline = false, runJS = false, token = "", labels = {}, scene = "reading"} = {}) {
+function buildSnippetPreviewDocument({type = "css", content = "", dark = false, baseline = false, token = "", labels = {}, scene = "reading"} = {}) {
     const text = (key, fallback) => escapeHtml(labels[key] || fallback);
     // T-6990：主题 token 只读快照（baseline 沿用亮色）；不接受外部 token 注入。
     const themeProfile = resolveThemeProfile(baseline ? "light" : (dark ? "dark" : "light"));
-    const running = type === "js" && runJS && !baseline;
-    const policy = `default-src 'none'; style-src 'unsafe-inline' data:; script-src ${running ? "data:" : "'none'"}; img-src data:; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'`;
+    // T-7022：JS 执行能力整体封死（T-6996 用户决策：维持 blocked）——预览文档
+    // 零脚本元素、CSP script-src 恒为 'none'、沙箱恒不带 allow-scripts；
+    // UI 按钮禁用不构成安全契约，边界必须由本模块唯一决定。
+    const policy = `default-src 'none'; style-src 'unsafe-inline' data:; script-src 'none'; img-src data:; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'`;
     // Data URL preserves CSS tokens exactly and prevents </style> HTML breakout.
     const css = type === "css" && !baseline ? `<link rel="stylesheet" href="data:text/css;charset=utf-8,${encodeURIComponent(content)}">` : "";
-    const tokenText = JSON.stringify(String(token));
-    const bootstrap = `addEventListener('error',e=>parent.postMessage({kind:'sw-snippet-preview',token:${tokenText},error:String(e.message).slice(0,200)},'*'));addEventListener('unhandledrejection',e=>parent.postMessage({kind:'sw-snippet-preview',token:${tokenText},error:String(e.reason).slice(0,200)},'*'));`;
-    const script = running ? `<script src="data:text/javascript;charset=utf-8,${encodeURIComponent(bootstrap)}"></script><script src="data:text/javascript;charset=utf-8,${encodeURIComponent(content)}"></script>` : "";
     // CSS 预览按片段选择器追加探针内容（baseline 对比视图保持原始样例，不探针）。
     const features = type === "css" && !baseline ? analyzeCssCoverage(content) : [];
     return `<!doctype html><html lang="${text("lang", "zh-CN")}" data-theme-mode="${dark ? "dark" : "light"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="${escapeHtml(policy)}"><style>
 :root{color-scheme:${themeProfile.colorScheme};${renderThemeTokens(themeProfile)}}
 *{box-sizing:border-box}body{margin:0;background:var(--b3-theme-background);color:var(--b3-theme-on-background);font-family:var(--b3-font-family);font-size:15px}.studio-demo-bar{padding:12px 24px;border-bottom:1px solid var(--b3-border-color);display:flex;gap:18px;font-size:12px;color:var(--b3-theme-primary)}.studio-probe-note{color:var(--b3-theme-primary);font-size:12px}.protyle-wysiwyg{max-width:820px;margin:auto;padding:24px 32px;line-height:1.6}.h1{font-size:27px;font-weight:700}.h2{font-size:19px;font-weight:650;margin-top:16px}.h3{font-size:17px;font-weight:650;margin-top:14px}.h4,.h5,.h6{font-size:15.5px;font-weight:650;margin-top:12px}.p{margin:12px 0}blockquote,.bq{border-left:3px solid var(--b3-theme-primary);padding:8px 16px;margin:16px 0;background:var(--b3-theme-surface)}.list{margin:12px 0;padding-left:24px}.list .li{margin:6px 0;list-style:disc}table{border-collapse:collapse;width:100%}td,th{padding:8px 12px;border:1px solid var(--b3-border-color);text-align:left}[data-type="code"]{font-family:var(--b3-font-family-code);background:var(--b3-theme-surface);padding:2px 5px;border-radius:4px}.code-block{font-family:var(--b3-font-family-code);background:var(--b3-theme-surface);padding:14px;border-radius:8px;white-space:pre-wrap}button{font:inherit;padding:6px 14px;cursor:pointer}.demo-chip{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--b3-theme-surface);border:1px solid var(--b3-border-color);font-size:12px}.demo-chip.is-accent{background:var(--b3-theme-primary-lightest);color:var(--b3-theme-primary);border-color:transparent}.demo-count{display:inline-block;min-width:20px;text-align:center;padding:1px 6px;border-radius:999px;background:var(--b3-theme-error);color:#fff;font-size:12px}input,select{font:inherit;padding:5px 10px;border:1px solid var(--b3-border-color);border-radius:6px;background:var(--b3-theme-background);color:var(--b3-theme-on-background)}img{max-width:100%;border-radius:8px}.b3-callout{border-left:3px solid var(--b3-theme-primary);padding:8px 14px;margin:12px 0;background:var(--b3-theme-surface)}.layout-column{display:block;padding:8px 12px;margin:10px 0;border:1px dashed var(--b3-border-color);border-radius:8px}.katex{font-family:var(--b3-font-family-code);background:var(--b3-theme-surface);padding:2px 6px;border-radius:4px}.protyle-attr{margin-top:4px;color:var(--b3-theme-on-surface-light);font-size:11px}.av table{margin:8px 0}.studio-media-blocked{display:inline-block;padding:10px 14px;border:1px dashed var(--b3-border-color);border-radius:8px;color:var(--b3-theme-on-surface-light);font-size:12px}.protyle-title{font-size:22px;font-weight:700;margin:0 0 12px}kbd{font-family:var(--b3-font-family-code);border:1px solid var(--b3-border-color);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:12px}a{color:var(--b3-theme-primary)}
-</style>${css}</head><body><div class="studio-demo-bar"><span>SiYuan</span><span>${text("sample", "演示文档 · 不读取个人笔记")}</span></div><div class="protyle"><div class="protyle-wysiwyg b3-typography protyle-wysiwyg--attr" spellcheck="false">${buildSceneBody(normalizePreviewScene(scene), text, features)}</div></div>${script}</body></html>`;
+</style>${css}</head><body><div class="studio-demo-bar"><span>SiYuan</span><span>${text("sample", "演示文档 · 不读取个人笔记")}</span></div><div class="protyle"><div class="protyle-wysiwyg b3-typography protyle-wysiwyg--attr" spellcheck="false">${buildSceneBody(normalizePreviewScene(scene), text, features)}</div></div></body></html>`;
 }
 
 function createSnippetPreview(container, {title, labels, onError = () => {}, onReady = () => {}} = {}) {
@@ -460,7 +459,8 @@ function createSnippetPreview(container, {title, labels, onError = () => {}, onR
             token = `${Date.now()}-${Math.random()}`;
             frame.title = title || "Snippet preview";
             frame.referrerPolicy = "no-referrer";
-            frame.setAttribute("sandbox", options.type === "js" && options.runJS && !options.baseline ? "allow-scripts" : "");
+            // T-7022：沙箱恒不带 allow-scripts——JS 预览能力已在模块层封死
+            frame.setAttribute("sandbox", "");
             frame.setAttribute("allow", "camera 'none'; microphone 'none'; geolocation 'none'; clipboard-read 'none'; clipboard-write 'none'");
             // T-6960：宽度档位——容器容不下所选档位时回退单视图（100%）
             const fixedWidth = resolvePreviewWidth(options.width, container.clientWidth);
