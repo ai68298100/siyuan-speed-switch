@@ -1519,3 +1519,50 @@
         font-weight: 600;
     }
 }
+
+// ==================== T-7054 E 批次：写作家族视觉增强 ====================
+
+// 今日写作：字数大号突出 + 目标进度感
+.sw-home__cell[data-module-id="today-writing"] {
+    .sw__home-stat-value {
+        font-size: 1.8em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 近期写作活跃度：总量增强
+.sw-home__cell[data-module-id="recent-writing-activity"] {
+    .sw__home-stat-value {
+        font-size: 1.4em;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 写作打卡：连续天数突出
+.sw-home__cell[data-module-id="writing-streak"] {
+    .sw__home-stat-value {
+        font-size: 1.6em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 笔记统计：总量大号 + 多维度数字排版
+.sw-home__cell[data-module-id="note-stats"] {
+    .sw__home-stat-value {
+        font-size: 1.5em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sw__home-module-item-value {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+    }
+}
