@@ -285,6 +285,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let revision = 0;
     let aiGeneration = 0;
     let loadGeneration = 0;
+    // T-7046：导入代际——迟到文件不得覆盖读取期间变化过的草稿现场
+    let importGeneration = 0;
     let previewTimer = 0;
     let dark = doc.documentElement.dataset.themeMode === "dark";
     let showOriginal = false;
@@ -296,6 +298,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let activeHunkAccepted = [];
     let picker = null;
     let pickerRelease = () => {};
+    // T-7044：目录重绘钩子——冲突副本保存成功后按现状刷新已打开的目录；
+    // openPicker 注册、closePicker 摘除，picker 关闭时无渲染面可刷新
+    let pickerRefresh = null;
     let pickerScrollTop = {root: 0, layout: 0};
     let aiHistory = [];
     root.classList.add("sw-studio", "sw-platform-surface", "sw-platform-surface--studio");
@@ -1132,7 +1137,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 snippets = next;
                 setStatus(t("snippetSaved"), "ready");
                 dialog.destroy();
-                render();
+                // T-7044：目录重绘走 pickerRefresh 钩子（openPicker 注册、closePicker
+                // 摘除）。此处曾调用未定义的局部 render() 抛 ReferenceError，被本层
+                // catch 捕获后把已成功写入误报成失败——刷新失败路径只属于 store.mutate。
+                if (pickerRefresh) pickerRefresh();
             } catch (error) {
                 copyButton.disabled = false;
                 if (!disposed) setStatus(errorText(error), "error");
@@ -1268,11 +1276,18 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         if (!file) return;
         guardLeave(() => { void importFile(file); });
     });
+    // T-7046：导入代际保护——file.text() 返回后核对代际与草稿现场：
+    // ①另一轮导入已开始（importGeneration 前移）；②读取期间编辑过草稿或切换过
+    // 片段（revision 在 changed/AI 接受/choose 三条路径都自增）。迟到文件诚实
+    // 丢弃，不覆盖新草稿、不触发另一轮 choose。
     async function importFile(file) {
+        const generation = ++importGeneration;
+        const startedRevision = revision;
         try {
             if (file.size > SNIPPET_CODE_MAX) throw new Error("size_limit");
-            const imported = parseSnippetImport(file.name, await file.text());
-            if (disposed) return;
+            const text = await file.text();
+            if (disposed || generation !== importGeneration || revision !== startedRevision) return;
+            const imported = parseSnippetImport(file.name, text);
             choose(imported, null);
             setStatus(imported.varsResolved
                 ? `${t("snippetImported")} · ${t("snippetUsercssVars").replace("{n}", String(imported.varsResolved))}`
@@ -1322,6 +1337,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     function closePicker() {
         pickerRelease();
         pickerRelease = () => {};
+        pickerRefresh = null;
         picker?.remove();
         picker = null;
         // At narrow widths the workbench is a vertical scroller. Restoring
@@ -1390,6 +1406,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             }
             more.hidden = found.length <= limit;
         };
+        pickerRefresh = render;
         [query, source, language, category].forEach((input) => input.addEventListener("input", () => { limit = 40; render(); }));
         sheet.append(head, recent, filters, list, more);
         picker.appendChild(sheet);

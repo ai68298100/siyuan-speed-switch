@@ -24,3 +24,14 @@ test('editing chrome wiring: hero constraint runs in the render path', () => {
     assert.match(panelSource, /this\.saveHomeState\(state\)/, '降级结果必须落盘');
     assert.match(model, /function enforceHomeHeroConstraint\(list\)/, '约束必须走纯模型');
 });
+
+// T-7032：降级后的列表必须用于当前帧渲染——曾出现约束结果只写回 state（只保证
+// 下一帧）、当前帧继续遍历旧引用导致重复英雄位多渲染一整轮。
+test('editing chrome wiring: the current frame renders the constrained hero list', () => {
+    assert.match(panelSource, /const renderLayoutList = heroCheck\.demoted > 0 \? heroCheck\.list : layoutList;/,
+        '约束降级发生时当前帧必须取 heroCheck.list');
+    assert.match(panelSource, /renderLayoutList\.forEach\(\(entry\) => \{/,
+        '组件装配必须遍历约束后的列表');
+    assert.doesNotMatch(panelSource, /layoutList\.forEach\(\(entry\) => \{/,
+        '不得再遍历未约束的旧引用');
+});

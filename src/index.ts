@@ -4000,6 +4000,8 @@ const updatedMap: {[rootId: string]: string} = {};
             ? bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay)
             : () => undefined;
         const disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector<HTMLElement>(".sw__history-dd"), closeOverlay);
+        // T-7040：排序浮层 disposer 由 bindSwitcherToolbarActions 返回后在释放链调用
+        let disposeSortMenu: () => void = () => undefined;
         let switcherReleased = false;
         release.fn = () => {
             if (switcherReleased) return;
@@ -4010,11 +4012,12 @@ const updatedMap: {[rootId: string]: string} = {};
             if (iconClampFrame) cancelAnimationFrame(iconClampFrame);
             disposeSearchFilter();
             disposeHistoryDropdown();
+            disposeSortMenu();
             disposeDocSearchSession.call(this, scrollElement);
         };
 
         this.bindSwitcherFullscreenToggle(dialog, settings, fullscreen);
-        this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay, updatedMap, returnTo, context);
+        disposeSortMenu = this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay, updatedMap, returnTo, context);
 
         // 收藏下拉组件：星标触发 + 分组面板（分组可折叠/展开，项点击跳转）
         const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
@@ -4156,7 +4159,7 @@ const updatedMap: {[rootId: string]: string} = {};
         fsBtn?.addEventListener("click", () => toggleFullscreen(!isFullscreen));
     }
 
-    // 工具栏顶栏按钮：设置 / 侧边栏 / 日记按钮 + 排序切换
+    // 工具栏顶栏按钮：设置 / 侧边栏 / 日记按钮 + 排序切换；返回排序浮层 disposer 供弹窗释放链调用
     private bindSwitcherToolbarActions(
         dialog: Dialog,
         searchInput: HTMLInputElement | null,
@@ -4166,7 +4169,7 @@ const updatedMap: {[rootId: string]: string} = {};
         updatedMap: {[rootId: string]: string},
         returnTo: PlatformSurface = "switcher",
         context?: PlatformSurfaceContext | null,
-    ) {
+    ): () => void {
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
             // T-7012：设置从切换器打开，关闭后恢复切换器。
@@ -4220,7 +4223,7 @@ const updatedMap: {[rootId: string]: string} = {};
         sortSelect?.addEventListener("change", () => {
             applySortChange(sortSelect.value as SortBy);
         });
-        this.bindSortTriggerMenu(dialog.element, applySortChange, applyGroupChange);
+        return this.bindSortTriggerMenu(dialog.element, applySortChange, applyGroupChange);
     }
 
     // 排序触发按钮：标签 = 分组·排序 组合；点击弹出自制浮层（与收藏/最近下拉同模式，
@@ -4251,16 +4254,19 @@ const updatedMap: {[rootId: string]: string} = {};
         scope: HTMLElement,
         applySortChange: (nextSort: SortBy) => void,
         applyGroupChange: (nextGroup: TabGroupMode) => void,
-    ) {
+    ): () => void {
         const trigger = scope.querySelector<HTMLButtonElement>(".sw__sort-trigger");
-        if (!trigger) return;
+        if (!trigger) return () => undefined;
         this.updateSortTriggerLabel(scope);
         let panel: HTMLElement | null = null;
         let outsideHandler: ((event: PointerEvent) => void) | null = null;
         let keyHandler: ((event: KeyboardEvent) => void) | null = null;
         let resizeHandler: (() => void) | null = null;
         const closePanel = () => {
-            panel?.remove();
+            if (!panel) return;
+            // T-7040：焦点回归——浮层内焦点随菜单销毁会丢到 body，关闭时还给触发钮
+            const focusInside = panel.contains(document.activeElement);
+            panel.remove();
             panel = null;
             if (outsideHandler) document.removeEventListener("pointerdown", outsideHandler, true);
             if (keyHandler) document.removeEventListener("keydown", keyHandler, true);
@@ -4268,7 +4274,12 @@ const updatedMap: {[rootId: string]: string} = {};
             outsideHandler = null;
             keyHandler = null;
             resizeHandler = null;
+            if (focusInside) { try { trigger.focus({preventScroll: true}); } catch (_) { trigger.focus(); } }
         };
+        // T-7040：owner disposer——表面切换/弹窗销毁时由宿主释放链调用；
+        // 浮层挂 document.body 且监听注册在 document/window，无 owner 通道时
+        // 表面重建会留下幽灵菜单与全局监听残留。
+        const disposeSortMenu = () => { closePanel(); };
         const radioRow = (label: string, checked: boolean, onClick: () => void) => {
             const item = document.createElement("button");
             item.type = "button";
@@ -4346,6 +4357,7 @@ const updatedMap: {[rootId: string]: string} = {};
             document.addEventListener("keydown", keyHandler, true);
             resizeHandler = positionPanel;
         });
+        return disposeSortMenu;
     }
 
 
@@ -12601,8 +12613,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const favDd = element.querySelector<HTMLElement>(".sw__fav-dd");
         this.setupFavDropdown(favDd, refresh, refresh);
 
-        // 分组·排序一体化浮层（与弹窗同款，浮层挂 body 不受 dock 层级影响）
-        this.bindSortTriggerMenu(element,
+        // 分组·排序一体化浮层（与弹窗同款，浮层挂 body 不受 dock 层级影响）；
+        // T-7040：disposer 与历史下拉一起并入返回值，由侧栏卸载链统一释放
+        const disposeSortMenu = this.bindSortTriggerMenu(element,
             () => this.refreshSidebar(),
             () => this.refreshSidebar());
 
@@ -12617,7 +12630,11 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         backTopBtn?.addEventListener("click", () => {
             scrollElement.scrollTo({top: 0, behavior: "smooth"});
         });
-        return disposeHistoryDropdown;
+        // T-7040：排序浮层与历史下拉共用侧栏释放通道
+        return () => {
+            disposeHistoryDropdown();
+            disposeSortMenu();
+        };
     }
 
     // 重算容器内全部缩略图的缩放比例（侧边栏尺寸变化时调用，内容随面板宽度自动伸缩）

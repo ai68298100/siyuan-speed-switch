@@ -26,3 +26,15 @@ test('conflict wiring: reload is read-only and continue/cancel keep the local dr
     assert.match(uiSource, /if \(latestEntry\) \{\s*\n\s*choose\(latestEntry, latestEntry\);\s*\n\s*\} else \{\s*\n\s*void load\(true\);/, '重载只读重取，不写入');
     assert.ok(uiSource.includes('snippetConflictContinue'), '必须保留继续编辑出口');
 });
+
+// T-7044：副本保存成功后曾调用未定义的局部 render()（openPicker 私有），抛出的
+// ReferenceError 被本层 catch 捕获，把已成功写入误报成失败。契约钉住：成功路径
+// 只能走 pickerRefresh 钩子，钩子由 openPicker 注册、closePicker 摘除。
+test('conflict wiring: copy success refreshes via the picker hook, never an undefined render', () => {
+    assert.match(uiSource, /setStatus\(t\("snippetSaved"\), "ready"\);\s*\n\s*dialog\.destroy\(\);\s*\n\s*if \(pickerRefresh\) pickerRefresh\(\);/,
+        '副本保存成功路径必须走 pickerRefresh 钩子刷新目录');
+    assert.match(uiSource, /pickerRefresh = render;/, 'openPicker 必须注册目录重绘钩子');
+    assert.match(uiSource, /pickerRelease = \(\) => \{\};\s*\n\s*pickerRefresh = null;/, 'closePicker 必须摘除钩子，防悬挂引用');
+    assert.doesNotMatch(uiSource, /dialog\.destroy\(\);\s*\n\s*render\(\);/,
+        '成功路径不得调用未定义的 render()（openPicker 私有局部函数）');
+});

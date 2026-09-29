@@ -232,13 +232,16 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             const layoutList = (state.layouts[device] || []) as Array<any>;
             // T-6969 Slice 3：X 英雄位约束——每面板至多 1 个 full 档，超出降级 large
             const heroCheck = enforceHomeHeroConstraint(layoutList);
+            // T-7032：当前帧必须渲染约束后的列表——写回 state 只保证下一帧，
+            // 继续遍历旧引用会让本次渲染仍出现重复英雄位。
+            const renderLayoutList = heroCheck.demoted > 0 ? heroCheck.list : layoutList;
             if (heroCheck.demoted > 0) {
                 state.layouts[device] = heroCheck.list;
                 this.saveHomeState(state);
             }
             const byId = new Map(state.instances.map((inst: any) => [inst.instanceId, inst]));
             const cells: Array<{ inst: any; layout: any }> = [];
-            layoutList.forEach((entry) => {
+            renderLayoutList.forEach((entry) => {
                 const inst = byId.get(entry.instanceId);
                 if (inst) cells.push({inst, layout: entry});
             });
