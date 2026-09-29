@@ -1483,3 +1483,39 @@
         font-weight: 600;
     }
 }
+
+// ==================== T-7054 D 批次：任务/闪卡家族视觉增强 ====================
+
+// 今日待办：完成态弱化 + 待办数突出
+.sw-home__cell[data-module-id="today-tasks"] {
+    .sw__home-stat-value {
+        font-size: 1.5em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 闪卡待复习：复习数突出 + 卡片名称加重
+.sw-home__cell[data-module-id="flashcard-due"] {
+    .sw__home-stat-value {
+        font-size: 1.6em;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sw__home-module-item-label {
+        font-weight: 500;
+    }
+}
+
+// 快速捕获：输入态增强
+.sw-home__cell[data-module-id="quick-capture"] {
+    .sw__home-stat-value {
+        font-size: 1.2em;
+        font-weight: 600;
+    }
+}
