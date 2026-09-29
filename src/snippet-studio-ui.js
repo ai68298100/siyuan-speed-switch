@@ -198,6 +198,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetMore: locale.i18n.snippetMore,
         snippetName: locale.i18n.snippetName,
         snippetNew: locale.i18n.snippetNew,
+        snippetCopy: locale.i18n.snippetCopy,
+        snippetCopied: locale.i18n.snippetCopied,
+        snippetCopyEmpty: locale.i18n.snippetCopyEmpty,
+        snippetCopyFailed: locale.i18n.snippetCopyFailed,
         snippetNoResults: locale.i18n.snippetNoResults,
         snippetPaneDraft: locale.i18n.snippetPaneDraft,
         snippetPendingConfirm: locale.i18n.snippetPendingConfirm,
@@ -499,7 +503,28 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const chooseButton = action("snippetChoose", () => openPicker());
     const importButton = action("snippetImport", () => fileInput.click());
     const newButton = action("snippetNew", () => { guardLeave(() => choose({name: "", type: "css", content: ""}, null)); });
-    editorBar.append(editorLead, draftUndoButton, draftRedoButton, findToggleButton, chooseButton, importButton, newButton);
+    // T-7064：复制草稿全文——Clipboard API 优先，无权限/非安全上下文回退 execCommand
+    const copyButton = action("snippetCopy", () => {
+        const text = draft.content || "";
+        if (!text) { setStatus(t("snippetCopyEmpty"), "warn"); return; }
+        const fallbackCopy = () => {
+            const scratch = document.createElement("textarea");
+            scratch.value = text;
+            scratch.setAttribute("readonly", "");
+            scratch.style.position = "fixed";
+            scratch.style.opacity = "0";
+            document.body.appendChild(scratch);
+            scratch.select();
+            const ok = document.execCommand && document.execCommand("copy");
+            scratch.remove();
+            if (!ok) throw new Error("execCommand unavailable");
+        };
+        const job = (navigator.clipboard && navigator.clipboard.writeText)
+            ? navigator.clipboard.writeText(text)
+            : Promise.resolve().then(fallbackCopy);
+        job.then(() => setStatus(t("snippetCopied"), "ready")).catch(() => setStatus(t("snippetCopyFailed"), "warn"));
+    });
+    editorBar.append(editorLead, draftUndoButton, draftRedoButton, findToggleButton, chooseButton, importButton, newButton, copyButton);
     const editor = node("textarea", "sw-studio__editor");
     editor.spellcheck = false;
     editor.setAttribute("aria-label", t("snippetCode"));

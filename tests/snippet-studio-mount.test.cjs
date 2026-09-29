@@ -87,3 +87,34 @@ test('studio mount: editing drives the diagnostics panel with verdicts and error
         }, 400);
     });
 });
+
+// T-7064：复制草稿全文——按钮真实点击，验证空草稿警示与 Clipboard/回退双通路。
+test('studio mount: copy button reports empty draft and copies content via execCommand fallback (T-7064)', (t) => {
+    const {dom, document, mountSnippetStudio, i18n, fakeStore} = createHarness(t);
+    mountSnippetStudio(document.getElementById('root'), {
+        i18n, getConfig: () => ({}), store: fakeStore, platform: null, onBack: () => {},
+    });
+    const copyButton = Array.from(document.querySelectorAll('.sw-studio__button'))
+        .find((button) => button.textContent === i18n.snippetCopy);
+    assert.ok(copyButton, '复制按钮必须出现在编辑区工具条');
+    const status = document.querySelector('.sw-studio__status');
+    // 空草稿：不触发布局板，直接警示
+    copyButton.click();
+    assert.equal(status.dataset.state, 'warn', '空草稿复制必须给出 warn 状态');
+    assert.ok(status.textContent.includes('草稿为空'), '空草稿复制必须提示无可复制内容');
+    // 写入内容后走 execCommand 回退（jsdom 无 navigator.clipboard）
+    let copied = '';
+    document.execCommand = function (command) {
+        if (command === 'copy') { const scratch = document.body.lastElementChild; copied = scratch?.tagName === 'TEXTAREA' ? scratch.value : ''; return true; }
+        return false;
+    };
+    const editor = document.querySelector('.sw-studio__editor');
+    editor.value = '.t7064 { color: hotpink; }';
+    editor.dispatchEvent(new dom.window.Event('input', {bubbles: true}));
+    copyButton.click();
+    return Promise.resolve().then(() => new Promise((resolve) => setTimeout(resolve, 50))).then(() => {
+        assert.equal(copied, '.t7064 { color: hotpink; }', '回退通路必须把草稿全文写入剪贴板暂存区');
+        assert.equal(status.dataset.state, 'ready', '复制成功必须是 ready 状态');
+        assert.ok(status.textContent.includes('已复制'), '复制成功必须有回执文案');
+    });
+});

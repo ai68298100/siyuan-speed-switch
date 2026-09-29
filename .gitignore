@@ -25,3 +25,8 @@ ui-fix-verify.png
 .tmp-*
 .artifacts/
 acceptance-screenshots/
+
+# CI/API 调试临时产物
+joblog.txt
+jobs.json
+runs.json
