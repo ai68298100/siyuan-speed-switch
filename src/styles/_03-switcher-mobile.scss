@@ -304,7 +304,10 @@
                 position: fixed;
                 z-index: 999;
                 width: 248px;
+                // T-7017：视口比例高度（dvh 动态视口跟随软键盘收放；旧 WebView 回退 320px）+ 最小可用高度
                 max-height: 320px;
+                max-height: min(60dvh, 480px);
+                min-height: 200px;
                 overflow: auto;
                 padding: 4px;
                 background: var(--b3-theme-surface);
@@ -1728,7 +1731,10 @@
     .sw__history-panel {
         position: fixed;
         z-index: 999;
+        // T-7017：视口比例高度（dvh 跟随软键盘收放；旧 WebView 回退 320px）+ 最小可用高度
         max-height: 320px;
+        max-height: min(60dvh, 480px);
+        min-height: 200px;
         overflow: auto;
         padding: 4px;
         background: var(--b3-theme-surface);
