@@ -369,7 +369,11 @@ test('home config cancel action destroys dialog', () => assert.match(source, /ca
 test('home config save searches invalid controls', () => assert.match(configFormSource, /root\.querySelector<HTMLInputElement \| HTMLSelectElement>\("input:invalid, select:invalid"\)/));
 test('home config save finds the persisted instance', () => assert.match(secondPanelSource, /find\(\(candidate\) => candidate\.instanceId === inst\.instanceId\)/));
 test('home config save preserves unrelated instances', () => assert.match(source, /const next = this\.getHomeState\(\)/));
-test('home config save closes only after persistence', () => assert.match(configFormSource, /this\.saveHomeState\(next\);\s*\}\s*dialog\.destroy\(\)/));
+test('home config save closes only after persistence', () => {
+    // T-7031 演进：保存进 try/catch——仅落盘成功后才销毁弹窗并回调；失败停留表单。
+    assert.match(configFormSource, /try \{\s*instance\.config = \{\.\.\.draft\};\s*this\.saveHomeState\(next\);\s*\} catch \(_\) \{\s*showBlocked/);
+    assert.match(configFormSource, /return;\s*\}\s*dialog\.destroy\(\);\s*onSaved\(\);\s*\}\);/);
+});
 test('preview ready clears container busy state', () => assert.match(storeSource,/container\.setAttribute\("aria-busy", "false"\)/));
 test('preview ready clears body busy state', () => assert.match(storeSource,/body\.setAttribute\("aria-busy", "false"\)/));
 test('preview disposal restores opener focus', () => assert.match(storeSource,/if \(opener\?\.isConnected\) opener\.focus\(\)/));
@@ -575,7 +579,11 @@ test('config controls append inside field row', () => assert.match(configFormSou
 test('config actions use dedicated class', () => assert.match(configFormSource, /actions\.className = "sw-home-config__actions"/));
 test('config actions append reset cancel save order', () => assert.match(configFormSource, /actions\.append\(reset, cancel, save\)/));
 test('config reset updates existing controls', () => assert.match(configFormSource, /if \(!control\) return;\s*control\.value = String\(value\)/));
-test('config save only applies when instance exists', () => assert.match(configFormSource, /if \(instance\) \{\s*instance\.config/));
+test('config save only applies when instance exists', () => {
+    // T-7031 演进：存在性改为早退守卫——缺失时诚实回执停留，不静默跳过。
+    assert.match(configFormSource, /if \(!instance\) \{\s*showBlocked\(this\.i18n\.homeConfigSaveMissed\);\s*return;/);
+    assert.match(configFormSource, /instance\.config = \{\.\.\.draft\};/);
+});
 test('config save invokes callback after destroy', () => assert.match(configFormSource, /dialog\.destroy\(\);\s*onSaved\(\)/));
 
 // T-3975~T-4014: store grouping, pending and unavailable catalog contracts.

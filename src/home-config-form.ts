@@ -757,9 +757,29 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
             }
             const next = this.getHomeState();
             const instance = (next.instances as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
-            if (instance) {
+            // T-7031：现场已变（其他入口移除/恢复该实例）或落盘失败——不静默丢弃
+            // 用户修改：保留弹窗与输入值，原地给诚实回执，允许重试或取消。
+            const showBlocked = (message: string) => {
+                root.dataset.saveBlocked = "true";
+                let alert = root.querySelector<HTMLElement>(".sw-home__config-alert");
+                if (!alert) {
+                    alert = document.createElement("p");
+                    alert.className = "sw-home__config-alert";
+                    alert.setAttribute("role", "alert");
+                    actions.before(alert);
+                }
+                alert.textContent = message;
+            };
+            if (!instance) {
+                showBlocked(this.i18n.homeConfigSaveMissed);
+                return;
+            }
+            try {
                 instance.config = {...draft};
                 this.saveHomeState(next);
+            } catch (_) {
+                showBlocked(this.i18n.homeConfigSaveFailed);
+                return;
             }
             dialog.destroy();
             onSaved();

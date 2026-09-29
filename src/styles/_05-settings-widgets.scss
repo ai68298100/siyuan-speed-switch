@@ -1213,3 +1213,20 @@
 .sw-home .sw-home__tool--drag:active {
     cursor: grabbing;
 }
+// T-7031：provider 卸载占位——诚实状态（虚线描边+文案），编辑态附移除出口。
+.sw-home .sw-home__cell--unavailable {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border: 1px dashed var(--b3-border-color);
+    border-radius: var(--sw-home-radius, 18px);
+    color: var(--b3-theme-on-surface);
+}
+
+.sw-home .sw-home__cell--unavailable .sw-home__hint {
+    margin: 0;
+    overflow-wrap: anywhere;
+}

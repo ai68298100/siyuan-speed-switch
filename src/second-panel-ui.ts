@@ -429,7 +429,32 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
 
             cells.forEach(({inst, layout}) => {
                 const def = defs.get(inst.moduleId);
-                if (!def) return;
+                // T-7031（ADR 0101 期审计批）：provider 已卸载 = 不可用占位而非静默
+                // 消失——布局条目保留（重装后原位恢复），编辑态提供移除出口。
+                if (!def) {
+                    const ghost = document.createElement("div");
+                    ghost.className = "sw-home__cell sw-home__cell--unavailable";
+                    ghost.dataset.instanceId = inst.instanceId;
+                    ghost.style.gridColumn = `span min(${layout.w || 4}, 12)`;
+                    const ghostLabel = document.createElement("p");
+                    ghostLabel.className = "sw-home__hint";
+                    ghostLabel.textContent = this.i18n.homeCellUnavailable;
+                    ghost.appendChild(ghostLabel);
+                    if (editing) {
+                        const ghostRemove = document.createElement("button");
+                        ghostRemove.type = "button";
+                        ghostRemove.className = "b3-button b3-button--text sw-home__tool";
+                        ghostRemove.textContent = this.i18n.homeRemove;
+                        ghostRemove.addEventListener("click", () => {
+                            this.removeHomeInstance(inst.instanceId);
+                            layoutOpLabel = this.i18n.homeHistoryRemove;
+                            renderPanel();
+                        });
+                        ghost.appendChild(ghostRemove);
+                    }
+                    mountFragment.appendChild(ghost);
+                    return;
+                }
                 // 型号迁移与解析：旧宽度档就近映射，再限定到该模块声明的型号集合
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
                 const sizeKey = this.isMobile ? resolveMobileHomeSize(supported) : this.migrateHomeLayoutSize(layout, supported);
