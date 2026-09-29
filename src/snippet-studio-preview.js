@@ -62,6 +62,8 @@ function resolvePreviewCapability({type = "css", scene = "reading", width = "aut
         script: type === "js" ? "error-bootstrap-only" : "blocked",
         network: "none",
         semantics: "approximation",
+        // T-6990：主题 token 只读内置快照（基线对照沿用亮色快照，不注入宿主 CSS）。
+        tokenSource: theme === "baseline" ? "none" : `builtin-${theme}`,
     });
 }
 
@@ -78,6 +80,9 @@ function formatPreviewCapability(capability, names = {}, boundary = {}) {
     const scriptLabel = capability.script === "blocked"
         ? text("scriptCss", "脚本：禁用")
         : text("scriptJs", "脚本：仅错误引导");
+    const tokenLabel = capability.tokenSource === "none"
+        ? text("tokenBaseline", "主题 token：基线（无覆盖）")
+        : text("tokenProfile", "主题 token：内置快照（只读）");
     return [
         `${text("sceneLabel", "场景")} ${names.scene || capability.scene}`,
         `${text("widthLabel", "宽度")} ${widthLabel}`,
@@ -85,6 +90,7 @@ function formatPreviewCapability(capability, names = {}, boundary = {}) {
         probeLabel,
         scriptLabel,
         text("network", "网络：无"),
+        tokenLabel,
         text("semantics", "语义近似预览，不代表当前笔记"),
     ].join(" · ");
 }
@@ -100,7 +106,7 @@ function stripCssNoise(content) {
 }
 
 const CSS_PROBE_PATTERNS = {
-    links: /(^|[^a-zA-Z0-9_-])a(?![a-zA-Z0-9_-])(?=[\s,{[:.+~>]|$)|\[data-type="a"\]|\bhref\b/,
+    links: /(^|[^a-zA-Z0-9_-])a(?![a-zA-Z0-9_-])(?=[\s,{[:.+~]|$)|\[data-type="a"\]|\bhref\b/,
     lists: /(^|[^a-zA-Z0-9_-])(ul|ol|li)(?![a-zA-Z0-9_-])|NodeList|NodeListItem/,
     tasks: /NodeTaskListItem|checkbox/,
     images: /(^|[^a-zA-Z0-9_-])img(?![a-zA-Z0-9_-])/,
@@ -110,6 +116,15 @@ const CSS_PROBE_PATTERNS = {
     h4: /(^|[^a-zA-Z0-9_-])h4(?![a-zA-Z0-9_-])|data-subtype="h4"/,
     h5: /(^|[^a-zA-Z0-9_-])h5(?![a-zA-Z0-9_-])|data-subtype="h5"/,
     h6: /(^|[^a-zA-Z0-9_-])h6(?![a-zA-Z0-9_-])|data-subtype="h6"/,
+    // T-6989：内容扩展特征——按社区片段真实选择器采样（Callout/列/公式/块属性/
+    // 数据库/媒体占位/文档标题）；静态样例，不读取个人文档、不加载任何远程资源。
+    callouts: /b3-callout|data-subtype="callout"/,
+    columns: /layout-column|NodeLayout(?![a-zA-Z0-9_-])/,
+    formula: /katex|mathjax|data-subtype="math"/,
+    attrs: /protyle-attr|b3-attr/,
+    database: /NodeAttributeView|(^|[^a-zA-Z0-9_-])av(?![a-zA-Z0-9_-])(?=[\s,{[:.+~]|$)/,
+    media: /(video|audio|iframe|embed)(?![a-zA-Z0-9_-])|NodeVideo|NodeAudio|NodeIFrame/,
+    title: /ProtyleTitle|protyle-title/,
 };
 
 // 返回命中的特征 id 有序集合（顺序即探针区块内的呈现顺序）。
@@ -331,14 +346,82 @@ function buildProbeSection(features, text) {
     if (features.includes("tags")) {
         parts.push(`<div class="p"${nid(cursor++)} data-type="NodeParagraph"><div contenteditable="true"><span class="tag" data-type="tag">#${text("probeTagA", "写作")}</span> <span class="tag" data-type="tag">#${text("probeTagB", "阅读")}</span> <span class="tag" data-type="tag">#${text("probeTagC", "灵感")}</span></div></div>`);
     }
+    // T-6989：内容扩展探针——全部为静态样例，不读取个人文档、不加载任何远程资源；
+    // 媒体是「blocked 占位」而非真实 <video>/<iframe> 元素（预览不加载媒体）。
+    if (features.includes("title")) {
+        parts.push(`<div class="protyle-title"${nid(cursor++)} data-type="NodeDocument">${text("probeDocTitle", "日记标题探针（文档级标题）")}</div>`);
+    }
+    if (features.includes("callouts")) {
+        parts.push(`<div class="bq b3-callout"${nid(cursor++)} data-type="NodeBlockquote" data-subtype="callout"><div contenteditable="true"><span class="b3-callout__icon" aria-hidden="true">💡</span> ${text("probeCallout", "Callout 提示块探针")}</div></div>`);
+    }
+    if (features.includes("columns")) {
+        parts.push(`<div${nid(cursor++)} data-type="NodeLayout" class="layout-column"><div class="p" contenteditable="true">${text("probeColumnA", "列布局探针 · 第一列")}</div></div><div${nid(cursor++)} data-type="NodeLayout" class="layout-column"><div class="p" contenteditable="true">${text("probeColumnB", "列布局探针 · 第二列")}</div></div>`);
+    }
+    if (features.includes("formula")) {
+        parts.push(`<div class="p"${nid(cursor++)} data-type="NodeParagraph"><span class="katex" data-subtype="math" contenteditable="true">${text("probeFormula", "公式占位 E=mc²（静态样例，非真实渲染）")}</span></div>`);
+    }
+    if (features.includes("attrs")) {
+        parts.push(`<div class="p"${nid(cursor++)} data-type="NodeParagraph"><div contenteditable="true">${text("probeAttrsLead", "带属性块探针")}</div><div class="protyle-attr">${text("probeAttrsValue", "别名 · #标签 · 自定义属性")}</div></div>`);
+    }
+    if (features.includes("database")) {
+        parts.push(`<div class="av"${nid(cursor++)} data-type="NodeAttributeView"><table><thead><tr><th>${text("probeDbColA", "名称")}</th><th>${text("probeDbColB", "状态")}</th></tr></thead><tbody><tr><td>${text("probeDbRowA", "静态行一")}</td><td>${text("probeDbRowB", "静态行二")}</td></tr></tbody></table></div>`);
+    }
+    if (features.includes("media")) {
+        parts.push(`<div class="p"${nid(cursor++)} data-type="NodeParagraph"><span class="studio-media-blocked" data-type="NodeVideo">${text("probeMediaBlocked", "媒体占位：预览中不加载音视频/嵌入内容")}</span></div>`);
+    }
     if (!parts.length) return "";
     const probeHeading = `<div class="h2"${nid(cursor++)} data-type="NodeHeading" data-subtype="h2"><div contenteditable="true">${text("probeTitle", "按当前 CSS 追加的探针内容")}</div></div>`;
     const probeNote = `<div class="p"${nid(cursor++)} data-type="NodeParagraph"><div contenteditable="true" class="studio-probe-note">${text("probeNote", "以下元素由你的片段选择器命中，用于观察对应样式。")}</div></div>`;
     return probeHeading + probeNote + parts.join("");
 }
 
+// ==================== T-6990：主题 token bridge（只读内置快照） ====================
+// 只读 light/dark 两套 --b3-* 变量快照 + 字体说明；不加载整套宿主 CSS、不允许
+// 外部注入（buildSnippetPreviewDocument 不接受 token 参数，快照表冻结）。
+// baseline 对照视图沿用亮色快照（原始样例的底色即亮色）。
+const SNIPPET_PREVIEW_THEME_PROFILES = Object.freeze({
+    light: Object.freeze({
+        id: "light",
+        colorScheme: "light",
+        tokens: Object.freeze({
+            "--b3-theme-background": "#fff",
+            "--b3-theme-on-background": "#253146",
+            "--b3-theme-primary": "#7c68d5",
+            "--b3-theme-primary-lightest": "#ece8fa",
+            "--b3-theme-surface": "#f5f6fa",
+            "--b3-border-color": "#dce1ea",
+            "--b3-font-family": "system-ui,sans-serif",
+            "--b3-font-family-code": "monospace",
+        }),
+    }),
+    dark: Object.freeze({
+        id: "dark",
+        colorScheme: "dark",
+        tokens: Object.freeze({
+            "--b3-theme-background": "#20242c",
+            "--b3-theme-on-background": "#e2e8f0",
+            "--b3-theme-primary": "#7c68d5",
+            "--b3-theme-primary-lightest": "#ece8fa",
+            "--b3-theme-surface": "#2a303c",
+            "--b3-border-color": "#414958",
+            "--b3-font-family": "system-ui,sans-serif",
+            "--b3-font-family-code": "monospace",
+        }),
+    }),
+});
+
+function resolveThemeProfile(theme) {
+    return SNIPPET_PREVIEW_THEME_PROFILES[theme === "dark" ? "dark" : "light"] || SNIPPET_PREVIEW_THEME_PROFILES.light;
+}
+
+function renderThemeTokens(profile) {
+    return Object.entries(profile.tokens).map(([key, value]) => `${key}:${value}`).join(";");
+}
+
 function buildSnippetPreviewDocument({type = "css", content = "", dark = false, baseline = false, runJS = false, token = "", labels = {}, scene = "reading"} = {}) {
     const text = (key, fallback) => escapeHtml(labels[key] || fallback);
+    // T-6990：主题 token 只读快照（baseline 沿用亮色）；不接受外部 token 注入。
+    const themeProfile = resolveThemeProfile(baseline ? "light" : (dark ? "dark" : "light"));
     const running = type === "js" && runJS && !baseline;
     const policy = `default-src 'none'; style-src 'unsafe-inline' data:; script-src ${running ? "data:" : "'none'"}; img-src data:; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'`;
     // Data URL preserves CSS tokens exactly and prevents </style> HTML breakout.
@@ -349,8 +432,8 @@ function buildSnippetPreviewDocument({type = "css", content = "", dark = false, 
     // CSS 预览按片段选择器追加探针内容（baseline 对比视图保持原始样例，不探针）。
     const features = type === "css" && !baseline ? analyzeCssCoverage(content) : [];
     return `<!doctype html><html lang="${text("lang", "zh-CN")}" data-theme-mode="${dark ? "dark" : "light"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="${escapeHtml(policy)}"><style>
-:root{color-scheme:${dark ? "dark" : "light"};--b3-theme-background:${dark ? "#20242c" : "#fff"};--b3-theme-on-background:${dark ? "#e2e8f0" : "#253146"};--b3-theme-primary:#7c68d5;--b3-theme-primary-lightest:#ece8fa;--b3-theme-surface:${dark ? "#2a303c" : "#f5f6fa"};--b3-border-color:${dark ? "#414958" : "#dce1ea"};--b3-font-family:system-ui,sans-serif;--b3-font-family-code:monospace}
-*{box-sizing:border-box}body{margin:0;background:var(--b3-theme-background);color:var(--b3-theme-on-background);font-family:var(--b3-font-family);font-size:15px}.studio-demo-bar{padding:12px 24px;border-bottom:1px solid var(--b3-border-color);display:flex;gap:18px;font-size:12px;color:var(--b3-theme-primary)}.studio-probe-note{color:var(--b3-theme-primary);font-size:12px}.protyle-wysiwyg{max-width:820px;margin:auto;padding:24px 32px;line-height:1.6}.h1{font-size:27px;font-weight:700}.h2{font-size:19px;font-weight:650;margin-top:16px}.h3{font-size:17px;font-weight:650;margin-top:14px}.h4,.h5,.h6{font-size:15.5px;font-weight:650;margin-top:12px}.p{margin:12px 0}blockquote,.bq{border-left:3px solid var(--b3-theme-primary);padding:8px 16px;margin:16px 0;background:var(--b3-theme-surface)}.list{margin:12px 0;padding-left:24px}.list .li{margin:6px 0;list-style:disc}table{border-collapse:collapse;width:100%}td,th{padding:8px 12px;border:1px solid var(--b3-border-color);text-align:left}[data-type="code"]{font-family:var(--b3-font-family-code);background:var(--b3-theme-surface);padding:2px 5px;border-radius:4px}.code-block{font-family:var(--b3-font-family-code);background:var(--b3-theme-surface);padding:14px;border-radius:8px;white-space:pre-wrap}button{font:inherit;padding:6px 14px;cursor:pointer}.demo-chip{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--b3-theme-surface);border:1px solid var(--b3-border-color);font-size:12px}.demo-chip.is-accent{background:var(--b3-theme-primary-lightest);color:var(--b3-theme-primary);border-color:transparent}.demo-count{display:inline-block;min-width:20px;text-align:center;padding:1px 6px;border-radius:999px;background:var(--b3-theme-error);color:#fff;font-size:12px}input,select{font:inherit;padding:5px 10px;border:1px solid var(--b3-border-color);border-radius:6px;background:var(--b3-theme-background);color:var(--b3-theme-on-background)}img{max-width:100%;border-radius:8px}kbd{font-family:var(--b3-font-family-code);border:1px solid var(--b3-border-color);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:12px}a{color:var(--b3-theme-primary)}
+:root{color-scheme:${themeProfile.colorScheme};${renderThemeTokens(themeProfile)}}
+*{box-sizing:border-box}body{margin:0;background:var(--b3-theme-background);color:var(--b3-theme-on-background);font-family:var(--b3-font-family);font-size:15px}.studio-demo-bar{padding:12px 24px;border-bottom:1px solid var(--b3-border-color);display:flex;gap:18px;font-size:12px;color:var(--b3-theme-primary)}.studio-probe-note{color:var(--b3-theme-primary);font-size:12px}.protyle-wysiwyg{max-width:820px;margin:auto;padding:24px 32px;line-height:1.6}.h1{font-size:27px;font-weight:700}.h2{font-size:19px;font-weight:650;margin-top:16px}.h3{font-size:17px;font-weight:650;margin-top:14px}.h4,.h5,.h6{font-size:15.5px;font-weight:650;margin-top:12px}.p{margin:12px 0}blockquote,.bq{border-left:3px solid var(--b3-theme-primary);padding:8px 16px;margin:16px 0;background:var(--b3-theme-surface)}.list{margin:12px 0;padding-left:24px}.list .li{margin:6px 0;list-style:disc}table{border-collapse:collapse;width:100%}td,th{padding:8px 12px;border:1px solid var(--b3-border-color);text-align:left}[data-type="code"]{font-family:var(--b3-font-family-code);background:var(--b3-theme-surface);padding:2px 5px;border-radius:4px}.code-block{font-family:var(--b3-font-family-code);background:var(--b3-theme-surface);padding:14px;border-radius:8px;white-space:pre-wrap}button{font:inherit;padding:6px 14px;cursor:pointer}.demo-chip{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--b3-theme-surface);border:1px solid var(--b3-border-color);font-size:12px}.demo-chip.is-accent{background:var(--b3-theme-primary-lightest);color:var(--b3-theme-primary);border-color:transparent}.demo-count{display:inline-block;min-width:20px;text-align:center;padding:1px 6px;border-radius:999px;background:var(--b3-theme-error);color:#fff;font-size:12px}input,select{font:inherit;padding:5px 10px;border:1px solid var(--b3-border-color);border-radius:6px;background:var(--b3-theme-background);color:var(--b3-theme-on-background)}img{max-width:100%;border-radius:8px}.b3-callout{border-left:3px solid var(--b3-theme-primary);padding:8px 14px;margin:12px 0;background:var(--b3-theme-surface)}.layout-column{display:block;padding:8px 12px;margin:10px 0;border:1px dashed var(--b3-border-color);border-radius:8px}.katex{font-family:var(--b3-font-family-code);background:var(--b3-theme-surface);padding:2px 6px;border-radius:4px}.protyle-attr{margin-top:4px;color:var(--b3-theme-on-surface-light);font-size:11px}.av table{margin:8px 0}.studio-media-blocked{display:inline-block;padding:10px 14px;border:1px dashed var(--b3-border-color);border-radius:8px;color:var(--b3-theme-on-surface-light);font-size:12px}.protyle-title{font-size:22px;font-weight:700;margin:0 0 12px}kbd{font-family:var(--b3-font-family-code);border:1px solid var(--b3-border-color);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:12px}a{color:var(--b3-theme-primary)}
 </style>${css}</head><body><div class="studio-demo-bar"><span>SiYuan</span><span>${text("sample", "演示文档 · 不读取个人笔记")}</span></div><div class="protyle"><div class="protyle-wysiwyg b3-typography protyle-wysiwyg--attr" spellcheck="false">${buildSceneBody(normalizePreviewScene(scene), text, features)}</div></div>${script}</body></html>`;
 }
 
@@ -393,4 +476,4 @@ function createSnippetPreview(container, {title, labels, onError = () => {}, onR
     };
 }
 
-module.exports = {SNIPPET_PREVIEW_SCENES, SNIPPET_PREVIEW_WIDTHS, SNIPPET_PREVIEW_THEMES, normalizePreviewScene, normalizePreviewTheme, resolvePreviewWidth, resolvePreviewCapability, formatPreviewCapability, analyzeCssCoverage, analyzeSelectorDiagnostics, SELECTOR_DIAGNOSTICS_LIMITS, stripCssNoise, buildSnippetPreviewDocument, createSnippetPreview};
+module.exports = {SNIPPET_PREVIEW_SCENES, SNIPPET_PREVIEW_WIDTHS, SNIPPET_PREVIEW_THEMES, SNIPPET_PREVIEW_THEME_PROFILES, CSS_PROBE_PATTERNS, normalizePreviewScene, normalizePreviewTheme, resolvePreviewWidth, resolvePreviewCapability, formatPreviewCapability, resolveThemeProfile, renderThemeTokens, analyzeCssCoverage, analyzeSelectorDiagnostics, SELECTOR_DIAGNOSTICS_LIMITS, stripCssNoise, buildSnippetPreviewDocument, createSnippetPreview};
