@@ -1,8 +1,8 @@
 "use strict";
 
-// v0.21 生活信息支线（ROADMAP「再评估 iCal 与 GitHub 贡献热力图」）：iCal 订阅只读组件的
-// 契约/纯模型层。按 T-123/T-124 先例先行交付可测纯模型，宿主接入（adapter/catalog/i18n）
-// 待产品确认后另行接线——本模块不发起网络请求、不读取宿主数据。
+// iCal 订阅只读组件的契约/纯模型层（v0.21 立项，已随 external-ical-events 组件接入生产：
+// adapter/catalog/i18n 与 TZID/RRULE 解析均已在册，见 T-6460/T-6462 交付记录）。
+// 本模块不发起网络请求、不读取宿主数据。
 //
 // 信任边界：
 //   - 订阅 URL 由用户配置：传输规则与 Miniflux/Configured Feed 一致（https 或 http+本机、
