@@ -80,6 +80,19 @@
     &__state-badge.is-draft { background: color-mix(in srgb, var(--studio-warning) 13%, transparent); color: var(--studio-warning); }
     &__state-badge.is-muted { background: var(--studio-surface); color: var(--studio-on-surface); }
     &__preview { position: relative; flex: 1; min-height: 140px; overflow: hidden; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-md); background: var(--studio-surface); }
+    // T-7022：双栏预览——左已保存/右草稿并排，窄容器按 data-view 降级单栏；
+    // 仅 grid/display 变化，无动画（reduced-motion 语义不受影响）。
+    &__preview-dual { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 100%; }
+    &__preview-dual[data-view="saved"] .sw-studio__preview-pane--draft { display: none; }
+    &__preview-dual[data-view="draft"] .sw-studio__preview-pane--saved { display: none; }
+    &__preview-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+    &__preview-pane-head { display: flex; align-items: center; gap: 6px; padding: 4px 6px 6px; }
+    &__preview-pane-label { font-size: 11px; font-weight: 650; color: var(--studio-on-surface); }
+    &__preview-pane--saved .sw-studio__preview-pane-label { color: var(--studio-accent); }
+    &__preview-pane .sw-studio__preview-canvas { flex: 1; min-height: 0; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-sm); overflow: hidden; }
+    &__preview-pane-empty { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 14px; margin: 0; font-size: 12px; color: var(--studio-on-surface); border: 1px dashed var(--studio-line); border-radius: var(--studio-radius-sm); }
+    &__preview-pane--saved[data-empty="true"] .sw-studio__preview-canvas { display: none; }
+    &__preview-pane--saved[data-empty="false"] .sw-studio__preview-pane-empty { display: none; }
     &__preview-canvas { width: 100%; height: 100%; }
     &__preview iframe { display: block; width: 100%; height: 100%; border: 0; }
     &__preview-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--studio-on-surface); background: color-mix(in srgb, var(--studio-surface) 82%, transparent); pointer-events: none; }

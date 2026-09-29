@@ -176,6 +176,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetName: locale.i18n.snippetName,
         snippetNew: locale.i18n.snippetNew,
         snippetNoResults: locale.i18n.snippetNoResults,
+        snippetPaneDraft: locale.i18n.snippetPaneDraft,
+        snippetPaneSaved: locale.i18n.snippetPaneSaved,
+        snippetPaneSavedEmpty: locale.i18n.snippetPaneSavedEmpty,
         snippetPreview: locale.i18n.snippetPreview,
         snippetPreviewError: locale.i18n.snippetPreviewError,
         snippetPreviewHint: locale.i18n.snippetPreviewHint,
@@ -359,10 +362,26 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     widthSelect.addEventListener("change", () => { previewWidth = widthSelect.value; renderPreview(); });
     previewToolbar.append(previewLead, compareButton, themeButton, sceneSelect, widthSelect, stopButton);
     const previewShell = node("div", "sw-studio__preview");
+    // T-7022：双栏预览——左=已保存版本效果（显式渲染保存代码，不冒用 baseline 原始
+    // 样例标志），右=当前草稿效果；两栏共享场景/宽度/主题观察环境；窄容器降级为
+    // 单栏（compareButton 切换，沿用 showOriginal 语义）；无基线时左栏明确空态。
+    const previewDual = node("div", "sw-studio__preview-dual");
+    const savedPane = node("section", "sw-studio__preview-pane sw-studio__preview-pane--saved");
+    const savedPaneHead = node("div", "sw-studio__preview-pane-head");
+    savedPaneHead.append(node("span", "sw-studio__preview-pane-label", t("snippetPaneSaved")));
+    const savedCanvas = node("div", "sw-studio__preview-canvas sw-studio__preview-canvas--saved");
+    const savedEmpty = node("p", "sw-studio__preview-pane-empty", t("snippetPaneSavedEmpty"));
+    savedPane.append(savedPaneHead, savedCanvas, savedEmpty);
+    const draftPane = node("section", "sw-studio__preview-pane sw-studio__preview-pane--draft");
+    const draftPaneHead = node("div", "sw-studio__preview-pane-head");
+    draftPaneHead.append(node("span", "sw-studio__preview-pane-label", t("snippetPaneDraft")));
     const previewContainer = node("div", "sw-studio__preview-canvas");
+    draftPane.append(draftPaneHead, previewContainer);
     const previewLoading = node("div", "sw-studio__preview-loading");
     previewLoading.append(node("span", "sw-studio__spinner"), node("span", "", t("snippetPreviewLoading")));
-    previewShell.append(previewContainer, previewLoading);
+    previewDual.append(savedPane, draftPane);
+    previewDual.dataset.view = "dual";
+    previewShell.append(previewDual, previewLoading);
     const previewHint = node("p", "sw-studio__hint", t("snippetPreviewHint"));
     // T-6987：能力回执行——场景/宽度/主题/探针/脚本/网络/语义边界每次预览如实呈现。
     const previewReceipt = node("div", "sw-studio__preview-receipt");
@@ -738,6 +757,24 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             }
         },
     });
+    // T-7022：左栏独立隔离实例——渲染「已保存版本」的保存代码（baseline.type +
+    // original），与草稿栏互不共享 iframe；环境（场景/宽度/主题）随每次渲染同步。
+    const previewSaved = createSnippetPreview(savedCanvas, {
+        title: t("snippetPaneSaved"),
+        labels: previewLabels(t),
+    });
+    // 左栏内容签名：保存代码/身份或观察环境变化才重建 iframe，输入草稿时不闪动。
+    let savedRenderKey = "";
+    // T-7022 按钮盘点（随双栏落账）：previewLead=标题；compareButton=单栏模式
+    // 「已保存/草稿」切换（双栏隐藏）；themeButton/sceneSelect/widthSelect=观察
+    // 环境（两栏同步）；stopButton=重置预览；snippetRunJS 已随安全半场移除。
+    const SNIPPET_DUAL_PANE_MIN = 860;
+    const dualPaneObserver = typeof ResizeObserver === "function" ? new ResizeObserver(() => {
+        if (disposed) return;
+        const dual = previewShell.clientWidth >= SNIPPET_DUAL_PANE_MIN;
+        if ((previewDual.dataset.view === "dual") !== dual) renderPreview();
+    }) : null;
+    dualPaneObserver?.observe(previewShell);
     const errorText = (error) => {
         const code = String(error?.message || error?.code || "");
         if (/conflict|changed|missing|duplicate/i.test(code)) return t("snippetConflict");
@@ -811,7 +848,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     function renderPreview() {
         clearTimeout(previewTimer);
         if (disposed) return;
-        const content = showOriginal ? original : draft.content;
+        // T-7022：草稿栏恒渲染草稿内容；「已保存」由独立左栏承载（单栏窄容器经
+        // compareButton 切换视图，不再共用同一 iframe 换内容）。
+        const content = draft.content;
+        // 布局判定：宽容器双栏并排；窄容器单栏（showOriginal 仅在单栏模式生效）。
+        const dual = previewShell.clientWidth >= SNIPPET_DUAL_PANE_MIN;
+        const savedView = !dual && showOriginal && !!baseline;
+        previewDual.dataset.view = dual ? "dual" : (savedView ? "saved" : "draft");
+        compareButton.hidden = dual;
         if (byteLength(content) > SNIPPET_CODE_MAX) { setStatus(t("snippetTooLarge"), "error"); return; }
         previewShell.dataset.state = "loading";
         previewLoading.hidden = false;
@@ -821,8 +865,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         // T-6987：能力回执——纯模型白名单解析 + 人读格式；探针命中数与预览同源计算。
         const capability = resolvePreviewCapability({
             type: draft.type, scene: previewScene, width: previewWidth,
-            dark, baseline: showOriginal,
-            probeHits: draft.type === "css" && !showOriginal ? analyzeCssCoverage(content) : [],
+            dark, baseline: savedView,
+            probeHits: draft.type === "css" ? analyzeCssCoverage(content) : [],
             containerWidth: previewContainer.clientWidth,
         });
         previewReceipt.textContent = formatPreviewCapability(capability, {
@@ -880,6 +924,23 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 diagnosticsBody.appendChild(node("p", "sw-studio__diagnostics-empty", t("snippetDiagnosticsTruncated")));
             }
             diagnosticsDetails.hidden = false;
+        }
+        // T-7022：左栏空态/渲染——无基线（新建草稿）明确空态；有基线显式渲染
+        // 已保存代码（baseline.type + original），绝不冒用 baseline 原始样例标志；
+        // 内容签名含观察环境，场景/宽度/主题切换两栏同步，输入草稿时左栏不闪动。
+        if (!baseline) {
+            savedPane.dataset.empty = "true";
+            savedEmpty.hidden = false;
+            savedCanvas.hidden = true;
+        } else {
+            savedPane.dataset.empty = "false";
+            savedEmpty.hidden = true;
+            savedCanvas.hidden = false;
+            const savedKey = [baseline.id, baseline.type, original, dark, previewScene, previewWidth].join("\u0000");
+            if (savedRenderKey !== savedKey) {
+                savedRenderKey = savedKey;
+                previewSaved.render({type: baseline.type, content: original, dark, scene: previewScene, width: previewWidth});
+            }
         }
         // Compare uses the selected saved code, not a second unscoped host style.
         preview.render({type: draft.type, content, dark, scene: previewScene, width: previewWidth});
@@ -1483,6 +1544,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             clearTimeout(previewTimer);
             pickerRelease();
             preview.dispose();
+            previewSaved.dispose();
+            dualPaneObserver?.disconnect();
             ai.dispose();
             store.dispose();
             root.replaceChildren();
