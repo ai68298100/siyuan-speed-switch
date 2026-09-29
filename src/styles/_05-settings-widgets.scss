@@ -603,16 +603,30 @@
     }
 }
 
+// T-7054：iPad 组件质感——玻璃态背景 + 景深阴影 + hover 微浮起 + 大圆角。
+// 使用 color-mix 派生自主题变量（皮肤/暗色自适应），不引入第二套色值。
 .sw-home__cell {
     grid-column: span min(var(--sw-home-span, 6), 12);
     display: flex;
     flex-direction: column;
     min-width: 0;
     padding: 8px 10px;
-    border: 1px solid var(--b3-border-color);
-    border-radius: var(--sw-radius-card, 14px);
-    background: var(--b3-theme-surface);
-    box-shadow: var(--sw-card-shadow, none);
+    border-radius: var(--sw-radius-card, 20px);
+    border: 0.5px solid color-mix(in srgb, var(--b3-theme-background) 60%, var(--b3-border-color));
+    background: color-mix(in srgb, var(--b3-theme-surface) 88%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow:
+        0 1px 3px color-mix(in srgb, #000 6%, transparent),
+        0 4px 16px color-mix(in srgb, #000 5%, transparent);
+    transition: transform $sw-dur-base $sw-ease, box-shadow $sw-dur-base $sw-ease;
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow:
+            0 2px 6px color-mix(in srgb, #000 8%, transparent),
+            0 8px 24px color-mix(in srgb, #000 7%, transparent);
+    }
 
     &:focus-visible {
         outline: 2px solid var(--b3-theme-primary);
@@ -1077,7 +1091,10 @@
 
 .sw-home__cell.mat-dark {
     background: linear-gradient(160deg, #2a303c, #14171f);
-    border: 1px solid rgb(255 255 255 / 7%);
+    border: 0.5px solid rgb(255 255 255 / 8%);
+    box-shadow:
+        0 4px 24px rgb(0 0 0 / 35%),
+        inset 0 0.5px 0 rgb(255 255 255 / 6%);
 }
 
 .sw-home__cell.mat-vibrant {
