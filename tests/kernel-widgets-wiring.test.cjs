@@ -825,7 +825,9 @@ test('platform surface context: singleton dialogs, FAB restore and workbench edi
         'mobile chrome nav must carry the surface-nav entry');
     assert.match(indexSource, /this\.openPlatformSurface\(returnTo, "switcher", \{\s*\n\s*entry: "back",/,
         'studio Back must carry the back entry');
-    assert.match(indexSource, /void import\("\.\/snippet-studio-ui"\)\.then\(/,
+    // T-7018 演进：动态导入携带 webpackChunkName 魔法注释（readSourceText 会剥注释，
+    // 但该锚点同时钉住路径与 .then 链——注释在 import( 与路径之间，用免注释形态匹配）。
+    assert.match(indexSource, /void import\([^)]*"\.\/snippet-studio-ui"\)\.then\(/,
         'studio must load the editor through the published lazy chunk');
     assert.match(indexSource, /snippet studio import failed/,
         'studio lazy chunk failures must be logged at the host boundary');

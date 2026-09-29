@@ -3793,7 +3793,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.destroy();
             return;
         }
-        void import("./snippet-studio-ui").then(({mountSnippetStudio}) => {
+        void import(/* webpackChunkName: "snippet-studio" */ "./snippet-studio-ui").then(({mountSnippetStudio}) => {
             if (!dialog.element.isConnected || this.snippetStudioDialog !== dialog) return;
             holder.controller = mountSnippetStudio(root, {
                 i18n: this.i18n as unknown as Record<string, string>,

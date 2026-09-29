@@ -55,6 +55,8 @@ const SOURCE_SCAN_DEBT = [
     {file: "tests/doc-search-pagination-contract.test.cjs", reason: "doc-comment-contract"},
     {file: "tests/storage-key-audit.test.cjs", reason: "doc-comment-contract"},
     {file: "tests/storage-migration.test.cjs", reason: "doc-comment-contract"},
+    // T-7018：对 webpackChunkName 魔法注释的断言对象就是注释本身（readSourceText 会剥掉）
+    {file: "tests/snippet-studio-bundle.test.cjs", reason: "doc-comment-contract"},
     {file: "tests/shipped-i18n-parity.test.cjs", reason: "json-data"},
 ];
 

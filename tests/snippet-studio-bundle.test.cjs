@@ -12,7 +12,16 @@ const root = path.resolve(__dirname, "..");
 
 test("snippet studio lazy chunk has a stable published path and runtime base", () => {
     const config = webpackConfig({}, {mode: "production"});
-    assert.equal(config.output.chunkFilename, "dist/snippet-studio.js");
+    // T-7018 演进：chunkFilename 改为 [name] 模式（多 chunk 稳定命名）——
+    // 既有工作室 chunk 的名字由 src/index.ts 的 webpackChunkName 魔法注释
+    // 钉住为 "snippet-studio"，发布路径 dist/snippet-studio.js 不变。
+    assert.equal(config.output.chunkFilename, "dist/[name].js");
+
+    // webpackChunkName 是魔法注释——readSourceText 会剥注释，此处必须读原始文本
+    //（source-scan 头注的合法例外：断言对象就是注释本身）。
+    const entrySourceRaw = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8").replace(/\r\n/g, "\n");
+    assert.match(entrySourceRaw, /webpackChunkName:\s*"snippet-studio"/,
+        "工作室 chunk 名必须由魔法注释显式钉住（多 chunk 下不得依赖默认命名）");
 
     const manifest = JSON.parse(fs.readFileSync(path.join(root, "plugin.json"), "utf8"));
     assert.equal(config.output.publicPath, `/plugins/${manifest.name}/`);

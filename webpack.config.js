@@ -146,7 +146,10 @@ module.exports = (env, argv) => {
             // plugin.json 的发布资源契约精确登记并参与包体审计。这个 chunk
             // 保留在发布包的 dist/ 子路径。思源以内联方式执行插件入口，
             // document.currentScript 不可靠，须明确指定插件资源基址。
-            chunkFilename: "dist/snippet-studio.js",
+            // T-7018：chunk 名由各动态导入的 webpackChunkName 魔法注释显式声明
+            //（tests/webpack-chunk-names.test.cjs 钉住唯一性与安全性）；
+            // 既有工作室 chunk 由 src/index.ts 的魔法注释钉住为 "snippet-studio"。
+            chunkFilename: "dist/[name].js",
             publicPath: `/plugins/${pluginManifest.name}/`,
             path: path.resolve(__dirname),
             libraryTarget: "commonjs2",
