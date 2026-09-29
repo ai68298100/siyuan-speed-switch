@@ -52,4 +52,9 @@
     "webpack-cli": "^7.0.3",
     "zip-webpack-plugin": "^4.0.3"
   }
-}
+,
+  "pnpm": {
+    "overrides": {
+      "fast-uri": ">=4.0.0"
+    }
+  }}
