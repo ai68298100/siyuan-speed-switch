@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.43.2-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.44.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
@@ -342,12 +342,18 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.43.2` (released 2026-09-29; widget store S2 finish, unified panel window settings, settings search/storage health/save receipts & undo, switcher rerender scene preservation, snippet preview chain — capability receipt, coverage diagnostics, extended probes, read-only theme tokens — and floating-ball focus restoration; Release assets are built automatically by the workflow).
+The current version is `v0.44.0` (released 2026-09-30; module visibility switches, the snippet recycle bin, dual-pane preview in the snippet studio with JS execution hard-sealed at the module level, and a batch of audit-driven defect fixes — rerender scene preservation, overlay lifecycle, import generation guard, conflict-copy receipts; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
 
+### v0.44.0 (2026-09-30)
+
+- **Module visibility switches**: Settings → Panels → Modules can disable the workbench / snippet studio / floating ball; the top bar consolidates into a single unified platform entry (its context menu dynamically lists enabled surfaces + settings).
+- **Snippet recycle bin**: pre-save / pre-delete / conflict-discarded versions are captured automatically; the catalog sheet offers browsing by origin, restore as a disabled draft, and delete-forever/empty with double confirmation; bounded auto-cleanup.
+- **Dual-pane preview**: the snippet studio preview becomes a Saved vs Draft comparison with a synced environment, collapsing to a single pane on narrow containers; JS preview execution is hard-sealed at the module level.
+- **Audit fixes**: rerender scene preservation (sidebar/mobile), sort menu lifecycle, import generation guard, conflict-copy receipts, same-frame hero demotion, an independent sidebar journal entry, and more.
 ### v0.43.2 (2026-09-29)
 
 - **Entries & visuals**: SurfaceNav non-current items render as bordered pills (clickability visible) and gray fake entries are structurally impossible; card digit badges sit fully inside cards; the close button on all panels is prominent. Real-click cross-panel switching joined the release gates.

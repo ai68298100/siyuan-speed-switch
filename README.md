@@ -1,6 +1,6 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.43.2-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.44.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
@@ -346,12 +346,18 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.43.2`（2026-09-29 正式发布；商店重构 S2 收口、三面板尺寸统一、设置搜索/存储健康/保存回执与撤销、切换器重绘现场保持、片段实验室预览链（能力回执/覆盖诊断/内容扩展/主题快照）、悬浮球弹窗焦点恢复；Release 资产由 workflow 自动构建）。
+当前版本为 `v0.44.0`（2026-09-30 正式发布；模块化可见性开关、片段回收站、片段实验室双栏预览与 JS 预览模块层封死，以及一组审计驱动的缺陷修复（重绘现场保持/浮层生命周期/导入代际/冲突副本回执）；Release 资产由 workflow 自动构建）。
 
 ## 更新日志
 
 完整历史见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。最近版本：
 
+### v0.44.0（2026-09-30）
+
+- **模块化可见性开关**：设置 → 面板 → 模块管理可停用 工作台/片段实验室/悬浮球；顶栏收敛为单一统一平台入口（右键菜单动态列出已启用面板+设置）。
+- **片段回收站**：覆盖保存/删除/冲突放弃自动入站；目录浮层可按来源浏览、恢复为禁用新草稿、永久删除/清空（二次确认）；三限自动清理。
+- **双栏预览**：片段实验室预览升级为 左「已保存」右「草稿」对照，环境同步、窄容器降级单栏；JS 预览执行能力在模块层整体封死。
+- **审计修复**：重绘现场保持（侧栏/移动端）、排序浮层生命周期、导入代际保护、冲突副本回执、英雄位同帧生效、侧栏独立日记入口等。
 ### v0.43.2（2026-09-29）
 
 - **入口与视觉修正**：SurfaceNav 非当前面板项带淡边框胶囊（可点击性可见）且结构性杜绝灰字假入口；页签卡 1-9 数字角标改为卡内完整显示（不再被裁）；三面板关闭按钮更醒目。面板互切真实点击冒烟进入发版门禁。

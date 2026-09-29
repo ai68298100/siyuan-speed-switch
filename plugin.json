@@ -2,11 +2,19 @@
   "name": "siyuan-speed-switch",
   "author": "ai68298100",
   "url": "https://github.com/ai68298100/siyuan-speed-switch",
-  "version": "0.43.2",
+  "version": "0.44.0",
   "minAppVersion": "3.8.0",
   "disabledInPublish": false,
-  "backends": ["all"],
-  "frontends": ["desktop", "browser-desktop", "desktop-window", "mobile", "browser-mobile"],
+  "backends": [
+    "all"
+  ],
+  "frontends": [
+    "desktop",
+    "browser-desktop",
+    "desktop-window",
+    "mobile",
+    "browser-mobile"
+  ],
   "displayName": {
     "default": "LvSpeed Switch",
     "zh-CN": "小驴雷切"
@@ -22,7 +30,9 @@
   },
   "icon": "icon.png",
   "preview": "preview.png",
-  "funding": {"custom": []},
+  "funding": {
+    "custom": []
+  },
   "publish": {
     "resources": [
       "docs/agent-document-context-m2.md",
