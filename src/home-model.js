@@ -730,7 +730,7 @@ function normalizeModuleDefinition(value) {
         ? DEVICES.filter((device) => value.supportedDevices.includes(device))
         : ["desktop"];
     if (supportedDevices.length === 0) return null;
-    const sizeKeys = ["xs", "small", "medium", "tall", "wide", "large", "full"];
+    const sizeKeys = LAYOUT_SIZES; // T-7186：与归一化词汇同源，防双档表漂移
     const sizes = Array.isArray(value.sizes) ? sizeKeys.filter((key) => value.sizes.includes(key)) : [];
     const availability = AVAILABILITY_LEVELS.includes(value.availability)
         ? value.availability
