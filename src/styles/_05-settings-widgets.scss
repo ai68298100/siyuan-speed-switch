@@ -1081,17 +1081,20 @@
 // 四种材质（plain 常规 / accent 主色渐变 / dark 深色舞台 / vibrant 内容语义渐变），
 // 经皮肤层作用域派生，不改组件选择器。深色/彩色材质上的模块文字色整体继承材质
 // 前景，交互控件（按钮/链接）保持既有主题变量以维持对比度采样覆盖。
-.sw-home__cell.mat-accent,
-.sw-home__cell.mat-dark {
+// T-7155：材质选择器带 .sw-home 前缀（0,3,0），必须压过后置切片 _06/_07 的
+// 通用卡片背景/边框规则（0,2,0）——否则渐变背景被浅底覆盖而材质浅色前景仍在，
+// 形成"白字浅底"不可读；门禁见 tests/home-tile-material-wiring.test.cjs。
+.sw-home .sw-home__cell.mat-accent,
+.sw-home .sw-home__cell.mat-dark {
     --sw-home-cell-fg: var(--b3-theme-on-primary);
     border: none;
 }
 
-.sw-home__cell.mat-accent {
+.sw-home .sw-home__cell.mat-accent {
     background: linear-gradient(135deg, var(--b3-theme-primary), color-mix(in srgb, var(--b3-theme-primary) 58%, #101426));
 }
 
-.sw-home__cell.mat-dark {
+.sw-home .sw-home__cell.mat-dark {
     background: linear-gradient(160deg, #2a303c, #14171f);
     border: 0.5px solid rgb(255 255 255 / 8%);
     box-shadow:
@@ -1099,16 +1102,16 @@
         inset 0 0.5px 0 rgb(255 255 255 / 6%);
 }
 
-.sw-home__cell.mat-vibrant {
+.sw-home .sw-home__cell.mat-vibrant {
     --sw-home-cell-fg: #ffffff;
     background: linear-gradient(165deg, #3f74d4 0%, #5f96e0 55%, #8fc3ee 100%);
     border: none;
 }
 
 // 材质前景：模块头/正文/统计/列表文字整体继承；失败状态仍走主题错误色。
-.sw-home__cell.mat-accent,
-.sw-home__cell.mat-dark,
-.sw-home__cell.mat-vibrant {
+.sw-home .sw-home__cell.mat-accent,
+.sw-home .sw-home__cell.mat-dark,
+.sw-home .sw-home__cell.mat-vibrant {
     color: var(--sw-home-cell-fg, inherit);
 
     .sw__home-module-header,
@@ -1126,10 +1129,10 @@
     }
 }
 
-// 失败单元描边（T-6880 语义）在彩色材质上仍可见
-.sw-home__cell.mat-accent[data-sw-health="failed"],
-.sw-home__cell.mat-dark[data-sw-health="failed"],
-.sw-home__cell.mat-vibrant[data-sw-health="failed"] {
+// 失败单元描边（T-6880 语义）在彩色材质上仍可见；0,4,0 同时压过 _07 的 hover 阴影。
+.sw-home .sw-home__cell.mat-accent[data-sw-health="failed"],
+.sw-home .sw-home__cell.mat-dark[data-sw-health="failed"],
+.sw-home .sw-home__cell.mat-vibrant[data-sw-health="failed"] {
     box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--b3-theme-error) 60%, transparent);
 }
 
