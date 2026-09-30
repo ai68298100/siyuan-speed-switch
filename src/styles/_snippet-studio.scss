@@ -160,7 +160,10 @@
     &__status[data-state="ready"] { color: var(--studio-success); }
     &__status[data-state="blocked"] { color: var(--studio-warning); }
     &__status[data-state="error"] { color: var(--studio-error); }
-    &__picker { position: absolute; inset: 0; background: rgb(15 20 30 / 36%); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 10; padding: 20px; }
+    // T-7200：picker 遮罩统一走 --sw-overlay-* token；无 backdrop-filter 时加深补偿。
+    &__picker { position: absolute; inset: 0; background: var(--sw-overlay-scrim, rgb(15 20 30 / 36%)); backdrop-filter: var(--sw-overlay-blur, blur(2px)); display: grid; place-items: center; z-index: 10; padding: 20px;
+        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { background: var(--sw-overlay-scrim-strong, rgb(15 20 30 / 46%)); }
+    }
     &__picker-sheet { width: min(900px, 100%); max-height: calc(100% - 4px); overflow: hidden; display: flex; flex-direction: column; padding: 18px; background: var(--b3-theme-background); border: 1px solid var(--studio-line); border-radius: var(--studio-radius-lg); box-shadow: var(--studio-shadow-card); }
     &__filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
     &__recent { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 0 9px; }

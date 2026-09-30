@@ -44,4 +44,12 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     --sw-font-lg: 15px;   // 小标题
     --sw-font-xl: 17px;   // 标题
     --sw-font-2xl: 20px;  // 大数字/英雄位
+
+    // T-7200：模态浮层遮罩与底部 sheet 材质。遮罩取蓝灰暗调（明暗主题通用），
+    // scrim-strong 供不支持 backdrop-filter 的引擎加深补偿（见各浮层 @supports not 块）。
+    --sw-overlay-scrim: rgba(32, 37, 58, 0.36);
+    --sw-overlay-scrim-strong: rgba(32, 37, 58, 0.46);
+    --sw-overlay-blur: blur(2px);
+    --sw-sheet-radius: 16px;
+    --sw-sheet-shadow: 0 -12px 32px rgb(0 0 0 / 18%);
 }

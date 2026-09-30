@@ -93,7 +93,7 @@
     box-shadow: none;
 }
 
-// 收藏底部弹窗遮罩：半透明背板给出模态状态感知（黑色遮罩为标准做法，明暗主题均适用）
+// 收藏底部弹窗遮罩（T-7200：遮罩色/模糊统一走 --sw-overlay-* token，蓝灰暗调明暗通用）
 .sw__mobile-sheet-overlay {
     position: fixed;
     inset: 0;
@@ -101,9 +101,14 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.32);
+    background: var(--sw-overlay-scrim, rgba(0, 0, 0, 0.32));
+    backdrop-filter: var(--sw-overlay-blur, blur(2px));
     transition: opacity $sw-dur-panel $sw-ease;
     -webkit-tap-highlight-color: transparent;
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        background: var(--sw-overlay-scrim-strong, rgba(0, 0, 0, 0.42));
+    }
 }
 
 .sw__mobile-sort-overlay {
@@ -116,8 +121,13 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    background: rgba(0, 0, 0, .32);
+    background: var(--sw-overlay-scrim, rgba(0, 0, 0, .32));
+    backdrop-filter: var(--sw-overlay-blur, blur(2px));
     pointer-events: auto;
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        background: var(--sw-overlay-scrim-strong, rgba(0, 0, 0, .42));
+    }
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -371,6 +381,8 @@
     .sw__fab *,
     .sw__mobile-sheet-overlay,
     .sw__mobile-sheet-overlay *,
+    .sw__mobile-sort-overlay,
+    .sw__mobile-sort-overlay *,
     #swMobileTopBarBtn {
         transition: none !important;
         animation: none !important;
@@ -396,11 +408,7 @@
     }
 }
 
-.sw__mobile-sheet-overlay,
-.sw__mobile-sort-overlay {
-    background: rgba(43, 48, 70, .28);
-    backdrop-filter: blur(2px);
-}
+// T-7200：旧的后置遮罩覆盖块已并入上方基础定义（token 化），避免同块/跨块重复定义。
 
 .sw__fab {
     box-shadow: 0 8px 22px rgba(76, 68, 150, .22), 0 2px 6px rgba(55, 65, 100, .12);

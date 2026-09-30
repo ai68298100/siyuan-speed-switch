@@ -1,3 +1,5 @@
+@use "00-tokens" as *;
+
 .sw-home__greeting {
     padding: 6px 0;
     font-size: 15px;
@@ -748,7 +750,9 @@
     display: inline-flex;
 }
 
-// 移动端：单列列表 + 底部 sheet 详情（44px 命中区沿用既有触控规则）
+// 移动端：单列列表 + 底部 sheet 详情（44px 命中区沿用既有触控规则）。
+// T-7200：补全 sheet 材质——圆角/投影走 token、顶部把手、底部安全区、进入过渡
+// 与遮罩 scrim（纯视觉层，pointer-events:none；点击关闭等交互合同归 T-7144）。
 .sw-home-store[data-device="mobile"] .sw-home-store__layout {
     grid-template-columns: minmax(0, 1fr);
 }
@@ -758,14 +762,58 @@
     inset: auto 0 0 0;
     max-height: 76%;
     border-top: 1px solid var(--b3-border-color);
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 -12px 32px color-mix(in srgb, var(--b3-theme-on-background) 18%, transparent);
+    border-radius: var(--sw-sheet-radius, 16px) var(--sw-sheet-radius, 16px) 0 0;
+    box-shadow: var(--sw-sheet-shadow, 0 -12px 32px rgb(0 0 0 / 18%));
     display: none;
     z-index: 2;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+
+    // 拖拽把手：纯装饰（aria-hidden 语义，不接收指针）
+    &::before {
+        content: "";
+        position: absolute;
+        top: 6px;
+        left: 50%;
+        width: 36px;
+        height: 4px;
+        transform: translateX(-50%);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--b3-theme-on-surface-light) 45%, transparent);
+        pointer-events: none;
+    }
 }
 
 .sw-home-store[data-device="mobile"][data-detail-open="true"] .sw-home-store__detail {
     display: block;
+    animation: sw-store-sheet-up $sw-dur-panel $sw-ease;
+}
+
+// 遮罩：详情打开时盖住目录列（z-index 1 < sheet 2），随 open 态出现/消失
+.sw-home-store[data-device="mobile"][data-detail-open="true"] .sw-home-store__layout::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: var(--sw-overlay-scrim, rgba(0, 0, 0, 0.32));
+    animation: sw-store-scrim-in $sw-dur-panel $sw-ease;
+    pointer-events: none;
+}
+
+@keyframes sw-store-sheet-up {
+    from { transform: translateY(24px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+@keyframes sw-store-scrim-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sw-home-store[data-device="mobile"][data-detail-open="true"] .sw-home-store__detail,
+    .sw-home-store[data-device="mobile"][data-detail-open="true"] .sw-home-store__layout::after {
+        animation: none;
+    }
 }
 
 .sw-home-store__sheet-bar {

@@ -526,7 +526,13 @@
     justify-content: center;
     padding: 12px;
     box-sizing: border-box;
-    background: rgba(0, 0, 0, 0.28);
+    // T-7200：遮罩统一走 --sw-overlay-* token，与其他模态浮层同一材质层级。
+    background: var(--sw-overlay-scrim, rgba(0, 0, 0, 0.28));
+    backdrop-filter: var(--sw-overlay-blur, blur(2px));
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        background: var(--sw-overlay-scrim-strong, rgba(0, 0, 0, 0.42));
+    }
 }
 
 .sw-quick-icon-picker {

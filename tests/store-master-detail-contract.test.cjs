@@ -55,8 +55,8 @@ test('batch mode: Ctrl+B toggles a persistent bottom bar with add/cancel', () =>
 test('mobile: detail becomes a bottom sheet gated by data-detail-open', () => {
     assert.match(scss, /\.sw-home-store\[data-device="mobile"\] \.sw-home-store__layout \{\s*\n\s*grid-template-columns: minmax\(0, 1fr\);/,
         '移动端单列列表');
-    assert.match(scss, /\.sw-home-store\[data-device="mobile"\] \.sw-home-store__detail \{[\s\S]*?border-radius: 16px 16px 0 0;[\s\S]*?display: none;/s,
-        '移动端详情默认收起为底部 sheet');
+    assert.match(scss, /\.sw-home-store\[data-device="mobile"\] \.sw-home-store__detail \{[\s\S]*?border-radius: var\(--sw-sheet-radius, 16px\) var\(--sw-sheet-radius, 16px\) 0 0;[\s\S]*?display: none;/s,
+        '移动端详情默认收起为底部 sheet（圆角走 T-7200 sheet token）');
     assert.match(scss, /\.sw-home-store\[data-device="mobile"\]\[data-detail-open="true"\] \.sw-home-store__detail \{\s*\n\s*display: block;/,
         '行点击后 sheet 展开');
     assert.match(ui, /if \(device === "mobile"\) root\.dataset\.detailOpen = "true";/, '目录行点击带出 sheet');
