@@ -189,6 +189,7 @@ import {
     THUMB_CLONE_MAX,
     THUMB_API_MAX,
     THUMB_API_MAX_MOBILE,
+    THUMB_API_TIMEOUT_MS,
     MRU_MAX,
     HISTORY_MAX,
     FAVORITES_MAX,
@@ -3718,6 +3719,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             height: `${size.height}px`,
             destroyCallback: () => {
                 if (this.platformSwitcherDialog === holder.dialog) this.platformSwitcherDialog = null;
+                // T-7172：切换器关闭时批量取消在途缩略图回源
+                this.cancelThumbFetches();
                 release.fn();
             },
         });
@@ -11243,6 +11246,16 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     // 限制同时在途请求数，手机端更保守，避免打开瞬间打爆内核/网络
     private thumbApiActive = 0;
     private thumbApiQueue: Array<() => void> = [];
+    // T-7172：在途回源控制器（按缩略图元素登记，关闭切换器时批量取消）
+    private thumbApiControllers = new Map<HTMLElement, AbortController>();
+
+    // 关闭切换器/重渲染时批量取消在途回源：等待项拿到槽位后因失连检查自动离队
+    cancelThumbFetches() {
+        this.thumbApiControllers.forEach((controller) => {
+            try { controller.abort(); } catch { /* 无 AbortController 环境忽略 */ }
+        });
+        this.thumbApiControllers.clear();
+    }
 
     private async acquireThumbApi(): Promise<void> {
         const max = this.isMobile ? THUMB_API_MAX_MOBILE : THUMB_API_MAX;
@@ -11273,13 +11286,25 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             return; // 闈炴枃妗ｉ〉绛撅紝淇濇寔鍗犱綅
         }
         await this.acquireThumbApi();
+        // T-7172：拿到槽位后先验失连——卡片已被重绘移除则立即离队，不发请求
+        if (!thumb.isConnected) {
+            this.releaseThumbApi();
+            return;
+        }
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        if (controller) this.thumbApiControllers.set(thumb, controller);
         try {
             // size=32：缩略图只需首屏内容，减小响应体与解析开销
+            const timer = controller
+                ? window.setTimeout(() => controller.abort(), THUMB_API_TIMEOUT_MS)
+                : null;
             const response = await fetch("/api/filetree/getDoc", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({id: rootId, mode: 0, size: 32}),
+                ...(controller ? {signal: controller.signal} : {}),
             });
+            if (timer !== null) window.clearTimeout(timer);
             if (!response.ok) {
                 throw new Error(`getDoc HTTP ${response.status}`);
             }
@@ -11305,6 +11330,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             // 璇诲彇澶辫触淇濇寔鍗犱綅鍗冲彲
             logger.warn("fetch doc content fail", e);
         } finally {
+            if (this.thumbApiControllers.get(thumb) === controller) this.thumbApiControllers.delete(thumb);
             this.releaseThumbApi();
         }
     }
