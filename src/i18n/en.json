@@ -247,6 +247,7 @@
   "homeStorePending": "Install the plugin to enable",
   "homeStoreRequires": "Requires the {plugin} plugin",
   "homeStoreProviderUnavailable": "Added, but {plugin} is not providing this widget; it will recover automatically when enabled",
+  "homeStoreProviderUnknown": "Added, but the plugin providing this widget is not running; remove it here, or it will recover automatically after reinstall",
   "homeStoreRemoveUnavailable": "Remove unavailable widget",
   "homeStoreAvailabilityConditional": "Conditional",
   "homeStoreAvailabilityExternal": "Online data",

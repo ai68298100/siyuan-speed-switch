@@ -22,13 +22,38 @@ const WIDGET_CATALOG = Object.freeze([
 
 const WIDGET_CATALOG_STATES = Object.freeze(["ready", "unavailable", "missing"]);
 
-function resolveWidgetCatalogState(activeModuleIds = [], configuredModuleIds = []) {
+/**
+ * T-7071：目录外已配置的 moduleId（提供方卸载后实例仍持久化，ADR 0103）必须
+ * 同样进入"当前不可用+显式清理"分区——否则未在 WIDGET_CATALOG 登记的第三方
+ * 组件（如 calendar-recent-periodic）卸载后变成不可见孤儿，文档承诺的清理
+ * 入口落空。条目只有 moduleId 可考，标题/描述回退占位，清理按钮照常工作。
+ */
+function buildOrphanCatalogEntries(orphanModuleIds = []) {
+    return (Array.isArray(orphanModuleIds) ? orphanModuleIds : [])
+        .filter((moduleId) => typeof moduleId === "string" && moduleId && !WIDGET_CATALOG.some((entry) => entry.moduleId === moduleId))
+        .map((moduleId) => Object.freeze({
+            moduleId,
+            providerPlugin: "",
+            providerName: "",
+            title: moduleId,
+            icon: "iconPlugin",
+            sizes: ["medium"],
+            description: "",
+            orphan: true,
+        }));
+}
+
+function resolveWidgetCatalogState(activeModuleIds = [], configuredModuleIds = [], orphanModuleIds = []) {
     const active = new Set(activeModuleIds && typeof activeModuleIds[Symbol.iterator] === "function" ? activeModuleIds : []);
     const configured = new Set(configuredModuleIds && typeof configuredModuleIds[Symbol.iterator] === "function" ? configuredModuleIds : []);
-    return WIDGET_CATALOG.map((entry) => ({
+    const cataloged = WIDGET_CATALOG.map((entry) => ({
         entry,
         status: active.has(entry.moduleId) ? "ready" : configured.has(entry.moduleId) ? "unavailable" : "missing",
     }));
+    const orphans = buildOrphanCatalogEntries(orphanModuleIds)
+        .filter((entry) => !active.has(entry.moduleId))
+        .map((entry) => ({entry, status: "unavailable", orphan: true}));
+    return [...cataloged, ...orphans];
 }
 
-module.exports = {WIDGET_CATALOG, WIDGET_CATALOG_STATES, resolveWidgetCatalogState};
+module.exports = {WIDGET_CATALOG, WIDGET_CATALOG_STATES, resolveWidgetCatalogState, buildOrphanCatalogEntries};

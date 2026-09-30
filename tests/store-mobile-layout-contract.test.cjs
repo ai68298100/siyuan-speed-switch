@@ -636,7 +636,7 @@ test('store group toggle controls its grid', () => assert.match(storeSource,/gro
 test('store group grid has stable id', () => assert.match(storeSource,/const groupId = `sw-home-store-group-\$\{orderedGroups\.indexOf\(label\)\}`/));
 test('store group grid uses group role', () => assert.match(storeSource,/groupGrid\.setAttribute\("role", "group"\)/));
 test('store group grid references heading', () => assert.match(storeSource,/groupGrid\.setAttribute\("aria-labelledby", groupHeading\.id\)/));
-test('store pending state comes from catalog resolver', () => assert.match(storeSource,/const pending = resolveWidgetCatalogState\(\[\.\.\.activeIds\], \[\.\.\.instanceByModule\.keys\(\)\]\)/));
+test('store pending state comes from catalog resolver with orphan ids (T-7071)', () => assert.match(storeSource,/const pending = resolveWidgetCatalogState\(\[\.\.\.activeIds\], \[\.\.\.instanceByModule\.keys\(\)\], \[\.\.\.instanceByModule\.keys\(\)\]\)/));
 test('store pending state excludes ready entries', () => assert.match(storeSource,/\.filter\(\(item: any\) => item\.status !== "ready"\)/));
 test('store records pending count on root', () => assert.match(storeSource,/root\.dataset\.pendingCount = String\(pending\.length\)/));
 test('store pending section has stable id', () => assert.match(storeSource,/pendingHeading\.id = "sw-home-store-section-pending"/));

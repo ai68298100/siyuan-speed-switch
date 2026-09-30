@@ -247,6 +247,7 @@
   "homeStorePending": "需安装插件后可用",
   "homeStoreRequires": "需安装「{plugin}」插件后可用",
   "homeStoreProviderUnavailable": "已添加，但「{plugin}」当前未提供该组件；启用插件后会自动恢复",
+  "homeStoreProviderUnknown": "已添加，但提供该组件的插件当前未运行；可移除，重新安装后会自动恢复",
   "homeStoreRemoveUnavailable": "移除失效组件",
   "homeStoreAvailabilityConditional": "条件可用",
   "homeStoreAvailabilityExternal": "联网数据",

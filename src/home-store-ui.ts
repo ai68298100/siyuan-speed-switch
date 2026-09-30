@@ -1188,7 +1188,9 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
             });
 
             // —— 分区二：需安装插件后可用（目录中登记、来源插件未就位） ——
-            const pending = resolveWidgetCatalogState([...activeIds], [...instanceByModule.keys()])
+            // T-7071：第三参传入全部已配置 moduleId——目录未登记的孤儿实例
+            // （提供方卸载，ADR 0103）同样进"当前不可用+清理"分区。
+            const pending = resolveWidgetCatalogState([...activeIds], [...instanceByModule.keys()], [...instanceByModule.keys()])
                 .filter((item: any) => item.status !== "ready");
             root.dataset.pendingCount = String(pending.length);
             if (pending.length > 0) {
@@ -1235,7 +1237,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                     card.dataset.added = unavailable ? "true" : "false";
                     card.dataset.statusTone = unavailable ? "warning" : "info";
                     card.dataset.status = unavailable ? "unavailable" : "requires-provider";
-                    card.setAttribute("aria-label", `${entry.title} · ${unavailable ? this.i18n.homeStoreProviderUnavailable : this.i18n.homeStoreRequires}`);
+                    card.setAttribute("aria-label", `${entry.title} · ${unavailable ? (entry.orphan ? this.i18n.homeStoreProviderUnknown : this.i18n.homeStoreProviderUnavailable) : this.i18n.homeStoreRequires}`);
                     const head = document.createElement("div");
                     head.className = "sw-home-store__card-head";
                     const icon = document.createElement("svg");
@@ -1254,7 +1256,9 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                     card.appendChild(head);
                     const requireNote = document.createElement("p");
                     requireNote.className = "sw-home-store__require";
-                    requireNote.textContent = (unavailable ? this.i18n.homeStoreProviderUnavailable : this.i18n.homeStoreRequires)
+                    requireNote.textContent = (unavailable
+                        ? (entry.orphan ? this.i18n.homeStoreProviderUnknown : this.i18n.homeStoreProviderUnavailable)
+                        : this.i18n.homeStoreRequires)
                         .replace("{plugin}", entry.providerName);
                     card.appendChild(requireNote);
                     if (unavailable) {

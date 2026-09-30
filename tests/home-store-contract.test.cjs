@@ -39,8 +39,9 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(storeUiSource, /homeStoreSupportedSurfaces/);
     assert.match(storeUiSource, /sw-home-store__support/);
     assert.match(storeUiSource, /selectedTile = tile;\s*tile\.classList\.add\("is-selected"\)/);
-    assert.match(storeUiSource, /resolveWidgetCatalogState\(\[\.\.\.activeIds\], \[\.\.\.instanceByModule\.keys\(\)\]\)/);
+    assert.match(storeUiSource, /resolveWidgetCatalogState\(\[\.\.\.activeIds\], \[\.\.\.instanceByModule\.keys\(\)\], \[\.\.\.instanceByModule\.keys\(\)\]\)/);
     assert.match(storeUiSource, /homeStoreProviderUnavailable/);
+    assert.match(storeUiSource, /homeStoreProviderUnknown/, "孤儿实例（目录未登记）必须走专用提示文案（T-7071）");
     assert.match(storeUiSource,/sw-home-store__remove-unavailable/);
     assert.match(secondPanelSource, /homeModuleChangeListeners\.add\(handleModuleChange\)/);
     assert.match(storeUiSource, /homeModuleChangeListeners\.delete\(handleModuleChange\)/);
