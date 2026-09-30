@@ -1537,6 +1537,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     // 草稿（过 guardLeave 脏稿守卫，choose(value, null) 落禁用态、不自动启用）、
     // 永久删除/清空二次确认并如实回执（ADR 0100 D5）。Esc/外点仅关闭视图。
     function openRecycleViewer() {
+        // T-7177：焦点生命周期——打开入焦首个控件、Tab/Shift+Tab 约束于本层、
+        // Esc/外点/关闭/恢复各出口统一走 close() 并回焦触发按钮。
+        const doc = root.ownerDocument;
+        const opener = doc.activeElement instanceof doc.defaultView.HTMLElement ? doc.activeElement : null;
         const overlay = node("div", "sw-studio__picker sw-studio__recycle");
         overlay.setAttribute("role", "dialog");
         overlay.setAttribute("aria-modal", "true");
@@ -1544,6 +1548,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const sheet = node("section", "sw-studio__picker-sheet");
         const head = node("div", "sw-studio__section-bar");
         const list = node("div", "sw-studio__catalog");
+        const focusables = () => Array.from(overlay.querySelectorAll("button")).filter((el) => !el.disabled);
+        let closed = false;
+        const close = () => {
+            if (closed) return;
+            closed = true;
+            doc.removeEventListener("keydown", keydown, true);
+            overlay.remove();
+            if (opener) opener.focus({preventScroll: true});
+        };
         const renderList = () => {
             const entries = recycle.load().entries || [];
             list.replaceChildren();
@@ -1562,7 +1575,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 const restoreButton = action("snippetRecycleRestore", () => {
                     guardLeave(() => {
                         choose({name: entry.name, type: entry.type, content: entry.content}, null);
-                        overlay.remove();
+                        close();
                         setStatus(t("snippetRecycleRestored"), "ready");
                     });
                 });
@@ -1583,20 +1596,40 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             setStatus(t("snippetRecycle"), "ready");
             renderList();
         });
-        head.append(node("strong", "", t("snippetRecycle")), clearButton, action("snippetClose", () => overlay.remove()));
+        head.append(node("strong", "", t("snippetRecycle")), clearButton, action("snippetClose", () => close()));
         sheet.append(head, list);
         overlay.appendChild(sheet);
         root.appendChild(overlay);
         renderList();
+        const keydown = (event) => {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                close();
+                return;
+            }
+            if (event.key !== "Tab") return;
+            const focusList = focusables();
+            if (!focusList.length) { event.preventDefault(); return; }
+            const firstEl = focusList[0];
+            const lastEl = focusList[focusList.length - 1];
+            if (doc.activeElement === firstEl && event.shiftKey) {
+                event.preventDefault();
+                lastEl.focus({preventScroll: true});
+            } else if (doc.activeElement === lastEl && !event.shiftKey) {
+                event.preventDefault();
+                firstEl.focus({preventScroll: true});
+            } else if (!overlay.contains(doc.activeElement)) {
+                event.preventDefault();
+                firstEl.focus({preventScroll: true});
+            }
+        };
+        doc.addEventListener("keydown", keydown, true);
         overlay.addEventListener("click", (event) => {
-            if (event.target === overlay) overlay.remove();
+            if (event.target === overlay) close();
         });
-        overlay.addEventListener("keydown", (event) => {
-            if (event.key !== "Escape") return;
-            event.preventDefault();
-            event.stopPropagation();
-            overlay.remove();
-        });
+        const firstFocusable = focusables()[0];
+        if (firstFocusable) firstFocusable.focus({preventScroll: true});
     }
     function openPicker() {
         if (picker || busy) return;
