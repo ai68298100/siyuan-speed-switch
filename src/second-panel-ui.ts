@@ -88,7 +88,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         let disposeSizeMenu: () => void = () => undefined;
         const dialogHolder: {dialog: Dialog | null} = {dialog: null};
         const dialog = new Dialog({
-            title: "",
+            title: this.i18n.dialogWorkbenchTitle || "工作台",
             content: '<div class="speed-switch sw-home sw-platform-surface sw-platform-surface--workbench" data-sw-surface="workbench"></div>',
             width: `${size.width}px`,
             height: `${size.height}px`,

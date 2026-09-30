@@ -3776,7 +3776,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const size = this.resolvePanelDialogSize(settings, fullscreen);
         const holder: {dialog: Dialog | null} = {dialog: null};
         const dialog = new Dialog({
-            title: "",
+            title: this.i18n.dialogSwitcherTitle || "页签切换器",
             content: this.buildSwitcherHtml(fullscreen),
             width: `${size.width}px`,
             height: `${size.height}px`,
@@ -3847,7 +3847,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 ? resolvePanelSize({...studioSettings, panelSizeMode: "adaptive", panelScale: PANEL_SCALE_DEFAULT}, studioViewport)
                 : resolvePanelSize({...studioSettings, panelSizeMode: "custom", dialogWidth: studioSettings.studioWidth, dialogHeight: studioSettings.studioHeight}, studioViewport);
         const dialog = new Dialog({
-            title: "",
+            title: this.i18n.dialogStudioTitle || "片段工作室",
             content: '<div class="sw-snippet-studio-host"></div>',
             width: `${size.width}px`,
             height: `${size.height}px`,
@@ -11891,7 +11891,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     private createMobileSwitcherDialog(release: {fn: () => void}): Dialog {
         const holder: {dialog: Dialog | null} = {dialog: null};
         const dialog = new Dialog({
-            title: "",
+            title: this.i18n.dialogSwitcherTitle || "页签切换器",
             content: this.buildMobileSwitcherHtml(),
             width: "92vw",
             height: "85vh",
