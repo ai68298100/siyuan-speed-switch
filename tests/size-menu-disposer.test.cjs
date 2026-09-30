@@ -12,6 +12,7 @@ test('openHomeSizeMenu returns an idempotent disposer (T-7180)', () => {
     assert.match(body, /let cleaned = false;/, '幂等旗标必须存在');
     assert.match(body, /if \(cleaned\) return;/, '重复清理必须短路');
     assert.match(body, /return cleanup;/, '必须返回 disposer');
+    assert.match(body, /anchor\.focus\(\{preventScroll: true\}\);/, 'cleanup 必须回焦触发按钮（T-7180 焦点回归锚）');
     assert.match(body, /panel\.remove\(\);/, 'cleanup 必须移除菜单');
     assert.match(body, /removeEventListener\("pointerdown", outside, true\);/, 'pointerdown 必须解绑');
     assert.match(body, /removeEventListener\("keydown", esc, true\);/, 'keydown 必须解绑');

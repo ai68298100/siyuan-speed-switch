@@ -7390,6 +7390,8 @@ const updatedMap: {[rootId: string]: string} = {};
             document.removeEventListener("pointerdown", outside, true);
             document.removeEventListener("keydown", esc, true);
             window.removeEventListener("resize", reposition);
+            // T-7180 焦点回归锚：菜单关闭后焦点还给触发按钮（排序菜单同模式）。
+            anchor.focus({preventScroll: true});
         };
         const outside = (event: PointerEvent) => {
             if (!panel.contains(event.target as Node) && !anchor.contains(event.target as Node)) cleanup();
