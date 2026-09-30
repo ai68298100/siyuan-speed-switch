@@ -59,3 +59,12 @@ test('elevation tokens are defined on the plugin root in _00-tokens', () => {
         assert.ok(tokens.includes(`${token}:`), `阴影 token ${token} 必须在 _00-tokens.scss 定义`);
     }
 });
+
+// T-7201：FAB 根（body portal）与设置弹窗不在 .speed-switch 内——token 共享块
+// 的选择器必须覆盖三容器，否则根外消费点（如 FAB 阴影）整体失效。
+test('token block selector covers fab root and settings dialog containers', () => {
+    const tokens = read('_00-tokens.scss');
+    const block = tokens.slice(tokens.indexOf('.speed-switch'), tokens.indexOf('--sw-font-2xs'));
+    assert.match(block, /\.sw-fab-root/, 'token 块必须覆盖 .sw-fab-root（FAB portal 挂 body）');
+    assert.match(block, /\.sw-settings/, 'token 块必须覆盖 .sw-settings（独立 Dialog）');
+});
