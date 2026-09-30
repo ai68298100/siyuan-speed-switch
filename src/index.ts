@@ -6874,9 +6874,14 @@ const updatedMap: {[rootId: string]: string} = {};
     }
 
     private getHomeState() {
-        // T-7069：第三方注册组件（registerHomeModule → homeThirdPartyIds）必须进入
-        // 归一化允许名单，否则商店添加 → getHomeState() → 运行时组件被清除（calendar#17）。
-        return normalizeHomeState(this.data[HOME_STATE_KEY], this.homeThirdPartyIds);
+        const raw = this.data[HOME_STATE_KEY];
+        // T-7069/T-7070：归一化允许名单 = 运行时注册 + 已持久化的实例 moduleId。
+        // 只用运行时名单会在禁用/重载（unregister 摘除）后清掉用户实例，违背
+        // widget-protocol.md「provider 卸载 ≠ 配置删除 + 商店显式清理」承诺
+        // （ADR 0103）；已持久化 id 只能来自真实注册添加，合法回流。
+        const persisted = new Set<string>(((raw && Array.isArray(raw.instances)) ? raw.instances : [])
+            .map((item: {moduleId?: unknown}) => String(item?.moduleId || "")).filter(Boolean));
+        return normalizeHomeState(raw, new Set([...this.homeThirdPartyIds, ...persisted]));
     }
 
     private saveHomeState(state: { schemaVersion: number; instances: unknown[]; layouts: Record<string, unknown[]> }) {

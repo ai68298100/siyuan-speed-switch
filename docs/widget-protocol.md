@@ -45,6 +45,32 @@ export default class MyPlugin extends Plugin {
 
 完成后重启思源，打开小驴雷切 → **组件面板 → 组件商店 → 插件** 分区即可看到你的组件。
 
+## 推荐范式：宿主未就绪时的有界重试（真实接入验证）
+
+思源按清单顺序加载插件，你的插件 `onload()` 执行时小驴雷切可能**尚未加载完成**——上面的"安静降级"单次探测会静默错过注册。推荐（Calendar 插件已在真实环境验证）用**有界重试**：
+
+```ts
+const RETRY_DELAYS = [250, 750, 1500, 3000, 6000]; // 总窗 ~11.5s，到顶放弃
+let attempt = 0, timer: ReturnType<typeof setTimeout> | null = null;
+
+export function ensureRegister(open?: () => void): boolean {
+    const switcher = app.plugins.find((p) => p.name === "siyuan-speed-switch");
+    if (typeof switcher?.registerHomeModule !== "function") {
+        if (timer !== null || attempt >= RETRY_DELAYS.length) return false;
+        timer = setTimeout(() => { timer = null; ensureRegister(open); }, RETRY_DELAYS[attempt++]);
+        return false;
+    }
+    const unregister = switcher.registerHomeModule(buildOptions(open));
+    // 注册失败时宿主返回 no-op 句柄；用列表核验兜住，失败继续重试
+    const listed = switcher.getHomeModules?.("desktop")?.some((m) => m.moduleId === MODULE_ID);
+    if (listed === false) { unregister.unregister?.(); return ensureRegister(open); }
+    return true;
+}
+// onload 调 ensureRegister()；addUnload 里 clearTimeout + unregister
+```
+
+要点：①重试**必须有界**（到顶放弃并打日志），不要无限轮询拖慢宿主；②`registerHomeModule` 失败时返回的是 no-op 句柄而非异常，用 `getHomeModules()` 核验是否真的注册成功；③卸载时同时清定时器与注册，保证禁用/重载干净。
+
 ## 字段说明
 
 | 字段 | 必填 | 约束 |

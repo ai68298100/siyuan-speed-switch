@@ -14,9 +14,10 @@
 
 - `normalizeHomeState()` / `migrateHomeState()` 接受允许名单参数，名单内 moduleId 的实例与布局原样保留；
 - 宿主在 `getHomeState()` 时把当前 `registerHomeModule()` 注册表（运行时组件 Id 集合）传入；
-- 名单外照旧清洗——组件 unregister 后，对应持久化实例会在下次归一化时移除，避免无效数据无限增长（也是你提到的第 2 点建议）。
 
-已在本地用 `calendar-recent-periodic` 场景验证：注册 → 商店添加 → 反复 `getHomeState()` → 组件与布局稳定保留；卸载 Calendar 后恢复清洗。
+已在本地用 `calendar-recent-periodic` 场景验证：注册 → 商店添加 → 反复 `getHomeState()` → 组件与布局稳定保留。
+
+关于你建议的第 2 点（"只保留当前已注册的 moduleId"），我们做的时候多考虑了一步：插件**禁用/重载**也会触发 unregister——如果按"未注册即清洗"，用户临时禁用一次 Calendar 就会丢掉摆好的布局。所以最终语义是（ADR 0103）：**已持久化的实例 moduleId 一并进入归一化允许名单**——禁用/重载期间实例与布局保留（商店卡片照常显示"当前不可用"+显式清理入口），用户在商店删除实例或清理后才真正移除；数据增长受每表面 64 实例上限约束。这与你建议的"避免无效数据膨胀"由显式清理 + 上限共同承接。
 
 ### 2. 商店预览恒为 medium（已修复）
 
@@ -51,6 +52,6 @@
 | 返回契约 | `{title, items:[{label(≤256), value: 块ID}]}` | normalizeSnapshot 接受 | ✅ |
 | 失败形态 | 捕获异常返回空快照，不污染 Calendar 自身面板 | 平台兜底+其自兜底双层 | ✅ |
 | 注册返回值 | 三形态兼容（函数/对象/undefined）+ `getHomeModules` 列表核验 + 有界重试 [250ms..6s] | 我方失败返回 no-op 函数 → 其核验兜住并重试 | ✅ 载入顺序竞争已自解 |
-| 卸载 | unload 注销 + 重试定时器清理 | unregister → homeThirdPartyIds 收窄 → 实例清洗（T-7069 语义） | ✅ |
+| 卸载 | unload 注销 + 重试定时器清理 | unregister 只摘运行时可见性；已持久化实例保留（ADR 0103），显式清理才移除 | ✅ |
 
 **结论：T-7069 修复后，LvSpeed 分支适配代码与宿主全字段兼容，无阻塞项。** 他的重试机制（防插件载入顺序竞争）值得写进 `docs/widget-protocol.md` 作为推荐范式（候选任务）。
