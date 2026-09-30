@@ -9556,12 +9556,19 @@ private rootIdOf(tab: Tab): string | null {
         head.type = "button";
         head.className = "sw__fav-group-head";
         head.title = this.i18n.favGroupTip;
+        // T-7193：读屏合同——aria-expanded 同步折叠状态，aria-controls 指向组体列表
+        const isCollapsed = this.favCollapsed.has(name);
+        head.setAttribute("aria-expanded", String(!isCollapsed));
+        const listId = `sw-fav-group-${name.replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, "-")}`;
+        head.setAttribute("aria-controls", listId);
         head.innerHTML = `<svg class="sw__fav-arrow"><use xlink:href="#iconRight"></use></svg>
 <span class="sw__fav-group-name"></span>
 <span class="sw__fav-count">${items.length}</span>`;
         head.querySelector<HTMLElement>(".sw__fav-group-name")!.textContent = name;
         head.addEventListener("click", () => {
             groupEl.classList.toggle("sw__fav-collapsed");
+            const collapsed = groupEl.classList.contains("sw__fav-collapsed");
+            head.setAttribute("aria-expanded", String(!collapsed));
             if (this.favCollapsed.has(name)) {
                 this.favCollapsed.delete(name);
             } else {
@@ -9579,6 +9586,7 @@ private rootIdOf(tab: Tab): string | null {
 
         const list = document.createElement("div");
         list.className = "sw__fav-items";
+        list.id = listId;
         items.forEach((fav) => {
             list.appendChild(this.makeFavItem(panel, fav, onPick, onChanged));
         });
