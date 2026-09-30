@@ -2579,16 +2579,16 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         const dependencyTitle = document.createElement("h3");
         dependencyTitle.className = "sw-home-store-guide__dependency-title";
-        dependencyTitle.textContent = "非思源本体依赖";
+        dependencyTitle.textContent = this.i18n.homeStoreDependencyTitle;
         root.appendChild(dependencyTitle);
         const dependencySummary = summarizeHomeStoreDependencies();
         const dependencySummaryText = document.createElement("p");
         dependencySummaryText.className = "sw-home-store-guide__dependency-summary";
-        dependencySummaryText.textContent = `已整理 ${dependencySummary.total} 项：${dependencySummary.required} 项需前置依赖，${dependencySummary.optional} 项为可选数据源。`;
+        dependencySummaryText.textContent = this.i18n.homeStoreDependencySummary.replace("{total}", String(dependencySummary.total)).replace("{required}", String(dependencySummary.required)).replace("{optional}", String(dependencySummary.optional));
         root.appendChild(dependencySummaryText);
         const dependencyList = document.createElement("ul");
         dependencyList.className = "sw-home-store-guide__dependency-list";
-        dependencyList.setAttribute("aria-label", "非思源本体依赖清单");
+        dependencyList.setAttribute("aria-label", this.i18n.homeStoreDependencyListLabel);
         dependencySummary.entries.forEach(({info}) => {
             const item = document.createElement("li");
             item.className = `sw-home-store-guide__dependency-item is-${info.required ? "required" : "optional"}`;
@@ -2597,7 +2597,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             item.appendChild(name);
             const badge = document.createElement("span");
             badge.className = "sw-home-store-guide__dependency-badge";
-            badge.textContent = info.required ? "需前置依赖" : "可选数据源";
+            badge.textContent = info.required ? this.i18n.homeStoreDependencyRequired : this.i18n.homeStoreDependencyOptional;
             item.appendChild(badge);
             const setup = document.createElement("span");
             setup.className = "sw-home-store-guide__dependency-setup";
@@ -2608,8 +2608,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 install.href = info.installUrl;
                 install.target = "_blank";
                 install.rel = "noopener noreferrer";
-                install.textContent = "安装地址";
-                install.setAttribute("aria-label", `${info.name} 安装地址`);
+                install.textContent = this.i18n.homeStoreDependencyInstall;
+                install.setAttribute("aria-label", this.i18n.homeStoreDependencyInstallAria.replace("{name}", info.name));
                 item.appendChild(install);
             }
             dependencyList.appendChild(item);
@@ -2620,7 +2620,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         dependencyLink.href = "https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/external-component-installation.md";
         dependencyLink.target = "_blank";
         dependencyLink.rel = "noopener noreferrer";
-        dependencyLink.textContent = "查看非思源组件安装说明";
+        dependencyLink.textContent = this.i18n.homeStoreDependencyLink;
         root.appendChild(dependencyLink);
     }
 
