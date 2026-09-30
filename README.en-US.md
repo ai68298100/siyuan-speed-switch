@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.44.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.44.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
@@ -342,12 +342,20 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.44.0` (released 2026-09-30; module visibility switches, the snippet recycle bin, dual-pane preview in the snippet studio with JS execution hard-sealed at the module level, and a batch of audit-driven defect fixes — rerender scene preservation, overlay lifecycle, import generation guard, conflict-copy receipts; Release assets are built automatically by the workflow).
+The current version is `v0.44.1` (released 2026-09-30; a visual overhaul of all 58 workbench widgets, the snippet studio growing to 26 built-in CSS snippets with one-click copy, mobile long-press drag to rearrange, and the third-party widget ecosystem chain — first external integration (Calendar) with both reported defects fixed, retained layouts across disable/reload, cleanable unavailable widgets, and pre-install catalog exposure; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
 
+### v0.44.1 (2026-09-30)
+
+- **Workbench visual overhaul (all 58 widgets)**: iPad-quality material base (glass/depth/hover) plus dedicated styles for nine widget families (clock/calendar/weather/task/writing/reading/stats/nav/utilities); the clock widget gains a day-progress bar, day-night indicator and milestone badge.
+- **Snippet studio**: built-in CSS snippets grow 5 to 26 across 14 categories (inline-code pill, link hover, task checkboxes, table zebra, mark highlight, kbd key-caps, image zoom, eye-care mode and more — all themeable and dark-adaptive); the category filter now covers every category; one-click draft copy in the editor toolbar.
+- **Mobile long-press drag**: press and hold anywhere on a widget cell to start rearranging (same pipeline as the drag handle: drop hints, Escape to cancel, edge auto-scroll).
+- **Third-party widget ecosystem (first external integration, Calendar)**: fixes both host defects reported in the field (widgets purged on add; previews stuck at medium); disabling/reloading a plugin no longer drops user layouts (ADR 0103); unavailable widgets are visible and removable in both panel and store; the Calendar widget gains pre-install catalog exposure; the integration guide now documents the bounded-retry registration pattern.
+- **Security**: transitive fast-uri vulnerabilities fixed (0 vulnerabilities).
+- **Verification**: full suite **6625/6625**; `tsc` clean; every new gate carries negative-injection evidence.
 ### v0.44.0 (2026-09-30)
 
 - **Module visibility switches**: Settings → Panels → Modules can disable the workbench / snippet studio / floating ball; the top bar consolidates into a single unified platform entry (its context menu dynamically lists enabled surfaces + settings).

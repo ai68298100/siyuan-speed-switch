@@ -1,6 +1,6 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.44.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.44.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
@@ -346,12 +346,20 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.44.0`（2026-09-30 正式发布；模块化可见性开关、片段回收站、片段实验室双栏预览与 JS 预览模块层封死，以及一组审计驱动的缺陷修复（重绘现场保持/浮层生命周期/导入代际/冲突副本回执）；Release 资产由 workflow 自动构建）。
+当前版本为 `v0.44.1`（2026-09-30 正式发布；组件面板 58 组件视觉重构、片段实验室内置片段扩至 26 个并支持一键复制、移动端长按拖拽重排、第三方组件生态链（Calendar 首个外部接入：添加即丢/预览尺寸双缺陷修复 + 失效组件可清理 + 装机前曝光）；Release 资产由 workflow 自动构建）。
 
 ## 更新日志
 
 完整历史见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。最近版本：
 
+### v0.44.1（2026-09-30）
+
+- **组件面板视觉重构（58 组件全覆盖）**：iPad 质感基座（玻璃态/景深/悬停反馈）+ 九大家族专属样式（时钟/日历/天气/任务/写作/阅读/统计/导航/工具）；时钟组件新增日进度条、昼夜指示与里程碑徽标。
+- **片段实验室**：内置 CSS 片段 5→26 个、覆盖 14 个类别（行内代码胶囊/链接悬停/任务复选框/表格斑马纹/选中高亮/kbd 键帽/图片缩放/护眼模式等，全部主题变量+暗色自适应）；类别筛选补全至 15 项；编辑区新增一键复制草稿。
+- **移动端长按拖拽**：长按单元格任意处即可进入拖拽重排（与拖动把手同一管线：落点虚影/Esc 取消/贴缘自动滚动）。
+- **第三方组件生态（首个外部接入 Calendar）**：修复「添加即被清除」与「预览恒为 medium」两个宿主缺陷；禁用/重载插件不再丢用户布局（ADR 0103）；失效组件在面板与商店可见可清理；Calendar 组件获得装机前曝光；接入文档沉淀「有界重试注册」范式。
+- **安全**：fast-uri 传递依赖漏洞修复（0 vulnerabilities）。
+- **验证边界**：完整测试 **6625/6625**；`tsc` 干净；新增门禁均含负向注入验证。
 ### v0.44.0（2026-09-30）
 
 - **模块化可见性开关**：设置 → 面板 → 模块管理可停用 工作台/片段实验室/悬浮球；顶栏收敛为单一统一平台入口（右键菜单动态列出已启用面板+设置）。
