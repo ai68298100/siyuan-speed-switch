@@ -429,7 +429,7 @@
 .sw__mobile-sheet-section {
     margin: 10px 16px 4px;
     color: var(--b3-theme-on-surface-light);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     letter-spacing: 0.05em;
 }
 
@@ -457,7 +457,7 @@
         border-radius: 6px;
         color: var(--b3-theme-on-surface-light);
         background: color-mix(in srgb, var(--b3-theme-surface) 92%, transparent);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         opacity: .82;
         pointer-events: var(--sw-sync-overlay-pointer-events, none);
     }
@@ -548,7 +548,7 @@
         flex: none;
         margin-left: auto;
         padding: 2px 8px;
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
     }
     font-size: 12px;
 
@@ -717,7 +717,7 @@
         text-overflow: ellipsis;
         white-space: nowrap;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
     }
 
     // T-6473 头部瘦身：Configure 由文字按钮改为齿轮图标按钮
@@ -806,7 +806,7 @@
 .sw__home-module-refreshing {
     margin-left: auto;
     color: var(--b3-theme-on-surface-light);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     white-space: nowrap;
 }
 
@@ -1026,7 +1026,7 @@
     margin: 6px 2px 6px;
     padding-left: 10px;
     border-left: 3px solid var(--b3-border-color);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     font-weight: 700;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -1049,12 +1049,12 @@
     &--failed { border-color: color-mix(in srgb, var(--b3-theme-error) 34%, transparent); }
 
     .sw-home-health__info { flex: 1; min-width: 0; }
-    .sw-home-health__name { display: block; font-size: 12.5px; font-weight: 600; }
+    .sw-home-health__name { display: block; font-size: var(--sw-font-md, 13px); font-weight: 600; }
     .sw-home-health__meta {
         display: block;
         margin-top: 2px;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         font-variant-numeric: tabular-nums;
     }
     .sw-home-health__actions { display: flex; flex: none; gap: 4px; }
@@ -1162,7 +1162,7 @@
     margin-bottom: 6px;
 
     .sw__home-module-title {
-        font-size: 10.5px;
+        font-size: var(--sw-font-xs, 11px);
         font-weight: 600;
         line-height: 1.4;
         color: var(--b3-theme-on-surface-light);
@@ -1220,7 +1220,7 @@
     .sw__home-module-item-secondary {
         flex: 0 0 auto;
         margin-left: auto;
-        font-size: 10.5px;
+        font-size: var(--sw-font-xs, 11px);
         color: var(--b3-theme-on-surface-light);
         white-space: nowrap;
     }
@@ -1379,7 +1379,7 @@
     margin-top: 6px;
     padding: 2px 10px;
     border-radius: 12px;
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     font-weight: 600;
 }
 

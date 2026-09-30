@@ -547,7 +547,7 @@
 
     .sw__dock-label {
         margin: 0 0 6px;
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         letter-spacing: 0.05em;
         color: var(--b3-theme-on-surface-light);
     }
@@ -777,7 +777,7 @@
             border-radius: 8px;
             background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
             color: var(--b3-theme-on-surface-light);
-            font-size: 11px;
+            font-size: var(--sw-font-xs, 11px);
             font-weight: 500;
             line-height: 18px;
             text-align: center;
@@ -793,7 +793,7 @@
         align-items: center;
         gap: 8px;
         margin: 4px 2px 8px;
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         letter-spacing: 0.05em;
         color: var(--b3-theme-on-surface-light);
 
@@ -864,7 +864,7 @@
 
     .sw__workbench-row-label {
         margin: 8px 2px 4px;
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         letter-spacing: 0.05em;
         color: var(--b3-theme-on-surface-light);
     }
@@ -958,7 +958,7 @@
             .sw__command-kind {
                 flex-shrink: 0;
                 color: var(--b3-theme-on-surface-light);
-                font-size: 11px;
+                font-size: var(--sw-font-xs, 11px);
                 opacity: .8;
             }
         }
@@ -1114,7 +1114,7 @@
             .sw__doc-source {
                 align-self: flex-start;
                 color: var(--b3-theme-primary);
-                font-size: 11px;
+                font-size: var(--sw-font-xs, 11px);
                 line-height: 1.2;
                 opacity: .86;
             }
@@ -1214,7 +1214,7 @@
                     padding-bottom: 9px;
                     border-bottom: 1px solid var(--b3-border-color);
                     color: var(--b3-theme-on-surface-light);
-                    font-size: 11px;
+                    font-size: var(--sw-font-xs, 11px);
                     letter-spacing: 0;
 
                     .sw__doc-preview-status {
@@ -1310,7 +1310,7 @@
                         min-width: 36px;
                         text-align: center;
                         color: var(--b3-theme-on-surface-light);
-                        font-size: 11px;
+                        font-size: var(--sw-font-xs, 11px);
                         font-variant-numeric: tabular-nums;
                     }
 
@@ -1322,7 +1322,7 @@
                         border-radius: 6px;
                         background: transparent;
                         color: var(--b3-theme-on-surface-light);
-                        font-size: 11px;
+                        font-size: var(--sw-font-xs, 11px);
                         line-height: 1.5;
                         cursor: pointer;
 
@@ -1366,7 +1366,7 @@
                 .sw__doc-preview-section-title {
                     margin: 0 0 8px;
                     color: var(--b3-theme-on-surface-light);
-                    font-size: 11px;
+                    font-size: var(--sw-font-xs, 11px);
                     font-weight: 600;
                     line-height: 1.4;
                 }
@@ -1601,7 +1601,7 @@
         min-height: 28px;
         padding: 0 8px;
         border-radius: var(--sw-radius-control);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
 
         &:focus-visible {
             outline: none;
@@ -1760,7 +1760,7 @@
         border-bottom: 1px solid var(--b3-border-color);
         background: transparent;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         text-align: right;
         cursor: pointer;
         &:hover { color: var(--b3-theme-primary); }
@@ -2138,7 +2138,7 @@
         .sw__updated-badge {
             flex: none;
             margin-left: auto;
-            font-size: 10.5px;
+            font-size: var(--sw-font-xs, 11px);
             font-weight: 600;
             color: var(--b3-theme-on-surface-light);
             white-space: nowrap;

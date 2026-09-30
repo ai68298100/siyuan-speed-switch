@@ -123,7 +123,7 @@
             border-radius: 9px;
             background: var(--b3-theme-primary-lightest);
             color: var(--b3-theme-primary);
-            font-size: 11px;
+            font-size: var(--sw-font-xs, 11px);
             line-height: 18px;
             text-align: center;
         }
@@ -323,7 +323,7 @@
         border-radius: 8px;
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
         color: var(--b3-theme-on-background);
-        font-size: 12.5px;
+        font-size: var(--sw-font-md, 13px);
         box-sizing: border-box;
 
         &:focus-visible {
@@ -377,7 +377,7 @@
         border-radius: 999px;
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         line-height: 1.6;
         cursor: pointer;
 
@@ -428,7 +428,7 @@
         }
 
         .sw-settings__search-option-title {
-            font-size: 12.5px;
+            font-size: var(--sw-font-md, 13px);
             font-weight: 600;
         }
 
@@ -460,7 +460,7 @@
             margin-top: 2px;
             overflow: hidden;
             color: var(--b3-theme-on-surface-light);
-            font-size: 11px;
+            font-size: var(--sw-font-xs, 11px);
             text-overflow: ellipsis;
             white-space: nowrap;
         }
@@ -469,14 +469,14 @@
     .sw-settings__search-note {
         padding: 7px 9px;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11.5px;
+        font-size: var(--sw-font-sm, 12px);
     }
 
     // ===== T-7004 存储页：分组标题、用量进度条、schema 健康与缓存管理 =====
     .sw-settings__storage-group {
         margin: 10px 0 2px;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         letter-spacing: .04em;
         text-transform: uppercase;
     }
@@ -538,7 +538,7 @@
 
     .sw-settings__save-state {
         min-height: 16px;
-        font-size: 11.5px;
+        font-size: var(--sw-font-sm, 12px);
 
         &[data-state="pending"] { color: var(--b3-theme-on-surface-light); }
         &[data-state="ok"] { color: var(--b3-theme-success, var(--b3-theme-primary)); }
@@ -550,7 +550,7 @@
     .sw-settings__undo {
         min-height: 22px;
         padding: 0 8px;
-        font-size: 11.5px;
+        font-size: var(--sw-font-sm, 12px);
 
         &:disabled {
             opacity: .45;
@@ -567,7 +567,7 @@
         border-radius: 999px;
         background: transparent;
         color: var(--b3-theme-on-surface-light);
-        font-size: 10.5px;
+        font-size: var(--sw-font-xs, 11px);
         line-height: 1.4;
         cursor: pointer;
 
@@ -613,7 +613,7 @@
     // （组内行的 hairline 分隔与 hover 提亮沿用条目自身规则，只收敛内边距到卡片内）。
     .sw-settings__group-title {
         margin: 14px 2px 8px;
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         font-weight: 700;
         letter-spacing: .08em;
         text-transform: uppercase;
@@ -1121,7 +1121,7 @@
             border-radius: 999px;
             background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
             color: var(--b3-theme-primary);
-            font-size: 10.5px;
+            font-size: var(--sw-font-xs, 11px);
             line-height: 1.5;
         }
 
@@ -1402,7 +1402,7 @@
 .sw-quick-icon-picker__group-title {
     grid-column: 1 / -1;
     margin: 6px 2px 2px;
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     letter-spacing: 0.05em;
     color: var(--b3-theme-on-surface-light);
 }
@@ -1448,14 +1448,14 @@
 .sw-doc-set-diff__meta {
     margin: 0;
     color: var(--b3-theme-on-surface-light);
-    font-size: 11.5px;
+    font-size: var(--sw-font-sm, 12px);
 }
 
 .sw-doc-set-diff__group {
     margin: 4px 2px 4px;
     padding-left: 10px;
     border-left: 3px solid var(--b3-border-color);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     font-weight: 700;
     letter-spacing: .08em;
     text-transform: uppercase;

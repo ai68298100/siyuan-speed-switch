@@ -20,11 +20,17 @@ const SMALL_FONT_EXEMPTIONS = [
     {file: '_09-store-preview-polish.scss', px: 7, reason: '日历格内节假日次级标注（格宽≈卡宽 1/7，ellipsis+弱化兜底，物理约束）'},
 ];
 
-// 半像素迁移债快照（T-7206 后续批次收敛到刻度 token；只减不增）。
-const HALF_PX_DEBT_SNAPSHOT = {'10.5': 6, '11.5': 6, '12.5': 7};
+// 退役档（T-7206）：出现即失败。9px 已于第一阶段清零；半像素值（10.5/11.5/12.5）
+// 已于第二阶段就近归档到整数刻度 token（10.5→xs、11.5→sm、12.5→md）。
+const RETIRED_PX = ['9', '10.5', '11.5', '12.5'];
 
 // 当前允许的字号值快照（px）。新值入场 = 刻度碎裂，须先过评审更新本集合。
-const ALLOWED_PX = new Set(['10', '10.5', '11', '11.5', '12', '12.5', '13', '14', '15', '16', '17', '20', '22', '28', '36', '46', '7']);
+// 字号一律优先写 var(--sw-font-*, 字面量) 形式（T-7206 刻度 token，
+// 定义见 src/styles/_00-tokens.scss）；字面量仅允许作为 token 回退参数出现。
+const ALLOWED_PX = new Set(['10', '11', '12', '13', '14', '15', '16', '17', '20', '22', '28', '36', '46', '7']);
+
+// 刻度 token 清单（与 _00-tokens.scss 的 .speed-switch 块一一对应）。
+const FONT_TOKENS = ['--sw-font-2xs', '--sw-font-xs', '--sw-font-sm', '--sw-font-md', '--sw-font-lg', '--sw-font-xl', '--sw-font-2xl'];
 
 function findFontSizes(source) {
     const hits = [];
@@ -67,15 +73,21 @@ test('font scale: the retired 9px tier stays retired', () => {
     }
 });
 
-test('font scale: half-pixel migration debt only shrinks', () => {
-    const counts = {};
-    for (const {source} of collectStyleSources()) {
-        for (const px of findFontSizes(source)) counts[px] = (counts[px] || 0) + 1;
+test('font scale: retired half-pixel tiers stay retired', () => {
+    for (const {file, source} of collectStyleSources()) {
+        for (const retired of RETIRED_PX) {
+            const hits = findFontSizes(source).filter((px) => Number.parseFloat(px) === Number.parseFloat(retired));
+            assert.deepEqual(hits, [], `${file}: font-size: ${retired}px 已退役（T-7206 就近归档整数刻度），禁止回归`);
+        }
     }
-    for (const [px, snapshot] of Object.entries(HALF_PX_DEBT_SNAPSHOT)) {
-        const current = counts[px] || 0;
-        assert.ok(current <= snapshot, `font-size: ${px}px 出现 ${current} 次，超过快照 ${snapshot}——半像素值只允许收敛不允许新增`);
+});
+
+test('font scale: token scale is defined on the plugin root', () => {
+    const tokens = fs.readFileSync(path.join(styleDir, '_00-tokens.scss'), 'utf8');
+    for (const token of FONT_TOKENS) {
+        assert.ok(tokens.includes(`${token}:`), `刻度 token ${token} 必须在 _00-tokens.scss 的 .speed-switch 块中定义`);
     }
+    assert.ok(!/:\s*root\s*\{[^}]*--sw-font-/.test(tokens), '字号 token 不得写入 :root（ADR 0073 作用域纪律）');
 });
 
 test('font scale: no new fragmented values beyond the frozen scale', () => {

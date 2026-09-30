@@ -87,7 +87,7 @@
         .sw__floating-ball-action-details {
             grid-column: 2;
             color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
-            font-size: 11px;
+            font-size: var(--sw-font-xs, 11px);
             overflow-wrap: anywhere;
         }
 

@@ -194,11 +194,11 @@
         min-width: 0;
         overflow: hidden;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
-    .sw__home-module-toggle, .sw__home-module-meta { font-size: 11px; }
+    .sw__home-module-toggle, .sw__home-module-meta { font-size: var(--sw-font-xs, 11px); }
 }
 
 // 列表条目：圆点标记 + 间距
@@ -241,7 +241,7 @@
     .sw__home-module-item-action:disabled { cursor: default; opacity: 0.72; }
     .sw__home-module-item-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sw__home-module-item-icon { display: grid; width: 24px; height: 24px; place-items: center; color: var(--b3-theme-primary); }
-    .sw__home-module-item-secondary { min-width: 0; overflow: hidden; color: var(--b3-theme-on-surface-light); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+    .sw__home-module-item-secondary { min-width: 0; overflow: hidden; color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); text-overflow: ellipsis; white-space: nowrap; }
 }
 
 .sw-home__cell[data-module-id="tags"] {
