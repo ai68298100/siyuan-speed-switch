@@ -278,9 +278,12 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
     ): () => void {
         const disposeSearchFilter = bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay);
         let activeSortOverlay: HTMLElement | null = null;
+        // T-7176：关闭排序 sheet 后回焦触发按钮
+        let sortTrigger: HTMLElement | null = null;
         const closeSortOverlay = () => {
             activeSortOverlay?.remove();
             activeSortOverlay = null;
+            if (sortTrigger) { sortTrigger.focus({preventScroll: true}); sortTrigger = null; }
         };
         const onDocumentKeyDown = (event: KeyboardEvent) => {
             if (event.key !== "Escape" || !activeSortOverlay) return;
@@ -321,6 +324,7 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
         };
         updateSortButton();
         sortButton?.addEventListener("click", () => {
+            sortTrigger = sortButton;
             closeSortOverlay();
             const overlay = document.createElement("div");
             overlay.className = "sw__mobile-sort-overlay";
