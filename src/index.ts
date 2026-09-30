@@ -4452,6 +4452,26 @@ const updatedMap: {[rootId: string]: string} = {};
                 panel.style.right = `${Math.round(Math.max(6, window.innerWidth - rect.right))}px`;
             };
             positionPanel();
+            // T-7192：radiogroup 键盘合同——打开入焦首个 menuitemradio，方向键循环选择。
+            const menuItems = Array.from(panel.querySelectorAll<HTMLButtonElement>(".sw__sort-menu-option"));
+            if (menuItems.length > 0) menuItems[0].focus({preventScroll: true});
+            panel.addEventListener("keydown", (event: KeyboardEvent) => {
+                const items = Array.from(panel.querySelectorAll<HTMLButtonElement>(".sw__sort-menu-option"));
+                if (items.length === 0) return;
+                const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    const dir = event.key === "ArrowDown" ? 1 : -1;
+                    const next = items[(currentIndex + dir + items.length) % items.length];
+                    next.focus({preventScroll: true});
+                } else if (event.key === "Home") {
+                    event.preventDefault();
+                    items[0].focus({preventScroll: true});
+                } else if (event.key === "End") {
+                    event.preventDefault();
+                    items[items.length - 1].focus({preventScroll: true});
+                }
+            });
             outsideHandler = (event) => {
                 if (!panel?.contains(event.target as Node) && event.target !== trigger && !trigger.contains(event.target as Node)) closePanel();
             };
