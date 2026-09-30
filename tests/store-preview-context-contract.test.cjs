@@ -51,7 +51,7 @@ test('preview context chips use dashed borders', () => assert.ok(declaresIn(css,
 test('preview body allows long content to wrap', () => assert.ok(declaresIn(css, '.sw-store-preview__body', /overflow-wrap: anywhere/, base)));
 test('preview body remains shrinkable in flex layouts', () => assert.ok(declaresIn(css, '.sw-store-preview__body', /min-width: 0/, base)));
 // 窄屏分支里的 chip 缩小必须钉在 560px 分支上（T-6283：深度≠身份）。
-test('preview has mobile chip sizing', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /padding:\s*3px 6px/, {atRule: /max-width:\s*560px/})));
+test('preview has mobile chip sizing', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /padding:\s*4px 6px/, {atRule: /max-width:\s*560px/})));
 test('preview has forced-colors fallback', () => assert.ok(css.includes('@media (forced-colors: active)')));
 test('English preview surface label exists', () => assert.match(en, /"homeStorePreviewSurface":/));
 test('English preview size label exists', () => assert.match(en, /"homeStorePreviewSize":/));

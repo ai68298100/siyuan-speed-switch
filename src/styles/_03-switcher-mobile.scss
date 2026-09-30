@@ -112,7 +112,7 @@
         gap: 8px;
         min-height: 52px;
         box-sizing: border-box;
-        padding: 9px 12px;
+        padding: 10px 12px;
         border-bottom: 1px solid var(--b3-border-color);
         background: var(--b3-theme-surface);
         background: color-mix(in srgb, var(--b3-theme-surface) 94%, var(--b3-theme-background));
@@ -202,7 +202,7 @@
                         justify-content: center;
                         min-width: 13px;
                         height: 13px;
-                        padding: 0 3px;
+                        padding: 0 4px;
                         border: 2px solid var(--b3-theme-surface);
                         border-radius: 999px;
                         background: var(--b3-theme-primary);
@@ -391,7 +391,7 @@
                     align-items: center;
                     gap: 6px;
                     width: 100%;
-                    padding: 5px 8px 5px 24px;
+                    padding: 6px 8px 6px 24px;
                     border: none;
                     background: transparent;
                     border-radius: 4px;
@@ -541,7 +541,7 @@
 
         .sw__dock-item {
             justify-content: center;
-            padding: 7px 0;
+            padding: 8px 0;
             border-radius: 6px;
         }
 
@@ -562,7 +562,7 @@
         align-items: center;
         gap: 8px;
         width: 100%;
-        padding: 5px 6px;
+        padding: 6px 6px;
         border: none;
         background: transparent;
         color: var(--b3-theme-on-background);
@@ -599,7 +599,7 @@
             left: calc(100% + 8px);
             top: 50%;
             transform: translateY(-50%);
-            padding: 3px 10px;
+            padding: 4px 10px;
             border: 1px solid var(--b3-border-color);
             border-radius: 4px;
             background: var(--b3-theme-surface);
@@ -822,7 +822,7 @@
 
     .sw__search-chip {
         min-height: 30px;
-        padding: 3px 12px;
+        padding: 4px 12px;
         border: 1px solid var(--b3-border-color);
         border-radius: 999px;
         background: var(--b3-theme-surface);
@@ -1092,7 +1092,7 @@
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
-                gap: 5px;
+                gap: 6px;
                 min-width: 0;
             }
 
@@ -1216,7 +1216,7 @@
                     align-items: center;
                     gap: 8px;
                     margin-bottom: 14px;
-                    padding-bottom: 9px;
+                    padding-bottom: 10px;
                     border-bottom: 1px solid var(--b3-border-color);
                     color: var(--b3-theme-on-surface-light);
                     font-size: var(--sw-font-xs, 11px);
@@ -1226,7 +1226,7 @@
                         flex: none;
                         margin-left: auto;
                         min-height: 20px;
-                        padding: 2px 7px;
+                        padding: 2px 8px;
                         font-size: 10px;
                     }
 
@@ -1378,7 +1378,7 @@
 
                 .sw__doc-preview-outline {
                     display: grid;
-                    gap: 3px;
+                    gap: 4px;
                     margin: 0;
                     padding: 0;
                     list-style: none;
@@ -1395,7 +1395,7 @@
 
                 .sw__doc-preview-block,
                 .sw__doc-preview-content-list {
-                    margin: 0 0 9px;
+                    margin: 0 0 10px;
                     color: var(--b3-theme-on-background);
                     font-size: 13px;
                     line-height: 1.7;
@@ -1411,7 +1411,7 @@
                 }
 
                 .sw__doc-preview-block--quote {
-                    padding-left: 9px;
+                    padding-left: 10px;
                     border-left: 2px solid var(--b3-theme-primary);
                     color: var(--b3-theme-on-surface-light);
                 }
@@ -1433,7 +1433,7 @@
                 .sw__doc-preview-task {
                     display: flex;
                     align-items: flex-start;
-                    gap: 7px;
+                    gap: 8px;
                     margin-left: -18px;
                     list-style: none;
 
@@ -1473,7 +1473,7 @@
 
             .sw__doc-status-copy {
                 display: grid;
-                gap: 3px;
+                gap: 4px;
                 max-width: 440px;
             }
 
@@ -1583,7 +1583,7 @@
         align-items: center;
         gap: 8px;
         min-height: 38px;
-        padding: 7px 10px;
+        padding: 8px 10px;
         border-bottom: 1px solid var(--b3-border-color);
         background: color-mix(in srgb, var(--b3-theme-surface) 86%, var(--b3-theme-background));
     }
@@ -1750,7 +1750,7 @@
 
     .sw__history-empty { padding: 14px 10px; color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; }
     .sw__history-section-title {
-        padding: 7px 8px 3px;
+        padding: 8px 8px 4px;
         color: var(--b3-theme-on-surface-light);
         font-size: 10px;
         font-weight: 600;
@@ -1776,7 +1776,7 @@
         gap: 8px;
         width: 100%;
         min-width: 0;
-        padding: 7px 8px;
+        padding: 8px 8px;
         border: 0;
         border-radius: var(--sw-radius-sm, 6px);
         background: transparent;
@@ -1838,7 +1838,7 @@
         flex: none;
         display: inline-flex;
         align-items: center;
-        gap: 5px;
+        gap: 6px;
         min-width: 58px;
         height: 32px;
         padding: 0 8px;
@@ -1892,7 +1892,7 @@
 
     &.sw--quick-rail {
         .sw__toolbar {
-            gap: 5px;
+            gap: 6px;
             padding-inline: 8px;
 
             .sw__search-wrap {
@@ -1966,7 +1966,7 @@
     &.sw--sidebar {
         .sw__quick-actions {
             min-height: 42px;
-            padding: 5px 8px;
+            padding: 6px 8px;
             gap: 4px;
         }
     }
@@ -1974,7 +1974,7 @@
     &.sw__mobile {
         .sw__quick-actions {
             min-height: 42px;
-            padding: 5px 8px;
+            padding: 6px 8px;
             gap: 4px;
         }
 
@@ -2155,7 +2155,7 @@
 
         .sw__changed-badge {
             flex: none;
-            padding: 1px 5px;
+            padding: 1px 6px;
             border-radius: 999px;
             background: color-mix(in srgb, var(--b3-theme-primary) 12%, var(--b3-theme-surface));
             color: var(--b3-theme-primary);
@@ -2644,7 +2644,7 @@
     right: 2px;
     min-width: 14px;
     height: 14px;
-    padding: 0 3px;
+    padding: 0 4px;
     border: 1px solid var(--b3-border-color);
     border-radius: 4px;
     background: var(--b3-theme-surface);

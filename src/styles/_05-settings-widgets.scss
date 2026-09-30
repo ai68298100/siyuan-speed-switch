@@ -13,14 +13,14 @@
 
     .sw-settings__tabs {
         width: 148px;
-        padding: 14px 9px;
+        padding: 14px 10px;
         border-right-color: color-mix(in srgb, var(--b3-border-color) 55%, transparent);
         background: color-mix(in srgb, var(--b3-theme-surface) 54%, var(--sw-page-bg));
     }
 
     .sw-settings__tab {
         min-height: 36px;
-        padding: 8px 11px;
+        padding: 8px 12px;
         border-radius: 10px;
 
         &:hover { background: var(--sw-accent-soft); }
@@ -581,7 +581,7 @@
         top: 8px;
         right: 10px;
         z-index: 1;
-        padding: 2px 7px;
+        padding: 2px 8px;
         border: 1px solid color-mix(in srgb, var(--b3-theme-error, #d23f31) 40%, transparent);
         border-radius: 6px;
         background: var(--b3-theme-surface);
@@ -599,7 +599,7 @@
     align-items: center;
     gap: 10px;
     margin-bottom: 10px;
-    padding: 7px 12px;
+    padding: 8px 12px;
     border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 26%, transparent);
     border-radius: 10px;
     background: color-mix(in srgb, var(--b3-theme-primary) 9%, transparent);
@@ -767,7 +767,7 @@
     .sw__home-module-item-action {
         display: block;
         width: 100%;
-        padding: 5px 6px;
+        padding: 6px 6px;
         border: none;
         border-radius: 6px;
         background: transparent;
@@ -834,7 +834,7 @@
 
 .sw__home-loading-skeleton {
     display: grid;
-    gap: 7px;
+    gap: 8px;
     min-height: 54px;
     padding: 6px 2px;
 }
@@ -1003,7 +1003,7 @@
         grid-template-columns: minmax(110px, auto) auto 1fr auto;
         align-items: center;
         gap: 8px;
-        padding: 7px 9px;
+        padding: 8px 10px;
         border-radius: 8px;
         background: var(--b3-theme-surface-lighter);
         font-size: 12px;
@@ -1022,7 +1022,7 @@
 
 .sw-settings__mobile-home-note {
     margin: 0 0 12px;
-    padding: 9px 11px;
+    padding: 10px 12px;
     border-radius: 10px;
     background: color-mix(in srgb, var(--b3-theme-primary) 8%, transparent);
     color: var(--b3-theme-on-surface-light);
@@ -1063,7 +1063,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 7px 9px;
+    padding: 8px 10px;
     border: 1px solid var(--b3-border-color);
     border-radius: 8px;
     margin-bottom: 6px;

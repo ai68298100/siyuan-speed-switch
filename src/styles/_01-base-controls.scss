@@ -16,10 +16,10 @@
     .sw-setting__dock-item {
         display: flex;
         align-items: center;
-        gap: 7px;
+        gap: 8px;
         min-width: 0;
         min-height: 34px;
-        padding: 4px 7px;
+        padding: 4px 8px;
         border: 1px solid var(--b3-border-color);
         border-radius: 6px;
         background: var(--b3-theme-surface);
@@ -297,11 +297,11 @@
         display: inline-flex;
         align-items: center;
         justify-content: flex-start;
-        gap: 5px;
+        gap: 6px;
         width: 92px;
         min-width: 72px;
         height: 30px;
-        padding: 0 7px;
+        padding: 0 8px;
         overflow: hidden;
         color: var(--b3-theme-on-background);
 
@@ -421,7 +421,7 @@
 }
 
 .sw-setting__quick-picker-heading {
-    margin-bottom: 5px;
+    margin-bottom: 6px;
     color: var(--b3-theme-on-surface-light);
     font-size: var(--sw-font-xs, 11px);
     font-weight: 600;

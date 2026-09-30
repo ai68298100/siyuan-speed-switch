@@ -204,7 +204,7 @@
 // 列表条目：圆点标记 + 间距
 .sw__home-module-list .sw__home-module-item-action {
     position: relative;
-    padding: 5px 8px 5px 16px;
+    padding: 6px 8px 6px 16px;
     border-radius: 8px;
     line-height: 1.45;
 
@@ -232,7 +232,7 @@
         display: grid;
         grid-template-columns: 24px minmax(0, 1fr) auto;
         align-items: center;
-        gap: 7px;
+        gap: 8px;
         min-height: 30px;
         padding: 4px 6px;
         border-left: 0;
@@ -247,7 +247,7 @@
 .sw-home__cell[data-module-id="tags"] {
     .sw__home-module-list { display: flex; flex-wrap: wrap; gap: 6px; }
     .sw__home-module-item { border: 0; }
-    .sw__home-module-item-action { min-height: 28px; padding: 4px 9px; border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 22%, var(--b3-border-color)); border-radius: 999px; background: color-mix(in srgb, var(--b3-theme-primary) 7%, transparent); }
+    .sw__home-module-item-action { min-height: 28px; padding: 4px 10px; border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 22%, var(--b3-border-color)); border-radius: 999px; background: color-mix(in srgb, var(--b3-theme-primary) 7%, transparent); }
     .sw__home-module-item-secondary { margin-inline-start: 4px; font-size: 10px; }
 }
 
@@ -315,7 +315,7 @@
 
 // 紧凑密度：小号组件
 .sw-home .sw-home__cell[data-size="xs"] .sw__home-module-list .sw__home-module-item-action {
-    padding: 3px 6px 3px 14px;
+    padding: 4px 6px 4px 14px;
     font-size: 12px;
 }
 

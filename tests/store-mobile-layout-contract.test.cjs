@@ -37,7 +37,7 @@ const mobileSwitcherSource = readSourceText('src/mobile-switcher-ui.ts');
 test('mobile store media query exists', () => assert.match(css, /@media \(max-width: 560px\)/));
 test('mobile store keeps compact padding', () => assert.ok(declaresIn(css, '.sw-home-store', /padding: 10px 12px 14px/, narrow)));
 test('mobile search wraps controls', () => assert.ok(declaresIn(css, '.sw-home-store__search', /flex-wrap: wrap/, narrow)));
-test('mobile search keeps gap', () => assert.ok(declaresIn(css, '.sw-home-store__search', /gap: 7px/, narrow)));
+test('mobile search keeps gap', () => assert.ok(declaresIn(css, '.sw-home-store__search', /gap: 8px/, narrow)));
 test('mobile search input keeps flexible width', () => assert.ok(declaresIn(css, '.sw-home-store__search input', /flex: 1 1 calc\(100% - 40px\)/, narrow)));
 test('mobile search input has zero minimum', () => assert.ok(declaresIn(css, '.sw-home-store__search input', /min-width: 0/, narrow)));
 // T-6967 S2：排序已收进筛选行尾——窄屏不再并入搜索行半幅，改为行尾定宽；
@@ -58,7 +58,7 @@ test('mobile tabs preserve horizontal padding', () => assert.ok(declaresIn(css, 
 test('mobile summary shares bounded width rule', () => assert.ok(declaresIn(css, '.sw-home-store__summary', /max-width: 100%/, narrow)));
 test('mobile cards fill row width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /width: 100%/, narrow)));
 test('mobile cards cap row width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /max-width: 100%/, narrow)));
-test('mobile cards keep compact padding', () => assert.ok(declaresIn(css, '.sw-home-store__card', /padding: 11px 12px/, narrow)));
+test('mobile cards keep compact padding', () => assert.ok(declaresIn(css, '.sw-home-store__card', /padding: 12px 12px/, narrow)));
 test('mobile card keeps bounded width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /max-width: 100%/, narrow)));
 test('mobile preview caps width', () => assert.ok(declaresIn(css, '.sw-home-store__preview', /max-width: 100%/, narrow)));
 test('mobile preview clips overflow', () => assert.ok(declaresIn(css, '.sw-home-store__preview', /overflow: hidden/, narrow)));

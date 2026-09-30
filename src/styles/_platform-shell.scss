@@ -112,7 +112,7 @@
 .sw--sidebar > .sw-platform-chrome .sw-platform-header__brand { display: none; }
 .sw--sidebar > .sw-platform-chrome .sw-platform-context { display: none; }
 .sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav { width: 100%; }
-.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item { flex: 1 1 auto; min-width: 0; padding-inline: 7px; }
+.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item { flex: 1 1 auto; min-width: 0; padding-inline: 8px; }
 
 .sw__mobile > .sw-platform-chrome .sw-platform-header {
     min-height: 44px;
@@ -194,7 +194,7 @@
     justify-content: center;
     flex: 0 0 auto;
     min-height: 36px;
-    padding: 6px 11px;
+    padding: 6px 12px;
     // T-7015c（用户反馈）：非当前项默认给淡边框胶囊——静态观感即可辨认「这是
     // 可点的按钮」，不再依赖 hover 才显形（按钮可发现性）。
     border: 1px solid color-mix(in srgb, var(--sw-platform-line, var(--b3-border-color)) 72%, transparent);
@@ -252,11 +252,11 @@
 .sw-platform-status {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     width: fit-content;
     max-width: 100%;
     min-height: 24px;
-    padding: 3px 8px;
+    padding: 4px 8px;
     border: 1px solid transparent;
     border-radius: var(--sw-platform-radius-pill);
     color: var(--sw-platform-text-muted);
@@ -330,7 +330,7 @@
     justify-content: center;
     gap: 6px;
     min-height: 36px;
-    padding: 6px 11px;
+    padding: 6px 12px;
     border: 1px solid var(--sw-platform-line);
     border-radius: var(--sw-platform-radius-sm);
     color: var(--sw-platform-text);
@@ -371,7 +371,7 @@
     flex: 0 0 auto;
     min-width: 18px;
     height: 18px;
-    padding: 0 5px;
+    padding: 0 6px;
     border: 1px solid var(--sw-platform-line);
     border-radius: var(--sw-radius-sm, 6px);
     color: var(--sw-platform-text-muted);
@@ -398,7 +398,7 @@
     align-items: stretch;
     gap: 2px;
     max-width: 100%;
-    padding: 3px;
+    padding: 4px;
     border: 1px solid var(--sw-platform-line);
     border-radius: var(--sw-radius-control, 10px);
     background: var(--sw-platform-surface-muted);
