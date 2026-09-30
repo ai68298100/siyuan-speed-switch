@@ -9200,10 +9200,12 @@ private rootIdOf(tab: Tab): string | null {
             document.removeEventListener("scroll", onReposition, true);
             observer?.disconnect();
         };
-        // 收起面板并停止 DOM 观察（三条收起路径共用：再次点击触发器 / 点击外部 / 选中收藏项）
+        // 收起面板并停止 DOM 观察（三条收起路径共用：再次点击触发器 / 点击外部 / 选中收藏项）。
+        // T-7181：关闭即释放——pointerdown/resize/scroll 与 body 观察器同步解绑，
+        // 不再等下一次全局点击兜底。
         const closePanel = () => {
             panel.classList.add("fn__none");
-            // 全局监听仅在面板展开期间存在，关闭后立即释放。
+            unbindGlobal();
         };
         // 点击外部收起面板；面板关闭期间 MutationObserver 已停止，
         // 宿主容器被移除后由这次全局点击兜底解绑全部监听
