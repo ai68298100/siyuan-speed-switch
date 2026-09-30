@@ -36,3 +36,21 @@
 - [ ] 版本号确认（建议发版后回复，回复中填实际版本号）
 - [ ] 是否附上修复 diff/提交链接
 - [ ] 联合冒烟与 README 收录的承诺是否保留
+
+---
+
+## 附录：LvSpeed 分支适配代码审计（2026-09-30，宿主侧自检，未外发）
+
+拉取 gradypark86/siyuan-plugin-calendar `LvSpeed` 分支 `src/integrations/speed-switch.ts`（272 行）逐字段核对：
+
+| 审计项 | 他的实现 | 宿主（修复后） | 结论 |
+|---|---|---|---|
+| moduleId | `calendar-recent-periodic` | registerHomeModule 校验 `^[A-Za-z0-9._:-]{1,64}$` | ✅ |
+| options 字段 | moduleId/title/description/icon/category/availability/supportedDevices/sizes/protocolVersion:2/source/readOnly/open/read | index.ts registerHomeModule 全部接受（availability 经 normalizeModuleDefinition 归一） | ✅ |
+| read 第三参 | `context.size` 按型号裁剪条数（small=4/wide=10/large=14/full=18） | 协议 v2.3 已传 `{size, signal}`（home-adapters.js:199） | ✅ 尺寸感知生效 |
+| 返回契约 | `{title, items:[{label(≤256), value: 块ID}]}` | normalizeSnapshot 接受 | ✅ |
+| 失败形态 | 捕获异常返回空快照，不污染 Calendar 自身面板 | 平台兜底+其自兜底双层 | ✅ |
+| 注册返回值 | 三形态兼容（函数/对象/undefined）+ `getHomeModules` 列表核验 + 有界重试 [250ms..6s] | 我方失败返回 no-op 函数 → 其核验兜住并重试 | ✅ 载入顺序竞争已自解 |
+| 卸载 | unload 注销 + 重试定时器清理 | unregister → homeThirdPartyIds 收窄 → 实例清洗（T-7069 语义） | ✅ |
+
+**结论：T-7069 修复后，LvSpeed 分支适配代码与宿主全字段兼容，无阻塞项。** 他的重试机制（防插件载入顺序竞争）值得写进 `docs/widget-protocol.md` 作为推荐范式（候选任务）。
