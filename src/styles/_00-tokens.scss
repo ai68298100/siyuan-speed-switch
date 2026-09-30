@@ -71,4 +71,8 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     --sw-shadow-xs: 0 1px 3px rgb(35 42 75 / 6%);
     --sw-shadow-sm: 0 5px 16px rgb(35 42 75 / 16%);
     --sw-shadow-md: 0 7px 20px rgb(35 42 75 / 20%);
+    // T-7202：控件高度三档（跨表面主输入/次级输入/徽标开关）。
+    --sw-control-h-sm: 20px;  // 徽标级开关/状态 chip
+    --sw-control-h-md: 26px;  // 次级输入/折叠钮/diff 头
+    --sw-control-h: 34px;     // 主输入/标准按钮
 }

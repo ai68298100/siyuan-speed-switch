@@ -136,7 +136,7 @@
 
             .sw__search {
                 width: 100%;
-                height: 34px;
+                height: var(--sw-control-h);
                 padding-left: 28px;
                 padding-right: 34px;
                 border: 1px solid var(--b3-border-color);
@@ -1225,9 +1225,9 @@
                     .sw__doc-preview-status {
                         flex: none;
                         margin-left: auto;
-                        min-height: 20px;
+                        min-height: var(--sw-control-h-sm);
                         padding: 2px 8px;
-                        font-size: 10px;
+                        font-size: var(--sw-font-2xs, 10px);
                     }
 
                     // T-6949/T-6950：固定与查找开关——头部最右（order 使其排在状态徽标之后）；
@@ -1236,13 +1236,13 @@
                     .sw__doc-preview-find-toggle {
                         flex: none;
                         order: 1;
-                        min-height: 20px;
+                        min-height: var(--sw-control-h-sm);
                         padding: 1px 8px;
                         border: 1px solid var(--b3-border-color);
-                        border-radius: 6px;
+                        border-radius: var(--sw-radius-sm, 6px);
                         background: transparent;
                         color: var(--b3-theme-on-surface-light);
-                        font-size: 10px;
+                        font-size: var(--sw-font-2xs, 10px);
                         line-height: 1.5;
                         cursor: pointer;
 
@@ -1296,13 +1296,13 @@
                     .sw__doc-preview-find-input {
                         flex: 1;
                         min-width: 0;
-                        height: 26px;
+                        height: var(--sw-control-h-md);
                         padding: 0 8px;
                         border: 1px solid var(--b3-border-color);
-                        border-radius: 6px;
+                        border-radius: var(--sw-radius-sm, 6px);
                         background: var(--b3-theme-background);
                         color: var(--b3-theme-on-background);
-                        font-size: 12px;
+                        font-size: var(--sw-font-sm, 12px);
 
                         &:focus-visible {
                             outline: 2px solid var(--b3-theme-primary);
@@ -1937,7 +1937,7 @@
         .sw__quick-action--collapse {
             min-width: 28px;
             width: 28px;
-            height: 26px;
+            height: var(--sw-control-h-md);
             padding: 0;
             justify-content: center;
         }
