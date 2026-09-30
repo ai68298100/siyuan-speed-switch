@@ -39,7 +39,7 @@ export interface SecondPanelUiHost {
     getSettings(): ISwSettings;
     handleHomeItemAction(item: { label?: string; value?: string; href?: string; command?: string }, close: () => void): void;
     migrateHomeLayoutSize(entry: {w?: number; h?: number; size?: string}, sizes: string[]): string;
-    openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void): void;
+    openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void): () => void;
     openPlatformSurface?(surface: PlatformSurface, returnTo?: PlatformSurface, context?: PlatformSurfaceContext | null): void;
     getPlatformSurfaceLabels?(): PlatformSurfaceLabels;
     mountPlatformChrome?(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement;
@@ -84,6 +84,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         const fullscreenMode = mode === "fullscreen" || (mode === "follow" && settings.panelSizeMode === "fullscreen");
         // T-6481：面板资源释放挂宿主 destroyCallback（构造与装配同函数，用可变 holder 前置声明）。
         let releasePanel: () => void = () => undefined;
+        // T-7180：尺寸菜单 owner disposer 槽（renderPanel 重渲染/面板销毁时释放）。
+        let disposeSizeMenu: () => void = () => undefined;
         const dialogHolder: {dialog: Dialog | null} = {dialog: null};
         const dialog = new Dialog({
             title: "",
@@ -937,7 +939,9 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         });
                     const sizeButton = tool(this.i18n.homeSize, () => undefined);
                     sizeButton.addEventListener("click", () => {
-                        this.openHomeSizeMenu(sizeButton, supported, sizeKey, (picked) => {
+                        // T-7180：新开前先释放旧浮层（幂等），再登记新 disposer
+                        disposeSizeMenu();
+                        disposeSizeMenu = this.openHomeSizeMenu(sizeButton, supported, sizeKey, (picked) => {
                             const preset2 = HOME_WIDGET_SIZES[picked as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
                             layoutOpLabel = this.i18n.homeHistorySize;
                             persistLayout({size: picked, w: preset2.w, h: preset2.h});
@@ -1399,6 +1403,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             if (iconClampFrame) cancelAnimationFrame(iconClampFrame);
             homeRefreshBatchController?.abort();
             homeRefreshBatchController = null;
+            disposeSizeMenu();
             homeControllers.splice(0).forEach((entry) => entry.dispose());
             panelEventCleanup?.();
             panelEventCleanup = null;

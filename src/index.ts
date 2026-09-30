@@ -7375,12 +7375,17 @@ const updatedMap: {[rootId: string]: string} = {};
         return sizes.includes(fallback) ? fallback : (sizes[0] || "medium");
     }
 
-    // 型号选择浮层（与排序浮层同模式：body + fixed + 外点/Esc 关闭），列出该模块支持的全部档位
-    private openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void) {
+    // 型号选择浮层（与排序浮层同模式：body + fixed + 外点/Esc 关闭），列出该模块支持的全部档位。
+    // T-7180：返回 owner disposer（幂等 cleanup + 焦点回归锚）——面板销毁/表面切换时由宿主释放链调用，
+    // 避免幽灵菜单与 document/window 监听残留（T-7040 排序菜单同模式）。
+    private openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void): () => void {
         const panel = document.createElement("div");
         panel.className = "sw__sort-menu sw-home__size-menu";
         panel.setAttribute("role", "menu");
+        let cleaned = false;
         const cleanup = () => {
+            if (cleaned) return;
+            cleaned = true;
             panel.remove();
             document.removeEventListener("pointerdown", outside, true);
             document.removeEventListener("keydown", esc, true);
@@ -7435,6 +7440,7 @@ const updatedMap: {[rootId: string]: string} = {};
         document.addEventListener("pointerdown", outside, true);
         document.addEventListener("keydown", esc, true);
         window.addEventListener("resize", reposition);
+        return cleanup;
     }
 
     // 协议 v2 声明式配置表单：由 configSchema 渲染，保存写入实例 config 并回调刷新
