@@ -75,4 +75,12 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     --sw-control-h-sm: 20px;  // 徽标级开关/状态 chip
     --sw-control-h-md: 26px;  // 次级输入/折叠钮/diff 头
     --sw-control-h: 34px;     // 主输入/标准按钮
+
+    // T-7207：间距密度刻度（消费方：侧栏 compact 与密度系统）。值与偶数节奏一致；
+    // 新间距优先消费档位，字面只允许作为回退参数出现。
+    --sw-space-xs: 4px;
+    --sw-space-sm: 6px;
+    --sw-space-md: 8px;
+    --sw-space-lg: 12px;
+    --sw-space-xl: 16px;
 }

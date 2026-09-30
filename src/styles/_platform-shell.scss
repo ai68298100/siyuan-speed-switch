@@ -112,7 +112,7 @@
 .sw--sidebar > .sw-platform-chrome .sw-platform-header__brand { display: none; }
 .sw--sidebar > .sw-platform-chrome .sw-platform-context { display: none; }
 .sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav { width: 100%; }
-.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item { flex: 1 1 auto; min-width: 0; padding-inline: 8px; }
+.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item { flex: 1 1 auto; min-width: 0; padding-inline: var(--sw-space-md, 8px); }
 
 .sw__mobile > .sw-platform-chrome .sw-platform-header {
     min-height: 44px;

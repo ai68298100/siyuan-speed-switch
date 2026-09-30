@@ -1966,8 +1966,9 @@
     &.sw--sidebar {
         .sw__quick-actions {
             min-height: 42px;
-            padding: 6px 8px;
-            gap: 4px;
+            // T-7207：侧栏 compact 间距走密度档。
+            padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
+            gap: var(--sw-space-xs, 4px);
         }
     }
 

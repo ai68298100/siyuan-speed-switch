@@ -1,6 +1,7 @@
 @use "00-tokens" as *;
 .speed-switch.sw--sidebar .sw__toolbar {
-    gap: 6px;
+    // T-7207：侧栏 compact 密度档。
+    gap: var(--sw-space-sm, 6px);
 
     .sw__select-wrap {
         flex: 1 1 0;
