@@ -783,6 +783,7 @@
   "journalChooseTip": "Pick a default notebook for the journal feature; you can change it anytime under Settings → Journal",
   "notebookLoading": "Loading notebooks…",
   "notebookPlaceholder": "Select a notebook",
+  "notebookLoadFailed": "Failed to load notebooks",
   "journalNoNotebook": "No available notebooks. Create or open one in SiYuan first.",
   "journalFailed": "Failed to open the journal. Check the default notebook setting.",
   "openDocFailed": "Failed to open the document. Please try again later.",

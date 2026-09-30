@@ -783,6 +783,7 @@
   "journalChooseTip": "首次使用日记功能，请选择一个默认笔记本，之后可随时在「设置 → 日记」中更改",
   "notebookLoading": "笔记本加载中…",
   "notebookPlaceholder": "请选择笔记本",
+  "notebookLoadFailed": "笔记本加载失败",
   "journalNoNotebook": "暂无可用笔记本，请先到思源中创建或打开笔记本",
   "journalFailed": "打开日记失败，请检查默认笔记本设置",
   "openDocFailed": "打开文档失败，请稍后再试",

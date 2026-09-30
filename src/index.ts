@@ -2455,7 +2455,9 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 拉取已打开的笔记本列表（id + name），用于默认日记笔记本下拉
-    private async loadNotebooks(): Promise<Array<{id: string, name: string}>> {
+    // T-7185：失败可区分的笔记本加载——failed=true 时调用方展示失败回执/重试，
+    // 不再与「真空笔记本」同形。
+    private async loadNotebooksDetailed(): Promise<{notebooks: Array<{id: string, name: string}>, failed: boolean}> {
     // 内核无响应时超时中断请求，避免设置页下拉一直停在加载中
         const controller = typeof AbortController === "function" ? new AbortController() : null;
         let timer: number | null = null;
@@ -2478,15 +2480,20 @@ export default class SpeedSwitchPlugin extends Plugin {
             }
             const json = await response.json();
             const notebooks = (json?.data?.notebooks ?? []) as Array<{id: string, name: string, closed?: number}>;
-            return notebooks
+            const result = notebooks
                 .filter((nb) => nb && nb.id && !nb.closed)
                 .map((nb) => ({id: nb.id, name: nb.name}));
+            return {notebooks: result, failed: false};
         } catch (e) {
             logger.warn("load notebooks fail", e);
-            return [];
+            return {notebooks: [], failed: true};
         } finally {
             window.clearTimeout(timer);
         }
+    }
+
+    private async loadNotebooks(): Promise<Array<{id: string, name: string}>> {
+        return (await this.loadNotebooksDetailed()).notebooks;
     }
 
     // 默认日记笔记本下拉（异步填充已打开笔记本，当前值命中时回填选中）
@@ -2498,8 +2505,37 @@ export default class SpeedSwitchPlugin extends Plugin {
         sel.disabled = true; // 加载完成前禁用
         sel.appendChild(new Option(this.i18n.notebookLoading, ""));
         wrap.appendChild(sel);
-        this.loadNotebooks().then((notebooks) => {
+        // T-7185：失败可区分——内核读取失败展示失败回执 + 重试，不再与真空笔记本同形。
+        this.loadNotebooksDetailed().then(({notebooks, failed}) => {
             sel.innerHTML = "";
+            if (failed) {
+                sel.appendChild(new Option(this.i18n.notebookLoadFailed, ""));
+                sel.disabled = true;
+                const retry = document.createElement("button");
+                retry.type = "button";
+                retry.className = "b3-button b3-button--text sw-settings__journal-retry";
+                retry.textContent = this.i18n.homeRetry;
+                retry.setAttribute("aria-label", this.i18n.homeRetry);
+                retry.addEventListener("click", () => {
+                    retry.remove();
+                    sel.disabled = true;
+                    sel.innerHTML = "";
+                    sel.appendChild(new Option(this.i18n.notebookLoading, ""));
+                    this.loadNotebooks().then((retryNotebooks) => {
+                        sel.innerHTML = "";
+                        sel.appendChild(new Option(this.i18n.notebookPlaceholder, ""));
+                        retryNotebooks.forEach((nb) => {
+                            const opt = new Option(nb.name, nb.id);
+                            opt.title = nb.name;
+                            sel.appendChild(opt);
+                        });
+                        sel.value = retryNotebooks.some((nb) => nb.id === current) ? current : "";
+                        sel.disabled = false;
+                    });
+                });
+                wrap.appendChild(retry);
+                return;
+            }
             sel.appendChild(new Option(this.i18n.notebookPlaceholder, ""));
             notebooks.forEach((nb) => {
                 const opt = new Option(nb.name, nb.id);
