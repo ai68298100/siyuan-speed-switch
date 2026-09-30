@@ -21,7 +21,8 @@
     .sw-settings__tab {
         min-height: 36px;
         padding: 8px 12px;
-        border-radius: 10px;
+        // T-7199：设置弹窗不在 .speed-switch 内，圆角走 .sw-settings 局部镜像档。
+        border-radius: var(--sw-radius-control, 10px);
 
         &:hover { background: var(--sw-accent-soft); }
 

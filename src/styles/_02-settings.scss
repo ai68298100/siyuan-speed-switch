@@ -236,6 +236,12 @@
 .sw-settings {
     --sw-settings-focus-ring: 0 0 0 2px color-mix(in srgb, var(--b3-theme-primary) 24%, transparent);
     --sw-settings-hover-bg: var(--b3-list-hover, var(--b3-theme-surface-lighter));
+    // T-7199：设置弹窗是独立 Dialog（.sw-settings-dialog），不在 .speed-switch
+    // 根内，token 取不到全局定义——在此局部镜像本页消费的刻度档（值与
+    // _00-tokens 冻结一致；改全局档位时同步此处）。
+    --sw-font-md: 13px;
+    --sw-radius-md: 8px;
+    --sw-radius-control: 10px;
     display: flex;
     flex-direction: row;
     height: 100%;
@@ -245,15 +251,15 @@
     overflow: hidden;
     box-sizing: border-box;
 
-    // 左侧标签栏：固定宽度、竖排按钮，右侧细分隔线
+    // 左侧标签栏：固定宽度、竖排按钮；分隔线与三面板一致走 border-color 弱化
     .sw-settings__tabs {
         flex: none;
         width: 132px;
         display: flex;
         flex-direction: column;
         gap: 4px;
-        padding: 10px 8px;
-        border-right: 1px solid var(--b3-theme-surface-lighter);
+        padding: 12px 8px;
+        border-right: 1px solid color-mix(in srgb, var(--b3-border-color) 60%, transparent);
         overflow-x: hidden;
         overflow-y: auto;
         scrollbar-width: thin;
@@ -264,10 +270,11 @@
         flex: none;
         padding: 8px 10px;
         border: none;
-        border-radius: 8px;
+        border-radius: var(--sw-radius-md, 8px);
         background: transparent;
         color: var(--b3-theme-on-surface);
-        font-size: 13px;
+        font-size: var(--sw-font-md, 13px);
+        line-height: 1.4;
         text-align: left;
         cursor: pointer;
         white-space: normal;
@@ -276,12 +283,12 @@
 
         &:hover {
             color: var(--b3-theme-primary);
-            background: var(--b3-theme-surface-lighter);
+            background: var(--sw-settings-hover-bg);
         }
 
-        // 激活标签：主色浅底 + 主色文字
+        // 激活标签：主色浅底（accent-soft 与切换器/工作台激活语言一致）+ 主色文字
         &.is-active {
-            background: var(--b3-theme-primary-lightest);
+            background: var(--sw-accent-soft, var(--b3-theme-primary-lightest));
             color: var(--b3-theme-primary);
             font-weight: 600;
         }
@@ -724,10 +731,10 @@
             width: 100%;
             box-sizing: border-box;
             flex-direction: row;
-            gap: 4px;
+            gap: 6px;
             padding: 6px;
             border-right: none;
-            border-bottom: 1px solid var(--b3-theme-surface-lighter);
+            border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 60%, transparent);
             overflow-x: auto;
             overflow-y: hidden;
             overscroll-behavior-x: contain;
@@ -739,7 +746,7 @@
 
         .sw-settings__tab {
             min-width: max-content;
-            padding: 8px 10px;
+            padding: 8px 12px;
             text-align: center;
             scroll-snap-align: center;
         }
