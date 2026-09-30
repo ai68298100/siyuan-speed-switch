@@ -995,6 +995,9 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 新会话回落切换器），三个表面 Dialog 各自单例守卫，防止热键/悬浮球连点叠窗。
     private lastPlatformSurface: PlatformSurface = "switcher";
     private lastPlatformContext: PlatformSurfaceContext | null = null;
+    // T-7163：切换器会话级搜索现场快照（query/筛选/滚动）——跨面板往返恢复，
+    // 新入口（无 context 的热键/悬浮球）重置；仅内存，不持久化。
+    private switcherScene: {query: string; filters: Record<string, unknown>; scrollTop: number} | null = null;
     private platformSwitcherDialog: Dialog | null = null;
     private mobileSwitcherDialog: Dialog | null = null;
     private workbenchDialog: Dialog | null = null;
@@ -3673,6 +3676,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 打开页签切换器
     private showSwitcher(focusSearch = false, returnTo: PlatformSurface = "switcher", context?: PlatformSurfaceContext | null) {
         this.notePlatformSurface("switcher", context);
+        // T-7163：新入口（热键/悬浮球等无 context）重置会话现场；往返（带 context）恢复。
+        if (!context) this.switcherScene = null;
         // 手机端走独立适配
         if (this.isMobile) {
             this.showMobileSwitcher(focusSearch, returnTo, context);
@@ -3721,6 +3726,16 @@ export default class SpeedSwitchPlugin extends Plugin {
                 if (this.platformSwitcherDialog === holder.dialog) this.platformSwitcherDialog = null;
                 // T-7172：切换器关闭时批量取消在途缩略图回源
                 this.cancelThumbFetches();
+                // T-7163：销毁前捕获搜索现场，跨面板往返时恢复
+                const sceneInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
+                const sceneScroll = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
+                if (sceneInput && sceneScroll) {
+                    this.switcherScene = {
+                        query: sceneInput.value,
+                        filters: {...(this.docSearchState.filters.get(sceneScroll) || {})},
+                        scrollTop: sceneScroll.scrollTop,
+                    };
+                }
                 release.fn();
             },
         });
@@ -3991,6 +4006,22 @@ const updatedMap: {[rootId: string]: string} = {};
             dialog.element.querySelector<HTMLElement>(".sw__quick-actions")?.classList.toggle("fn__none", currentSettings.quickActionsRightRail);
             dialog.element.querySelector<HTMLElement>(".sw__quick-rail")?.classList.toggle("fn__none", !currentSettings.quickActionsRightRail);
         };
+        // T-7163：跨面板往返——恢复会话快照的 query/筛选/滚动（新入口已在 showSwitcher 重置）。
+        const switcherScene = context ? this.switcherScene : null;
+        if (switcherScene && searchInput) {
+            if (Object.keys(switcherScene.filters).length > 0) {
+                this.docSearchState.filters.set(scrollElement, {...switcherScene.filters});
+            }
+            searchInput.value = switcherScene.query;
+        }
+        const restoreSceneScroll = () => {
+            if (!switcherScene || !switcherScene.scrollTop) return;
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    if (dialog.element.isConnected) scrollElement.scrollTop = switcherScene.scrollTop;
+                });
+            });
+        };
         const refreshSurface = () => {
             refreshList();
             refreshQuickActions();
@@ -4045,6 +4076,7 @@ const updatedMap: {[rootId: string]: string} = {};
         // 右侧页签缩略图网格：每次打开都重新克隆渲染，展示各页签的最新状态
         this.bindSwitcherListArea(dialog, scrollElement, tabs, activeTab, listOpts, settings, searchInput, sortSelect, closeOverlay, updatedMap);
         refreshQuickActions();
+        restoreSceneScroll();
 
         // 普通打开仍把焦点交给滚动区，保持键盘卡片导航语义；动作面板
         // 的“搜索”入口显式要求搜索框获得焦点，避免只打开切换器却让
@@ -4085,9 +4117,12 @@ const updatedMap: {[rootId: string]: string} = {};
         closeOverlay: IOverlayClose,
         updatedMap: {[rootId: string]: string},
     ) {
-        this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
-        // T-6807/T-6814：首次打开（空查询且无筛选）即呈现零词条工作台（含关联内容行）
-        if (searchInput && searchInput.value.trim() === "" && !hasDocSearchFilter.call(this, scrollElement)) {
+        // T-7163：初次 paint 与 refreshList 同分支——往返恢复的 query/筛选直接走搜索渲染。
+        if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
+            this.applySearch(scrollElement, searchInput, closeOverlay);
+        } else {
+            this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
+            // T-6807/T-6814：首次打开（空查询且无筛选）即呈现零词条工作台（含关联内容行）
             this.renderWorkbench(scrollElement, "", closeOverlay);
         }
         this.bindKeydown(scrollElement, closeOverlay);
