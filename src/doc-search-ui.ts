@@ -6,7 +6,7 @@ import {Dialog, Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
 import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId, SAVED_SEARCH_NAME_MAX, SAVED_SEARCH_QUERY_MAX} from "./search-model";
+import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId, SAVED_SEARCH_NAME_MAX, SAVED_SEARCH_QUERY_MAX, buildSavedSearchReplayFilters} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {applyPreviewFind, clampScrollTop, clearPreviewFind, HIT_CLASS, nextHitIndex} from "./doc-preview-find";
@@ -453,9 +453,9 @@ export function applySavedSearchFilters(this: DocSearchUiHost, scrollElement: HT
     ) {
         const query = typeof saved?.query === "string" ? saved.query : "";
         if (!query) return;
-        const filters: IDocSearchFilters = {...(this.docSearchState.filters.get(scrollElement) || {})};
-        if (saved.notebook) filters.notebook = saved.notebook;
-        else delete filters.notebook;
+        // T-7162：保存项只承诺查询词与笔记本——回放即完整回放，未保存字段（路径/类型/
+        // 子类型/方法/排序）不继承当前现场，同一保存项任何现场回放得到同一条件。
+        const filters: IDocSearchFilters = buildSavedSearchReplayFilters(saved);
         this.docSearchState.filters.set(scrollElement, Object.freeze(filters));
         this.docSearchState.filterButtonSync.get(scrollElement)?.();
         searchInput.value = query;
