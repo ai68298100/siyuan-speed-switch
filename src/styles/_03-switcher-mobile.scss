@@ -47,11 +47,16 @@
     --sw-radius-panel: 18px;
     --sw-control-bg: var(--b3-theme-surface-lighter, var(--b3-theme-background));
     --sw-page-bg: var(--b3-theme-background);
-    --sw-page-bg: color-mix(in srgb, var(--b3-theme-background) 88%, #dfe5f2 12%);
     --sw-surface-muted: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
-    --sw-surface-muted: color-mix(in srgb, var(--b3-theme-surface) 86%, #e4e8f2 14%);
     --sw-accent-soft: var(--b3-theme-primary-lightest, var(--b3-theme-surface-lighter));
-    --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 12%, transparent);
+    // T-7198：color-mix 增强必须包 @supports。自定义属性不做解析期校验，裸写
+    // 后值会静默覆盖上面的 var() 回退——不支持 color-mix 的 WebView 在使用点
+    // 整体失效（背景/表面丢失），而不是落到回退定义。
+    @supports (background: color-mix(in srgb, red, blue)) {
+        --sw-page-bg: color-mix(in srgb, var(--b3-theme-background) 88%, #dfe5f2 12%);
+        --sw-surface-muted: color-mix(in srgb, var(--b3-theme-surface) 86%, #e4e8f2 14%);
+        --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 12%, transparent);
+    }
     // 按下态：比 hover 的 accent-soft 更实一档，作为可点击列表项/标签的即时反馈。
     // 独立成令牌是为了让 prefers-contrast: more 能一并覆盖（见文件末尾），
     // 否则高对比度下按下反而比悬停更浅。

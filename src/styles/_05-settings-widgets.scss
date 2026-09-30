@@ -1,10 +1,14 @@
 @use "00-tokens" as *;
 .sw-settings {
     --sw-page-bg: var(--b3-theme-background);
-    --sw-page-bg: color-mix(in srgb, var(--b3-theme-background) 88%, #dfe5f2 12%);
     --sw-accent-soft: var(--b3-theme-primary-lightest, var(--b3-theme-surface-lighter));
-    --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 12%, transparent);
     --sw-settings-hover-bg: var(--sw-accent-soft);
+    // T-7198：同 _03 根块——color-mix 覆盖必须包 @supports，否则回退定义被
+    // 静默覆盖、老 WebView 使用点整体失效。
+    @supports (background: color-mix(in srgb, red, blue)) {
+        --sw-page-bg: color-mix(in srgb, var(--b3-theme-background) 88%, #dfe5f2 12%);
+        --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 12%, transparent);
+    }
     background: var(--sw-page-bg, var(--b3-theme-background));
 
     .sw-settings__tabs {
