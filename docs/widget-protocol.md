@@ -272,6 +272,11 @@ source: {
     生态 API v4（`window.siyuanCheckin`）后注册，`source.pluginId` 仍标注为
     `siyuan-checkin`，因此商店把它们归到“小驴打卡”来源组（见 ADR 0057）。
     若打卡插件将来自行注册相同 moduleId，原生实现会自动接管。
+- **Calendar (siyuan-plugin-calendar)**：首个按本协议接入的外部社区插件——
+  `calendar-recent-periodic`（近期周期笔记），由 Calendar 自身在 `onload()` 调用
+  `registerHomeModule()` 注册（参见其仓库 LvSpeed 分支 `src/integrations/speed-switch.ts`，
+  即上文"有界重试"范式的真实实现）；支持尺寸 `small/medium/wide/large/full`，
+  条目点击直达对应周期笔记文档。
 - 欢迎提交 PR 把你的插件加进这个列表。
 
 ## 稳定性说明

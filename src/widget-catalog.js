@@ -18,6 +18,18 @@ const WIDGET_CATALOG = Object.freeze([
         sizes: ["xs", "small", "medium"],
         description: "来自小驴打卡的今日打卡与连续记录摘要",
     }),
+    // T-7072：首个真实第三方接入（gradypark86/siyuan-plugin-calendar#17，
+    // 维护者已在 LvSpeed 分支完成适配）——登记后未安装 Calendar 的用户也能
+    // 在商店"需安装插件后可用"分区看到该组件。字段与对方实际注册值一致。
+    Object.freeze({
+        moduleId: "calendar-recent-periodic",
+        providerPlugin: "siyuan-plugin-calendar",
+        providerName: "Calendar",
+        title: "近期周期笔记",
+        icon: "iconCalendar",
+        sizes: ["small", "medium", "wide", "large", "full"],
+        description: "来自 Calendar 的周记/月记/年记，点击直达对应文档",
+    }),
 ]);
 
 const WIDGET_CATALOG_STATES = Object.freeze(["ready", "unavailable", "missing"]);

@@ -28,13 +28,18 @@ test("every built-in widget has exactly one runtime adapter", () => {
     }
 });
 
-test("third-party catalog entries are provider-backed and natively bridged", () => {
-    assert.deepEqual(catalog.WIDGET_CATALOG.map((entry) => entry.moduleId), ["checkin-summary"]);
+test("third-party catalog entries are provider-backed; bridged and provider-only stay disjoint (T-7072)", () => {
+    assert.deepEqual(catalog.WIDGET_CATALOG.map((entry) => entry.moduleId), ["checkin-summary", "calendar-recent-periodic"]);
     for (const entry of catalog.WIDGET_CATALOG) {
         assert.match(entry.providerPlugin, /^[A-Za-z0-9._-]+$/);
         assert.ok(entry.providerName && entry.description);
-        assert.equal(registeredIds.includes(entry.moduleId), true);
     }
+    // 桥接条目：宿主原生 adapter 读取提供方 API，必须在注册表中
+    const bridged = catalog.WIDGET_CATALOG.filter((entry) => registeredIds.includes(entry.moduleId));
+    assert.deepEqual(bridged.map((entry) => entry.moduleId), ["checkin-summary"]);
+    // provider 自注册条目：不得有宿主桥接 adapter（否则与提供方注册形成双注册竞争）
+    const providerOnly = catalog.WIDGET_CATALOG.filter((entry) => !registeredIds.includes(entry.moduleId));
+    assert.deepEqual(providerOnly.map((entry) => entry.moduleId), ["calendar-recent-periodic"]);
 });
 
 test("SQL-backed widget adapters use the whitelisted stmt payload", () => {
