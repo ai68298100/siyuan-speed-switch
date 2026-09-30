@@ -627,10 +627,10 @@
     border-radius: var(--sw-radius-card, 20px);
     border: 0.5px solid color-mix(in srgb, var(--b3-theme-background) 60%, var(--b3-border-color));
     background: color-mix(in srgb, var(--b3-theme-surface) 88%, transparent);
-    backdrop-filter: blur(20px);
+    backdrop-filter: var(--sw-blur-lg);
     // T-7068：触屏保纵向滚动原生；长按按压态收紧手势尽量让拖位移交（引擎支持度有差异）
     touch-action: pan-y;
-    -webkit-backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: var(--sw-blur-lg);
     box-shadow:
         0 1px 3px color-mix(in srgb, #000 6%, transparent),
         0 4px 16px color-mix(in srgb, #000 5%, transparent);

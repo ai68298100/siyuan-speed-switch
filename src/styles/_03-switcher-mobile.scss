@@ -2220,7 +2220,7 @@
         justify-content: center;
         background: var(--b3-theme-surface);
         background: color-mix(in srgb, var(--b3-theme-background) 80%, transparent);
-        backdrop-filter: blur(4px);
+        backdrop-filter: var(--sw-blur-sm);
         border: none;
         border-radius: 50%;
         color: var(--b3-theme-on-surface);

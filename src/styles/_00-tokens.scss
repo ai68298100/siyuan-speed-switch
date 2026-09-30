@@ -76,6 +76,12 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     --sw-control-h-md: 26px;  // 次级输入/折叠钮/diff 头
     --sw-control-h: 34px;     // 主输入/标准按钮
 
+    // T-7209：面板玻璃模糊三档（模态遮罩另有 --sw-overlay-blur；皮肤 saturate
+    // 组合为皮肤专属材质不入档）。
+    --sw-blur-sm: blur(4px);   // 小浮件（回顶钮）
+    --sw-blur-md: blur(8px);   // 粘性条/芯片
+    --sw-blur-lg: blur(20px);  // 大玻璃面板（拖拽浮卡）
+
     // T-7207：间距密度刻度（消费方：侧栏 compact 与密度系统）。值与偶数节奏一致；
     // 新间距优先消费档位，字面只允许作为回退参数出现。
     --sw-space-xs: 4px;
