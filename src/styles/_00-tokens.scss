@@ -52,4 +52,12 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     --sw-overlay-blur: blur(2px);
     --sw-sheet-radius: 16px;
     --sw-sheet-shadow: 0 -12px 32px rgb(0 0 0 / 18%);
+
+    // T-7198：圆角刻度补档（与 _03 根块的 --sw-radius-control/card/panel 同一刻度族）。
+    // 碎片档 5/7/9/11px 已退役就近归档（门禁见 tests/radius-scale-gate.test.cjs）；
+    // 2/3/4px 微件档保留（checkbox/kbd 内芯等视觉敏感场景）。
+    --sw-radius-xs: 4px;   // 微件
+    --sw-radius-sm: 6px;   // 小件（chip/行内块）
+    --sw-radius-md: 8px;   // 紧凑控件
+    --sw-radius-lg: 12px;  // 中件/分区
 }

@@ -373,7 +373,7 @@
     height: 18px;
     padding: 0 5px;
     border: 1px solid var(--sw-platform-line);
-    border-radius: 5px;
+    border-radius: var(--sw-radius-sm, 6px);
     color: var(--sw-platform-text-muted);
     background: var(--sw-platform-surface);
     font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
@@ -400,7 +400,7 @@
     max-width: 100%;
     padding: 3px;
     border: 1px solid var(--sw-platform-line);
-    border-radius: 9px;
+    border-radius: var(--sw-radius-control, 10px);
     background: var(--sw-platform-surface-muted);
 }
 

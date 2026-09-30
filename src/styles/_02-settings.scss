@@ -120,7 +120,7 @@
             flex: none;
             min-width: 18px;
             padding: 0 5px;
-            border-radius: 9px;
+            border-radius: var(--sw-radius-control, 10px);
             background: var(--b3-theme-primary-lightest);
             color: var(--b3-theme-primary);
             font-size: var(--sw-font-xs, 11px);

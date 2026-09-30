@@ -842,7 +842,7 @@
 .sw__home-loading-skeleton-line {
     display: block;
     height: 10px;
-    border-radius: 5px;
+    border-radius: var(--sw-radius-sm, 6px);
     background: color-mix(in srgb, var(--b3-theme-on-surface-light) 16%, transparent);
     animation: sw-home-skeleton-pulse 1$sw-dur-slow $sw-ease-sym infinite;
 

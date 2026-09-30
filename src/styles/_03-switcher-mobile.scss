@@ -1778,7 +1778,7 @@
         min-width: 0;
         padding: 7px 8px;
         border: 0;
-        border-radius: 5px;
+        border-radius: var(--sw-radius-sm, 6px);
         background: transparent;
         color: var(--b3-theme-on-background);
         text-align: left;
@@ -2618,7 +2618,7 @@
     height: 16px;
     padding: 0 4px;
     border: 1px solid var(--b3-border-color);
-    border-radius: 5px;
+    border-radius: var(--sw-radius-sm, 6px);
     background: var(--b3-theme-surface);
     color: var(--b3-theme-on-surface);
     font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);

@@ -279,7 +279,7 @@
 // 组件配置面板：语义分组、短提示和移动端单列由 DOM class 驱动。
 .sw-home-config { height: 100%; padding: 12px 14px 0; box-sizing: border-box; overflow: auto; background: var(--sw-page-bg, var(--b3-theme-background)); }
 .sw-home-config__intro { display: flex; gap: 10px; padding: 10px; border: 1px solid var(--b3-border-color); border-radius: 10px; background: var(--b3-theme-surface); }
-.sw-home-config__icon { display: grid; flex: none; width: 32px; height: 32px; place-items: center; border-radius: 9px; color: var(--b3-theme-primary); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); }
+.sw-home-config__icon { display: grid; flex: none; width: 32px; height: 32px; place-items: center; border-radius: var(--sw-radius-control, 10px); color: var(--b3-theme-primary); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); }
 .sw-home-config__icon svg { width: 18px; height: 18px; }
 .sw-home-config__intro-copy, .sw-home-config__field { min-width: 0; }
 .sw-home-config__title { margin: 0; font-size: 14px; }
@@ -289,11 +289,11 @@
 .sw-home-config__meta { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px 0 2px; }
 .sw-home-config__chip { padding: 2px 6px; border-radius: 999px; background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: 10px; }
 .sw-home-config__fields { display: grid; gap: 8px; padding: 10px 0 14px; }
-.sw-home-config__section { display: grid; gap: 8px; padding: 9px 10px; border: 1px solid var(--b3-border-color); border-radius: 9px; background: var(--b3-theme-surface); }
+.sw-home-config__section { display: grid; gap: 8px; padding: 9px 10px; border: 1px solid var(--b3-border-color); border-radius: var(--sw-radius-control, 10px); background: var(--b3-theme-surface); }
 .sw-home-config__section-title { margin: 0; color: var(--b3-theme-primary); font-size: var(--sw-font-xs, 11px); }
 .sw-home-config__field { display: flex; flex-direction: column; gap: 3px; }
 .sw-home-config__database-results { display: grid; gap: 4px; max-height: 180px; overflow: auto; }
-.sw-home-config__database-selection { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; padding: 4px 8px; border-radius: 7px; background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); overflow-wrap: anywhere; }
+.sw-home-config__database-selection { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; padding: 4px 8px; border-radius: var(--sw-radius-md, 8px); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); overflow-wrap: anywhere; }
 .sw-home-config__database-selection > span { min-width: 0; }
 .sw-home-config__database-clear { flex: none; }
 .sw-home-config__database-option { justify-content: flex-start; text-align: left; min-height: 34px; }

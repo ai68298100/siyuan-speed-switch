@@ -29,7 +29,7 @@
         max-width: 100%;
         padding: 3px;
         border: 1px solid var(--b3-border-color);
-        border-radius: 9px;
+        border-radius: var(--sw-radius-control, 10px);
         background: var(--b3-theme-surface-lighter, transparent);
 
         .b3-button {
@@ -37,7 +37,7 @@
             min-width: 0;
             padding: 4px 14px;
             border: 0;
-            border-radius: 7px;
+            border-radius: var(--sw-radius-md, 8px);
             background: transparent;
             box-shadow: none;
             color: var(--b3-theme-on-surface);
@@ -160,7 +160,7 @@
     .p-weather-temp { font-size: 20px; font-weight: 720; color: color-mix(in srgb, var(--b3-theme-primary) 72%, white); }
     .p-weather-icon { align-self: flex-end; margin-top: -25px; font-size: 22px; }
     .p-media-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; height: 34px; }
-    .p-media-grid i { width: 100%; height: 100%; border-radius: 5px; background: linear-gradient(160deg, color-mix(in srgb, var(--b3-theme-primary) 42%, transparent), color-mix(in srgb, #df6f8a 34%, transparent)); }
+    .p-media-grid i { width: 100%; height: 100%; border-radius: var(--sw-radius-sm, 6px); background: linear-gradient(160deg, color-mix(in srgb, var(--b3-theme-primary) 42%, transparent), color-mix(in srgb, #df6f8a 34%, transparent)); }
     .p-feed-list { display: grid; gap: 5px; }
     .p-feed-list i { display: grid; grid-template-columns: 13px 1fr; align-items: center; gap: 5px; background: transparent; }
     .p-feed-list b { display: grid; place-items: center; width: 13px; height: 13px; border-radius: 4px; background: color-mix(in srgb, #ef5a50 74%, transparent); color: #fff; font-size: 7px; }
@@ -491,7 +491,7 @@
         place-items: center;
         width: 22px;
         height: 22px;
-        border-radius: 7px;
+        border-radius: var(--sw-radius-md, 8px);
         background: color-mix(in srgb, var(--sw-home-accent) 15%, transparent);
         color: var(--sw-home-accent);
         font-size: 10px;

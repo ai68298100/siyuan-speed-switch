@@ -109,7 +109,7 @@
     &__capabilities { display: grid; gap: 6px; margin: 10px 0; padding: 10px 12px; border: 1px dashed var(--studio-line); border-radius: 10px; }
     &__capability { position: relative; padding-left: 15px; color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); line-height: 1.55; overflow-wrap: anywhere; }
     &__capability::before { content: ""; position: absolute; left: 2px; top: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--studio-accent); }
-    &__selection { display: grid; gap: 6px; padding: 10px 11px; border: 1px solid color-mix(in srgb, var(--studio-accent) 24%, var(--studio-line)); border-radius: 11px; background: var(--studio-accent-soft); }
+    &__selection { display: grid; gap: 6px; padding: 10px 11px; border: 1px solid color-mix(in srgb, var(--studio-accent) 24%, var(--studio-line)); border-radius: var(--sw-radius-lg, 12px); background: var(--studio-accent-soft); }
     &__selection-top { display: flex; align-items: center; gap: 7px; min-width: 0; }
     &__selection-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     &__selection-meta { color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); overflow-wrap: anywhere; }
@@ -118,7 +118,7 @@
     &__editor-section { display: flex; flex-direction: column; }
     &__editor, &__ai-result { font-family: var(--b3-font-family-code, monospace); tab-size: 2; white-space: pre; resize: none; line-height: 1.55; font-size: 12px; }
     &__editor { width: 100%; flex: 1; min-height: 140px; padding: 13px; border: 1px solid var(--studio-line); border-radius: 10px; background: color-mix(in srgb, var(--studio-surface) 72%, var(--b3-theme-background)); color: inherit; }
-    &__input, &__select, &__prompt, &__ai-result { max-width: 100%; border: 1px solid var(--studio-line); border-radius: 9px; background: var(--b3-theme-background); color: inherit; padding: 9px 10px; }
+    &__input, &__select, &__prompt, &__ai-result { max-width: 100%; border: 1px solid var(--studio-line); border-radius: var(--sw-radius-control, 10px); background: var(--b3-theme-background); color: inherit; padding: 9px 10px; }
     &__input { width: 100%; min-width: 0; }
     &__select { min-height: 36px; }
     &__state { color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); line-height: 1.55; margin-top: 8px; }
@@ -178,12 +178,12 @@
     &__recent-item:hover, &__recent-item[aria-pressed="true"] { border-color: var(--studio-accent); color: var(--studio-accent); }
     &__filters > input { flex: 1; min-width: 150px; }
     &__catalog { overflow: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; min-height: 0; }
-    &__catalog-item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; text-align: left; padding: 13px; border: 1px solid var(--studio-line); border-radius: 11px; background: var(--b3-theme-background); color: inherit; cursor: pointer; font: inherit; transition: border-color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease; }
+    &__catalog-item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; text-align: left; padding: 13px; border: 1px solid var(--studio-line); border-radius: var(--sw-radius-lg, 12px); background: var(--b3-theme-background); color: inherit; cursor: pointer; font: inherit; transition: border-color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease; }
     &__catalog-item:hover, &__catalog-item.is-current, &__catalog-item[aria-pressed="true"] { border-color: var(--studio-accent); background: var(--studio-accent-soft); }
     &__catalog-item > strong { align-self: center; overflow-wrap: anywhere; }
     &__catalog-item > .sw-studio__hint { grid-column: 1 / -1; }
     &__catalog-item > .sw-studio__tag { grid-column: 1 / -1; justify-self: start; }
-    &__catalog-kind { padding: 6px 7px; border-radius: 7px; background: var(--studio-surface); font-size: var(--sw-font-xs, 11px); color: var(--studio-accent); align-self: start; }
+    &__catalog-kind { padding: 6px 7px; border-radius: var(--sw-radius-md, 8px); background: var(--studio-surface); font-size: var(--sw-font-xs, 11px); color: var(--studio-accent); align-self: start; }
 }
 
 @keyframes sw-studio-spin { to { transform: rotate(360deg); } }

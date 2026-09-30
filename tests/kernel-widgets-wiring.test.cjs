@@ -1052,7 +1052,7 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
         'kbd chip must use the host code font');
     assert.ok(declaresIn(shell, '.sw-platform-context__kbd-hints', /margin-left:\s*auto/),
         'kbd hints slot must right-align in the context bar');
-    assert.ok(declaresIn(shell, '.sw-platform-seg', /border-radius:\s*9px/),
+    assert.ok(declaresIn(shell, '.sw-platform-seg', /border-radius:\s*var\(--sw-radius-control, 10px\)/),
         'segmented control container must exist');
     assert.ok(declaresIn(shell, '.sw-platform-seg__item.is-active', /font-weight:\s*600/),
         'segmented active item must be styled');
@@ -1209,7 +1209,7 @@ test('quick capture segmented targets, pill save and honest kbd hints (T-6875 RZ
     const captureScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_08-home-store-cards.scss'));
     // 目标段选：sw__target--active 的类切换机制不变（T-6818 契约），但必须有激活样式
     // （修复真实缺陷：该类此前从无任何 CSS 规则，激活目标不可辨识）。
-    assert.ok(declaresIn(captureScss, '.sw-quick-capture__targets', /border-radius:\s*9px/),
+    assert.ok(declaresIn(captureScss, '.sw-quick-capture__targets', /border-radius:\s*var\(--sw-radius-control, 10px\)/),
         'targets container must render as a segmented control');
     assert.ok(declaresIn(captureScss, '.sw-quick-capture__targets .sw__target--active', /font-weight:\s*600/),
         'the active target must be visually distinct');

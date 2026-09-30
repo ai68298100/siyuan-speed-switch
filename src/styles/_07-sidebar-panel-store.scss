@@ -85,7 +85,7 @@
         height: 18px;
         padding: 0;
         border: 1.5px solid var(--b3-border-color);
-        border-radius: 5px;
+        border-radius: var(--sw-radius-sm, 6px);
         background: transparent;
         color: var(--b3-theme-background);
         cursor: pointer;

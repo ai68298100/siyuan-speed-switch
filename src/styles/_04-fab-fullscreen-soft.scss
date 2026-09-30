@@ -811,7 +811,7 @@
         .sw__icon-btn {
             width: 36px;
             height: 36px;
-            border-radius: 11px;
+            border-radius: var(--sw-radius-lg, 12px);
             transition: transform $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease;
 
             &:hover,
@@ -935,7 +935,7 @@
             .sw__doc-icon {
                 width: 36px;
                 height: 36px;
-                border-radius: 11px;
+                border-radius: var(--sw-radius-lg, 12px);
                 background: var(--sw-accent-soft);
                 color: var(--b3-theme-primary, var(--sw-accent-fallback));
             }
@@ -991,7 +991,7 @@
         min-height: 36px;
         height: 36px;
         padding-inline: 10px;
-        border-radius: 11px;
+        border-radius: var(--sw-radius-lg, 12px);
 
         &:hover,
         &:focus-visible {
