@@ -710,7 +710,7 @@
 
 .sw__home-module-icon {
     flex: none;
-    width: 16px;
+    width: var(--sw-icon-sm, 16px);
     height: 16px;
     color: var(--b3-theme-primary);
     fill: currentColor;

@@ -563,7 +563,7 @@
     padding: 0;
 
     svg {
-        width: 16px;
+        width: var(--sw-icon-sm, 16px);
         height: 16px;
     }
 }

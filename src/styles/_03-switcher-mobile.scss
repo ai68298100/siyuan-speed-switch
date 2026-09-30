@@ -455,7 +455,7 @@
             transition: color $sw-dur-base, background-color $sw-dur-base;
 
             svg {
-                width: 16px;
+                width: var(--sw-icon-sm, 16px);
                 height: 16px;
             }
 
@@ -949,7 +949,7 @@
                 flex-shrink: 0;
                 color: var(--b3-theme-on-surface-light);
 
-                svg { width: 16px; height: 16px; fill: currentColor; }
+                svg { width: var(--sw-icon-sm, 16px); height: 16px; fill: currentColor; }
             }
 
             .sw__command-label {
@@ -1083,7 +1083,7 @@
 
                 svg {
                     display: block;
-                    width: 16px;
+                    width: var(--sw-icon-sm, 16px);
                     height: 16px;
                 }
             }
@@ -1860,7 +1860,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 16px;
+        width: var(--sw-icon-sm, 16px);
         height: 16px;
         font-size: 15px;
 
@@ -1870,7 +1870,7 @@
         }
 
         .sw__quick-action-icon-image {
-            width: 16px;
+            width: var(--sw-icon-sm, 16px);
             height: 16px;
             object-fit: contain;
             border-radius: 3px;

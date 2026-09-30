@@ -187,7 +187,7 @@
         background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 14%, transparent);
         color: var(--sw-home-accent, var(--b3-theme-primary));
 
-        svg { width: 16px; height: 16px; }
+        svg { width: var(--sw-icon-sm, 16px); height: 16px; }
     }
 
     .sw__home-module-title { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
