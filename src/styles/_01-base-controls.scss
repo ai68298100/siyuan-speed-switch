@@ -472,12 +472,12 @@
     font-size: 17px;
 
     svg {
-        width: 18px;
+        width: var(--sw-icon-md, 18px);
         height: 18px;
     }
 
     .sw-setting__picker-icon-image {
-        width: 18px;
+        width: var(--sw-icon-md, 18px);
         height: 18px;
         object-fit: contain;
         border-radius: 3px;

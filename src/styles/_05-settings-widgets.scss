@@ -705,7 +705,7 @@
     .sw__home-module-icon {
         flex: none;
         display: flex;
-        width: 14px;
+        width: var(--sw-icon-xs, 14px);
         height: 14px;
         color: var(--b3-theme-primary);
 

@@ -128,7 +128,7 @@
             .sw__search-icon {
                 position: absolute;
                 left: 8px;
-                width: 14px;
+                width: var(--sw-icon-xs, 14px);
                 height: 14px;
                 color: var(--b3-theme-on-surface-light);
                 pointer-events: none;
@@ -762,7 +762,7 @@
 
         .sw__group-icon {
             flex: none;
-            width: 14px;
+            width: var(--sw-icon-xs, 14px);
             height: 14px;
             color: var(--b3-theme-on-surface-light);
         }
@@ -1997,7 +1997,7 @@
             .sw__quick-action-icon,
             .sw__quick-action-icon svg,
             .sw__quick-action-icon .sw__quick-action-icon-image {
-                width: 18px;
+                width: var(--sw-icon-md, 18px);
                 height: 18px;
             }
 
@@ -2170,7 +2170,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 14px;
+            min-width: var(--sw-icon-xs, 14px);
             min-height: 14px;
             color: var(--b3-theme-on-surface-light);
 

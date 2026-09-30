@@ -275,7 +275,7 @@
 // 来源组头：图标 + 名称 + 已添加计数 + 全选本组。
 .sw-home-store__group-icon {
     flex: 0 0 auto;
-    width: 14px;
+    width: var(--sw-icon-xs, 14px);
     height: 14px;
     margin-right: 6px;
     fill: currentColor;
