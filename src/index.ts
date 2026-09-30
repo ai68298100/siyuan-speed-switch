@@ -5964,7 +5964,7 @@ const updatedMap: {[rootId: string]: string} = {};
         }
     }
 
-    private async fetchKernelJson(url: string, body: Record<string, unknown>, timeoutMs = 5000): Promise<any | null> {
+    private async fetchKernelJson(url: string, body: Record<string, unknown>, timeoutMs = 5000, options?: {signal?: AbortSignal}): Promise<any | null> {
         // 安全守卫（纵深防御）：仅允许同源、硬编码的思源内核相对路径。
         // - 必须以 "/" 开头（相对路径 → 同源），拒绝任何绝对 URL 与外部 host；
         // - 必须命中端点白名单，杜绝把请求指向任意地址（SSRF）。
@@ -5973,6 +5973,14 @@ const updatedMap: {[rootId: string]: string} = {};
             return null;
         }
         const controller = typeof AbortController === "function" ? new AbortController() : null;
+        // T-7165/T-7191：外部取消 signal 联动超时 abort（无 AbortController 环境自动降级）。
+        const externalSignal = options?.signal;
+        const externalAbort = externalSignal && typeof externalSignal.addEventListener === "function"
+            ? () => controller?.abort() : null;
+        if (externalSignal && externalAbort) {
+            if (externalSignal.aborted) { controller?.abort(); }
+            else externalSignal.addEventListener("abort", externalAbort, {once: true});
+        }
         const timer = window.setTimeout(() => controller?.abort(), timeoutMs);
         try {
             // 每个端点的 fetch 都使用字面量 URL（安全扫描要求：不存在变量 URL 请求）
@@ -6067,6 +6075,7 @@ const updatedMap: {[rootId: string]: string} = {};
             return null;
         } finally {
             window.clearTimeout(timer);
+            if (externalSignal && externalAbort) externalSignal.removeEventListener("abort", externalAbort);
         }
     }
 

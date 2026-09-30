@@ -13,9 +13,9 @@ const ast = ts.createSourceFile('ui.ts', source, ts.ScriptTarget.Latest, true);
 const fn = ast.statements.find((n) => ts.isFunctionDeclaration(n) && n.name?.text === 'loadDocSearchPathChildren');
 assert.ok(fn, 'loadDocSearchPathChildren 必须存在于生产模块');
 const compiled = ts.transpileModule(fn.getText(ast).replace(/^export\s+/, ''), {compilerOptions: {target: ts.ScriptTarget.ES2020}}).outputText;
-const load = new Function('buildPathFilterListRequest', 'normalizePathFilterProbeOutcome', 'MAX_PATH_ITEMS',
+const load = new Function('buildPathFilterListRequest', 'normalizePathFilterProbeOutcome', 'MAX_PATH_ITEMS', 'pathFilterControllers', 'AbortController',
     compiled + '\nreturn loadDocSearchPathChildren;')(
-    model.buildPathFilterListRequest, model.normalizePathFilterProbeOutcome, model.MAX_PATH_ITEMS);
+    model.buildPathFilterListRequest, model.normalizePathFilterProbeOutcome, model.MAX_PATH_ITEMS, new WeakMap(), AbortController);
 
 const NOTEBOOK = '20260901';
 const PATH = '/';
