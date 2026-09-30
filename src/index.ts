@@ -8711,14 +8711,17 @@ private rootIdOf(tab: Tab): string | null {
     // 从持久化数据初始化 favCollapsed 集合
     private initFavCollapsed() {
         const saved = this.data[FAV_COLLAPSED_KEY];
-        if (!Array.isArray(saved)) {
-            return;
+        // T-7184：以持久化快照重建集合（历史只追加——远端展开/删除分组的折叠项
+        // 残留本地内存，跨设备折叠状态无法收敛）。快照即真相：损坏/缺失 = 全部展开。
+        const next = new Set<string>();
+        if (Array.isArray(saved)) {
+            saved.forEach((name) => {
+                if (typeof name === "string" && name) {
+                    next.add(name);
+                }
+            });
         }
-        saved.forEach((name) => {
-            if (typeof name === "string" && name) {
-                this.favCollapsed.add(name);
-            }
-        });
+        this.favCollapsed = next;
     }
 
     // 鎶樺彔/灞曞紑鐘舵€佸彉鍖栧悗鍘绘姈鍐欏叆鎸佷箙鍖?
