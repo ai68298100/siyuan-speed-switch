@@ -82,6 +82,11 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     --sw-blur-md: blur(8px);   // 粘性条/芯片
     --sw-blur-lg: blur(20px);  // 大玻璃面板（拖拽浮卡）
 
+    // T-7204：图标尺寸三档（24/20/16px——跨表面 icon box 统一档位）。
+    --sw-icon-sm: 16px;
+    --sw-icon-md: 20px;
+    --sw-icon-lg: 24px;
+
     // T-7207：间距密度刻度（消费方：侧栏 compact 与密度系统）。值与偶数节奏一致；
     // 新间距优先消费档位，字面只允许作为回退参数出现。
     --sw-space-xs: 4px;
