@@ -1854,16 +1854,20 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         this.dataChangeReloadInFlight = true;
+        // T-7183：await 期间可能发生卸载——代际快照守卫，卸载后不再触碰 FAB/侧栏
+        const generation = this.lifecycleGeneration;
+        const stale = () => this.isUnloading || this.lifecycleGeneration !== generation;
         try {
             do {
                 this.dataChangeReloadQueued = false;
                 await this.loadPersistentKeys();
+                if (stale()) return;
                 this.settingsCache = null;
                 this.updateFloatingBallVisibility();
                 this.captureStorageMigrationSnapshot();
                 this.initFavCollapsed();
                 this.scheduleSidebarRefresh();
-            } while (this.dataChangeReloadQueued);
+            } while (this.dataChangeReloadQueued && !stale());
         } catch (error) {
             logger.warn("data change refresh fail", {reason: reason || "unknown"});
             logger.debug(error);
