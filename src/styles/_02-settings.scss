@@ -590,7 +590,7 @@
 
     // 搜索定位后的短暂强调（1.8s 后由 JS 移除）
     .sw-settings__item--locate {
-        border-radius: 8px;
+        border-radius: var(--sw-radius-md, 8px);
         outline: 2px solid var(--b3-theme-primary);
         outline-offset: 2px;
         background: color-mix(in srgb, var(--b3-theme-primary) 8%, transparent);
@@ -604,7 +604,7 @@
         // T-6783 卡片语言统一：每个标签页一张卡片（对齐悬浮球标签的层级语言）
         padding: 12px;
         border: 1px solid var(--b3-border-color);
-        border-radius: 12px;
+        border-radius: var(--sw-radius-lg, 12px);
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
         box-shadow: var(--sw-shadow-xs);
 
