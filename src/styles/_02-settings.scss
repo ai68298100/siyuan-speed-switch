@@ -239,9 +239,12 @@
     // T-7199：设置弹窗是独立 Dialog（.sw-settings-dialog），不在 .speed-switch
     // 根内，token 取不到全局定义——在此局部镜像本页消费的刻度档（值与
     // _00-tokens 冻结一致；改全局档位时同步此处）。
+    --sw-font-xs: 11px;
+    --sw-font-sm: 12px;
     --sw-font-md: 13px;
     --sw-radius-md: 8px;
     --sw-radius-control: 10px;
+    --sw-radius-lg: 12px;
     display: flex;
     flex-direction: row;
     height: 100%;
@@ -318,7 +321,8 @@
         margin: -14px -18px 12px;
         padding: 10px 18px;
         background: var(--b3-theme-background);
-        border-bottom: 1px solid var(--b3-theme-surface-lighter);
+        // T-7199：分隔线与标签栏同语言（border-color 弱化）。
+        border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 60%, transparent);
     }
 
     .sw-settings__search-input {
@@ -327,7 +331,7 @@
         // T-7002：右侧留出清空按钮位
         padding: 0 30px 0 10px;
         border: 1px solid var(--b3-border-color);
-        border-radius: 8px;
+        border-radius: var(--sw-radius-md, 8px);
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
         color: var(--b3-theme-on-background);
         font-size: var(--sw-font-md, 13px);
@@ -548,9 +552,9 @@
         font-size: var(--sw-font-sm, 12px);
 
         &[data-state="pending"] { color: var(--b3-theme-on-surface-light); }
-        &[data-state="ok"] { color: var(--b3-theme-success, var(--b3-theme-primary)); }
+        &[data-state="ok"] { color: var(--sw-platform-success, var(--b3-theme-success, var(--b3-theme-primary))); }
         // 失败是警示不是成功：配色区分且文字在场（不只靠颜色）
-        &[data-state="failed"] { color: var(--b3-theme-warning, #a76618); font-weight: 600; }
+        &[data-state="failed"] { color: var(--sw-platform-warning, var(--b3-theme-warning, #a76618)); font-weight: 600; }
     }
 
     .sw-settings__save-retry,
@@ -633,7 +637,7 @@
 
     .sw-settings__group-card {
         border: 1px solid var(--b3-border-color);
-        border-radius: 10px;
+        border-radius: var(--sw-radius-control, 10px);
 
         > .sw-settings__item {
             margin-inline: 0;
@@ -650,9 +654,9 @@
         gap: 16px;
         padding: 12px 8px;
         margin-inline: -8px;
-        border-radius: 8px;
+        border-radius: var(--sw-radius-md, 8px);
         transition: background-color $sw-dur-fast $sw-ease;
-        border-bottom: 1px solid var(--b3-theme-surface-lighter);
+        border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 48%, transparent);
 
         &:last-child {
             border-bottom: none;

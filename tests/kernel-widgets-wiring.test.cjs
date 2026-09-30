@@ -1111,7 +1111,7 @@ test('settings group cards and segmented enums (T-6872 RZ-2)', () => {
         'group titles must render as small caps labels');
     assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-title', /color:\s*var\(--b3-theme-on-surface-light\)/),
         'group titles must use the muted text color');
-    assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-card', /border-radius:\s*10px/),
+    assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-card', /border-radius:\s*var\(--sw-radius-control, 10px\)/),
         'group cards must have their own rounded boundary');
     assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-card > .sw-settings__item', /margin-inline:\s*0/),
         'rows inside a group card must drop their negative gutters');

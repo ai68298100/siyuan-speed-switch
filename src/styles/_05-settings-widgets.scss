@@ -42,13 +42,13 @@
         margin-inline: -10px;
         padding: 14px 10px;
         border-bottom-color: color-mix(in srgb, var(--b3-border-color) 48%, transparent);
-        border-radius: 12px;
+        border-radius: var(--sw-radius-lg, 12px);
     }
 
     .sw-settings__item-action .b3-select,
     .sw-settings__num .b3-text-field,
     .sw-setting__document-set-form .b3-text-field {
-        border-radius: 10px;
+        border-radius: var(--sw-radius-control, 10px);
     }
 }
 
