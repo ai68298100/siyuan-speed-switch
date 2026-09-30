@@ -809,6 +809,16 @@
     -webkit-line-clamp: 2;
 }
 
+// T-7205：工作台状态行接入平台语义色（与 .sw-platform-status 五态同一刻度），
+// 不再只靠灰字表达 error/stale/loading。
+.sw__home-module-status--loading { color: var(--sw-platform-accent, var(--b3-theme-primary)); }
+
+.sw__home-module-status--stale { color: var(--sw-platform-warning, var(--b3-theme-warning)); }
+
+.sw__home-module-status--error {
+    color: var(--sw-platform-error, var(--b3-theme-error));
+}
+
 .sw__home-module-status--empty,
 .sw__home-module-status--error {
     min-height: 54px;

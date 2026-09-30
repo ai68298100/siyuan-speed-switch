@@ -718,9 +718,10 @@
 .sw-home-store__catalog-fail {
     margin: 6px 0 14px;
     padding: 12px 14px;
-    border: 1px solid color-mix(in srgb, var(--b3-theme-warning, #d58b32) 42%, var(--b3-border-color));
+    // T-7205：语义色接平台 warning 刻度（主题变量留作回退），与工作台/片段状态同源。
+    border: 1px solid color-mix(in srgb, var(--sw-platform-warning, var(--b3-theme-warning, #d58b32)) 42%, var(--b3-border-color));
     border-radius: 12px;
-    background: color-mix(in srgb, var(--b3-theme-warning, #d58b32) 7%, transparent);
+    background: color-mix(in srgb, var(--sw-platform-warning, var(--b3-theme-warning, #d58b32)) 7%, transparent);
 
     strong { display: block; margin-bottom: 4px; font-size: 13px; }
     p { margin: 0 0 8px; color: var(--b3-theme-on-surface); font-size: var(--sw-font-md, 13px); line-height: 1.55; }

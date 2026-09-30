@@ -1574,8 +1574,8 @@
         background: var(--b3-theme-surface);
         box-shadow: var(--sw-card-shadow);
 
-        &[data-status="loading"] .sw__home-module-status { color: var(--b3-theme-primary); }
-        &[data-status="error"] { border-color: color-mix(in srgb, var(--b3-theme-error) 45%, var(--b3-border-color)); }
+        &[data-status="loading"] .sw__home-module-status { color: var(--sw-platform-accent, var(--b3-theme-primary)); } // T-7205
+        &[data-status="error"] { border-color: color-mix(in srgb, var(--sw-platform-error, var(--b3-theme-error)) 45%, var(--b3-border-color)); }
     }
 
     .sw__home-module-header {
@@ -1657,7 +1657,7 @@
         font-size: 12px;
         text-align: center;
 
-        &--error { color: var(--b3-theme-error); }
+        &--error { color: var(--sw-platform-error, var(--b3-theme-error)); } // T-7205 平台语义色
     }
 
     .sw__home-panel {

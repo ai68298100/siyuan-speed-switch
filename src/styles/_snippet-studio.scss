@@ -73,11 +73,16 @@
     &__section-lead { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; flex-wrap: wrap; }
     &__section-title { margin: 0; font-size: 14px; line-height: 1.35; font-weight: 700; letter-spacing: -.01em; }
     &__editor-meta { color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); white-space: nowrap; }
-    &__state-badge { display: inline-flex; align-items: center; width: fit-content; max-width: 100%; padding: 4px 8px; border-radius: var(--studio-radius-pill); background: var(--studio-surface); color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    &__state-badge.is-ready { background: color-mix(in srgb, var(--studio-success) 13%, transparent); color: color-mix(in srgb, var(--studio-success) 78%, var(--b3-theme-on-background)); }
-    &__state-badge.is-loading { background: color-mix(in srgb, var(--studio-accent) 11%, transparent); color: var(--studio-accent); }
-    &__state-badge.is-error { background: color-mix(in srgb, var(--studio-error) 13%, transparent); color: var(--studio-error); }
-    &__state-badge.is-draft { background: color-mix(in srgb, var(--studio-warning) 13%, transparent); color: var(--studio-warning); }
+    // T-7205：状态徽标与平台原语（.sw-platform-status）同一语言——语义色接
+    // --sw-platform-*（--studio-* 留作回退），并补 6px currentColor 色点的
+    // 第二通道；gap 为色点预留（原无 gap，单行文本不受影响）。
+    &__state-badge { display: inline-flex; align-items: center; gap: 5px; width: fit-content; max-width: 100%; padding: 4px 8px; border-radius: var(--studio-radius-pill); background: var(--studio-surface); color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        &::before { content: ""; flex: 0 0 auto; width: 6px; height: 6px; border-radius: 999px; background: currentColor; opacity: .85; }
+    }
+    &__state-badge.is-ready { background: color-mix(in srgb, var(--sw-platform-success, var(--studio-success)) 13%, transparent); color: color-mix(in srgb, var(--sw-platform-success, var(--studio-success)) 78%, var(--b3-theme-on-background)); }
+    &__state-badge.is-loading { background: color-mix(in srgb, var(--sw-platform-accent, var(--studio-accent)) 11%, transparent); color: var(--sw-platform-accent, var(--studio-accent)); }
+    &__state-badge.is-error { background: color-mix(in srgb, var(--sw-platform-error, var(--studio-error)) 13%, transparent); color: var(--sw-platform-error, var(--studio-error)); }
+    &__state-badge.is-draft { background: color-mix(in srgb, var(--sw-platform-warning, var(--studio-warning)) 13%, transparent); color: var(--sw-platform-warning, var(--studio-warning)); }
     &__state-badge.is-muted { background: var(--studio-surface); color: var(--studio-on-surface); }
     &__preview { position: relative; flex: 1; min-height: 140px; overflow: hidden; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-md); background: var(--studio-surface); }
     // T-7022：双栏预览——左已保存/右草稿并排，窄容器按 data-view 降级单栏；
