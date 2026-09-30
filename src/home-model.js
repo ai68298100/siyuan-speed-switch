@@ -437,13 +437,17 @@ function normalizeDevice(value) {
     return DEVICES.includes(value) ? value : "desktop";
 }
 
+// T-7186：布局档位词汇与 HOME_WIDGET_SIZES 七档一致；归一化必须全量接受。
+const LAYOUT_SIZES = Object.freeze(["xs", "small", "medium", "tall", "wide", "large", "full"]);
 function normalizeLayout(value) {
     const source = value && typeof value === "object" ? value : {};
     const number = (key, fallback, max) => {
         const n = Number(source[key]);
         return Number.isFinite(n) ? Math.max(0, Math.min(max, Math.floor(n))) : fallback;
     };
-    const size = ["small", "medium", "wide", "large"].includes(source.size) ? source.size : "";
+    // T-7186：档位词汇 = HOME_WIDGET_SIZES 七档（constants.ts 为视觉事实源）。
+    // 历史只留四档导致 xs/tall/full 在落盘回读时被静默清空（T-7186 修复）。
+    const size = LAYOUT_SIZES.includes(source.size) ? source.size : "";
     return {x: number("x", 0, 99), y: number("y", 0, 999), w: Math.max(1, number("w", 1, 12)), h: Math.max(1, number("h", 1, 12)), collapsed: source.collapsed === true, size};
 }
 
@@ -971,4 +975,5 @@ function isLifeHeartbeatModule(moduleId) {
     return LIFE_HEARTBEAT_MODULE_IDS.includes(typeof moduleId === "string" ? moduleId : "");
 }
 
-module.exports = {LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIconId, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+module.exports = {
+    LAYOUT_SIZES,LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIconId, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
