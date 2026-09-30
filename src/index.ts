@@ -2409,24 +2409,42 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 设置条目：左侧标题+可选描述，右侧控件；column 时控件占满整行
+    private settingTitleSeq = 0;
+
+    // T-7166：设置行标题/说明与控件的可访问名称关联——标题 id 由 settingItem 统一
+    // 分发并注入 action 内的表单控件（select/input/label>input），双语标题即控件名称。
     private settingItem(title: string, description: string | undefined, action: HTMLElement, column = false): HTMLElement {
         const item = document.createElement("div");
         item.className = column ? "sw-settings__item sw-settings__item--column" : "sw-settings__item";
         const main = document.createElement("div");
         main.className = "sw-settings__item-main";
+        const seq = ++this.settingTitleSeq;
+        const titleId = `sw-set-title-${seq}`;
         const titleEl = document.createElement("div");
         titleEl.className = "sw-settings__item-title";
+        titleEl.id = titleId;
         titleEl.textContent = title;
         main.appendChild(titleEl);
+        let descId: string | null = null;
         if (description) {
+            descId = `sw-set-desc-${seq}`;
             const desc = document.createElement("div");
             desc.className = "sw-settings__item-desc";
+            desc.id = descId;
             desc.textContent = description;
             main.appendChild(desc);
         }
         const actionEl = document.createElement("div");
         actionEl.className = "sw-settings__item-action";
         actionEl.appendChild(action);
+        // 关联目标：控件本体（select/input）或 label 包裹的输入（switcher）
+        const control = action.tagName === "SELECT" || action.tagName === "INPUT"
+            ? action
+            : action.querySelector<HTMLElement>("select, input");
+        if (control) {
+            control.setAttribute("aria-labelledby", titleId);
+            if (descId) control.setAttribute("aria-describedby", descId);
+        }
         item.appendChild(main);
         item.appendChild(actionEl);
         return item;
