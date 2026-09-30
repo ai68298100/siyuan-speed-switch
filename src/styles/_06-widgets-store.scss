@@ -296,7 +296,7 @@
 .sw-home-config__database-selection { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; padding: 4px 8px; border-radius: var(--sw-radius-md, 8px); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); overflow-wrap: anywhere; }
 .sw-home-config__database-selection > span { min-width: 0; }
 .sw-home-config__database-clear { flex: none; }
-.sw-home-config__database-option { justify-content: flex-start; text-align: left; min-height: 34px; }
+.sw-home-config__database-option { justify-content: flex-start; text-align: left; min-height: var(--sw-control-h); }
 .sw-home-config__database-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-height: 190px; overflow: auto; padding: 8px; border: 1px solid var(--b3-border-color); border-radius: 8px; }
 .sw-home-config__database-column { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
 .sw__home-module[data-module-id="database-table"] .sw__home-module-item-action { white-space: normal; }

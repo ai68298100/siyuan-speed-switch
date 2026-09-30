@@ -543,7 +543,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        min-height: 26px;
+        min-height: var(--sw-control-h-md);
         margin-bottom: 6px;
     }
 
@@ -571,7 +571,7 @@
 
     // T-7003：组标题行尾的「恢复默认」小按钮
     .sw-settings__group-reset {
-        min-height: 20px;
+        min-height: var(--sw-control-h-sm);
         margin-left: 8px;
         padding: 0 8px;
         border: 1px solid var(--b3-border-color);

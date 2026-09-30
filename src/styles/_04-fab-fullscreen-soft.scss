@@ -556,7 +556,7 @@
 }
 
 .speed-switch:not(.sw__mobile) .sw__meta {
-    min-height: 34px;
+    min-height: var(--sw-control-h);
     padding-block: 4px;
 }
 
@@ -594,7 +594,7 @@
 .sw-second-panel__item {
     display: block;
     width: 100%;
-    min-height: 34px;
+    min-height: var(--sw-control-h);
     padding: 6px 8px;
     overflow: hidden;
     border: 0;
