@@ -64,7 +64,7 @@
 
         .sw__mobile-card {
             border-radius: 14px;
-            box-shadow: 0 3px 14px rgba(65, 74, 108, .08);
+            box-shadow: var(--sw-shadow-sm);
 
             .sw__meta {
                 min-height: 36px;
@@ -418,7 +418,7 @@
 .sw-setting__document-set {
     border-radius: 10px;
     border-color: color-mix(in srgb, var(--b3-border-color) 68%, transparent);
-    box-shadow: 0 2px 8px rgba(70, 78, 110, .05);
+    box-shadow: var(--sw-shadow-xs);
 }
 
 // ==================== 分类分组：排序触发按钮与移动端 sheet 分区 ====================

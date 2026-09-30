@@ -401,7 +401,7 @@
         border: 1px solid var(--b3-border-color);
         border-radius: 10px;
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
-        box-shadow: 0 8px 24px rgba(35, 42, 75, .08);
+        box-shadow: var(--sw-shadow-sm);
 
         &[hidden] {
             display: none;
@@ -595,7 +595,7 @@
         border: 1px solid var(--b3-border-color);
         border-radius: 12px;
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
-        box-shadow: 0 1px 3px rgba(35, 42, 75, .05);
+        box-shadow: var(--sw-shadow-xs);
 
         &.is-active {
             display: block;
@@ -824,7 +824,7 @@
         border: 1px solid var(--b3-border-color);
         border-radius: 12px;
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
-        box-shadow: 0 1px 3px rgba(35, 42, 75, .05);
+        box-shadow: var(--sw-shadow-xs);
     }
 
     %sw-fb-heading {
@@ -919,7 +919,7 @@
             border: 1px solid color-mix(in srgb, var(--b3-border-color) 64%, transparent);
             border-radius: 12px;
             background: var(--b3-theme-surface, var(--b3-theme-background));
-            box-shadow: 0 5px 16px rgba(35, 42, 75, .16);
+            box-shadow: var(--sw-shadow-sm);
             white-space: normal;
             overflow: hidden;
             overflow-wrap: anywhere;
@@ -930,7 +930,7 @@
             &:hover {
                 border-color: color-mix(in srgb, var(--b3-theme-primary) 44%, var(--b3-border-color));
                 background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
-                box-shadow: 0 7px 20px rgba(35, 42, 75, .2);
+                box-shadow: var(--sw-shadow-md);
             }
 
             &:active { transform: scale(.95); }
@@ -951,12 +951,12 @@
         background: var(--b3-theme-primary);
         color: var(--b3-theme-on-primary);
         // 与真实球体同一套双层阴影，设置页预览即真实观感。
-        box-shadow: 0 3px 12px rgba(0, 0, 0, .2), 0 1px 4px rgba(0, 0, 0, .1);
+        box-shadow: var(--sw-shadow-sm);
         cursor: pointer;
         transition: transform $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease;
 
         &:hover {
-            box-shadow: 0 5px 16px rgba(0, 0, 0, .24), 0 2px 6px rgba(0, 0, 0, .12);
+            box-shadow: var(--sw-shadow-md);
         }
 
         &:active { transform: translate(-50%, -50%) scale(.94); }
@@ -1149,7 +1149,7 @@
 
             &:hover {
                 border-color: color-mix(in srgb, var(--b3-theme-primary) 24%, var(--b3-border-color));
-                box-shadow: 0 1px 4px rgba(35, 42, 75, .06);
+                box-shadow: var(--sw-shadow-xs);
             }
         }
     }

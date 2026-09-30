@@ -48,7 +48,7 @@
             background: var(--b3-theme-background);
             color: var(--b3-theme-on-background);
             font-weight: 600;
-            box-shadow: 0 1px 3px rgba(35, 42, 75, .14);
+            box-shadow: var(--sw-shadow-xs);
         }
     }
 

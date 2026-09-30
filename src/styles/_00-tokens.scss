@@ -60,4 +60,11 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     --sw-radius-sm: 6px;   // 小件（chip/行内块）
     --sw-radius-md: 8px;   // 紧凑控件
     --sw-radius-lg: 12px;  // 中件/分区
+
+    // T-7198：elevation 阴影三档（蓝灰调，与 --sw-card/float/sheet-shadow 同族分层）。
+    // 语义环/指示条、主题色阴影（color-mix primary）、皮肤专属阴影、FAB 材质阴影
+    // 不入此刻度；门禁退役清单见 tests/shadow-scale-gate.test.cjs。
+    --sw-shadow-xs: 0 1px 3px rgb(35 42 75 / 6%);
+    --sw-shadow-sm: 0 5px 16px rgb(35 42 75 / 16%);
+    --sw-shadow-md: 0 7px 20px rgb(35 42 75 / 20%);
 }

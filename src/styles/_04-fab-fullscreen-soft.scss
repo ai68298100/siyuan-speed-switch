@@ -12,7 +12,7 @@
     align-items: center;
     justify-content: center;
     opacity: 0.88;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2), 0 1px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--sw-shadow-sm);
     z-index: 999;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
@@ -27,7 +27,7 @@
     &:active {
         transform: scale(0.92);
         opacity: 1;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        box-shadow: var(--sw-shadow-sm);
     }
 
     // 打开切换器时隐藏（缩放淡出）
@@ -86,7 +86,7 @@
         border-radius: 50%;
         background: var(--b3-theme-primary);
         color: var(--b3-theme-on-primary);
-        box-shadow: 0 3px 12px rgba(0, 0, 0, .2), 0 1px 4px rgba(0, 0, 0, .1);
+        box-shadow: var(--sw-shadow-sm);
         cursor: pointer;
         touch-action: none;
         pointer-events: auto;
@@ -102,7 +102,7 @@
 
         &:active {
             transform: scale(.92);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+            box-shadow: var(--sw-shadow-sm);
         }
 
         &:focus-visible {
@@ -137,7 +137,7 @@
         border-radius: 8px;
         background: var(--b3-theme-surface);
         color: var(--b3-theme-on-surface);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+        box-shadow: var(--sw-shadow-sm);
         font-size: 12px;
         line-height: 20px;
         text-align: center;
@@ -234,7 +234,7 @@
         border-radius: 12px;
         background: var(--b3-theme-surface, var(--b3-theme-background));
         color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
-        box-shadow: 0 5px 16px rgba(35, 42, 75, .16);
+        box-shadow: var(--sw-shadow-sm);
         cursor: pointer;
         pointer-events: auto;
         touch-action: manipulation;
@@ -246,7 +246,7 @@
         &:focus-visible {
             border-color: color-mix(in srgb, var(--b3-theme-primary, #6e62c6) 44%, var(--b3-border-color));
             background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
-            box-shadow: 0 7px 20px rgba(35, 42, 75, .2);
+            box-shadow: var(--sw-shadow-md);
             outline: none;
         }
 
@@ -774,7 +774,7 @@
         padding: 10px 14px;
         border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 62%, transparent);
         background: var(--b3-theme-surface);
-        box-shadow: 0 1px 0 color-mix(in srgb, var(--b3-theme-surface) 70%, transparent), 0 5px 16px rgba(70, 78, 110, .05);
+        box-shadow: 0 1px 0 color-mix(in srgb, var(--b3-theme-surface) 70%, transparent), var(--sw-shadow-sm);
 
         .sw__search {
             height: 38px;

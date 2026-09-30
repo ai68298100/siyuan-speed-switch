@@ -430,7 +430,7 @@
     color: var(--sw-platform-text);
     background: var(--sw-platform-bg);
     font-weight: 600;
-    box-shadow: 0 1px 3px rgb(51 58 83 / 14%);
+    box-shadow: var(--sw-shadow-xs);
 }
 
 .sw-platform-seg__item:disabled { opacity: .52; cursor: default; }
