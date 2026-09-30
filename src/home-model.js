@@ -623,6 +623,15 @@ function normalizeProtocolVersion(value) {
     return PROTOCOL_VERSIONS.includes(value) ? value : 1;
 }
 
+// T-7161：icon 字段会进入 SVG <use> 引用与商店渲染，第三方来源可写任意文本。
+// 只接受合法 symbol ID（思源约定 iconXxx），其余一律回退，杜绝标记进入 DOM。
+const ICON_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/;
+
+function normalizeIconId(value, fallback) {
+    const raw = typeof value === "string" ? value.trim() : "";
+    return ICON_ID_PATTERN.test(raw) ? raw : (fallback || "");
+}
+
 function normalizeClickCommand(value) {
     const raw = text(value, 128);
     return /^[A-Za-z0-9_-]{1,64}::[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : "";
@@ -661,7 +670,7 @@ function normalizeSource(value) {
     return {
         pluginId: pluginId || name,
         name: name || pluginId,
-        icon: text(value.icon, 64),
+        icon: normalizeIconId(value.icon, ""),
         version: text(value.version, 32),
         homepage: normalizeHomepage(value.homepage),
         collection: text(value.collection, 48),
@@ -724,7 +733,7 @@ function normalizeModuleDefinition(value) {
         : value.category !== "siyuan" ? "external" : CONDITIONAL_MODULES.has(moduleId) ? "conditional" : "ready";
     return {
         moduleId, title,
-        icon: text(value.icon, 64) || "iconFile",
+        icon: normalizeIconId(value.icon, "iconFile"),
         category: text(value.category, 32) || "custom",
         supportedDevices,
         readOnly: value.readOnly !== false,
@@ -962,4 +971,4 @@ function isLifeHeartbeatModule(moduleId) {
     return LIFE_HEARTBEAT_MODULE_IDS.includes(typeof moduleId === "string" ? moduleId : "");
 }
 
-module.exports = {LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+module.exports = {LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIconId, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};

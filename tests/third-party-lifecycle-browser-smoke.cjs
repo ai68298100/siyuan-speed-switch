@@ -251,6 +251,52 @@ async function main() {
         assert.ok(preinstall, "case 8: 未安装提供方时目录仍必须展示 Calendar 组件（装机前曝光）");
         console.log("case 8 (pre-install catalog exposure): OK ->", JSON.stringify(preinstall));
 
+        // —— 第 9 步：恶意 icon 元数据注入负向验证（T-7161）——
+        // 第三方可写任意 icon 字符串：修复后必须 (a) 无脚本/事件执行 (b) 无额外元素
+        // 进入 DOM (c) 图标回退到安全 symbol ID (d) 合法图标不受影响。
+        await evalJs(`(() => {
+            window.__xssFired = undefined;
+            window.__plugin.registerHomeModule({
+                moduleId: "xss-probe-module",
+                title: "XSS Probe",
+                icon: '"/><img src=x onerror="window.__xssFired=1">',
+                category: "plugin",
+                availability: "ready",
+                supportedDevices: ["desktop"],
+                sizes: ["small"],
+                protocolVersion: 2,
+                source: {pluginId: "xss-probe-source", name: "XSS Probe Source", icon: '"></use><script>window.__xssFired=2</script><use xlink:href="#'},
+                readOnly: true,
+                read: async () => ({title: "Probe", items: []}),
+            });
+            return true;
+        })()`);
+        await evalJs(`document.querySelectorAll(".b3-dialog").forEach((d) => { if (d.querySelector(".sw-home-store") && d.isConnected) d.remove(); })`);
+        await evalJs(`__OpenStore.call(window.__plugin, "desktop", () => {})`);
+        await delay(700);
+        const xss = await evalJs(`(() => {
+            const store = document.querySelector(".sw-home-store");
+            const card = store && store.querySelector('[data-module-id="xss-probe-module"]');
+            if (!card) return {cardFound: false};
+            const use = card.querySelector("use");
+            const dangerous = [...card.querySelectorAll("img, script, iframe, object, embed")].length
+                + [...card.querySelectorAll("*")].filter((el) => [...el.attributes].some((a) => a.name.toLowerCase().startsWith("on"))).length;
+            const goodUse = store.querySelector('[data-module-id="calendar-recent-periodic"] use');
+            return {
+                cardFound: true,
+                xssFired: window.__xssFired,
+                dangerous,
+                probeHref: use ? use.getAttribute("xlink:href") : null,
+                calendarHref: goodUse ? goodUse.getAttribute("xlink:href") : null,
+            };
+        })()`);
+        assert.ok(xss.cardFound, "case 9: 恶意 icon 模块必须仍正常进目录（兼容性）");
+        assert.equal(xss.xssFired, undefined, "case 9: 恶意 icon 不得触发任何脚本/事件");
+        assert.equal(xss.dangerous, 0, "case 9: 卡片内不得出现注入元素或事件属性");
+        assert.equal(xss.probeHref, "#iconFile", "case 9: 恶意 icon 必须在模型层回退到安全 symbol ID（iconFile）");
+        assert.equal(xss.calendarHref, "#iconCalendar", "case 9: 合法 icon 必须原样保留");
+        console.log("case 9 (malicious icon injection blocked, T-7161): OK ->", JSON.stringify(xss));
+
         console.log("third-party lifecycle e2e: all cases green");
     } finally {
         socket?.close();

@@ -449,8 +449,9 @@ test('ready card records added state', () => assert.match(storeSource,/card\.dat
 test('ready card records status tone', () => assert.match(storeSource,/card\.dataset\.statusTone = resolveHomeStoreStatusTone\(card\.dataset\)/));
 test('ready card records integration tone', () => assert.match(storeSource,/card\.dataset\.integrationTone = resolveHomeStoreIntegrationTone\(card\.dataset\)/));
 test('ready card exposes accessible summary label', () => assert.match(storeSource,/card\.setAttribute\("aria-label", resolveHomeStoreCardA11y/));
-test('ready card icon has viewBox', () => assert.match(storeSource,/icon\.setAttribute\("viewBox", "0 0 24 24"\)/));
-test('ready card icon is hidden from assistive tech', () => assert.match(storeSource,/icon\.setAttribute\("aria-hidden", "true"\)/));
+// T-7161 后商店图标由 createIconUseSvg 统一安全构造：viewBox 与 aria-hidden 在 helper 内设置。
+test('ready card icon has viewBox', () => assert.match(storeSource,/svg\.setAttribute\("viewBox", "0 0 24 24"\)/));
+test('ready card icon is hidden from assistive tech', () => assert.match(storeSource,/svg\.setAttribute\("aria-hidden", "true"\)/));
 test('ready card title uses fallback module id', () => assert.match(storeSource,/title\.textContent = def\.title \|\| moduleId/));
 test('ready card title has stable id', () => assert.match(storeSource,/title\.id = `sw-home-store-title-\$\{moduleId\}\$\{idSuffix\}`/));
 test('ready card references title with aria-labelledby', () => assert.match(storeSource,/card\.setAttribute\("aria-labelledby", title\.id\)/));
