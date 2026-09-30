@@ -22,6 +22,7 @@
     "test:e2e": "playwright test --config playwright.e2e.config.mjs",
     "test:e2e:readonly": "playwright test --config playwright.e2e.readonly.config.mjs",
     "test:smoke:surface-switch": "node tests/surface-switch-browser-smoke.cjs",
+    "test:smoke:third-party": "node tests/third-party-lifecycle-browser-smoke.cjs",
     "shots:acceptance": "node tests/capture-acceptance-screenshots.cjs"
   },
   "keywords": [
