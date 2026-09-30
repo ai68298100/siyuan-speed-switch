@@ -11131,7 +11131,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         if (cached) {
             const wrap = document.createElement("div");
             wrap.className = "protyle-wysiwyg";
-            wrap.innerHTML = cached.html;
+            // T-7173：持久化缓存是弱信任存储——读取必经有界净化
+            const fragment = this.sanitizeThumbHtml(cached.html);
+            if (!fragment) return;
+            wrap.appendChild(fragment);
             this.applyThumbContent(thumb, wrap, title);
             return;
         }
@@ -11223,7 +11226,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 if (cached) {
                     const wrap = document.createElement("div");
                     wrap.className = "protyle-wysiwyg";
-                    wrap.innerHTML = cached.html;
+                    // T-7173：持久化缓存是弱信任存储——读取必经有界净化
+                    const fragment = this.sanitizeThumbHtml(cached.html);
+                    if (!fragment) {
+                        this.fillThumbByApi(item.tab, thumb);
+                        continue;
+                    }
+                    wrap.appendChild(fragment);
                     this.applyThumbContent(thumb, wrap, title);
                     continue;
                 }
@@ -11244,6 +11253,44 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
     // 将克隆内容装进缩略图框并按宽度缩放。返回 false 表示内容视觉空白（如整篇空段落），
     // 已就地回退为标题占位——调用方应继续走 API 回源且不得把空白内容写入缓存（T-6970）。
+    // T-7173：缩略图 HTML 有界净化——三来源（实时克隆/持久化缓存/内核 getDoc）中，
+    // 后两者经 innerHTML 解析（历史缺陷：弱信任存储与内核响应未净化即挂载）。
+    // DOMParser 产出 inert 文档（不跑脚本、不加载资源、不触发事件），再按白名单
+    // 搬运节点：剥全部事件属性/style/srcset/javascript: 与 data:text 源，剔除
+    // script/iframe 等活动标签；缩略图只需视觉骨架，交互标签一并剔除。
+    private sanitizeThumbHtml(html: string): DocumentFragment | null {
+        if (typeof DOMParser !== "function") return null; // 极旧 WebView：调用方降级为占位
+        const parsed = new DOMParser().parseFromString(html, "text/html");
+        const fragment = parsed.createDocumentFragment();
+        const stripTags = new Set(["script", "style", "iframe", "object", "embed", "link", "meta", "base", "template", "form", "input", "button", "textarea", "select", "audio", "video", "source", "track"]);
+        const walk = (src: Element, dest: Node): void => {
+            for (const node of Array.from(src.childNodes)) {
+                if (node.nodeType === (parsed.defaultView?.Node?.TEXT_NODE ?? 3)) {
+                    dest.appendChild(parsed.createTextNode(node.textContent || ""));
+                    continue;
+                }
+                if (node.nodeType !== (parsed.defaultView?.Node?.ELEMENT_NODE ?? 1)) continue;
+                const el = node as Element;
+                const tag = el.tagName.toLowerCase();
+                if (stripTags.has(tag)) continue;
+                const clone = parsed.createElement(tag);
+                for (const attr of Array.from(el.attributes)) {
+                    const name = attr.name.toLowerCase();
+                    if (name.startsWith("on") || name === "style" || name === "srcset") continue;
+                    if (name === "src" || name === "href" || name === "xlink:href") {
+                        const value = attr.value.trim().toLowerCase();
+                        if (value.startsWith("javascript:") || value.startsWith("data:text")) continue;
+                    }
+                    clone.setAttribute(attr.name, attr.value);
+                }
+                walk(el, clone);
+                dest.appendChild(clone);
+            }
+        };
+        walk(parsed.body, fragment);
+        return fragment;
+    }
+
     private applyThumbContent(thumb: HTMLElement, source: HTMLElement, title: string): boolean {
         // 真机反馈：日记等文档开头常见空段落，缩放后整框只剩空白；先裁掉前导空白块
         trimLeadingBlankThumbNodes(source);
@@ -11351,8 +11398,11 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             }
             const wrap = document.createElement("div");
             wrap.className = "protyle-wysiwyg";
-            wrap.innerHTML = html;
+            // T-7173：内核响应可含用户嵌入 HTML 块——挂载前有界净化
+            const fragment = this.sanitizeThumbHtml(html);
+            if (!fragment) return;
             thumb.innerHTML = "";
+            wrap.appendChild(fragment);
             // 空白内容不进缓存（保留占位），下次打开仍会尝试回源（T-6970）
             if (!this.applyThumbContent(thumb, wrap, tab.title || "")) {
                 return;
