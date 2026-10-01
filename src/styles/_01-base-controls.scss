@@ -467,8 +467,8 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: var(--sw-icon-md, 20px);
+    height: var(--sw-icon-md, 20px);
     font-size: 17px;
 
     svg {
@@ -608,8 +608,8 @@
 :is(.sw-quick-icon-picker__item, .sw-setting__quick-icon-preview, .sw-quick-icon-picker__preview) {
     .sw__quick-action-icon-image,
     svg {
-        width: 20px;
-        height: 20px;
+        width: var(--sw-icon-md, 20px);
+        height: var(--sw-icon-md, 20px);
         object-fit: contain;
     }
 }
@@ -639,8 +639,8 @@
     cursor: pointer;
 
     svg {
-        width: 20px;
-        height: 20px;
+        width: var(--sw-icon-md, 20px);
+        height: var(--sw-icon-md, 20px);
     }
 
     &:hover,
