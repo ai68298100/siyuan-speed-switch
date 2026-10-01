@@ -427,10 +427,28 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
             // Android back/Escape should close only the transient sort sheet;
             // do not leave a body-level portal intercepting later taps.
             overlay.addEventListener("keydown", (event) => {
-                if (event.key !== "Escape") return;
-                event.preventDefault();
-                event.stopPropagation();
-                closeSortOverlay();
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeSortOverlay();
+                    return;
+                }
+                // T-7176：Tab 循环约束——首/末回绕，焦点不逃逸 sheet
+                if (event.key === "Tab") {
+                    const focusables = Array.from(
+                        overlay.querySelectorAll<HTMLElement>("button, input, [tabindex]:not([tabindex=\"-1\"])")
+                    ).filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null);
+                    if (focusables.length === 0) return;
+                    const first = focusables[0];
+                    const last = focusables[focusables.length - 1];
+                    if (event.shiftKey && document.activeElement === first) {
+                        event.preventDefault();
+                        last.focus({preventScroll: true});
+                    } else if (!event.shiftKey && document.activeElement === last) {
+                        event.preventDefault();
+                        first.focus({preventScroll: true});
+                    }
+                }
             });
             overlay.tabIndex = -1;
             this.scheduleAnimationFrame(() => { if (overlay.isConnected) overlay.focus({preventScroll: true}); });
