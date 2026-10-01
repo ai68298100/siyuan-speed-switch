@@ -7664,6 +7664,9 @@ const updatedMap: {[rootId: string]: string} = {};
     }
 
     private openQuickActionIconPicker(action: IQuickAction, onPick: (icon: string) => void) {
+        // T-7178：捕获触发元素，关闭时回焦
+        const ae = document.activeElement as HTMLElement | null;
+        const iconOpener = ae && typeof ae.focus === 'function' ? ae : null;
         document.querySelector(".sw-quick-icon-picker-overlay")?.remove();
         const overlay = document.createElement("div");
         overlay.className = "sw-quick-icon-picker-overlay";
@@ -7802,11 +7805,16 @@ const updatedMap: {[rootId: string]: string} = {};
             });
         };
         const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") cleanup();
+            if (event.key === "Escape") {
+                cleanup();
+                if (iconOpener) iconOpener.focus({preventScroll: true});
+            }
         };
         const cleanup = () => {
             document.removeEventListener("keydown", onKeyDown);
             overlay.remove();
+            // T-7178：关闭后回焦触发元素
+            if (iconOpener) iconOpener.focus({preventScroll: true});
         };
         closeButton.addEventListener("click", cleanup);
         customApply.addEventListener("click", () => {
@@ -7829,7 +7837,23 @@ const updatedMap: {[rootId: string]: string} = {};
         document.body.appendChild(overlay);
         renderIcons();
         refreshCustomPreview();
-        if (!this.isMobile) search.focus({preventScroll: true});
+        // T-7178：移动端也入焦搜索框（历史仅桌面入焦）
+        search.focus({preventScroll: true});
+        // T-7178：Tab 循环约束——首末回绕，焦点不逃逸 overlay
+        overlay.addEventListener("keydown", (event: KeyboardEvent) => {
+            if (event.key !== "Tab") return;
+            const focusables = Array.from(overlay.querySelectorAll("button, input")).filter((el): el is HTMLButtonElement | HTMLInputElement => !el.hasAttribute("disabled"));
+            if (focusables.length === 0) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus({preventScroll: true});
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus({preventScroll: true});
+            }
+        });
     }
 
     // 设置页“快捷动作”分节的 UI 构建（含导入/导出传输控件）已外迁至 settings-sections.ts（R4 重构 D-376）。
