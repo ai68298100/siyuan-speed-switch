@@ -374,6 +374,15 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
                         this.applySearch(scrollElement, searchEl, closeOverlay);
                     }
                 });
+                // T-7176：分组选项方向键循环（与排序选项同模式）
+                item.addEventListener("keydown", (event) => {
+                    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                    event.preventDefault();
+                    const options = Array.from(groupList.querySelectorAll<HTMLButtonElement>(".sw__mobile-sort-option"));
+                    const index = options.indexOf(item);
+                    const next = options[(index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length];
+                    next.focus();
+                });
                 groupList.appendChild(item);
             });
             sheet.appendChild(groupList);
@@ -408,6 +417,9 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
             sheet.appendChild(list);
             overlay.appendChild(sheet);
             document.body.appendChild(overlay);
+            // T-7176：打开后入焦首个选项
+            var first = overlay.querySelector("button");
+            if (first) first.focus({preventScroll: true});
             activeSortOverlay = overlay;
             overlay.addEventListener("click", (event) => {
                 if (event.target === overlay) closeSortOverlay();
