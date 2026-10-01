@@ -1880,8 +1880,15 @@ export default class SpeedSwitchPlugin extends Plugin {
     async onunload() {
         this.isUnloading = true;
         this.lifecycleGeneration += 1;
+        // T-7179：三面板 Dialog 统一回收——不依赖宿主代销毁（真实宿主行为未证明）
         this.snippetStudioDialog?.destroy();
         this.snippetStudioDialog = null;
+        this.platformSwitcherDialog?.destroy();
+        this.platformSwitcherDialog = null;
+        this.workbenchDialog?.destroy();
+        this.workbenchDialog = null;
+        this.mobileSwitcherDialog?.destroy();
+        this.mobileSwitcherDialog = null;
         // T-6831：面包屑入口随生命周期拆除
         this.teardownBreadcrumbEntry();
         // T-6823：密度档位标记随生命周期移除
