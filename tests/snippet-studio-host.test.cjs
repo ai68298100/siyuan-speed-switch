@@ -60,3 +60,26 @@ test("snippet store refuses a mutation before writing when native flags are unav
     assert.equal(writes, 0);
     store.dispose();
 });
+
+test("snippet store exposes direct native master switch controls without rewriting the list", async () => {
+    let flags = {enabledCSS: true, enabledJS: false};
+    const calls = [];
+    const fetchImpl = async (url, init) => {
+        calls.push({url, body: JSON.parse(init.body)});
+        if (url === "/api/setting/setSnippet") {
+            flags = JSON.parse(init.body);
+            return response({ok: true, code: 0, data: null});
+        }
+        throw new Error(`unexpected ${url}`);
+    };
+    const store = createSnippetStore({fetchImpl, getSnippetSettings: () => flags});
+    assert.deepEqual(store.readSettings(), {enabledCSS: true, enabledJS: false});
+    assert.deepEqual(await store.setMaster("css", false), {enabledCSS: false, enabledJS: false});
+    assert.deepEqual(store.readSettings(), {enabledCSS: false, enabledJS: false});
+    assert.deepEqual(await store.setMaster("js", true), {enabledCSS: false, enabledJS: true});
+    assert.deepEqual(calls.map((call) => call.url), [
+        "/api/setting/setSnippet", "/api/setting/setSnippet",
+    ]);
+    await assert.rejects(store.setMaster("html", true), (error) => error.message === "snippet-invalid-master");
+    store.dispose();
+});

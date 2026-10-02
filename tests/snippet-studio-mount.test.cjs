@@ -118,3 +118,54 @@ test('studio mount: copy button reports empty draft and copies content via execC
         assert.ok(status.textContent.includes('已复制'), '复制成功必须有回执文案');
     });
 });
+
+test('studio mount: preserves publish-disable metadata and controls native master switches (T-6991)', async (t) => {
+    const {dom, document, mountSnippetStudio, i18n} = createHarness(t);
+    const native = {
+        id: '20260925120000-publish', name: 'Publish safe', type: 'css', content: '.publish-safe { color: red; }',
+        enabled: true, disabledInPublish: true,
+    };
+    let current = [native];
+    const flags = {enabledCSS: true, enabledJS: false};
+    let mutation = null;
+    const store = {
+        read: async () => current.map((item) => ({...item})),
+        readSettings: () => ({...flags}),
+        setMaster: async (type, enabled) => {
+            flags[type === 'css' ? 'enabledCSS' : 'enabledJS'] = enabled;
+            return {...flags};
+        },
+        mutate: async (_baseline, _action, draft) => {
+            mutation = {...draft};
+            current = [{...draft}];
+            return current.map((item) => ({...item}));
+        },
+        dispose: () => {},
+    };
+    const controller = mountSnippetStudio(document.getElementById('root'), {
+        i18n,
+        getConfig: () => ({snippet: flags}),
+        store,
+        session: {draft: {...native}, baseline: {...native}},
+        platform: null,
+        onBack: () => {},
+    });
+    await controller.ready;
+    const publishInput = document.querySelector('.sw-studio__check-field input');
+    assert.ok(publishInput?.checked, '已保存的 disabledInPublish 必须回填到编辑控件');
+    assert.match(document.querySelector('.sw-studio__order-meta').textContent, /1\/1/, '原生顺序必须可见');
+    publishInput.checked = false;
+    publishInput.dispatchEvent(new dom.window.Event('change', {bubbles: true}));
+    const saveButton = Array.from(document.querySelectorAll('.sw-studio__button')).find((button) => button.textContent === i18n.snippetSave);
+    assert.ok(saveButton, '已保存片段必须显示保存按钮');
+    saveButton.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(mutation.disabledInPublish, false, '保存必须把 disabledInPublish 写回原生草稿');
+    const cssMaster = document.querySelector('.sw-studio__master-toggle[data-master-type="css"]');
+    assert.ok(cssMaster && !cssMaster.disabled, 'CSS 总开关应可直接操作');
+    cssMaster.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(flags.enabledCSS, false, 'CSS 总开关应调用原生设置写入');
+    assert.equal(cssMaster.getAttribute('aria-pressed'), 'false', '总开关按钮应回显关闭状态');
+    controller.dispose();
+});

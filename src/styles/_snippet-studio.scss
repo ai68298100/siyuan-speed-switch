@@ -108,7 +108,16 @@
     &__selection-top { display: flex; align-items: center; gap: 7px; min-width: 0; }
     &__selection-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     &__selection-meta { color: var(--studio-on-surface); font-size: 11px; overflow-wrap: anywhere; }
+    &__order-meta, &__cascade-hint { margin: 6px 0; }
     &__field { display: grid; gap: 6px; margin: 11px 0; color: var(--studio-on-surface); font-size: 11px; }
+    &__check-field { display: flex; align-items: flex-start; gap: 7px; margin: 11px 0 2px; color: var(--studio-on-surface); font-size: 11px; line-height: 1.5; }
+    &__check { flex: 0 0 auto; margin-top: 2px; accent-color: var(--studio-accent); }
+    &__master-section { display: grid; gap: 5px; margin: 14px 0 10px; padding: 11px; border: 1px solid var(--studio-line); border-radius: 11px; background: color-mix(in srgb, var(--studio-surface) 68%, transparent); }
+    &__master-title { font-size: 12px; }
+    &__master-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+    &__master-toggle { min-height: 34px; padding: 6px 8px; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-sm); background: var(--b3-theme-background); color: inherit; cursor: pointer; font: inherit; font-size: 11px; text-align: left; transition: border-color $sw-dur-base $sw-ease, background $sw-dur-base $sw-ease, color $sw-dur-base $sw-ease; }
+    &__master-toggle:hover, &__master-toggle.is-active { border-color: var(--studio-accent); background: var(--studio-accent-soft); color: var(--studio-accent); }
+    &__master-toggle:disabled { opacity: .52; cursor: default; }
     &__commands { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
     &__editor-section { display: flex; flex-direction: column; }
     &__editor, &__ai-result { font-family: var(--b3-font-family-code, monospace); tab-size: 2; white-space: pre; resize: none; line-height: 1.55; font-size: 12px; }

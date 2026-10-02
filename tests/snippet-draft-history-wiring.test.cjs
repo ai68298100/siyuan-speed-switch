@@ -17,7 +17,7 @@ test('draft history wiring: choose resets history only on snippet identity chang
 });
 
 test('draft history wiring: typing settles into commits, type change commits instantly', () => {
-    assert.match(uiSource, /function changed\(\) \{\s*\n\s*revision \+= 1;\s*\n\s*draft = \{\.\.\.draft, name: nameInput\.value, type: typeSelect\.value, content: editor\.value\};\s*\n\s*syncFields\(\);\s*\n\s*scheduleDraftHistoryCommit\(\);/,
+    assert.match(uiSource, /function changed\(\) \{\s*\n\s*revision \+= 1;\s*\n\s*draft = \{\.\.\.draft, name: nameInput\.value, type: typeSelect\.value, content: editor\.value\};\s*\n\s*draft\.disabledInPublish = publishInput\.checked;\s*\n\s*syncFields\(\);\s*\n\s*scheduleDraftHistoryCommit\(\);/,
         '输入合并经 changed() 调度落账');
     assert.match(uiSource, /typeSelect\.addEventListener\("change", \(\) => \{\s*\n\s*changed\(\);\s*\n\s*commitDraftHistory\(\);\s*\n\s*\}\);/,
         '类型切换立即落账');

@@ -13,6 +13,10 @@ function createSnippetStore({fetchImpl = fetch, timeoutMs = 10000,
     getSnippetSettings = () => globalThis.window?.siyuan?.config?.snippet} = {}) {
     let disposed = false;
     let tail = Promise.resolve();
+    // The native endpoint may persist a setting before the host-side config
+    // object is refreshed. Keep the latest confirmed write locally so a
+    // subsequent whole-list mutation cannot overwrite it with stale flags.
+    let settingsShadow = null;
     const controllers = new Set();
     async function request(path, body) {
         if (disposed) throw new Error("disposed");
@@ -50,12 +54,31 @@ function createSnippetStore({fetchImpl = fetch, timeoutMs = 10000,
     const readSnippetFlags = () => {
         const settings = getSnippetSettings();
         if (typeof settings?.enabledCSS !== "boolean" || typeof settings?.enabledJS !== "boolean") {
+            if (settingsShadow) return {...settingsShadow};
             throw new Error("snippet-config-unavailable");
         }
-        return {enabledCSS: settings.enabledCSS, enabledJS: settings.enabledJS};
+        return settingsShadow
+            ? {...settings, ...settingsShadow}
+            : {enabledCSS: settings.enabledCSS, enabledJS: settings.enabledJS};
     };
     return {
         read,
+        readSettings() { return readSnippetFlags(); },
+        setMaster(type, enabled) {
+            if (type !== "css" && type !== "js") return Promise.reject(new Error("snippet-invalid-master"));
+            const run = tail.catch(() => undefined).then(async () => {
+                const flags = readSnippetFlags();
+                const next = {
+                    ...flags,
+                    [type === "css" ? "enabledCSS" : "enabledJS"]: Boolean(enabled),
+                };
+                await request("/api/setting/setSnippet", next);
+                settingsShadow = next;
+                return {...next};
+            });
+            tail = run;
+            return run;
+        },
         mutate(baseline, action, draft) {
             const run = tail.catch(() => undefined).then(async () => {
                 // Fail before the whole-list write when the host cannot expose
@@ -81,6 +104,7 @@ function createSnippetStore({fetchImpl = fetch, timeoutMs = 10000,
                     // SiYuan's native UI follows the list write with this endpoint.
                     // It broadcasts setSnippet so every window runs renderSnippet.
                     await request("/api/setting/setSnippet", flags);
+                    settingsShadow = flags;
                     const confirmed = await read();
                     const expected = JSON.stringify(projectSnippetListForWire(next));
                     const actual = JSON.stringify(projectSnippetListForWire(confirmed));

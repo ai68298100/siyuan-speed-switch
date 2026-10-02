@@ -725,7 +725,7 @@ declare module "./snippet-studio-ui" {
     export function mountSnippetStudio(root: HTMLElement, options?: {
         i18n?: Record<string, string>;
         getConfig?: () => unknown;
-        store?: {read: () => Promise<unknown>; mutate: (baseline: unknown, action: string, draft?: unknown) => Promise<unknown>; dispose: () => void};
+        store?: {read: () => Promise<unknown>; readSettings?: () => unknown; setMaster?: (type: "css" | "js", enabled: boolean) => Promise<unknown>; mutate: (baseline: unknown, action: string, draft?: unknown) => Promise<unknown>; dispose: () => void};
         ai?: {generate: (options?: Record<string, unknown>) => Promise<unknown>; cancel: () => void; dispose: () => void};
         session?: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null; recentIds?: string[]};
         objectId?: string;

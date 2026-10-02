@@ -222,6 +222,19 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetLoaded: locale.i18n.snippetLoaded,
         snippetLoading: locale.i18n.snippetLoading,
         snippetMasterOff: locale.i18n.snippetMasterOff,
+        snippetMasterTitle: locale.i18n.snippetMasterTitle,
+        snippetMasterCSS: locale.i18n.snippetMasterCSS,
+        snippetMasterJS: locale.i18n.snippetMasterJS,
+        snippetMasterEnabled: locale.i18n.snippetMasterEnabled,
+        snippetMasterDisabled: locale.i18n.snippetMasterDisabled,
+        snippetMasterUnavailable: locale.i18n.snippetMasterUnavailable,
+        snippetMasterSaved: locale.i18n.snippetMasterSaved,
+        snippetMasterFailed: locale.i18n.snippetMasterFailed,
+        snippetDisabledInPublish: locale.i18n.snippetDisabledInPublish,
+        snippetDisabledInPublishHint: locale.i18n.snippetDisabledInPublishHint,
+        snippetOrderHint: locale.i18n.snippetOrderHint,
+        snippetCascadeHint: locale.i18n.snippetCascadeHint,
+        snippetJSCascadeHint: locale.i18n.snippetJSCascadeHint,
         snippetMine: locale.i18n.snippetMine,
         snippetMore: locale.i18n.snippetMore,
         snippetName: locale.i18n.snippetName,
@@ -344,10 +357,13 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const t = (key) => translations[key] || key;
     let disposed = false;
     let busy = false;
+    let masterBusy = false;
     let loading = true;
     let loadFailed = false;
     let snippets = [];
-    let draft = session.draft ? {...session.draft} : {id: "", name: "", type: "css", content: "", enabled: false};
+    let draft = session.draft
+        ? {...session.draft, disabledInPublish: session.draft.disabledInPublish === true}
+        : {id: "", name: "", type: "css", content: "", enabled: false, disabledInPublish: false};
     let baseline = session.baseline ? {...session.baseline} : null;
     let selectedSource = baseline ? "native" : "draft";
     let original = draft.content;
@@ -372,6 +388,11 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let pickerRefresh = null;
     let pickerScrollTop = {root: 0, layout: 0};
     let aiHistory = [];
+    const initialSnippetSettings = getConfig()?.snippet;
+    let masterFlags = {
+        enabledCSS: typeof initialSnippetSettings?.enabledCSS === "boolean" ? initialSnippetSettings.enabledCSS : null,
+        enabledJS: typeof initialSnippetSettings?.enabledJS === "boolean" ? initialSnippetSettings.enabledJS : null,
+    };
     root.classList.add("sw-studio", "sw-platform-surface", "sw-platform-surface--studio");
     root.dataset.swSurface = "studio";
     const node = (tag, className = "", text = "") => {
@@ -473,6 +494,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const selectionMeta = node("span", "sw-studio__selection-meta");
     selectionTop.append(selectionName, selectionType, selectionStatus);
     selection.append(selectionTop, selectionMeta);
+    const orderMeta = node("p", "sw-studio__hint sw-studio__order-meta");
+    const cascadeHint = node("p", "sw-studio__hint sw-studio__cascade-hint");
     const description = node("p", "sw-studio__description", t("snippetDescription"));
     // T-6908：三条安全边界必须始终可见，而不是散落在按钮 title 或选中 JS 后才出现的提示里。
     const capabilities = node("ul", "sw-studio__capabilities");
@@ -491,6 +514,13 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const typeNote = node("p", "sw-studio__hint", t("snippetTypeLocked"));
     typeNote.hidden = true;
     const state = node("div", "sw-studio__state");
+    const publishField = node("label", "sw-studio__check-field");
+    const publishInput = node("input", "sw-studio__check");
+    publishInput.type = "checkbox";
+    publishInput.setAttribute("aria-label", t("snippetDisabledInPublish"));
+    publishInput.addEventListener("change", changed);
+    publishField.append(publishInput, node("span", "", t("snippetDisabledInPublish")));
+    const publishHint = node("p", "sw-studio__hint", t("snippetDisabledInPublishHint"));
     const saveButton = action("snippetSaveDisabled", () => void mutate("save"), "is-primary");
     const toggleButton = action("snippetEnable", () => void mutate("toggle"), "is-secondary");
     const deleteButton = action("snippetDelete", () => void mutate("delete"), "is-danger");
@@ -508,7 +538,29 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     }, "is-quiet");
     const commands = node("div", "sw-studio__commands");
     commands.append(toggleButton, deleteButton, exportButton, submissionButton);
+    const masterSection = node("section", "sw-studio__master-section");
+    const masterTitle = node("strong", "sw-studio__master-title", t("snippetMasterTitle"));
+    const masterHint = node("p", "sw-studio__hint", t("snippetCascadeHint"));
+    const masterControls = node("div", "sw-studio__master-controls");
+    const masterButtons = {};
+    for (const [type, labelKey] of [["css", "snippetMasterCSS"], ["js", "snippetMasterJS"]]) {
+        const button = node("button", "sw-studio__master-toggle");
+        button.type = "button";
+        button.dataset.masterType = type;
+        button.addEventListener("click", () => void toggleMaster(type));
+        masterButtons[type] = {button, labelKey};
+        masterControls.appendChild(button);
+    }
+    masterSection.append(masterTitle, masterHint, masterControls);
+    // Keep the original core append contract stable for host wiring audits; optional
+    // controls are inserted around that stable spine so the details panel remains
+    // ordered without forcing every consumer to understand the newer fields.
     details.append(detailsTitle, selection, nameLabel, typeSelect, typeNote, state, commands, description, capabilities);
+    details.insertBefore(orderMeta, nameLabel);
+    details.insertBefore(cascadeHint, nameLabel);
+    details.insertBefore(publishField, commands);
+    details.insertBefore(publishHint, commands);
+    details.insertBefore(masterSection, description);
     const editorSection = node("section", "sw-studio__editor-section");
     // T-6959：查找条状态（声明须先于 DOM 构建；逻辑函数声明提升，见后）
     let findBar = null;
@@ -878,10 +930,58 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const lineLength = (content) => content ? String(content).split(/\r\n|\r|\n/).length : 0;
     const formatBytes = (bytes) => bytes < 1024 ? `${bytes} ${t("snippetBytes")}` : `${(bytes / 1024).toFixed(1)} KiB`;
     const sourceLabel = () => t(selectedSource === "native" ? "snippetMine" : selectedSource === "builtin" ? "snippetBuiltins" : "snippetDraft");
+    const masterKey = (type) => type === "css" ? "enabledCSS" : "enabledJS";
+    function syncMasterControls() {
+        for (const [type, entry] of Object.entries(masterButtons)) {
+            const value = masterFlags[masterKey(type)];
+            const stateLabel = value === true ? t("snippetMasterEnabled") : value === false ? t("snippetMasterDisabled") : t("snippetMasterUnavailable");
+            entry.button.textContent = `${t(entry.labelKey)} · ${stateLabel}`;
+            entry.button.setAttribute("aria-pressed", value === true ? "true" : "false");
+            entry.button.classList.toggle("is-active", value === true);
+            entry.button.disabled = busy || loading || loadFailed || masterBusy || typeof value !== "boolean";
+        }
+    }
+    async function refreshMasterFlags() {
+        if (typeof store.readSettings !== "function") return;
+        try {
+            const next = await store.readSettings();
+            if (disposed || typeof next?.enabledCSS !== "boolean" || typeof next?.enabledJS !== "boolean") return;
+            masterFlags = {enabledCSS: next.enabledCSS, enabledJS: next.enabledJS};
+            syncFields();
+        } catch (_) { /* an unavailable host setting remains visibly unavailable */ }
+    }
+    async function toggleMaster(type) {
+        if (busy || loading || loadFailed || masterBusy || disposed) return;
+        if (typeof store.setMaster !== "function") {
+            setStatus(t("snippetMasterUnavailable"), "blocked");
+            return;
+        }
+        const key = masterKey(type);
+        const current = masterFlags[key];
+        if (typeof current !== "boolean") {
+            setStatus(t("snippetMasterUnavailable"), "blocked");
+            return;
+        }
+        masterBusy = true;
+        syncFields();
+        try {
+            const next = await store.setMaster(type, !current);
+            if (disposed) return;
+            if (typeof next?.enabledCSS !== "boolean" || typeof next?.enabledJS !== "boolean") throw new Error("snippet-config-unavailable");
+            masterFlags = {enabledCSS: next.enabledCSS, enabledJS: next.enabledJS};
+            setStatus(t("snippetMasterSaved"), "ready");
+        } catch (error) {
+            if (!disposed) setStatus(errorText(error), "error");
+        } finally {
+            masterBusy = false;
+            if (!disposed) syncFields();
+        }
+    }
     function syncFields() {
         nameInput.value = draft.name;
         typeSelect.value = draft.type;
         editor.value = draft.content;
+        publishInput.checked = draft.disabledInPublish === true;
         session.draft = {...draft};
         session.baseline = baseline ? {...baseline} : null;
         const bytes = byteLength(draft.content);
@@ -895,6 +995,11 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         selectionStatus.textContent = savedState;
         selectionStatus.className = `sw-studio__state-badge ${stateClass}`;
         selectionMeta.textContent = `${sourceLabel()} · ${formatBytes(bytes)} · ${lines} ${t("snippetLines")}`;
+        const nativePosition = baseline ? snippets.findIndex((item) => item.id === baseline.id) : -1;
+        orderMeta.textContent = nativePosition >= 0
+            ? `${t("snippetOrderHint")} ${nativePosition + 1}/${snippets.length}`
+            : `${t("snippetOrderHint")} · ${t("snippetDraft")}`;
+        cascadeHint.textContent = draft.type === "css" ? t("snippetCascadeHint") : t("snippetJSCascadeHint");
         headerContext.textContent = `${shortName} · ${draft.type.toUpperCase()}`;
         headerState.textContent = savedState;
         headerState.className = `sw-studio__state-badge ${stateClass}`;
@@ -911,8 +1016,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         saveButton.textContent = t(baseline ? "snippetSave" : "snippetSaveDisabled");
         toggleButton.textContent = t(baseline?.enabled ? "snippetDisable" : "snippetEnable");
         state.textContent = t(baseline ? baseline.enabled ? "snippetEnabled" : "snippetDisabled" : "snippetDraft");
-        const masterEnabled = getConfig()?.snippet?.[draft.type === "css" ? "enabledCSS" : "enabledJS"] === true;
-        if (!masterEnabled) state.textContent += ` · ${t("snippetMasterOff")}`;
+        const masterEnabled = masterFlags[masterKey(draft.type)];
+        if (masterEnabled === false) state.textContent += ` · ${t("snippetMasterOff")}`;
         saveButton.disabled = busy || loading || loadFailed || !draft.name.trim() || !draft.content.trim();
         toggleButton.disabled = busy || loading || loadFailed || !baseline;
         deleteButton.disabled = busy || loading || loadFailed || !baseline;
@@ -930,6 +1035,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         refresh.disabled = busy || loading;
         nameInput.disabled = busy;
         editor.disabled = busy;
+        publishInput.disabled = busy || loading || loadFailed;
+        syncMasterControls();
         layout.setAttribute("aria-busy", String(loading || busy));
         updateAIActions();
         updateAIMode();
@@ -1037,6 +1144,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     function changed() {
         revision += 1;
         draft = {...draft, name: nameInput.value, type: typeSelect.value, content: editor.value};
+        draft.disabledInPublish = publishInput.checked;
         syncFields();
         scheduleDraftHistoryCommit();
         clearTimeout(previewTimer);
@@ -1067,17 +1175,19 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             else undoDraft();
         });
     });
-    const dirty = () => baseline ? draft.name !== baseline.name || draft.type !== baseline.type || draft.content !== baseline.content : Boolean(draft.name || draft.content);
+    const dirty = () => baseline
+        ? draft.name !== baseline.name || draft.type !== baseline.type || draft.content !== baseline.content || draft.disabledInPublish !== (baseline.disabledInPublish === true)
+        : Boolean(draft.name || draft.content || draft.disabledInPublish === true);
     // T-6957：统一草稿历史（名称/类型/正文事务）——50 步 + 512 KiB 字节预算；
     // 切片（choose 身份变化）重置、保存（同 id choose）保留；IME 组合期内不落账；
     // 撤销/重做把状态写回真实控件后经 changed() 同步，dirty 相对新 baseline 重算。
-    let draftHistory = createDraftHistory({name: "", type: "css", content: ""});
+    let draftHistory = createDraftHistory({name: "", type: "css", content: "", disabledInPublish: false});
     let draftHistorySignature = "";
     let historyTimer = 0;
     let composing = false;
     let suppressDraftHistory = false;
     const DRAFT_HISTORY_SETTLE_MS = 600;
-    const historyState = () => ({name: nameInput.value, type: typeSelect.value, content: editor.value});
+    const historyState = () => ({name: nameInput.value, type: typeSelect.value, content: editor.value, disabledInPublish: publishInput.checked});
     const commitDraftHistory = () => {
         if (suppressDraftHistory) return;
         if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
@@ -1104,6 +1214,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         nameInput.value = result.state.name;
         typeSelect.value = result.state.type;
         editor.value = result.state.content;
+        publishInput.checked = result.state.disabledInPublish === true;
         changed();
         suppressDraftHistory = false;
     };
@@ -1117,6 +1228,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         nameInput.value = result.state.name;
         typeSelect.value = result.state.type;
         editor.value = result.state.content;
+        publishInput.checked = result.state.disabledInPublish === true;
         changed();
         suppressDraftHistory = false;
     };
@@ -1329,7 +1441,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         baseline = native ? {...native} : null;
         if (native?.id) session.recentIds = rememberRecentSnippet(session.recentIds, native.id);
         selectedSource = native ? "native" : value.source || "draft";
-        draft = {id: native?.id || "", name: value.name || "", type: value.type || "css", content: value.content || "", enabled: native?.enabled === true};
+        draft = {
+            id: native?.id || "",
+            name: value.name || "",
+            type: value.type || "css",
+            content: value.content || "",
+            enabled: native?.enabled === true,
+            disabledInPublish: native?.disabledInPublish === true,
+        };
         // T-6957：仅身份变化时重置草稿历史——保存（同 id choose）保留历史，
         // 撤销到保存前内容时 dirty 相对新 baseline 真实变化。
         const identity = native?.id || `draft:${value.source || "draft"}:${value.name}:${value.type}`;
@@ -1689,6 +1808,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     syncFields();
     renderPreview();
     const ready = load();
+    // Resolve the native flags through the store as well, so a recently
+    // persisted host setting wins over a stale in-memory config snapshot.
+    void refreshMasterFlags();
     // T-6878（P2）：跨表面打开携带 objectId——清单就绪后定位对应片段
     // （id 精确匹配、名称回退；仅导航语义，无写入）。
     if (objectId) {
