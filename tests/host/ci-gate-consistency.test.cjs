@@ -20,12 +20,12 @@ test('CI and release workflows invoke the same core local gates', () => {
     assert.match(release, /timeout-minutes:\s+15/);
     for (const command of ['pnpm repro:audit', 'pnpm test']) {
         assert.match(ci, new RegExp(command.replace(' ', '\\s+')));
-        assert.match(release, new RegExp(command.replace(' ', '\\s+')));
     }
-    const buildIndex = release.indexOf('name: Reproducible package build');
+    assert.match(release, /run:\s+pnpm\s+verify:release/);
+    const buildIndex = release.indexOf('name: Complete local release gate');
     const packageGateIndex = release.indexOf('name: Package integrity gate');
     assert.ok(buildIndex >= 0 && packageGateIndex > buildIndex,
-        'release archive gate must run after package.zip is built');
+        'release archive gate must run after the complete local gate builds package.zip');
     assert.match(release, /SW_REQUIRE_PACKAGE:\s*["']?1["']?/,
         'release archive gate must require a generated package.zip');
     assert.match(release, /package\.zip/);

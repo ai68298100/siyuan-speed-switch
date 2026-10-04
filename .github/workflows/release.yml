@@ -37,16 +37,11 @@ jobs:
       - name: Verify tag version
         run: node scripts/release-version-preflight.cjs
 
-      - name: Type check
-        run: pnpm exec tsc --noEmit
-
-      # 先构建再跑测试：兼容性矩阵等用例要求 dist/ 产物存在，
-      # 顺带让包体预算与归档审计门禁校验的是本次构建的真实产物
-      - name: Reproducible package build
-        run: pnpm repro:audit
-
-      - name: Unit tests
-        run: pnpm test
+      # This is the single local release gate. It includes type checking,
+      # reproducible builds, the complete test suite, status/compatibility/
+      # desktop matrices, audits, and smoke checks.
+      - name: Complete local release gate
+        run: pnpm verify:release
 
       # Archive checks run again on the clean-checkout artifact so release-only
       # size and manifest gates cannot silently skip.
@@ -54,9 +49,6 @@ jobs:
         env:
           SW_REQUIRE_PACKAGE: "1"
         run: node --test tests/host/package-integrity.test.cjs tests/host/final-package-audit.test.cjs
-
-      - name: Smoke test
-        run: pnpm test:smoke
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2

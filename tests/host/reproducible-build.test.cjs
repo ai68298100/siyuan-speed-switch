@@ -37,7 +37,7 @@ test('reproducible build audit is wired into package and release workflows', () 
     assert.match(script, /package\.zip/);
     assert.equal(packageJson.scripts['repro:audit'], 'node scripts/reproducible-build-audit.cjs');
     assert.match(ci, /pnpm\s+repro:audit/);
-    assert.match(release, /pnpm\s+repro:audit/);
+    assert.match(release, /pnpm\s+verify:release/);
 });
 
 test('environment versions are available for reproducible-build diagnosis', () => {

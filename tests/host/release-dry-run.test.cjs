@@ -15,8 +15,15 @@ test('release dry-run contract names package.zip and generated notes', () => {
 test('dry-run validates release inputs without invoking upload commands', () => {
     const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'release.yml'), 'utf8');
     assert.doesNotMatch(workflow, /gh\s+release\s+upload/);
-    assert.match(workflow, /pnpm\s+repro:audit/);
-    assert.match(workflow, /pnpm\s+test/);
+    assert.match(workflow, /run:\s+pnpm\s+verify:release/);
+});
+
+test('release workflow delegates local gates to verify:release exactly once', () => {
+    const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'release.yml'), 'utf8');
+    const completeGateRuns = workflow.match(/^\s*run:\s+pnpm\s+verify:release\s*$/gm) || [];
+    assert.equal(completeGateRuns.length, 1, 'release workflow must have one complete local gate');
+    assert.doesNotMatch(workflow, /^\s*run:\s+pnpm\s+(?:exec\s+tsc|repro:audit|test|test:smoke)\s*$/gm,
+        'release workflow must not drift into a partial duplicate gate');
 });
 
 test('dry-run asset list remains bounded and explicit', () => {
