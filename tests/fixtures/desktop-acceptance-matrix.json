@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "task": "T-7115",
+  "updated": "2026-10-05",
+  "policy": {
+    "browserEvidence": "local_only",
+    "hostEvidenceRequiredFor": ["narrow_sidebar", "desktop_visual", "screen_reader"],
+    "pendingBlocker": "B-005"
+  },
+  "cases": [
+    {
+      "id": "path.endpoint-availability",
+      "area": "path_filter",
+      "requirement": "listDocsByPath is available in an authenticated host session",
+      "local": {
+        "status": "verified",
+        "evidence": [{"path": "tests/path-filter-model.test.cjs", "kind": "contract"}]
+      },
+      "host": {
+        "status": "partial",
+        "evidence": [{"path": "docs/path-filter-host-evidence.md", "kind": "real-host-api"}]
+      }
+    },
+    {
+      "id": "path.response-shape",
+      "area": "path_filter",
+      "requirement": "the host response keeps data.box, data.path and data.files with usable file fields",
+      "local": {
+        "status": "verified",
+        "evidence": [{"path": "tests/path-filter-hardening.test.cjs", "kind": "contract"}]
+      },
+      "host": {
+        "status": "partial",
+        "evidence": [{"path": "docs/path-filter-host-evidence.md", "kind": "real-host-api"}]
+      }
+    },
+    {
+      "id": "path.notebook-switch-clears",
+      "area": "path_filter",
+      "requirement": "switching notebooks clears stale path chips and keeps the remaining filters usable",
+      "local": {
+        "status": "verified",
+        "evidence": [{"path": "tests/path-filter-ui-contract.test.cjs", "kind": "contract"}]
+      },
+      "host": {
+        "status": "pending",
+        "blockers": ["B-005"]
+      }
+    },
+    {
+      "id": "narrow_sidebar.chip-clear-focus",
+      "area": "narrow_sidebar",
+      "requirement": "the narrow sidebar keeps the path chip, clear action and keyboard focus reachable",
+      "local": {
+        "status": "prepared",
+        "evidence": [{"path": "docs/search-path-filter-sidebar-evaluation.md", "kind": "design"}]
+      },
+      "host": {
+        "status": "pending",
+        "blockers": ["B-005"]
+      }
+    },
+    {
+      "id": "desktop.surface-navigation-close",
+      "area": "desktop_visual",
+      "requirement": "each desktop surface can navigate, return and close without a duplicate host title",
+      "local": {
+        "status": "verified",
+        "evidence": [
+          {"path": "tests/e2e/panel-header-layout.spec.mjs", "kind": "real-host-e2e"},
+          {"path": "tests/e2e/surface-close.spec.mjs", "kind": "real-host-e2e"}
+        ]
+      },
+      "host": {
+        "status": "partial",
+        "evidence": [{"path": "docs/desktop-acceptance-template.md", "kind": "acceptance-template"}]
+      }
+    },
+    {
+      "id": "desktop.theme-light-dark",
+      "area": "desktop_visual",
+      "requirement": "light and dark themes preserve readable controls, statuses and preview content",
+      "local": {
+        "status": "verified",
+        "evidence": [{"path": "tests/chromium-style-smoke.cjs", "kind": "chromium"}]
+      },
+      "host": {
+        "status": "pending",
+        "blockers": ["B-005"]
+      }
+    },
+    {
+      "id": "desktop.keyboard-scroll-focus",
+      "area": "keyboard",
+      "requirement": "keyboard focus, preview scrolling and Escape/close paths remain reachable",
+      "local": {
+        "status": "verified",
+        "evidence": [
+          {"path": "tests/accessibility-gate.test.cjs", "kind": "contract"},
+          {"path": "tests/e2e/panel-interaction-layout.spec.mjs", "kind": "real-host-e2e"}
+        ]
+      },
+      "host": {
+        "status": "pending",
+        "blockers": ["B-005"]
+      }
+    },
+    {
+      "id": "screen_reader.status-and-labels",
+      "area": "screen_reader",
+      "requirement": "status, busy and control labels remain exposed to assistive technology",
+      "local": {
+        "status": "verified",
+        "evidence": [{"path": "tests/accessibility-gate.test.cjs", "kind": "contract"}]
+      },
+      "host": {
+        "status": "pending",
+        "blockers": ["B-005"]
+      }
+    },
+    {
+      "id": "workbench.responsive",
+      "area": "responsive",
+      "requirement": "workbench content remains readable at reduced desktop viewport sizes without overlap",
+      "local": {
+        "status": "verified",
+        "evidence": [
+          {"path": "tests/e2e/panel-interaction-layout.spec.mjs", "kind": "real-host-e2e"},
+          {"path": "tests/home-panel.test.cjs", "kind": "contract"}
+        ]
+      },
+      "host": {
+        "status": "pending",
+        "blockers": ["B-005"]
+      }
+    },
+    {
+      "id": "lifecycle.install-upgrade-unload",
+      "area": "lifecycle",
+      "requirement": "load, layout-ready and unload cleanup leave no public hook or visual marker behind",
+      "local": {
+        "status": "verified",
+        "evidence": [{"path": "docs/adr/0142-siyuan-38-compatibility-probes.md", "kind": "real-host-e2e"}]
+      },
+      "host": {
+        "status": "partial",
+        "evidence": [{"path": ".artifacts/t7114-compatibility/compatibility-probe.json", "kind": "real-host-e2e"}]
+      }
+    },
+    {
+      "id": "failure.cancel-and-fallback",
+      "area": "failure_paths",
+      "requirement": "API failure and cancellation preserve existing results and show a non-blocking fallback",
+      "local": {
+        "status": "verified",
+        "evidence": [
+          {"path": "tests/path-filter-hardening.test.cjs", "kind": "contract"},
+          {"path": "tests/doc-search-fetch-behavior.test.cjs", "kind": "contract"}
+        ]
+      },
+      "host": {
+        "status": "pending",
+        "blockers": ["B-005"]
+      }
+    }
+  ]
+}
