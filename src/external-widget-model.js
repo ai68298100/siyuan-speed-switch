@@ -130,7 +130,7 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "platform",
         privacy: "local-only",
         platforms: ["desktop", "sidebar", "mobile"],
-        sizes: ["xs", "small", "medium"],
+        sizes: ["xs", "small", "medium", "wide", "large", "full"],
         description: "按用户配置的 IANA 时区列表显示多城市时间；完全离线，不读取定位",
     }),
     catalogEntry({
@@ -190,7 +190,7 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "MPL-2.0",
         privacy: "local-only",
         platforms: ["desktop", "sidebar"],
-        sizes: ["small", "medium", "wide", "large"],
+        sizes: ["small", "medium", "wide", "large", "full"],
         description: "已接入用户本机 ActivityWatch 聚合查询，仅显示应用名和时长；不读取窗口标题，移动端不宣称支持",
     }),
     catalogEntry({

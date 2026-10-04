@@ -1,0 +1,37 @@
+[
+  {
+    "target": "BLOCKERS.md",
+    "find": "<!-- Current engineering blockers: none -->",
+    "replace": "<!-- Current engineering blockers: active -->",
+    "command": ["node", "scripts/quality-batch-audit.cjs"],
+    "expected": "FAIL current engineering blocker status is explicit and clear"
+  },
+  {
+    "target": "BLOCKERS.md",
+    "find": "<!-- Current engineering blockers: none -->",
+    "replace": "",
+    "command": ["node", "scripts/quality-batch-audit.cjs"],
+    "expected": "FAIL current engineering blocker status is explicit and clear"
+  },
+  {
+    "target": "BLOCKERS.md",
+    "find": "<!-- Current engineering blockers: none -->",
+    "replace": "<!-- Current engineering blockers: none -->\n<!-- Current engineering blockers: none -->",
+    "command": ["node", "scripts/quality-batch-audit.cjs"],
+    "expected": "FAIL current engineering blocker status is explicit and clear"
+  },
+  {
+    "target": "docs/release-readiness.md",
+    "find": "raw self-discipline line 1160 KiB (ADR 0125,",
+    "replace": "raw self-discipline line 1160 KiB (ADR 0092,",
+    "command": ["node", "scripts/quality-batch-audit.cjs"],
+    "expected": "FAIL release readiness references current raw-line ADR"
+  },
+  {
+    "target": "docs/release-readiness.md",
+    "find": "raw self-discipline line 1160 KiB (ADR 0125,",
+    "replace": "raw self-discipline line 1152 KiB (ADR 0125,",
+    "command": ["node", "scripts/quality-batch-audit.cjs"],
+    "expected": "FAIL release readiness references current raw-line ADR"
+  }
+]

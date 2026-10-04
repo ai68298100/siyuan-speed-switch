@@ -244,8 +244,12 @@ function normalizeBangumiCover(value) {
     if (!raw) return "";
     try {
         const url = new URL(raw);
-        return url.protocol === "https:" && url.hostname === "lain.bgm.tv" && url.pathname.startsWith("/pic/cover/")
-            ? url.href : "";
+        if (url.hostname !== "lain.bgm.tv" || !url.pathname.startsWith("/pic/cover/")
+            || (url.protocol !== "https:" && url.protocol !== "http:") || url.username || url.password || url.hash) return "";
+        // 官方日历当前仍返回 http 图片地址；固定官方主机后升级为 HTTPS，避免
+        // WebView 混合内容阻断，同时不放宽到任意外部图片地址。
+        url.protocol = "https:";
+        return url.href;
     } catch (_) {
         return "";
     }

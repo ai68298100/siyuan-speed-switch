@@ -17,9 +17,9 @@ test('preview exposes module id', () => assert.match(storeUiSource, /container\.
 test('preview exposes device', () => assert.match(storeUiSource, /container\.dataset\.device = device/));
 test('preview exposes selected size', () => assert.match(storeUiSource, /container\.dataset\.size = sizeKey/));
 test('preview container is a region', () => assert.match(storeUiSource, /container\.setAttribute\("role", "region"\)/));
-test('preview container has an accessible label', () => assert.match(storeUiSource, /container\.setAttribute\("aria-label", `\$\{this\.i18n\.homeStorePreview\}/));
+test('preview container has an accessible label', () => assert.match(storeUiSource, /container\.setAttribute\("aria-label", `\$\{host\.i18n\.homeStorePreview\}/));
 test('preview starts busy', () => assert.match(storeUiSource, /container\.setAttribute\("aria-busy", "true"\)/));
-test('preview body keeps its scoped class', () => assert.match(storeUiSource, /body\.className = "sw-store-preview__body"/));
+test('preview body keeps its scoped class', () => assert.match(storeUiSource, /body\.classList\.add\("sw-store-preview__body"\)/));
 test('preview body is a status region', () => assert.match(storeUiSource, /body\.setAttribute\("role", "status"\)/));
 test('preview body is live', () => assert.match(storeUiSource,/body\.setAttribute\("aria-live", "polite"\)/));
 test('preview creates a home controller', () => assert.match(secondPanelSource, /controller = createHomeModuleController\(\{/));
@@ -83,8 +83,9 @@ test('configure button exposes dialog semantics', () => assert.match(storeUiSour
 test('configure button opens config form', () => assert.match(storeUiSource, /configButton\.onclick = \(\) => \{\s*openHomeConfigForm\.call\(this/));
 test('remove button carries remove action', () => assert.match(storeUiSource, /removeButton\.dataset\.action = "remove"/));
 test('remove button invokes instance removal', () => assert.match(storeUiSource, /removeButton\.onclick = \(\) => \{ this\.removeHomeInstance\(added\.instanceId\)/));
-test('preview button exposes dialog semantics', () => assert.match(storeUiSource,/previewButton\.setAttribute\("aria-haspopup", "dialog"\)/));
-test('preview button opens selected module with chosen size (T-7069)', () => assert.match(storeUiSource, /previewButton\.onclick = \(\) => openStoreWidgetPreview\.call\(this, moduleId, def, device, selectedTile\?\.dataset\.size \|\| card\.dataset\.currentSize \|\| ""\)/));
+test('store detail mounts an inline live preview', () => assert.match(storeUiSource, /const inlinePreview = buildInlinePreview\(storeSelectedModule, detailDef, previewSize\)/));
+test('size changes refresh the inline preview with the selected size', () => assert.match(storeUiSource, /onSizeChange\(sizeKey\);\s*void controller\?\.refresh\(\{\}, \{force: true\}\)/));
+test('store detail no longer adds a duplicate preview dialog button', () => assert.doesNotMatch(storeUiSource, /previewButton\.dataset\.action = "preview"/));
 test('group toggle exposes expanded state', () => assert.match(storeUiSource, /groupToggle\.setAttribute\("aria-expanded", String\(!collapsedGroups\.has\(label\)\)\)/));
 test('group toggle controls group grid', () => assert.match(storeUiSource, /groupToggle\.setAttribute\("aria-controls", groupId\)/));
 test('unavailable pending cards expose explicit removal', () => assert.match(storeUiSource, /removeButton\.dataset\.action = "remove-unavailable"/));

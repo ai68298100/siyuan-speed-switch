@@ -1,10 +1,10 @@
 # 存储版本兼容矩阵
 
-> 交付物对应 ROADMAP v0.20「存储版本统一审计：8 个数据 key 的迁移函数、容量边界与跨版本兼容矩阵」。
+> 交付物对应 ROADMAP v0.20「存储版本统一审计：8 个数据 key 的迁移函数、容量边界与跨版本兼容矩阵」。当前代码已扩展为 18 个持久化 key。
 >
 > 本文档是**开发文档**，不进发布归档（与 `gate-audit-checklist.md`、`host-gate-audit.md` 一致：`package.zip` 只收显式声明的 4 个 docs 文件）。
 
-## 0. 先勘误：是 13 个 key，不是 8 个（v0.24.0 起为 14→15→16 个）
+## 0. 先勘误：是 13 个 key，不是 8 个（当前已扩展为 18 个）
 
 路线图该句沿用 R0 阶段写下的记录数字（`ROADMAP.md:114`「记录当前设置字段、8 个数据 key、思源最低版本和发布产物清单」）。逐 tag 统计 `src/constants.ts` + `src/index.ts` 中 `sw_*` 存储 key 的唯一数量，可以精确定位「8」的时点：
 
@@ -23,6 +23,7 @@
 | **v0.24.0（T-6685）** | **15** | + `sw_rss_read`（RSS 已读状态，见第 2 节末两行） |
 | **v0.37.0（T-6840）** | **16** | + `sw_related_swr`（关联内容 SWR 持久缓存，见第 2 节末行） |
 | **v0.44.0（T-7025，ADR 0100）** | **17** | + `sw_snippet_recycle`（片段回收站，见第 2 节末行） |
+| **本地当前（T-6972）** | **18** | + `sw_snippet_groups`（片段分组元数据，见第 2 节末行） |
 
 复现命令：
 
@@ -34,20 +35,20 @@ for t in $(git tag --sort=creatordate); do
 done
 ```
 
-**因此本审计以代码为准：17 个 key。** 该数字由门禁钉住（见第 4 节），不会随文档漂移。
+**因此本审计以代码为准：18 个 key。** 该数字由门禁钉住（见第 4 节），不会随文档漂移。
 
 ## 1. 唯一登记处
 
 | 环节 | 位置 | 约束 |
 | --- | --- | --- |
 | key 常量定义 | `src/constants.ts`（ADR-0002） | 业务代码禁止手写 key 字符串字面量 |
-| 迁移/分类登记 | `src/storage-migration.js` 的 `HANDLED_KEYS`(13) + `INSPECTED_KEYS`(2) + `META_KEYS`(1) | 拼接为 `KEY_ORDER`，总数恒 16 |
-| 只读快照计数上限 | `src/agent-capabilities.js` | 与 `KEY_ORDER.length` 同源（钳制到 15） |
+| 迁移/分类登记 | `src/storage-migration.js` 的 `HANDLED_KEYS`(15) + `INSPECTED_KEYS`(2) + `META_KEYS`(1) | 拼接为 `KEY_ORDER`，总数恒 18 |
+| 只读快照计数上限 | `src/agent-capabilities.js` | 与 `KEY_ORDER.length` 同源（钳制到 18） |
 | 降级函数白名单 | `src/index.ts` 读取路径 | 每个 key 必须有清洗/归一化函数**被调用** |
 
 `KEY_ORDER = HANDLED_KEYS ∪ INSPECTED_KEYS ∪ META_KEYS` 是**拼接**而非独立字面量，因此「分类集与报告 key 集合不可能漂移」。`sw_thumb_cache` 从 inspect 毕业到 handled 时，报告里它的位置从第 13 位前移到第 11 位，但 key 集合与总数完全不变，下游只读快照无需改动。
 
-## 2. 17 个 key：迁移函数与容量边界
+## 2. 18 个 key：迁移函数与容量边界
 
 `分类` 列含义：**handled** = 进入迁移 `data`（宿主可据此覆盖）；**inspect** = 只报形状、不进 `data`（深度迁移由宿主读取路径负责）。
 
@@ -70,6 +71,7 @@ done
 | 15 | `sw_rss_read` | `RSS_READ_KEY` | handled | `normalizeRssReadState`（rss-model，有界 200 条） | rss-model.js | 200 条（`RSS_READ_STATE_MAX`） | v0.24.0 |
 | 16 | `sw_related_swr` | `RELATED_SWR_KEY` | handled | `normalizeRelatedSwrStore`（related-content-model，版本/年龄/去重/有界） | related-content-model.js | 8 条（`RELATED_SWR_MAX_ENTRIES`）、7 天年龄上界（`RELATED_SWR_MAX_AGE_MS`） | v0.37.0 |
 | 17 | `sw_snippet_recycle` | `SNIPPET_RECYCLE_KEY` | handled | `normalizeRecycleStore`（snippet-recycle，版本戳/畸形丢弃） | snippet-recycle.js | 50 条（`SNIPPET_RECYCLE_MAX_ENTRIES`）、30 天年龄（`SNIPPET_RECYCLE_MAX_AGE_MS`）、256 KiB 总量（`SNIPPET_RECYCLE_MAX_BYTES`） | v0.44.0 |
+| 18 | `sw_snippet_groups` | `SNIPPET_GROUPS_KEY` | handled | `normalizeSnippetGroupStore`（snippet-groups，版本戳/分组与归属有界；可选 metadata v1） | snippet-groups.js | 64 组（`SNIPPET_GROUPS_MAX`）、256 条归属/元数据（`SNIPPET_GROUP_ASSIGNMENTS_MAX`）、名称/别名 64、ID 64；摘要 256，标签 8×32 | 本地 T-6972 / T-7092 |
 
 `meta` 分类（D-401 新增）：不承载业务数据，永不进入迁移 `data`（写入完全由 onload 落戳函数管理）。演练判定：缺失 → missing；损坏（非 ≥1 整数）→ reset；等于当前版本 → kept；小于当前版本 → migrated（未来版本迁移入口）；大于当前版本 → kept 且值原样保留（疑似降级，保留证据，onload 侧 `logger.warn` 告警并记录 `storageSchemaDowngradeFrom`）。
 

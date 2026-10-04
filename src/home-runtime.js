@@ -1,13 +1,14 @@
 "use strict";
 
 const {DEVICES, registerModules, modulesForDevice, normalizeModuleDefinition} = require("./home-model.js");
-const {registerHomeAdapters, unregisterHomeAdapter, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics} = require("./home-adapters.js");
+const {registerHomeAdapters, unregisterHomeAdapter, readHomeModule, getHomeAdapterDiagnostics} = require("./home-adapters.js");
 
 function createHomeRuntime(definitions = []) {
     const baseDefinitions = registerModules(definitions);
     let moduleDefinitions = baseDefinitions;
     let adapters = new Map();
     const registrations = new Map();
+    const builtinRegistrations = new Map();
     function rebuildDefinitions() {
         moduleDefinitions = registerModules([
             ...baseDefinitions,
@@ -18,8 +19,19 @@ function createHomeRuntime(definitions = []) {
         const candidate = registerHomeAdapters([raw]).get(String(raw?.moduleId || ""));
         if (!candidate) return {registered: false, reason: "invalid", unregister: () => undefined};
         const moduleId = candidate.moduleId;
+        const isBuiltin = raw?.builtin === true;
         const previous = registrations.get(moduleId);
-        if (previous) previous.unregister();
+        if (isBuiltin) {
+            const previousBuiltin = builtinRegistrations.get(moduleId);
+            if (previousBuiltin) previousBuiltin.unregister();
+            if (previous?.builtin === true) {
+                registrations.delete(moduleId);
+                unregisterHomeAdapter(adapters, moduleId);
+            }
+        } else {
+            if (previous?.builtin !== true) registrations.delete(moduleId);
+            unregisterHomeAdapter(adapters, moduleId);
+        }
         const token = Symbol(moduleId);
         // The public home-module boundary is intentionally read-only. Ignore
         // caller metadata that attempts to advertise a writable module.
@@ -52,15 +64,39 @@ function createHomeRuntime(definitions = []) {
             readOnly: true,
         });
         if (!definition) return {registered: false, reason: "invalid", unregister: () => undefined};
-        adapters.set(moduleId, candidate);
         const unregister = () => {
+            if (isBuiltin) {
+                if (builtinRegistrations.get(moduleId)?.token !== token) return false;
+                builtinRegistrations.delete(moduleId);
+                if (registrations.get(moduleId)?.token === token) {
+                    registrations.delete(moduleId);
+                    unregisterHomeAdapter(adapters, moduleId);
+                    rebuildDefinitions();
+                }
+                return true;
+            }
             if (registrations.get(moduleId)?.token !== token) return false;
             registrations.delete(moduleId);
             unregisterHomeAdapter(adapters, moduleId);
+            const fallback = builtinRegistrations.get(moduleId);
+            if (fallback) {
+                registrations.set(moduleId, fallback);
+                adapters.set(moduleId, fallback.adapter);
+            }
             rebuildDefinitions();
             return true;
         };
-        registrations.set(moduleId, {token, unregister, definition});
+        const entry = {token, unregister, definition, adapter: candidate, builtin: isBuiltin};
+        if (isBuiltin) {
+            builtinRegistrations.set(moduleId, entry);
+            if (!previous || previous.builtin === true) {
+                adapters.set(moduleId, candidate);
+                registrations.set(moduleId, entry);
+            }
+        } else {
+            adapters.set(moduleId, candidate);
+            registrations.set(moduleId, entry);
+        }
         rebuildDefinitions();
         return {registered: true, moduleId, unregister};
     }
@@ -76,9 +112,10 @@ function createHomeRuntime(definitions = []) {
     }
     function dispose() {
         [...registrations.values()].forEach((registration) => registration.unregister());
+        [...builtinRegistrations.values()].forEach((registration) => registration.unregister());
         registrations.clear();
+        builtinRegistrations.clear();
         adapters = new Map();
-        clearHomeSnapshotCache();
     }
     return {registerAdapter, unregister, listModules, read, diagnostics: getHomeAdapterDiagnostics, dispose};
 }

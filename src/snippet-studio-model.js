@@ -4,6 +4,9 @@
 // authoritative; previews and AI drafts must not enter the native list implicitly.
 const SNIPPET_CODE_MAX = 65536;
 const NEW_SNIPPET_ID = /^\d{14}-[a-z0-9]{7}$/;
+const SNIPPET_BACKUP_SCHEMA_VERSION = 1;
+const SNIPPET_BACKUP_MAX_SNIPPETS = 256;
+const SNIPPET_BACKUP_MAX_BYTES = 2 * 1024 * 1024;
 const encoder = new TextEncoder();
 
 function fail(code) {
@@ -73,6 +76,140 @@ function cloneNativeList(list) {
         seen.add(snippet.id);
     }
     return cloneJson(list);
+}
+
+function normalizeSnippetSettings(settings) {
+    if (!isRecord(settings)
+        || typeof settings.enabledCSS !== "boolean"
+        || typeof settings.enabledJS !== "boolean") {
+        fail("snippet-settings-invalid");
+    }
+    return {enabledCSS: settings.enabledCSS, enabledJS: settings.enabledJS};
+}
+
+function normalizeSnippetSnapshot(value) {
+    const source = Array.isArray(value) ? {snippets: value} : value;
+    if (!isRecord(source) || !Array.isArray(source.snippets)) fail("snippet-snapshot-invalid");
+    const snippets = projectSnippetListForWire(cloneNativeList(source.snippets));
+    const settings = normalizeSnippetSettings(source.settings || {enabledCSS: true, enabledJS: true});
+    if (snippets.length > SNIPPET_BACKUP_MAX_SNIPPETS) fail("snippet-backup-too-many");
+    return {snippets, settings};
+}
+
+function snippetSnapshotSignature(value) {
+    return JSON.stringify(normalizeSnippetSnapshot(value));
+}
+
+function buildSnippetBackup(snapshot, options = {}) {
+    const normalized = normalizeSnippetSnapshot(snapshot);
+    const createdAt = Number(options.now) > 0 ? Math.round(Number(options.now)) : Date.now();
+    const backup = {
+        kind: "siyuan-snippet-backup",
+        version: SNIPPET_BACKUP_SCHEMA_VERSION,
+        createdAt,
+        source: options.source === "undo" ? "undo" : "native",
+        snippets: normalized.snippets,
+        settings: normalized.settings,
+    };
+    const bytes = encoder.encode(JSON.stringify(backup)).byteLength;
+    if (bytes > SNIPPET_BACKUP_MAX_BYTES) fail("snippet-backup-too-large");
+    return cloneJson({...backup, bytes});
+}
+
+function normalizeSnippetBackup(value) {
+    try {
+        if (!isRecord(value)
+            || value.kind !== "siyuan-snippet-backup"
+            || value.version !== SNIPPET_BACKUP_SCHEMA_VERSION
+            || !Number.isFinite(Number(value.createdAt))
+            || Number(value.createdAt) <= 0
+            || (value.source !== "native" && value.source !== "undo")
+            || !Array.isArray(value.snippets)) return null;
+        const snapshot = normalizeSnippetSnapshot(value);
+        const bytes = encoder.encode(JSON.stringify({
+            kind: value.kind, version: value.version, createdAt: Math.round(Number(value.createdAt)),
+            source: value.source, snippets: snapshot.snippets, settings: snapshot.settings,
+        })).byteLength;
+        if (bytes > SNIPPET_BACKUP_MAX_BYTES) return null;
+        return Object.freeze({
+            kind: value.kind,
+            version: value.version,
+            createdAt: Math.round(Number(value.createdAt)),
+            source: value.source,
+            snippets: Object.freeze(snapshot.snippets),
+            settings: Object.freeze(snapshot.settings),
+            bytes,
+        });
+    } catch (_) {
+        return null;
+    }
+}
+
+function diffSnippetBackup(current, backup) {
+    const currentSnapshot = normalizeSnippetSnapshot(current);
+    const normalizedBackup = normalizeSnippetBackup(backup);
+    if (!normalizedBackup) fail("snippet-backup-invalid");
+    const currentById = new Map(currentSnapshot.snippets.map((snippet) => [snippet.id, snippet]));
+    const backupById = new Map(normalizedBackup.snippets.map((snippet) => [snippet.id, snippet]));
+    const rows = [];
+    for (const after of normalizedBackup.snippets) {
+        const before = currentById.get(after.id) || null;
+        rows.push({
+            id: after.id,
+            action: before ? (JSON.stringify(before) === JSON.stringify(after) ? "keep" : "replace") : "add",
+            before,
+            after,
+        });
+    }
+    for (const before of currentSnapshot.snippets) {
+        if (backupById.has(before.id)) continue;
+        rows.push({id: before.id, action: "delete", before, after: null});
+    }
+    const changed = rows.filter((row) => row.action !== "keep");
+    return {
+        rows,
+        changed,
+        summary: {
+            total: rows.length,
+            changed: changed.length,
+            keep: rows.filter((row) => row.action === "keep").length,
+            add: rows.filter((row) => row.action === "add").length,
+            replace: rows.filter((row) => row.action === "replace").length,
+            delete: rows.filter((row) => row.action === "delete").length,
+            settingsChanged: JSON.stringify(currentSnapshot.settings) !== JSON.stringify(normalizedBackup.settings),
+        },
+        backup: normalizedBackup,
+        current: currentSnapshot,
+    };
+}
+
+function buildSnippetRestorePlan(current, backup, options = {}) {
+    const diff = diffSnippetBackup(current, backup);
+    const ids = options.ids instanceof Set
+        ? new Set(options.ids)
+        : new Set(Array.isArray(options.ids) ? options.ids : diff.changed.map((row) => row.id));
+    const includeDeletes = options.includeDeletes !== false;
+    const selected = diff.rows.filter((row) => row.action !== "keep" && ids.has(row.id));
+    const selectedById = new Map(selected.map((row) => [row.id, row]));
+    const snippets = [];
+    for (const snippet of diff.current.snippets) {
+        const row = selectedById.get(snippet.id);
+        if (!row) snippets.push(snippet);
+        else if (row.action === "delete" && !includeDeletes) snippets.push(snippet);
+        else if (row.action !== "delete") snippets.push(row.after);
+    }
+    for (const row of diff.rows) {
+        if (row.action === "add" && selectedById.has(row.id)) snippets.push(row.after);
+    }
+    const settings = options.restoreSettings === false ? diff.current.settings : diff.backup.settings;
+    const snapshot = {snippets, settings};
+    return {
+        ...diff,
+        selected: selected.map((row) => row.id),
+        settingsSelected: options.restoreSettings !== false,
+        snapshot,
+        signature: snippetSnapshotSignature(snapshot),
+    };
 }
 
 /** Malformed/error responses must never be treated as an empty native store. */
@@ -581,13 +718,17 @@ function filterSnippetCatalog(catalog, filters = {}) {
             if (options[key] && options[key] !== "all" && entry[key] !== options[key]) return false;
         }
         if (!query) return true;
-        return [entry.id, entry.name, entry.description, entry.nameKey, entry.descriptionKey, entry.category, entry.content]
+        return [entry.id, entry.name, entry.description, entry.nameKey, entry.descriptionKey, entry.category, entry.content,
+            entry.alias, entry.summary, ...(Array.isArray(entry.tags) ? entry.tags : [])]
             .filter((value) => typeof value === "string").join("\n").toLocaleLowerCase().includes(query);
     });
     // T-6913（R8-A6 变体）：宿主 getSnippet 契约没有更新时间字段（仅
     // id/name/type/content/enabled/disabledInPublish），无法按更新时间排序。
     // 以"自有片段优先于内建示例"防内建样本霸榜；组内保持宿主返回序（≈创建序）。
-    return found.sort((a, b) => (a?.source === "native" ? 0 : 1) - (b?.source === "native" ? 0 : 1));
+    return found.sort((first, second) => Number(second.pinned === true) - Number(first.pinned === true)
+        || (options.sort === "name" ? String(first.alias || first.name || "").localeCompare(String(second.alias || second.name || ""))
+            : options.sort === "modified" ? (Number(second.modifiedAt) || 0) - (Number(first.modifiedAt) || 0) : 0)
+        || (first.source === "native" ? 0 : 1) - (second.source === "native" ? 0 : 1));
 }
 
 // T-6956：脏稿三选一的待执行意图协调器。宿主 canClose 保持同步阻止（返回 false
@@ -773,8 +914,14 @@ function replaceDraftMatches(content, query, replacement) {
 }
 
 module.exports = {
-    SNIPPET_CODE_MAX, parseSnippetImport, readNativeSnippetResponse,
+    SNIPPET_CODE_MAX,
+    SNIPPET_BACKUP_SCHEMA_VERSION,
+    SNIPPET_BACKUP_MAX_SNIPPETS,
+    SNIPPET_BACKUP_MAX_BYTES,
+    parseSnippetImport, readNativeSnippetResponse,
     buildSnippetMutation, projectSnippetForWire, projectSnippetListForWire,
+    normalizeSnippetSnapshot, snippetSnapshotSignature, buildSnippetBackup,
+    normalizeSnippetBackup, diffSnippetBackup, buildSnippetRestorePlan,
     BUILTIN_SNIPPETS, filterSnippetCatalog, buildUsercssHeader, stripUsercssHeader,
     hasUsercssHeader, resolveUsercssVariables,
     USERCSS_HEADER_RE,

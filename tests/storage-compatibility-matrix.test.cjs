@@ -44,7 +44,7 @@ test('storage compatibility matrix exists and is a non-trivial document', () => 
     assert.ok(fs.existsSync(docsPath), 'docs/storage-compatibility-matrix.md must exist');
     const source = documentSource();
     assert.ok(source.length > 2000, 'the audit document must actually contain the matrix, not a stub');
-    assert.match(source, /17 个 key/, 'the document must state the authoritative key count');
+    assert.match(source, /18 个 key/, 'the document must state the authoritative key count');
 });
 
 test('documented key list equals the code registry in both directions', () => {
@@ -53,13 +53,13 @@ test('documented key list equals the code registry in both directions', () => {
     let match;
     while ((match = re.exec(constantsSource)) !== null) codeKeys.set(match[1], match[2]);
     // 审计面非空自检：空集合会让下面的比对恒真（gate-audit-checklist 模式 ④）
-    assert.equal(codeKeys.size, 17, 'constants.ts must define exactly 17 storage keys');
-    assert.equal(KEY_ORDER.length, 17, 'storage-migration KEY_ORDER must stay at 17');
+    assert.equal(codeKeys.size, 18, 'constants.ts must define exactly 18 storage keys');
+    assert.equal(KEY_ORDER.length, 18, 'storage-migration KEY_ORDER must stay at 18');
 
     const documented = new Set();
     const docRe = /`(sw_[a-z_]+)`/g;
     while ((match = docRe.exec(documentSource())) !== null) documented.add(match[1]);
-    assert.ok(documented.size >= 17, `the document must enumerate every key by literal, found ${documented.size}`);
+    assert.ok(documented.size >= 18, `the document must enumerate every key by literal, found ${documented.size}`);
 
     const codeValues = new Set(codeKeys.values());
     assert.deepEqual([...codeValues].filter((key) => !documented.has(key)), [], 'every registered key must appear in the audit document');

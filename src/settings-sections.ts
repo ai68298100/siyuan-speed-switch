@@ -6,7 +6,7 @@
 // ISwSettings/IFavoriteItem 等类型经 import type 引用（编译期擦除，无运行时循环依赖）。
 import {Dialog, getAllTabs, openTab, showMessage} from "siyuan";
 import {logger} from "./logger";
-import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY, RELATED_SWR_KEY, RSS_READ_KEY, SCHEMA_VERSION_KEY, SNIPPET_RECYCLE_KEY} from "./constants";
+import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_THUMB_HEIGHT_MIN_PX, MOBILE_THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY, RELATED_SWR_KEY, RSS_READ_KEY, SCHEMA_VERSION_KEY, SNIPPET_RECYCLE_KEY, SNIPPET_GROUPS_KEY, DEFAULT_HOTKEY, SECOND_PANEL_HOTKEY} from "./constants";
 import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
 import {diffConfigPackGroups, configPackBaselineSignature, normalizeConfigPackImport} from "./config-pack-model";
 import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport, documentSetRestoreReportToMarkdown, orderDocumentSetRestoreEntries, diffDocumentSetVersion} from "./document-sets";
@@ -72,6 +72,7 @@ export interface SettingsSectionsHost {
     settingItem(title: string, description: string | undefined, action: HTMLElement, column?: boolean): HTMLElement;
     select(options: Array<{value: string, label: string}>, value: string, onChange: (v: string) => void): HTMLElement;
     num(value: number, min: number, max: number, step: number, unit: string, onChange: (v: number) => void, label?: string): HTMLElement;
+    rangeNumber(value: number, min: number, max: number, step: number, unit: string, onChange: (v: number) => void, label?: string): HTMLElement;
     notebookSelect(current: string, onPick: (id: string) => void): HTMLElement;
     switcher(checked: boolean, onChange: (v: boolean) => void): HTMLElement;
     // T-6872（RZ-2）：分组卡片与分段控件设置行
@@ -137,10 +138,13 @@ const SETTING_GROUP_DEFAULT_KEYS: Record<string, ReadonlyArray<string>> = {
     settingsGroupTheme: ["skin"],
     settingsGroupThumbnails: ["columns", "thumbHeight", "showCardUpdatedBadge"],
     settingsGroupSortDensity: ["sortBy", "density"],
-    settingsGroupSearchOpen: ["pinyinMatch", "reuseOpenTabs"],
+    settingsGroupSearchOpen: ["pinyinMatch", "reuseOpenTabs", "rememberScrollPosition"],
     settingsGroupPanelWindows: ["panelSizeMode", "panelScale", "dialogWidth", "dialogHeight", "studioSizeMode", "studioWidth", "studioHeight"],
+    settingsGroupMobileLayout: ["mobileColumns", "mobileThumbHeight"],
+    settingsGroupCompatibility: ["fabEnabled", "floatingBall"],
     settingsGroupWorkbenchWindow: ["homeSizeMode", "homeWidth", "homeHeight", "homePalette"],
-    settingsGroupMobileLayout: ["mobileColumns"],
+    settingsGroupWorkbenchBehavior: ["homeStore"],
+    settingsGroupJournal: ["journalNotebook", "journalAutoCreate"],
 };
 
 // T-7003：组标题行尾追加「恢复默认」小按钮（仅注册过的组）。恢复经宿主
@@ -158,6 +162,9 @@ function appendGroupResetButton(this: SettingsSectionsHost, title: HTMLElement, 
         settingsGroupPanelWindows: this.i18n.settingsGroupPanelWindows,
         settingsGroupWorkbenchWindow: this.i18n.settingsGroupWorkbenchWindow,
         settingsGroupMobileLayout: this.i18n.settingsGroupMobileLayout,
+        settingsGroupCompatibility: this.i18n.settingsGroupCompatibility,
+        settingsGroupWorkbenchBehavior: this.i18n.settingsGroupWorkbenchBehavior,
+        settingsGroupJournal: this.i18n.settingsGroupJournal,
     };
     const button = document.createElement("button");
     button.type = "button";
@@ -244,6 +251,25 @@ export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings
                     this.switcher(s.reuseOpenTabs, (v) => {
                         this.updateSettings({reuseOpenTabs: v});
                     })),
+                this.settingItem(this.i18n.rememberScrollPositionLabel, this.i18n.rememberScrollPositionTip,
+                    this.switcher(s.rememberScrollPosition !== false, (v) => {
+                        this.updateSettings({rememberScrollPosition: v});
+                    })),
+            ),
+            this.settingGroupTitle(this.i18n.settingsGroupShortcuts),
+            this.settingGroupCard(
+                this.settingItem(this.i18n.shortcutBindingsLabel, this.i18n.shortcutBindingsTip, (() => {
+                    const list = document.createElement("dl");
+                    list.className = "sw-settings__shortcut-list";
+                    [[this.i18n.shortcutSwitcher, DEFAULT_HOTKEY], [this.i18n.shortcutWorkbench, SECOND_PANEL_HOTKEY]].forEach(([label, hotkey]) => {
+                        const term = document.createElement("dt");
+                        term.textContent = label;
+                        const value = document.createElement("dd");
+                        value.textContent = hotkey;
+                        list.append(term, value);
+                    });
+                    return list;
+                })(), true),
             ),
             this.settingGroupTitle(this.i18n.settingsGroupAgent),
             this.settingGroupCard(
@@ -458,10 +484,34 @@ export function buildSettingsHomePanel(this: SettingsSectionsHost, s: ISwSetting
         workbenchHint.className = "sw-settings__tip sw-settings__panel-size-hint";
         workbenchHint.textContent = this.i18n.panelSizeDefaultHint;
         workbenchHint.setAttribute("role", "note");
+        const homeStore = s.homeStore || {};
+        const updateHomeStoreSettings = (patch: Record<string, unknown>) => {
+            const current = this.getSettings().homeStore || {};
+            if (patch.rememberState === false) {
+                this.updateSettings({homeStore: {
+                    rememberState: false,
+                    defaultViewMode: patch.defaultViewMode === "list" ? "list" : (current.defaultViewMode === "list" ? "list" : "grid"),
+                    retryFailed: typeof patch.retryFailed === "boolean" ? patch.retryFailed : current.retryFailed !== false,
+                }});
+                return;
+            }
+            this.updateSettings({homeStore: {...current, ...patch}});
+        };
         wrapper.append(
             this.settingGroupTitle(this.i18n.settingsGroupComponents),
             this.settingGroupCard(
                 this.settingSegmented(this.i18n.setHomePalette, this.i18n.setHomePaletteTip, paletteOptions, s.homePalette, (v) => this.updateSettings({homePalette: v as HomePalette})),
+            ),
+            appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupWorkbenchBehavior), "settingsGroupWorkbenchBehavior"),
+            this.settingGroupCard(
+                this.settingItem(this.i18n.homeStoreRememberStateLabel, this.i18n.homeStoreRememberStateTip,
+                    this.switcher(homeStore.rememberState !== false, (value) => updateHomeStoreSettings({rememberState: value}))),
+                this.settingSegmented(this.i18n.homeStoreDefaultViewModeLabel, this.i18n.homeStoreDefaultViewModeTip, [
+                    {value: "grid", label: this.i18n.homeStoreViewGrid},
+                    {value: "list", label: this.i18n.homeStoreViewList},
+                ], homeStore.defaultViewMode === "list" ? "list" : "grid", (value) => updateHomeStoreSettings({defaultViewMode: value})),
+                this.settingItem(this.i18n.homeStoreRetryFailedLabel, this.i18n.homeStoreRetryFailedTip,
+                    this.switcher(homeStore.retryFailed !== false, (value) => updateHomeStoreSettings({retryFailed: value}))),
             ),
             appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupWorkbenchWindow), "settingsGroupWorkbenchWindow"),
             this.settingGroupCard(
@@ -501,6 +551,9 @@ export function buildSettingsMobile(this: SettingsSectionsHost, s: ISwSettings):
                     {value: String(MOBILE_COLUMNS_SINGLE), label: this.i18n.mobileSingle},
                     {value: String(MOBILE_COLUMNS_DOUBLE), label: this.i18n.mobileDouble},
                 ], String(s.mobileColumns), (v) => this.updateSettings({mobileColumns: parseInt(v, 10)})),
+                this.settingItem(this.i18n.mobileThumbHeight, this.i18n.mobileThumbHeightTip,
+                    this.rangeNumber(s.mobileThumbHeight, MOBILE_THUMB_HEIGHT_MIN_PX, MOBILE_THUMB_HEIGHT_MAX_PX, 4, this.i18n.unitPx,
+                        (v) => this.updateSettings({mobileThumbHeight: v}), this.i18n.mobileThumbHeight)),
             ),
             this.settingGroupTitle(this.i18n.settingsGroupCompatibility),
             this.settingGroupCard(
@@ -519,6 +572,13 @@ export function buildSettingsMobile(this: SettingsSectionsHost, s: ISwSettings):
                         });
                         this.updateFABVisibility();
                     })),
+                (() => {
+                    const hint = document.createElement("p");
+                    hint.className = "sw-settings__tip sw-settings__mobile-fab-migration";
+                    hint.textContent = this.i18n.mobileFabMigrationHint;
+                    hint.setAttribute("role", "note");
+                    return hint;
+                })(),
             ),
         );
         return wrapper;
@@ -528,8 +588,13 @@ export function buildSettingsMobile(this: SettingsSectionsHost, s: ISwSettings):
 export function buildSettingsJournal(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
         wrapper.append(
-            this.settingItem(this.i18n.journalNotebook, this.i18n.journalNotebookTip,
-                this.notebookSelect(s.journalNotebook, (id) => this.updateSettings({journalNotebook: id}))),
+            appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupJournal), "settingsGroupJournal"),
+            this.settingGroupCard(
+                this.settingItem(this.i18n.journalNotebook, this.i18n.journalNotebookTip,
+                    this.notebookSelect(s.journalNotebook, (id) => this.updateSettings({journalNotebook: id}))),
+                this.settingItem(this.i18n.journalAutoCreate, this.i18n.journalAutoCreateTip,
+                    this.switcher(s.journalAutoCreate !== false, (value) => this.updateSettings({journalAutoCreate: value}))),
+            ),
         );
         return wrapper;
     }
@@ -1660,6 +1725,7 @@ const STORAGE_KEY_GROUPS: ReadonlyArray<{labelKey: string, keys: ReadonlyArray<{
         keys: [
             {key: RSS_READ_KEY, labelKey: "storageKeyRssRead"},
             {key: SNIPPET_RECYCLE_KEY, labelKey: "storageKeySnippetRecycle"},
+            {key: SNIPPET_GROUPS_KEY, labelKey: "storageKeySnippetGroups"},
             {key: SCHEMA_VERSION_KEY, labelKey: "storageKeySchemaVersion"},
         ],
     },
@@ -1776,6 +1842,7 @@ export function buildSettingsStorage(this: SettingsSectionsHost): HTMLElement {
             storageKeyDocumentSets: this.i18n.storageKeyDocumentSets,
             storageKeyRssRead: this.i18n.storageKeyRssRead,
             storageKeySnippetRecycle: this.i18n.storageKeySnippetRecycle,
+            storageKeySnippetGroups: this.i18n.storageKeySnippetGroups,
             storageKeySchemaVersion: this.i18n.storageKeySchemaVersion,
         };
         for (const group of STORAGE_KEY_GROUPS) {
@@ -1876,6 +1943,11 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     note.className = "sw-settings__hint sw-floating-ball-settings__note";
     note.textContent = this.i18n.floatingBallSettingsTip;
     wrapper.appendChild(note);
+    const compatibilityNote = document.createElement("p");
+    compatibilityNote.className = "sw-settings__hint sw-floating-ball-settings__compatibility";
+    compatibilityNote.textContent = this.i18n.floatingBallLegacySidebarHint;
+    compatibilityNote.setAttribute("role", "note");
+    wrapper.appendChild(compatibilityNote);
 
     const persist = (next: unknown) => {
         const config: any = normalizeFloatingBallConfig(next);

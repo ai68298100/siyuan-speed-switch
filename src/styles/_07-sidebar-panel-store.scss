@@ -249,6 +249,32 @@
     .sw__home-module-item { border: 0; }
     .sw__home-module-item-action { min-height: 28px; padding: 4px 9px; border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 22%, var(--b3-border-color)); border-radius: 999px; background: color-mix(in srgb, var(--b3-theme-primary) 7%, transparent); }
     .sw__home-module-item-secondary { margin-inline-start: 4px; font-size: 10px; }
+
+    .sw__home-tag-tree { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+    .sw__home-tag-tree-item { min-width: 0; }
+    .sw__home-tag-tree-line { display: flex; align-items: center; gap: 2px; padding-inline-start: calc(var(--sw-tag-depth, 0) * 14px); min-width: 0; }
+    .sw__home-tag-tree-toggle {
+        flex: none;
+        display: inline-grid;
+        width: 24px;
+        min-width: 24px;
+        height: 28px;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 16px;
+        line-height: 1;
+    }
+    .sw__home-tag-tree-toggle:not(:disabled):hover,
+    .sw__home-tag-tree-toggle:not(:disabled):focus-visible { background: color-mix(in srgb, var(--b3-theme-primary) 10%, transparent); color: var(--b3-theme-primary); }
+    .sw__home-tag-tree-toggle:disabled { cursor: default; opacity: 0.34; }
+    .sw__home-tag-tree-action { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; border-radius: 8px; text-align: start; }
+    .sw__home-tag-tree-action .sw__home-module-item-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sw__home-tag-tree-action .sw__home-module-item-secondary { flex: none; margin-inline-start: auto; }
+    .sw__home-tag-tree-item.is-virtual .sw__home-tag-tree-action { border-style: dashed; color: var(--b3-theme-on-surface-light); font-weight: 600; }
 }
 
 // 概览数字（stat hero）

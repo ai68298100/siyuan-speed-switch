@@ -10,6 +10,7 @@ const fs = require("fs");
 const path = require("path");
 const {
     RAW_BUNDLE_BUDGET_BYTES,
+    RAW_BUNDLE_BUDGET_ADR,
     ARCHIVE_BUDGET_BYTES,
     COMPRESSED_ENTRY_BUDGET_BYTES,
 } = require("./release-readiness-metrics.cjs");
@@ -59,10 +60,10 @@ doc = doc.replace(/`dist\/index\.js` \d+ bytes; `dist\/index\.css` \d+ bytes; `p
     `\`dist/index.js\` ${size} bytes; \`dist/index.css\` ${css} bytes; \`package.zip\` ${zip} bytes`);
 
 // 2) 生产产物表行：三类数字与余量
-doc = doc.replace(/`dist\/index\.js` \d+ bytes（(?:832|896|960|1024|1088|1120) KiB 自律线内，余量 -?\d+ bytes，ADR 00(?:62|67|74|77|81|92)）/,
-    `\`dist/index.js\` ${size} bytes（1152 KiB 自律线内，余量 ${RAW_BUNDLE_BUDGET - size} bytes，ADR 0098）`);
-doc = doc.replace(/`package\.zip` \d+ bytes（512 KiB 硬上限余量 \d+ bytes）/,
-    `\`package.zip\` ${zip} bytes（512 KiB 硬上限余量 ${ARCHIVE_BUDGET - zip} bytes）`);
+doc = doc.replace(/`dist\/index\.js` \d+ bytes（\d+ KiB 自律线内，余量 -?\d+ bytes，ADR \d{4}）/,
+    `\`dist/index.js\` ${size} bytes（${RAW_BUNDLE_BUDGET / 1024} KiB 自律线内，余量 ${RAW_BUNDLE_BUDGET - size} bytes，ADR ${RAW_BUNDLE_BUDGET_ADR}）`);
+doc = doc.replace(/`package\.zip` \d+ bytes（\d+ KiB 硬上限余量 -?\d+ bytes）/,
+    `\`package.zip\` ${zip} bytes（${ARCHIVE_BUDGET / 1024} KiB 硬上限余量 ${ARCHIVE_BUDGET - zip} bytes）`);
 doc = doc.replace(/当前 `index\.js` 压缩后 \d+ bytes，余量 \d+ bytes）/,
     `当前 \`index.js\` 压缩后 ${compressed} bytes，余量 ${COMPRESSED_ENTRY_BUDGET - compressed} bytes）`);
 

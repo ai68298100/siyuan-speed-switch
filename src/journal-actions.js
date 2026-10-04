@@ -35,4 +35,35 @@ async function ensureTodayJournal({notebook, fetchImpl = globalThis.fetch, logge
     }
 }
 
-module.exports = {normalizeJournalDocumentId, ensureTodayJournal};
+/**
+ * Find today's journal without creating a document.
+ * @param {{notebook: string, fetchImpl?: Function, logger?: {warn?: (...args: unknown[]) => void}, now?: Date}}
+ * @returns {Promise<string|null>}
+ */
+async function findTodayJournal({notebook, fetchImpl = globalThis.fetch, logger, now = new Date()}) {
+    if (!/^[0-9]{14}-[0-9a-z]+$/i.test(String(notebook || "")) || typeof fetchImpl !== "function") return null;
+    const date = now instanceof Date && !Number.isNaN(now.getTime()) ? now : new Date();
+    const ymd = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const attribute = `custom-dailynote-${ymd.replace(/-/g, "")}`;
+    const stmt = `SELECT b.id FROM blocks AS b LEFT JOIN attributes AS a ON a.block_id=b.id AND a.name='${attribute}' WHERE b.type='d' AND b.box='${notebook}' AND (a.name IS NOT NULL OR b.content LIKE '${ymd}%') ORDER BY b.created DESC, b.id DESC LIMIT 1`;
+    try {
+        const response = await fetchImpl("/api/query/sql", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({stmt}),
+        });
+        if (!response?.ok) throw new Error(`query/sql HTTP ${response?.status ?? "unknown"}`);
+        const json = await response.json();
+        const rows = Array.isArray(json?.data) ? json.data : [];
+        for (const row of rows) {
+            const id = normalizeJournalDocumentId(row?.id);
+            if (id) return id;
+        }
+        return null;
+    } catch (error) {
+        logger?.warn?.("find today's journal fail", error);
+        return null;
+    }
+}
+
+module.exports = {normalizeJournalDocumentId, ensureTodayJournal, findTodayJournal};

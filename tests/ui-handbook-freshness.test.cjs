@@ -11,7 +11,7 @@ const constants = require("./source-scan.cjs").readSourceFile("src/constants.ts"
 test("ui-handbook section 7: stale facts corrected (T-7047 follow-up)", () => {
     // 存储数：应与 KEY_ORDER 一致（不再硬编码旧值）
     assert.doesNotMatch(handbook, /存储 key 恒 13/, "旧存储数（13）不得残留");
-    assert.ok(handbook.includes("17"), "当前存储 key 总数 17 必须在册");
+    assert.ok(handbook.includes("18"), "当前存储 key 总数 18 必须在册");
     // 包体预算：不再硬编码过时余量（指向 release-readiness 最新快照）
     assert.doesNotMatch(handbook, /zip 512 KiB 线.*余约 16 KiB/, "过时包体余量不得残留");
     assert.ok(handbook.includes("release-readiness"), "包体预算应指向最新快照");

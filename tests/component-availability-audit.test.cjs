@@ -45,7 +45,7 @@ test("third-party catalog entries are provider-backed; bridged and provider-only
 test("SQL-backed widget adapters use the whitelisted stmt payload", () => {
     const sqlModules = [
         "today-tasks", "journal-monthly", "note-stats", "recent-edits",
-        "flashcard-due", "random-review", "clipped-unread", "on-this-day", "today-writing",
+        "flashcard-due", "random-review", "on-this-day", "today-writing",
         "writing-streak", "journal-calendar", "recent-writing-activity", "recent-daily-notes",
         "document-relations-summary", "today-reservations",
     ];

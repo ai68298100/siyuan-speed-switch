@@ -368,11 +368,28 @@ test('tag widget flattens hierarchy and supports count or name sorting', () => {
         {name: '生活', count: 4},
     ];
     const byCount = model.buildTagListSnapshot(tags, {limit: 2}, {blocks: '块', stat: '标签'}, NOW);
-    assert.deepEqual(byCount.items.map((item) => [item.label, item.secondary]), [['工作/项目A', '7 块'], ['生活', '4 块']]);
+    assert.equal(byCount.viewType, 'tag-tree');
+    assert.deepEqual(byCount.items.map((item) => [item.label, item.secondary]), [['工作', '2 块'], ['项目A', '7 块']]);
+    assert.equal(byCount.items[0].hasChildren, true);
     assert.deepEqual(byCount.stat, {value: '2/3', label: '标签'});
     const searched = model.buildTagListSnapshot(tags, {query: '项目', showHierarchy: '否', sortBy: '名称'}, {}, NOW);
-    assert.equal(searched.items[0].label, '项目A');
-    assert.equal(searched.items[0].value, 'tag:工作/项目A');
+    assert.equal(searched.items[0].label, '工作');
+    assert.equal(searched.items[0].value, 'tag:工作');
+    assert.equal(searched.items[1].label, '项目A');
+    assert.equal(searched.items[1].value, 'tag:工作/项目A');
+});
+
+test('tag tree keeps virtual parents visible but inert', () => {
+    const snapshot = model.buildTagListSnapshot([
+        {name: '项目', count: 0, children: [{name: '前端', count: 3}]},
+        {name: '独立', count: 2},
+    ], {}, {blocks: '块'});
+    const parent = snapshot.items.find((item) => item.treePath === '项目');
+    assert.equal(parent.virtual, true);
+    assert.equal(parent.disabled, true);
+    assert.equal(parent.value, '');
+    assert.equal(parent.count, 3);
+    assert.equal(snapshot.items.find((item) => item.treePath === '项目/前端').value, 'tag:项目/前端');
 });
 
 test('bookmark widget reports empty entries and can hide them', () => {

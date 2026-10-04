@@ -117,23 +117,27 @@ function normalizeRelatedSwrProjection(value) {
  */
 function normalizeRelatedSwrStore(value, options = {}) {
     const now = Number.isFinite(options.nowMs) ? options.nowMs : Date.now();
-    const output = [];
     if (!value || typeof value !== "object" || value.version !== RELATED_SWR_VERSION || !Array.isArray(value.entries)) {
-        return {version: RELATED_SWR_VERSION, entries: output};
+        return {version: RELATED_SWR_VERSION, entries: []};
     }
-    const seen = new Set();
+    const byRootId = new Map();
     for (const raw of value.entries) {
-        if (output.length >= RELATED_SWR_MAX_ENTRIES) break;
         if (!raw || typeof raw !== "object") continue;
         const rootId = cleanRelatedText(raw.rootId, 64);
-        if (!RELATED_ID_PATTERN.test(rootId) || seen.has(rootId)) continue;
-        const at = Number(raw.at);
-        if (!Number.isFinite(at) || at <= 0 || now - at < 0 || now - at > RELATED_SWR_MAX_AGE_MS) continue;
+        if (!RELATED_ID_PATTERN.test(rootId)) continue;
+        const rawAt = Number(raw.at);
+        if (!Number.isFinite(rawAt) || rawAt <= 0 || now - rawAt < 0 || now - rawAt > RELATED_SWR_MAX_AGE_MS) continue;
+        const at = Math.floor(rawAt);
+        if (at <= 0) continue;
         const projection = normalizeRelatedSwrProjection(raw.projection);
         if (!projection) continue;
-        seen.add(rootId);
-        output.push({rootId, at: Math.floor(at), projection});
+        const candidate = {rootId, at, projection};
+        const previous = byRootId.get(rootId);
+        if (!previous || candidate.at > previous.at) {
+            byRootId.set(rootId, candidate);
+        }
     }
+    const output = [...byRootId.values()];
     output.sort((a, b) => b.at - a.at);
     return {version: RELATED_SWR_VERSION, entries: output.slice(0, RELATED_SWR_MAX_ENTRIES)};
 }
@@ -146,6 +150,33 @@ function buildRelatedSwrStore(entries) {
     });
 }
 
+function mergeRelatedSwrEntry(entries, entry, options = {}) {
+    const candidates = Array.isArray(entries) ? entries.slice() : [];
+    if (entry && typeof entry === "object") candidates.push(entry);
+    return normalizeRelatedSwrStore({
+        version: RELATED_SWR_VERSION,
+        entries: candidates,
+    }, options);
+}
+
+function beginRelatedContentRequest(requests, rootId) {
+    if (!requests || typeof requests.get !== "function" || typeof requests.set !== "function" || !rootId) return 0;
+    const previous = Number(requests.get(rootId));
+    const generation = Number.isFinite(previous) && previous >= 0 ? Math.floor(previous) + 1 : 1;
+    requests.set(rootId, generation);
+    return generation;
+}
+
+function isRelatedContentRequestCurrent(requests, rootId, generation) {
+    return Boolean(requests && typeof requests.get === "function" && requests.get(rootId) === generation);
+}
+
+function finishRelatedContentRequest(requests, rootId, generation) {
+    if (!isRelatedContentRequestCurrent(requests, rootId, generation)) return false;
+    if (typeof requests.delete === "function") requests.delete(rootId);
+    return true;
+}
+
 module.exports = {
     RELATED_ITEM_MAX,
     RELATED_SWR_VERSION,
@@ -155,4 +186,8 @@ module.exports = {
     isRelatedCacheHit,
     normalizeRelatedSwrStore,
     buildRelatedSwrStore,
+    mergeRelatedSwrEntry,
+    beginRelatedContentRequest,
+    isRelatedContentRequestCurrent,
+    finishRelatedContentRequest,
 };

@@ -447,7 +447,7 @@ function buildAgentNavigationResult(input = {}) {
 }
 
 // 存储演练健康投影（v0.20 数据连续性，D-386）：把 storage-migration 演练
-// 报告收敛为有界只读快照——available 门控，totals 六计数钳制到 0..17（每 key
+// 报告收敛为有界只读快照——available 门控，totals 六计数钳制到 0..18（每 key
 // 一条），anomalies 仅保留 cleaned/reset/migrated 且不回显任何原始数据文本。
 const AGENT_STORAGE_TOTAL_KEYS = Object.freeze(["kept", "cleaned", "migrated", "reset", "inspect", "missing"]);
 const AGENT_STORAGE_ANOMALY_STATUSES = Object.freeze(["cleaned", "reset", "migrated"]);
@@ -462,12 +462,12 @@ function buildAgentStorageHealth(report) {
     const totals = {};
     for (const key of AGENT_STORAGE_TOTAL_KEYS) {
         const value = Number.isFinite(totalsSource[key]) ? Math.trunc(totalsSource[key]) : 0;
-        totals[key] = Math.min(17, Math.max(0, value));
+        totals[key] = Math.min(18, Math.max(0, value));
     }
     const keys = Array.isArray(report.keys) ? report.keys : [];
     const anomalies = keys
         .filter((entry) => entry && typeof entry === "object" && AGENT_STORAGE_ANOMALY_STATUSES.includes(entry.status))
-        .slice(0, 17)
+        .slice(0, 18)
         .map((entry) => ({key: asText(entry.key, 32), status: asText(entry.status, 16)}))
         .filter((entry) => entry.key);
     const version = Number.isFinite(report.version) ? Math.min(9999, Math.max(0, Math.trunc(report.version))) : 0;
@@ -999,19 +999,19 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                         totals: Object.freeze({
                             type: "object",
                             properties: {
-                                kept: {type: "integer", minimum: 0, maximum: 16},
-                                cleaned: {type: "integer", minimum: 0, maximum: 16},
-                                migrated: {type: "integer", minimum: 0, maximum: 16},
-                                reset: {type: "integer", minimum: 0, maximum: 16},
-                                inspect: {type: "integer", minimum: 0, maximum: 16},
-                                missing: {type: "integer", minimum: 0, maximum: 16},
+                                kept: {type: "integer", minimum: 0, maximum: 18},
+                                cleaned: {type: "integer", minimum: 0, maximum: 18},
+                                migrated: {type: "integer", minimum: 0, maximum: 18},
+                                reset: {type: "integer", minimum: 0, maximum: 18},
+                                inspect: {type: "integer", minimum: 0, maximum: 18},
+                                missing: {type: "integer", minimum: 0, maximum: 18},
                             },
                             required: AGENT_STORAGE_TOTAL_KEYS,
                             additionalProperties: false,
                         }),
                         anomalies: Object.freeze({
                             type: "array",
-                            maxItems: 15,
+                            maxItems: 18,
                             items: Object.freeze({
                                 type: "object",
                                 properties: {

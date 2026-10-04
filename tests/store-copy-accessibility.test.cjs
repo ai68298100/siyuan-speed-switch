@@ -17,7 +17,7 @@ test('source chips have native title', () => assert.match(storeUiSource, /chip\.
 test('size tiles have aria labels', () => assert.match(storeUiSource, /tile\.setAttribute\("aria-label", this\.i18n\.homeStoreSizeHint/));
 test('config button has native title', () => assert.match(storeUiSource, /configButton\.title = configButton\.getAttribute\("aria-label"\)/));
 test('remove button has aria label', () => assert.match(storeUiSource, /removeButton\.setAttribute\("aria-label"/));
-test('preview button has native title', () => assert.match(storeUiSource,/previewButton\.title = previewButton\.getAttribute\("aria-label"\)/));
+test('inline preview metadata has native titles', () => assert.match(storeUiSource,/sizeChip\.title = sizeChip\.textContent/));
 test('size hint has Chinese translation', () => assert.equal(zh.homeStoreSizeHint, '选择尺寸：{size}'));
 test('size hint has English translation', () => assert.equal(en.homeStoreSizeHint, 'Choose size: {size}'));
 test('size hint preserves placeholder', () => assert.ok(zh.homeStoreSizeHint.includes('{size}') && en.homeStoreSizeHint.includes('{size}')));
@@ -36,6 +36,6 @@ test('title id does not expose config values', () => assert.doesNotMatch(storeUi
 test('native titles remain bounded to visible labels', () => assert.match(storeUiSource, /title = .*textContent/));
 test('remove action remains a button', () => assert.match(storeUiSource, /removeButton\.type = "button"/));
 test('config action remains a button', () => assert.match(storeUiSource, /configButton\.type = "button"/));
-test('preview action remains a button', () => assert.match(storeUiSource, /previewButton\.className/));
+test('inline preview body remains a scoped region', () => assert.match(storeUiSource, /body\.classList\.add\("sw-store-preview__body"\)/));
 test('size hint is referenced from runtime', () => assert.match(storeUiSource, /homeStoreSizeHint\.replace/));
 test('aria labels use component title fallback', () => assert.match(storeUiSource,/def\.title \|\| moduleId/));

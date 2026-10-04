@@ -14,7 +14,12 @@ if (testFiles.length === 0) {
     process.exit(1);
 }
 
-const result = spawnSync(process.execPath, ["--test", ...testFiles], {stdio: "inherit"});
+const concurrency = Number(process.env.SWSS_TEST_CONCURRENCY || 4);
+if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 8) {
+    console.error("SWSS_TEST_CONCURRENCY must be an integer from 1 to 8.");
+    process.exit(1);
+}
+const result = spawnSync(process.execPath, ["--test", "--test-concurrency=" + concurrency, ...testFiles], {stdio: "inherit"});
 if (result.error) {
     console.error(result.error.message);
     process.exit(1);

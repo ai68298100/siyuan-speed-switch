@@ -63,6 +63,11 @@ test("UI fetch requests the audited fetch limit", () => {
         "旧的 11 条取数形态必须清除");
 });
 
+test("title search normalizes native path-only document records before rendering", () => {
+    assert.match(docSearchUi, /const rawDocs = json\.data\.filter\(\(doc: unknown\): doc is IDocSearchResult => Boolean\(doc\) && typeof doc === "object"\);\s*docs = filterDocSearchResults\.call\(this, normalizeTitleSearchDocuments\(rawDocs\) as IDocSearchResult\[\], filters\);/,
+        "3.8.x searchDocs 的 path/hPath/box 记录必须先补 rootId/title 再进入结果渲染");
+});
+
 test("pagination cursors never enter search cache keys", () => {
     assert.match(searchModelRaw, /The expansion\s*\* cursor never enters search cache keys/,
         "纯模型必须声明游标不进缓存 key");

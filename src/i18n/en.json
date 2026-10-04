@@ -67,6 +67,7 @@
   "homeLoading": "Loading…",
   "homeRefreshing": "Updating…",
   "homeModuleError": "Failed to load",
+  "homeBlocked": "Unavailable",
   "homeRetry": "Retry",
   "homeCollapse": "Collapse",
   "homeExpand": "Expand",
@@ -109,9 +110,8 @@
   "quickCaptureDone": "Appended to today's journal",
   "quickCaptureFailed": "Append failed, please retry",
   "homeClippedUnread": "Clipped to read",
-  "homeDescClippedUnread": "Group unread clipped documents by tag with notebook, sort, path, and time controls",
-  "homeStatClipped": "to read",
-  "homeClippedEmpty": "No unread documents match this tag",
+  "homeDescClippedUnread": "Provided by a clipping plugin that supports the clipped-unread protocol; ordinary tags are not treated as clipping data",
+  "homeClippedProviderMissing": "Install and enable a clipping plugin that supports the clipped-unread protocol",
   "homeOnThisDay": "On this day",
   "homeDescOnThisDay": "Review past years on the same month and day with year, sort, and path controls",
   "homeStatOnThisDay": "entries",
@@ -192,6 +192,14 @@
   "homeRefreshAll": "Refresh all",
   "homeRefreshFailed": "{count} modules failed to refresh (timeout {timeout}, failed {failed}, other {other})",
   "homeStoreTitle": "Widget store",
+  "homeStoreRememberStateLabel": "Remember workbench state",
+  "homeStoreRememberStateTip": "Remember density, view, sorting, and collapsed groups; when off, open with the default view and stop writing the scene.",
+  "homeStoreDefaultViewModeLabel": "Default view",
+  "homeStoreDefaultViewModeTip": "The view used when there is no workbench scene to restore.",
+  "homeStoreViewGrid": "Grid",
+  "homeStoreViewList": "List",
+  "homeStoreRetryFailedLabel": "Allow per-widget retry",
+  "homeStoreRetryFailedTip": "Show a retry button for failed widgets in health details; Refresh all remains available.",
   "homeStoreGuide": "Usage guide",
   "homeStoreDetailHint": "Select a component on the left to see its preview and details",
   "homeStoreDetailNote": "After adding, open the workbench edit mode to adjust size and position.",
@@ -225,6 +233,7 @@
   "homeTasksEmpty": "No displayable tasks in this scope",
   "homeTasksFilteredEmpty": "No tasks match the current filters",
   "homeTags": "Tags",
+  "homeTagVirtual": "Organization node",
   "homeBookmarks": "Bookmarks",
   "homeJournalMonthly": "Journal this month",
   "homeStatMonthlyJournals": "daily notes",
@@ -738,6 +747,7 @@
   "storageKeyQuickActionsDefaults": "Quick actions defaults marker",
   "storageKeyDocumentSets": "Document sets",
   "storageKeySnippetRecycle": "Snippet recycle bin",
+  "storageKeySnippetGroups": "Snippet groups",
   "storageKeyRssRead": "RSS read state",
   "storageKeySchemaVersion": "Storage schema version stamp",
   "storageSchemaTitle": "Storage schema health",
@@ -756,6 +766,9 @@
   "fabEnabledTip": "Off by default: show a floating action button on the bottom-right of the mobile screen to open the tab switcher; swipe up to hide, swipe down to show",
   "mobileLayout": "Card layout",
   "mobileLayoutTip": "Arrangement of tab cards on mobile",
+  "mobileThumbHeight": "Mobile thumbnail height",
+  "mobileThumbHeightTip": "Adjust mobile tab-card thumbnail height with the slider or number field, from 48 to 200 px.",
+  "mobileFabMigrationHint": "The legacy FAB switch now maps to the mobile floating-ball switch; changes here keep the old field compatible.",
   "mobileHomePanelFixed": "The mobile widget panel always uses one vertical column; the setting below only affects the tab list.",
   "mobileSingle": "Single column",
   "mobileDouble": "Two columns",
@@ -779,6 +792,8 @@
   "secJournal": "Journal",
   "journalNotebook": "Default journal notebook",
   "journalNotebookTip": "The notebook where today's journal is created when the top-bar journal button is clicked; opens a picker on first use if unset",
+  "journalAutoCreate": "Create a missing journal",
+  "journalAutoCreateTip": "When off, open only an existing journal for today; do not create a document when none is found.",
   "journalChoose": "Choose default journal notebook",
   "journalChooseTip": "Pick a default notebook for the journal feature; you can change it anytime under Settings → Journal",
   "notebookLoading": "Loading notebooks…",
@@ -905,6 +920,12 @@
   ,"favSmartGroupLoading": "Collecting…"
   ,"reuseTabsLabel": "Reuse open tabs"
   ,"reuseTabsTip": "When a search result is already open, focus the existing tab instead of opening a duplicate."
+  ,"rememberScrollPositionLabel": "Remember document scroll position"
+  ,"rememberScrollPositionTip": "During this SiYuan session, try to return to the last position when reopening or restoring a document."
+  ,"shortcutBindingsLabel": "Default bindings"
+  ,"shortcutBindingsTip": "These are the plugin's registered defaults; change them in SiYuan Settings → Shortcuts."
+  ,"shortcutSwitcher": "Open switcher"
+  ,"shortcutWorkbench": "Open workbench"
   ,"breadcrumbEntry": "Open switcher"
   ,"densityLabel": "List density"
   ,"densityComfortable": "Comfortable"
@@ -1084,7 +1105,8 @@
   ,"syncNowCompleted": "Sync completed"
   ,"syncNowFailed": "Sync failed: kernel unreachable, cloud sync not configured, or read-only mode"
   ,"secFloatingBall": "Floating ball"
-  ,"floatingBallSettingsTip": "Enable the floating ball independently on desktop, sidebar, and mobile, then configure first-layer actions. Positions are stored per surface and are not included in exports."
+  ,"floatingBallSettingsTip": "Enable the floating ball independently on desktop and mobile, then configure first-layer actions. Positions are stored per surface and are not included in exports."
+  ,"floatingBallLegacySidebarHint": "The sidebar floating-ball entry is retired; legacy sidebar fields remain tolerated for compatibility and will not recreate a sidebar entry."
   ,"floatingBallSurfaceTip": "Show or hide the floating ball on this surface"
   ,"floatingBallDesktop": "Desktop floating ball"
   ,"floatingBallSidebar": "Sidebar floating ball"
@@ -1230,6 +1252,7 @@
   ,"settingsGroupThumbnails": "Thumbnails"
   ,"settingsGroupSortDensity": "Sort & density"
   ,"settingsGroupSearchOpen": "Search & open"
+  ,"settingsGroupShortcuts": "Shortcuts"
   ,"settingsGroupAgent": "Controlled abilities"
   ,"settingsGroupListSidebar": "List & sidebar"
   ,"settingsGroupDocks": "Dock panels"
@@ -1237,6 +1260,8 @@
   ,"settingsGroupWorkbenchWindow": "Workbench window"
   ,"settingsGroupMobileLayout": "Card layout"
   ,"settingsGroupCompatibility": "Compatibility"
+  ,"settingsGroupWorkbenchBehavior": "Workbench behavior"
+  ,"settingsGroupJournal": "Journal strategy"
   ,"platformKbdPreview": "Alt Preview"
   ,"mobileLayoutFailed": "The switcher failed to initialize. Close it and try again."
   ,"openHistory": "Recent"
@@ -1276,10 +1301,6 @@
   ,"homeCalendarJumpNone": "No month with journals found within ±24 months."
   ,"homeCalendarJumpPrev": "Previous month with journals"
   ,"homeCalendarPeriodPicker": "Pick a month"
-  ,"homeCalendarJumpNext": "Next month with journals"
-  ,"homeCalendarJumpNone": "No month with journals found within ±24 months."
-  ,"homeCalendarJumpPrev": "Previous month with journals"
-  ,"homeCalendarPeriodPicker": "Pick a month"
   ,"homeMilestoneImminent": "Coming soon"
   ,"homeMilestoneMonth": "Within 30 days"
   ,"homeMilestoneHundred": "Within 100 days"
@@ -1299,6 +1320,24 @@
   ,"snippetRecyclePurgeConfirm": "Delete this snapshot forever? This cannot be undone."
   ,"snippetRecycleRestore": "Restore as draft"
   ,"snippetRecycleRestored": "Restored as a new draft (kept disabled; enable after saving)"
+  ,"snippetRestore": "Restore backup"
+  ,"snippetRestoreAdd": "Add"
+  ,"snippetRestoreCancel": "Cancel"
+  ,"snippetRestoreConfirm": "Restore selected"
+  ,"snippetRestoreConflict": "The native snippets changed before restore; reload and try again."
+  ,"snippetRestoreDelete": "Delete"
+  ,"snippetRestoreDone": "Backup restored; undo is available once for this session."
+  ,"snippetRestoreEmpty": "The backup has no differences from the current native snippets."
+  ,"snippetRestoreInvalid": "The backup is invalid, unsupported, or exceeds the safety limit."
+  ,"snippetRestoreKeep": "Keep"
+  ,"snippetRestoreNoSelection": "Select at least one snippet or the master switches."
+  ,"snippetRestoreOneShot": "The pre-restore state is kept for one session-only undo; no new persistent backup is written."
+  ,"snippetRestorePending": "Restore may have landed, but read-back verification is incomplete; refresh before retrying."
+  ,"snippetRestorePreview": "Restore preview"
+  ,"snippetRestoreReplace": "Replace"
+  ,"snippetRestoreSettings": "Also restore the CSS/JavaScript master switches"
+  ,"snippetRestoreUndo": "Undo restore"
+  ,"snippetRefreshExternal": "Another window updated snippets; native snippets refreshed."
   ,"snippetPreview": "Preview"
   ,"snippetPreviewHint": "Preview runs in an isolated document and never changes your notes."
   ,"snippetCapabilitySceneLabel": "Scene"
@@ -1375,6 +1414,8 @@
    ,"snippetJSCascadeHint": "JavaScript snippets load in native list order; the studio never executes them in preview."
   ,"snippetDelete": "Delete"
   ,"snippetExport": "Export"
+  ,"snippetBackup": "Back up snippets"
+  ,"snippetBackupHint": "Native snippets and master switches exported."
   ,"snippetSubmission": "Create submission package"
   ,"snippetSubmissionHint": "Created a local, unreviewed submission package."
   ,"snippetChoose": "Choose snippet"
@@ -1392,6 +1433,57 @@
   ,"snippetAllSources": "All sources"
   ,"snippetBuiltins": "Built-in"
   ,"snippetMine": "My snippets"
+  ,"snippetGroupNew": "New group"
+  ,"snippetMetadata": "Catalog metadata (local to this plugin; drafts saved with snippet)"
+  ,"snippetStore": "Snippet store"
+  ,"snippetStoreDraft": "Create a disabled draft from this"
+  ,"snippetStoreBuiltinInfo": "Bundled · MIT · CSS applicable to desktop/sidebar/mobile (theme-dependent, appearance unverified) · sample preview only; network and scripts blocked"
+  ,"snippetStoreNativeInfo": "Native local snippet · source/license undeclared · devices unverified · original unchanged; preview network and scripts blocked"
+  ,"snippetStoreCommunity": "A community catalog is not established. Import local submission packs or preview Gists manually. Nothing uploads or enables automatically."
+  ,"snippetAlias": "Alias"
+  ,"snippetTags": "Tags (comma-separated, up to 8)"
+  ,"snippetSummary": "Summary"
+  ,"snippetPinned": "Pinned"
+  ,"snippetCatalogSort": "Catalog sort"
+  ,"snippetCatalogNativeOrder": "Native order"
+  ,"snippetCatalogModified": "Recently changed in this plugin"
+  ,"snippetGroupRename": "Rename"
+  ,"snippetGroupDelete": "Delete group"
+  ,"snippetGroupView": "Group view"
+  ,"snippetGroupTree": "Tree"
+  ,"snippetGroupFlat": "Flat"
+  ,"snippetGroupUngrouped": "Ungrouped"
+  ,"snippetGroupNamePrompt": "Enter a group name"
+  ,"snippetGroupNameInvalid": "The name is empty, duplicated, or the group limit has been reached"
+  ,"snippetGroupDeleteConfirm": "Delete this group? Its snippets return to Ungrouped; native snippets are not deleted."
+  ,"snippetGroupDropHint": "Drag snippets here to assign them to this group"
+  ,"snippetGist": "Gist publish & import"
+  ,"snippetGistHint": "Gists are unlisted; anyone with the link can access them. The token is stored as plain text in plugin settings and sent only in request headers. Imports create new disabled drafts."
+  ,"snippetGistToken": "GitHub token"
+  ,"snippetGistTokenSet": "Configured (last four characters only)"
+  ,"snippetGistTokenPlaceholder": "Enter a GitHub token"
+  ,"snippetGistSaveToken": "Save token"
+  ,"snippetGistClearToken": "Clear token"
+  ,"snippetGistDescription": "Gist description"
+  ,"snippetGistUrl": "Full Gist URL"
+  ,"snippetGistPublish": "Publish new Gist"
+  ,"snippetGistPublishUpdate": "Update current Gist"
+  ,"snippetGistImportPreview": "Read Gist"
+  ,"snippetGistImport": "Import as disabled draft"
+  ,"snippetGistPreviewLoading": "Reading Gist…"
+  ,"snippetGistPreviewEmpty": "No parseable CSS/JS files found."
+  ,"snippetGistParseable": "Parseable"
+  ,"snippetGistUnparseable": "Not parseable"
+  ,"snippetGistDiff": "Diff vs local same ID: {added} added · {removed} removed"
+  ,"snippetGistLink": "Gist preview ready"
+  ,"snippetGistPublished": "Gist published; the link was remembered."
+  ,"snippetGistImported": "Imported as a disabled draft; review it before saving."
+  ,"snippetGistTokenRequired": "Configure a GitHub token first."
+  ,"snippetGistReplaceToken": "Replace token"
+  ,"snippetGistPrepareUpdate": "Read before updating"
+  ,"snippetGistStale": "The snippet or Gist changed; read it again and review."
+  ,"snippetGistFailed": "Gist request failed. Check the URL, token gist permission, and network before retrying."
+  ,"snippetGistPending": "The remote write may have landed; check GitHub before publishing again."
   ,"snippetAllTypes": "All types"
   ,"snippetAllCategories": "All categories"
   ,"snippetCategory": "Category"
@@ -1476,12 +1568,22 @@
   ,"snippetInvalid": "The host returned an invalid snippet result."
   ,"snippetFailed": "The operation failed."
   ,"snippetAI": "SiYuan AI"
-  ,"snippetAIHint": "AI receives only this snippet and your instruction. The result is a draft and is never enabled automatically."
+  ,"snippetAIHint": "AI receives your instruction and checked snippet context only. Documents, search results, attachments and the library are not read. Results stay drafts and are never enabled automatically."
+  ,"snippetAIIncludeCode": "Send current snippet code (previous candidate when iterating)"
+  ,"snippetAIIncludeHistory": "Send recent conversation (iterate only, up to 6 messages)"
+  ,"snippetAIProviderInfo": "Uses SiYuan AI configuration. Provider, model and billing are managed by the host; this plugin cannot confirm costs or quota. Consent covers snippet requests only."
+  ,"snippetAIContextSummary": "Sending: code {bytes} · {messages} conversation messages · your instruction"
+  ,"snippetAIContextTooLarge": "Context exceeds 64 KiB. Reduce code or uncheck conversation context and retry."
+  ,"snippetAIPermissionDenied": "AI request was not authorized. Check SiYuan permissions and AI configuration. Your draft is unchanged."
+  ,"snippetAIRetry": "Retry generation"
+  ,"snippetAICopyCandidate": "Copy candidate"
+  ,"snippetAIExportCandidate": "Export candidate"
+  ,"snippetAICandidateStale": "The draft changed after generation. Accepting requires another replacement confirmation."
   ,"snippetAIMode": "AI mode"
   ,"snippetAIGenerate": "Generate"
   ,"snippetAIOptimize": "Optimize"
   ,"snippetAIPrompt": "Describe the change you want…"
-  ,"snippetAIConsent": "I understand that this sends the snippet and instruction to the configured SiYuan AI provider."
+  ,"snippetAIConsent": "Allow checked context and instruction to be sent to the configured SiYuan AI provider."
   ,"snippetAISend": "Generate draft"
   ,"snippetAICancel": "Cancel"
   ,"snippetAIIdle": "AI is idle."

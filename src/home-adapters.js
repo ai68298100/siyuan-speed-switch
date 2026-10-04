@@ -7,7 +7,7 @@ const {DEVICES, getModuleDefinition, normalizeConfig} = (() => {
     return {...model, normalizeConfig: (value) => {
         if (!value || typeof value !== "object" || Array.isArray(value)) return {};
         const result = {};
-        Object.keys(value).slice(0, 32).forEach((key) => {
+        Object.keys(value).slice(0, 32).filter((key) => /^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/.test(key)).sort().forEach((key) => {
             if (!/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/.test(key)) return;
             const item = value[key];
             if (typeof item === "string") result[key] = item.replace(/[\u0000-\u001f\u007f]/g, " ").slice(0, 512);
@@ -29,6 +29,7 @@ const diagnostics = [];
 const MAX_DIAGNOSTICS = 32;
 const inFlightReads = new Map();
 const readGenerations = new Map();
+const invalidatedReadGenerations = new Map();
 function recordDiagnostic(type, moduleId, device) {
     diagnostics.push({type: safeText(type, 24), moduleId: safeText(moduleId, 64), device: DEVICES.includes(device) ? device : "desktop", at: Date.now()});
     if (diagnostics.length > MAX_DIAGNOSTICS) diagnostics.splice(0, diagnostics.length - MAX_DIAGNOSTICS);
@@ -82,6 +83,11 @@ function registerHomeAdapters(adapters = []) {
     return result;
 }
 
+function buildHomeAdapterCacheKey(moduleId, device, normalizedConfig = {}) {
+    const target = DEVICES.includes(device) ? device : "desktop";
+    return `${safeText(moduleId, 64)}:${target}:${JSON.stringify(normalizedConfig && typeof normalizedConfig === "object" ? normalizedConfig : {})}`;
+}
+
 function unregisterHomeAdapter(adapters, moduleId) {
     const map = adapters instanceof Map ? adapters : registerHomeAdapters(adapters);
     const id = safeText(moduleId, 64);
@@ -92,10 +98,16 @@ function unregisterHomeAdapter(adapters, moduleId) {
     for (const key of inFlightReads.keys()) {
         if (!key.startsWith(prefix)) continue;
         inFlightReads.delete(key);
-        readGenerations.set(key, (readGenerations.get(key) || 0) + 1);
+        const invalidatedGeneration = (readGenerations.get(key) || 0) + 1;
+        readGenerations.set(key, invalidatedGeneration);
+        invalidatedReadGenerations.set(key, invalidatedGeneration);
     }
     for (const key of readGenerations.keys()) {
-        if (key.startsWith(prefix) && !inFlightReads.has(key)) readGenerations.set(key, (readGenerations.get(key) || 0) + 1);
+        if (key.startsWith(prefix) && !inFlightReads.has(key)) {
+            const invalidatedGeneration = (readGenerations.get(key) || 0) + 1;
+            readGenerations.set(key, invalidatedGeneration);
+            invalidatedReadGenerations.set(key, invalidatedGeneration);
+        }
     }
     for (let index = diagnostics.length - 1; index >= 0; index -= 1) {
         if (diagnostics[index].moduleId === id) diagnostics.splice(index, 1);
@@ -135,6 +147,7 @@ function normalizeSnapshot(value, options = {}) {
         ? {value: safeText(statRaw.value, 32), label: safeText(statRaw.label, 32), progress: Number.isFinite(statRaw.progress) ? Math.min(100, Math.max(0, statRaw.progress)) : null}
         : null;
     const snapshot = {title: safeText(value.title, 64), items, stat, updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0, empty: items.length === 0};
+    if (value.status === "blocked") snapshot.status = "blocked";
     if (["fresh", "cached", "stale"].includes(value.sourceHealth)) snapshot.sourceHealth = value.sourceHealth;
     const emptyHint = safeText(value.emptyHint, 96);
     if (emptyHint) snapshot.emptyHint = emptyHint;
@@ -160,9 +173,8 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
     const adapter = map.get(normalizedModuleId);
     if (!adapter) return {ok: false, reason: "unregistered", snapshot: normalizeSnapshot(null)};
     if (!canReadAdapter(adapter, device)) return {ok: false, reason: "unsupported", snapshot: normalizeSnapshot(null)};
-    const cacheKey = `${adapter.moduleId}:${device}:${JSON.stringify(normalizeConfig(config))}`;
-    const generation = (readGenerations.get(cacheKey) || 0) + 1;
-    readGenerations.set(cacheKey, generation);
+    const normalizedConfig = normalizeConfig(config);
+    const cacheKey = buildHomeAdapterCacheKey(adapter.moduleId, device, normalizedConfig);
     const now = Date.now();
     const failedUntil = failureBackoff.get(cacheKey) || 0;
     if (options.force !== true && failedUntil > now) {
@@ -179,6 +191,8 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         }
     }
     if (options.dedupe !== false && inFlightReads.has(cacheKey)) return inFlightReads.get(cacheKey);
+    const generation = (readGenerations.get(cacheKey) || 0) + 1;
+    readGenerations.set(cacheKey, generation);
     const run = (async () => {
     let timeoutHandle = null;
     let abortHandler = null;
@@ -196,7 +210,7 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         }) : null;
         const value = await Promise.race([
             // 尺寸感知接口（协议 v2.3）：第三参携带当前型号，适配器可按尺寸裁剪内容
-            Promise.resolve(adapter.read(normalizeConfig(config), device, {
+            Promise.resolve(adapter.read(normalizedConfig, device, {
                 size: typeof options.size === "string" ? options.size.slice(0, 16) : "",
                 signal,
             })),
@@ -206,11 +220,17 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         const snapshot = normalizeSnapshot(value, {
             maxItems: adapter.moduleId === "journal-calendar" ? CALENDAR_MAX_SNAPSHOT_ITEMS : MAX_SNAPSHOT_ITEMS,
         });
+        if (invalidatedReadGenerations.get(cacheKey) > generation) {
+            return {ok: false, reason: "stale", snapshot: normalizeSnapshot(null)};
+        }
         if (readGenerations.get(cacheKey) === generation) snapshotCache.set(cacheKey, {at: Date.now(), snapshot});
         failureBackoff.delete(cacheKey);
         if (snapshot.empty) recordDiagnostic("empty", moduleId, device);
         return {ok: true, cached: false, snapshot};
     } catch (error) {
+        if (invalidatedReadGenerations.get(cacheKey) > generation) {
+            return {ok: false, reason: "stale", snapshot: normalizeSnapshot(null)};
+        }
         const reason = error?.message === "timeout" ? "timeout" : error?.message === "aborted" ? "aborted" : "failed";
         const previous = failureBackoff.get(cacheKey) || 0;
         const delay = Math.min(30000, previous > now ? Math.max(1000, (previous - now) * 2) : 1000);
@@ -236,6 +256,7 @@ function clearHomeSnapshotCache() {
     failureBackoff.clear();
     inFlightReads.clear();
     readGenerations.clear();
+    invalidatedReadGenerations.clear();
     diagnostics.length = 0;
 }
 
@@ -282,4 +303,4 @@ function consumeHomeAdapterDiagnostics(device) {
     return filtered.map((item) => ({...item}));
 }
 
-module.exports = {MAX_SNAPSHOT_ITEMS, CALENDAR_MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics, consumeHomeAdapterDiagnostics, planHomeRefresh, planHomeLifecycleRefresh, coalesceHomeRefreshEvents};
+module.exports = {MAX_SNAPSHOT_ITEMS, CALENDAR_MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, buildHomeAdapterCacheKey, normalizeHomeAdapterConfig: normalizeConfig, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics, consumeHomeAdapterDiagnostics, planHomeRefresh, planHomeLifecycleRefresh, coalesceHomeRefreshEvents};

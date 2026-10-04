@@ -56,6 +56,7 @@ const SOURCE_INFO = Object.freeze({
     "checkin-monthly": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
 });
 const DEPENDENCY_INFO = Object.freeze({
+    "clipped-unread": Object.freeze({kind: "plugin", required: true, name: "思源剪藏（siyuan-clipper）", installUrl: "", projectUrl: "", setup: "安装并启用支持 clipped-unread 协议的剪藏插件；本插件不再从通用标签读取剪藏数据，协议说明见组件协议文档", network: "由提供方插件决定；本组件不自行查询标签", platforms: "desktop/sidebar/mobile"}),
     "external-weather-open-meteo": Object.freeze({kind: "external-api", required: true, name: "Open-Meteo", installUrl: "https://open-meteo.com/", projectUrl: "https://github.com/open-meteo/open-meteo", setup: "配置城市后联网；无需安装桌面软件或 API Key", network: "公网 HTTPS；仅发送城市/坐标", platforms: "desktop/sidebar/mobile"}),
     "external-air-quality": Object.freeze({kind: "external-api", required: true, name: "Open-Meteo Air Quality", installUrl: "https://open-meteo.com/", projectUrl: "https://github.com/open-meteo/open-meteo", setup: "配置城市后联网；无需安装桌面软件或 API Key", network: "公网 HTTPS；仅发送城市/坐标", platforms: "desktop/sidebar/mobile"}),
     "external-anime-bangumi": Object.freeze({kind: "external-api", required: true, name: "Bangumi API", installUrl: "https://github.com/bangumi/api", projectUrl: "https://github.com/bangumi/api", setup: "添加组件后读取公开节目表；无需 API Key", network: "公网 HTTPS；读取节目表与官方封面", platforms: "desktop/sidebar/mobile"}),

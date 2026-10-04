@@ -19,6 +19,7 @@
 const {capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, normalizeThumbCache} = require("./util.js");
 const {normalizeClosedEntries} = require("./recent-closed.js");
 const {normalizeRecycleStore} = require("./snippet-recycle");
+const {normalizeSnippetGroupStore} = require("./snippet-groups");
 const {sanitizeQuickActions, migrateQuickActionDefaults, QUICK_ACTION_DEFAULTS_VERSION} = require("./quick-actions.js");
 const {normalizeDocumentSets} = require("./document-sets.js");
 const {normalizeRssReadState} = require("./rss-model.js");
@@ -55,6 +56,7 @@ const HANDLED_KEYS = Object.freeze([
     "sw_rss_read",
     "sw_related_swr",
     "sw_snippet_recycle",
+    "sw_snippet_groups",
 ]);
 
 const INSPECTED_KEYS = Object.freeze([
@@ -68,14 +70,14 @@ const META_KEYS = Object.freeze([
     "sw_schema_version",
 ]);
 
-// KEY_ORDER 由三个分类集拼接而来（总数恒为 15）。拼接保证了「分类集与报告
+// KEY_ORDER 由三个分类集拼接而来（总数恒为 18）。拼接保证了「分类集与报告
 // key 集合不可能漂移」——这是有意的：sw_thumb_cache 从 inspect 毕业到 handled
 // 时，报告里它的位置随之从第 13 位移到第 11 位（遵循 handled 分组），但 key
 // 集合与总数完全不变，totals 结构也不变，所以下游只读快照无需改动。
 // sw_schema_version 追加在末位（meta 分组），agent storageHealth 的计数上限
-// 与 KEY_ORDER 总数同步为 14（agent-capabilities.js）。
-// T-7025：sw_snippet_recycle 追加在 handled 分组末位（KEY_ORDER 总数 16→17，
-// 计数契约与存储页登记同步演进）。
+// 与 KEY_ORDER 总数同步为 18（agent-capabilities.js）。
+// T-6972：sw_snippet_groups 追加在 handled 分组末位，和回收站一样走版本化
+// 归一化；分组数据不会进入原生片段接口。
 const KEY_ORDER = Object.freeze([...HANDLED_KEYS, ...INSPECTED_KEYS, ...META_KEYS]);
 
 const NOTE_MAX = 80;
@@ -194,6 +196,12 @@ const HANDLERS = {
         const changed = inputCount !== store.entries.length
             || (value && typeof value === "object" && value.version !== store.version);
         return {value: store, status: changed ? "cleaned" : "kept", kept: store.entries.length, removed: 0, note: changed ? boundNote("recycle bin bounded, deduped or reset") : ""};
+    },
+    "sw_snippet_groups": (value) => {
+        const store = normalizeSnippetGroupStore(value);
+        const valid = value && typeof value === "object" && !Array.isArray(value) && value.version === store.version;
+        const changed = !valid || JSON.stringify(value) !== JSON.stringify(store);
+        return {value: store, status: changed ? "cleaned" : "kept", kept: store.groups.length + store.assignments.length, removed: 0, note: changed ? boundNote("snippet groups bounded and reconciled") : ""};
     },
     "sw_related_swr": (value) => {
         // T-6840 关联 SWR：委托 related-content-model 归一化（版本戳/7 天年龄/

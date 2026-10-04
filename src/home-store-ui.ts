@@ -36,7 +36,7 @@ import {
     toggleHomeStoreSelection,
 } from "./home-store-model";
 import {createHomeModuleController} from "./home-controller";
-import {resolveMobileHomeSize, resolveHomeTileDefaultSize, isLifeHeartbeatModule} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileDefaultSize, resolveHomeTileMaterial, isLifeHeartbeatModule} from "./home-model";
 import {HOME_WIDGET_SIZES, HOME_WIDGET_SIZE_LABELS} from "./constants";
 import type {HomeWidgetSize} from "./constants";
 import {openHomeConfigForm} from "./home-config-form";
@@ -47,7 +47,7 @@ import {buildHomeStoreProviderGroups, buildHomeStoreSourceGroups, buildHomeStore
 export interface HomeStoreUiHost {
     i18n: Record<string, string>;
     isMobile: boolean;
-    getSettings(): {homeStore?: {density?: string; viewMode?: string; sort?: string; collapsedGroups?: string[]}};
+    getSettings(): {homeStore?: {rememberState?: boolean; defaultViewMode?: "grid" | "list"; retryFailed?: boolean; density?: string; viewMode?: string; sort?: string; collapsedGroups?: string[]}};
     updateSettings(patch: Record<string, unknown>): void;
     homeRuntime: {
         registerAdapter(options: Record<string, unknown>): {registered: boolean; unregister: () => boolean | void};
@@ -67,122 +67,167 @@ export interface HomeStoreUiHost {
     openHomeWidgetGuide(): void;
 }
 
-export function openStoreWidgetPreview(this: HomeStoreUiHost, moduleId: string, def: any, device: "desktop" | "sidebar" | "mobile", preferredSize = "") {
-        const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-        const sizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
-        // T-7069：预览必须反映用户所选尺寸（calendar#17 独立问题——此前恒为 medium）。
-        const sizeKey = preferredSize && sizes.includes(preferredSize) ? preferredSize : (sizes.includes("medium") ? "medium" : sizes[0]);
-        const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
-        // T-6479：关闭一律走宿主 Dialog 的 destroyCallback（petal siyuan.d.ts:874；
-        // 宿主 dialog/index.ts:134-151 在所有关闭路径上触发且有重入保护）。
-        let disposePreview: () => void = () => undefined;
-        const dialog = new Dialog({
-            title: `${this.i18n.homeStorePreview} · ${def.title || moduleId}`,
-            content: '<div class="speed-switch sw-store-preview"></div>',
-            width: this.isMobile ? "min(420px, 92vw)" : `${Math.max(360, Math.round(preset.w * 86))}px`,
-            height: this.isMobile ? "min(560px, 80vh)" : `${Math.max(320, Math.round(preset.h * 86))}px`,
-            destroyCallback: () => disposePreview(),
-        });
-        const container = dialog.element.querySelector<HTMLElement>(".sw-store-preview");
-        if (!container) return;
-        container.dataset.moduleId = moduleId;
-        container.dataset.device = device;
+type StorePreviewMount = {dispose: () => void; setSize: (preferredSize: string) => void};
+
+function mountStoreWidgetPreview(
+    host: HomeStoreUiHost,
+    moduleId: string,
+    def: any,
+    device: "desktop" | "sidebar" | "mobile",
+    container: HTMLElement,
+    preferredSize = "",
+    bodyTarget: HTMLElement | null = null,
+    onClose: () => void = () => undefined,
+    onSizeChange: (size: string) => void = () => undefined,
+): StorePreviewMount {
+    const sizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+    // T-7069：预览必须反映用户所选尺寸（calendar#17 独立问题——此前恒为 medium）。
+    let sizeKey = preferredSize && sizes.includes(preferredSize) ? preferredSize : (sizes.includes("medium") ? "medium" : sizes[0]);
+    container.dataset.moduleId = moduleId;
+    container.dataset.device = device;
+    container.dataset.size = sizeKey;
+    container.setAttribute("role", "region");
+    container.setAttribute("aria-label", `${host.i18n.homeStorePreview} · ${def.title || moduleId}`);
+    container.setAttribute("aria-busy", "true");
+    const sourceInfo = resolveHomeStoreSourceInfo(moduleId);
+    const previewId = `sw-store-preview-${moduleId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+    container.dataset.integration = sourceInfo?.integration || "direct";
+    container.dataset.privacy = sourceInfo?.privacy || "none";
+    const meta = document.createElement("div");
+    meta.className = "sw-store-preview__meta";
+    meta.setAttribute("role", "note");
+    meta.id = `${previewId}-meta`;
+    meta.dataset.moduleId = moduleId;
+    meta.setAttribute("aria-label", host.i18n.homeStoreGuideHint);
+    const addMeta = (label: string, tone: string) => {
+        const chip = document.createElement("span");
+        chip.className = `sw-store-preview__meta-chip is-${tone}`;
+        chip.textContent = label;
+        chip.title = label;
+        chip.dataset.tone = tone;
+        chip.setAttribute("aria-label", label);
+        meta.appendChild(chip);
+    };
+    const surfaceLabels: Record<string, string> = {
+        desktop: host.i18n.homeStoreDeviceDesktop,
+        sidebar: host.i18n.homeStoreDeviceSidebar,
+        mobile: host.i18n.homeStoreDeviceMobile,
+    };
+    const integration = resolveStoreNetworkLabel(sourceInfo, host.i18n);
+    const privacy = resolveStorePrivacyLabel(sourceInfo, host.i18n);
+    addMeta(host.i18n.homeStoreSource.replace("{source}", sourceInfo?.providerName || "SiYuan"), "source");
+    addMeta(integration, sourceInfo?.integration === "http" ? "network" : sourceInfo?.integration === "local-bridge" ? "local" : "offline");
+    addMeta(privacy, "privacy");
+    addMeta(host.i18n.homeStorePreviewSurface.replace("{surface}", surfaceLabels[device] || device), "context");
+    const sizeChip = document.createElement("span");
+    sizeChip.className = "sw-store-preview__meta-chip is-context";
+    sizeChip.textContent = host.i18n.homeStorePreviewSize.replace("{size}", sizeKey);
+    sizeChip.title = sizeChip.textContent;
+    sizeChip.dataset.tone = "context";
+    sizeChip.setAttribute("aria-label", sizeChip.textContent);
+    meta.appendChild(sizeChip);
+    container.appendChild(meta);
+    const body = bodyTarget || document.createElement("div");
+    body.classList.add("sw-store-preview__body");
+    body.id = `${previewId}-body`;
+    body.dataset.moduleId = moduleId;
+    body.dataset.device = device;
+    body.dataset.size = sizeKey;
+    body.setAttribute("role", "status");
+    body.setAttribute("aria-live", "polite");
+    body.setAttribute("aria-atomic", "true");
+    body.setAttribute("aria-busy", "true");
+    body.tabIndex = 0;
+    body.setAttribute("aria-describedby", meta.id);
+    if (!bodyTarget) container.appendChild(body);
+    let controller: ReturnType<typeof createHomeModuleController> | null = null;
+    controller = createHomeModuleController({
+        document: window.document,
+        container: body,
+        module: {...def},
+        read: (config: Record<string, unknown>, readOptions: Record<string, unknown>) =>
+            host.homeRuntime.read(moduleId, device, config || {}, {...readOptions, size: sizeKey}),
+        labels: {
+            loading: host.i18n.homeLoading,
+            refreshing: host.i18n.homeRefreshing,
+            empty: host.i18n.homeEmptyModule,
+            error: host.i18n.homeModuleError,
+            retry: host.i18n.homeRetry,
+            collapse: host.i18n.homeCollapse,
+            expand: host.i18n.homeExpand,
+            cached: host.i18n.homeCached,
+            updated: host.i18n.homeUpdated,
+            sourceFresh: host.i18n.homeSourceFresh,
+            sourceCached: host.i18n.homeSourceCached,
+            sourceStale: host.i18n.homeSourceStale,
+        },
+        calendarWeekdays: host.i18n.homeCalendarWeekdays,
+        onItem: (item: { label?: string; value?: string; href?: string }) => host.handleHomeItemAction(item, onClose),
+        onToggleItem: (item: { label?: string; value?: string; done?: boolean }) => {
+            void (async () => {
+                const ok = await host.toggleHomeTaskBlock(item);
+                if (!ok) showMessage(host.i18n.homeTaskToggleFailed);
+                await controller?.refresh();
+            })();
+        },
+    });
+    let disposed = false;
+    let disposePreview = () => {
+        if (disposed) return;
+        disposed = true;
+        controller?.dispose();
+    };
+    const setSize = (nextPreferredSize: string) => {
+        const nextSize = nextPreferredSize && sizes.includes(nextPreferredSize)
+            ? nextPreferredSize
+            : (sizes.includes("medium") ? "medium" : sizes[0]);
+        if (!nextSize || nextSize === sizeKey || disposed) return;
+        sizeKey = nextSize;
         container.dataset.size = sizeKey;
-        container.setAttribute("role", "region");
-        container.setAttribute("aria-label", `${this.i18n.homeStorePreview} · ${def.title || moduleId}`);
-        container.setAttribute("aria-busy", "true");
-        const sourceInfo = resolveHomeStoreSourceInfo(moduleId);
-        const previewId = `sw-store-preview-${moduleId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-        container.dataset.integration = sourceInfo?.integration || "direct";
-        container.dataset.privacy = sourceInfo?.privacy || "none";
-        const meta = document.createElement("div");
-        meta.className = "sw-store-preview__meta";
-        meta.setAttribute("role", "note");
-        meta.id = `${previewId}-meta`;
-        meta.dataset.moduleId = moduleId;
-        meta.setAttribute("aria-label", this.i18n.homeStoreGuideHint);
-        const addMeta = (label: string, tone: string) => {
-            const chip = document.createElement("span");
-            chip.className = `sw-store-preview__meta-chip is-${tone}`;
-            chip.textContent = label;
-            chip.title = label;
-            chip.dataset.tone = tone;
-            chip.setAttribute("aria-label", label);
-            meta.appendChild(chip);
-        };
-        const surfaceLabels: Record<string, string> = {
-            desktop: this.i18n.homeStoreDeviceDesktop,
-            sidebar: this.i18n.homeStoreDeviceSidebar,
-            mobile: this.i18n.homeStoreDeviceMobile,
-        };
-        const integration = resolveStoreNetworkLabel(sourceInfo, this.i18n);
-        const privacy = resolveStorePrivacyLabel(sourceInfo, this.i18n);
-        addMeta(this.i18n.homeStoreSource.replace("{source}", sourceInfo?.providerName || "SiYuan"), "source");
-        addMeta(integration, sourceInfo?.integration === "http" ? "network" : sourceInfo?.integration === "local-bridge" ? "local" : "offline");
-        addMeta(privacy, "privacy");
-        addMeta(this.i18n.homeStorePreviewSurface.replace("{surface}", surfaceLabels[device] || device), "context");
-        addMeta(this.i18n.homeStorePreviewSize.replace("{size}", sizeKey), "context");
-        container.appendChild(meta);
-        const body = document.createElement("div");
-        body.className = "sw-store-preview__body";
-        body.id = `${previewId}-body`;
-        body.dataset.moduleId = moduleId;
-        body.dataset.device = device;
         body.dataset.size = sizeKey;
-        body.setAttribute("role", "status");
-        body.setAttribute("aria-live", "polite");
-        body.setAttribute("aria-atomic", "true");
-        body.setAttribute("aria-busy", "true");
-        body.tabIndex = 0;
-        body.setAttribute("aria-describedby", meta.id);
-        container.appendChild(body);
-        let controller: ReturnType<typeof createHomeModuleController> | null = null;
-        controller = createHomeModuleController({
-            document: window.document,
-            container: body,
-            module: {...def},
-            read: (config: Record<string, unknown>, readOptions: Record<string, unknown>) =>
-                this.homeRuntime.read(moduleId, device, config || {}, {...readOptions, size: sizeKey}),
-            labels: {
-                loading: this.i18n.homeLoading,
-                refreshing: this.i18n.homeRefreshing,
-                empty: this.i18n.homeEmptyModule,
-                error: this.i18n.homeModuleError,
-                retry: this.i18n.homeRetry,
-                collapse: this.i18n.homeCollapse,
-                expand: this.i18n.homeExpand,
-                cached: this.i18n.homeCached,
-                updated: this.i18n.homeUpdated,
-                sourceFresh: this.i18n.homeSourceFresh,
-                sourceCached: this.i18n.homeSourceCached,
-                sourceStale: this.i18n.homeSourceStale,
-            },
-            calendarWeekdays: this.i18n.homeCalendarWeekdays,
-            onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),
-            onToggleItem: (item: { label?: string; value?: string; done?: boolean }) => {
-                void (async () => {
-                    const ok = await this.toggleHomeTaskBlock(item);
-                    if (!ok) showMessage(this.i18n.homeTaskToggleFailed);
-                    await controller?.refresh();
-                })();
-            },
-        });
-        let disposed = false;
-        disposePreview = () => {
-            if (disposed) return;
-            disposed = true;
-            controller?.dispose();
-            if (opener?.isConnected) opener.focus();
-        };
-        controller.mount();
-        const markPreviewReady = () => {
-            if (!disposed) {
-                container.setAttribute("aria-busy", "false");
-                body.setAttribute("aria-busy", "false");
-            }
-        };
-        void controller.refresh({}, {force: true}).then(markPreviewReady, markPreviewReady);
+        sizeChip.textContent = host.i18n.homeStorePreviewSize.replace("{size}", sizeKey);
+        sizeChip.title = sizeChip.textContent;
+        sizeChip.setAttribute("aria-label", sizeChip.textContent);
+        onSizeChange(sizeKey);
+        void controller?.refresh({}, {force: true});
+    };
+    if (!controller) {
+        disposePreview();
+        return {dispose: disposePreview, setSize};
     }
+    controller.mount();
+    const markPreviewReady = () => {
+        if (!disposed) {
+            container.setAttribute("aria-busy", "false");
+            body.setAttribute("aria-busy", "false");
+        }
+    };
+    void controller.refresh({}, {force: true}).then(markPreviewReady, markPreviewReady);
+    return {dispose: disposePreview, setSize};
+}
+
+export function openStoreWidgetPreview(this: HomeStoreUiHost, moduleId: string, def: any, device: "desktop" | "sidebar" | "mobile", preferredSize = "") {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const sizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+    const sizeKey = preferredSize && sizes.includes(preferredSize) ? preferredSize : (sizes.includes("medium") ? "medium" : sizes[0]);
+    const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+    // T-6479：关闭一律走宿主 Dialog 的 destroyCallback（petal siyuan.d.ts:874）。
+    let disposePreview: () => void = () => undefined;
+    const dialog = new Dialog({
+        title: `${this.i18n.homeStorePreview} · ${def.title || moduleId}`,
+        content: '<div class="speed-switch sw-store-preview"></div>',
+        width: this.isMobile ? "min(420px, 92vw)" : `${Math.max(360, Math.round(preset.w * 86))}px`,
+        height: this.isMobile ? "min(560px, 80vh)" : `${Math.max(320, Math.round(preset.h * 86))}px`,
+        destroyCallback: () => disposePreview(),
+    });
+    const container = dialog.element.querySelector<HTMLElement>(".sw-store-preview");
+    if (!container) return;
+    const mount = mountStoreWidgetPreview(this, moduleId, def, device, container, sizeKey, null, () => dialog.destroy());
+    disposePreview = () => {
+        mount.dispose();
+        if (opener?.isConnected) opener.focus();
+    };
+}
 
 
     // 小组件商店：画廊式添加入口，内置/插件分区；先选型号，再用独立按钮提交
@@ -193,6 +238,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
         const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         // T-6479：商店弹窗的定时器与监听器释放同样挂到宿主 destroyCallback 上。
         let disposeStore: () => void = () => undefined;
+        let disposeInlinePreview: () => void = () => undefined;
         // T-6967 S1（定稿原型）：主从结构——左目录（搜索+chips+行列表）+ 右详情窗格。
         // 目录沿用既有卡片 DOM（作用域 CSS 行化），详情窗格渲染选中组件的完整卡片。
         const storeDialog = new Dialog({
@@ -202,6 +248,9 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             height: this.isMobile ? "min(560px, 85vh)" : `${Math.min(720, Math.round(window.innerHeight * 0.84))}px`,
             destroyCallback: () => disposeStore(),
         });
+        if (!this.isMobile) {
+            storeDialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen", "sw-home-store-dialog");
+        }
         const root = storeDialog.element.querySelector<HTMLElement>(".sw-home-store");
         if (!root) return;
         const catalogPane = root.querySelector<HTMLElement>(".sw-home-store__catalog");
@@ -216,10 +265,13 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
         let storeSelectedModule = "";
         let storeBatchMode = false;
         // T-6851：视图状态自设置载入（跨会话记忆）；变更即回写
-        const persistedStoreState = this.getSettings().homeStore || {};
+        const savedStoreState = this.getSettings().homeStore || {};
+        const rememberStoreState = savedStoreState.rememberState !== false;
+        const persistedStoreState = rememberStoreState ? savedStoreState : {};
+        const defaultViewMode = savedStoreState.defaultViewMode === "list" ? "list" : "grid";
         let storeSort = persistedStoreState.sort || "relevance";
         let storeDensity: "comfortable" | "compact" = persistedStoreState.density === "compact" ? "compact" : "comfortable";
-        let storeViewMode = persistedStoreState.viewMode === "list" ? "list" : persistedStoreState.viewMode === "compact" ? "compact" : "grid";
+        let storeViewMode: "grid" | "list" = persistedStoreState.viewMode === "list" ? "list" : (persistedStoreState.viewMode === "grid" ? "grid" : defaultViewMode);
         let selectedStoreModules: string[] = [];
             root.dataset.activeTab = storeTab;
             root.dataset.density = storeDensity;
@@ -228,9 +280,38 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
         root.setAttribute("aria-busy", "false");
         const collapsedGroups = new Set<string>(Array.isArray(persistedStoreState.collapsedGroups) ? persistedStoreState.collapsedGroups : []);
 
+        const buildInlinePreview = (moduleId: string, def: any, preferredSize: string) => {
+            const declaredSizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+            const sizeKey = preferredSize && declaredSizes.includes(preferredSize)
+                ? preferredSize
+                : (declaredSizes.includes("medium") ? "medium" : declaredSizes[0]);
+            const section = document.createElement("section");
+            section.className = "sw-home-store__live-preview";
+            section.dataset.moduleId = moduleId;
+            section.setAttribute("aria-label", `${this.i18n.homeStorePreview} · ${def.title || moduleId}`);
+            const preview = document.createElement("div");
+            preview.className = "sw-store-preview sw-home-store__inline-preview";
+            const cell = document.createElement("div");
+            cell.className = `sw-home__cell mat-${resolveHomeTileMaterial(moduleId)}`;
+            cell.dataset.moduleId = moduleId;
+            cell.dataset.size = sizeKey;
+            const body = document.createElement("div");
+            body.className = "sw-home__cell-body";
+            cell.appendChild(body);
+            preview.appendChild(cell);
+            section.appendChild(preview);
+            const mount = mountStoreWidgetPreview(this, moduleId, def, device, preview, sizeKey, body, () => undefined,
+                (sizeKey) => { cell.dataset.size = sizeKey; });
+            const meta = preview.querySelector<HTMLElement>(".sw-store-preview__meta");
+            if (meta) preview.insertBefore(meta, cell);
+            return {section, mount};
+        };
+
         // T-6851：密度/视图模式/排序/折叠分组任一变化即落设置（normalize 侧有界清洗）
         const persistStoreState = () => {
+            if (!rememberStoreState) return;
             this.updateSettings({homeStore: {
+                ...this.getSettings().homeStore,
                 sort: storeSort,
                 density: storeDensity,
                 viewMode: storeViewMode,
@@ -241,6 +322,8 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
 
 
         const renderStore = () => {
+            disposeInlinePreview();
+            disposeInlinePreview = () => undefined;
             root.setAttribute("aria-busy", "true");
             root.dataset.renderVersion = String(Number(root.dataset.renderVersion || "0") + 1);
             const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -631,7 +714,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
             // T-6967 S1：卡片按变体构建——catalog（目录行，作用域 CSS 行化动作区，
             // id 保持原样供既有锚点/恢复焦点逻辑使用）与 detail（详情窗格完整卡，
             // id 加 -detail 后缀避免与目录内同组件卡片的 aria 引用冲突）。
-            const buildReadyCard = (moduleId: string, def: any, variant: "catalog" | "detail" = "catalog") => {
+            const buildReadyCard = (moduleId: string, def: any, variant: "catalog" | "detail" = "catalog", onSizeChange: (size: string) => void = () => undefined) => {
                 const idSuffix = variant === "detail" ? "-detail" : "";
                 const externalInfo = resolveHomeStoreSourceInfo(moduleId);
                 const dependencyInfo = resolveHomeStoreDependencyInfo(moduleId);
@@ -887,6 +970,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                         tiles.dataset.selectedSize = sizeKey;
                         addButton.dataset.selectedSize = sizeKey;
                         addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId} · ${tile.textContent || sizeKey}`);
+                        onSizeChange(sizeKey);
                     };
                     tile.addEventListener("keydown", (event) => {
                         const tilesForCard = Array.from(tiles.querySelectorAll<HTMLButtonElement>(".sw-home-store__size"));
@@ -980,16 +1064,6 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                     removeButton.onclick = () => { this.removeHomeInstance(added.instanceId); renderStore(); onChanged(); };
                     tiles.appendChild(removeButton);
                 }
-                const previewButton = document.createElement("button");
-                previewButton.type = "button";
-                previewButton.className = "sw-home-store__size sw-home-store__preview-btn";
-                previewButton.dataset.action = "preview";
-                previewButton.textContent = this.i18n.homeStorePreview;
-                previewButton.setAttribute("aria-label", `${this.i18n.homeStorePreview} · ${def.title || moduleId}`);
-                previewButton.setAttribute("aria-haspopup", "dialog");
-                previewButton.title = previewButton.getAttribute("aria-label") || "";
-                previewButton.onclick = () => openStoreWidgetPreview.call(this, moduleId, def, device, selectedTile?.dataset.size || card.dataset.currentSize || "");
-                tiles.appendChild(previewButton);
                 card.appendChild(tiles);
                 // T-6967 S1：目录行点击 = 选中进入详情窗格；批量模式下行点击 = 选中/取消。
                 // 隐藏控件（visibility:hidden）不接收指针事件，行内零按钮语义不破。
@@ -1373,6 +1447,11 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
             if (storeSelectedModule) {
                 const detailDef = defs.get(storeSelectedModule);
                 if (detailDef) {
+                    const selectedLayout = instanceByModule.get(storeSelectedModule);
+                    const supportedSizes: string[] = Array.isArray(detailDef.sizes) && detailDef.sizes.length > 0 ? detailDef.sizes : ["medium"];
+                    const previewSize = selectedLayout?.size || resolveHomeTileDefaultSize(storeSelectedModule, supportedSizes, "medium");
+                    const inlinePreview = buildInlinePreview(storeSelectedModule, detailDef, previewSize);
+                    disposeInlinePreview = inlinePreview.mount.dispose;
                     if (device === "mobile") {
                         const sheetBar = document.createElement("div");
                         sheetBar.className = "sw-home-store__sheet-bar";
@@ -1389,7 +1468,8 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                         detailPane.appendChild(sheetBar);
                     }
                     detailPane.appendChild(buildDetailMeta(storeSelectedModule, detailDef));
-                    detailPane.appendChild(buildReadyCard(storeSelectedModule, detailDef, "detail"));
+                    detailPane.appendChild(inlinePreview.section);
+                    detailPane.appendChild(buildReadyCard(storeSelectedModule, detailDef, "detail", inlinePreview.mount.setSize));
                     detailPane.classList.remove("sw-home-store__detail--empty");
                     const detailNote = document.createElement("p");
                     detailNote.className = "sw-home-store__detail-note";
@@ -1478,6 +1558,8 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
             if (storeReleased) return;
             storeReleased = true;
             window.clearTimeout(rescanTimer);
+            disposeInlinePreview();
+            disposeInlinePreview = () => undefined;
             root.removeEventListener("keydown", onStoreKeydown);
             this.homeModuleChangeListeners.delete(handleModuleChange);
             if (opener?.isConnected) opener.focus();

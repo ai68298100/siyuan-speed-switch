@@ -403,6 +403,50 @@ function resultNumber(raw, keys) {
     return null;
 }
 
+function directText(raw, keys, maxLength = MAX_PATH_LENGTH) {
+    for (const key of keys) {
+        const text = normalizeText(raw[key], maxLength);
+        if (text) return text;
+    }
+    return "";
+}
+
+function directNumber(raw, keys) {
+    for (const key of keys) {
+        const value = raw[key];
+        const number = typeof value === "number" ? value : Number(value);
+        if (Number.isFinite(number)) return number;
+    }
+    return null;
+}
+
+function normalizeFlatSearchResult(raw, source) {
+    if (raw.block || raw.root || raw.document || raw.data) return undefined;
+    const rootId = directText(raw, [
+        "rootId", "rootID", "root_id", "documentId", "documentID", "docId", "doc_id",
+    ]);
+    if (!BLOCK_ID_RE.test(rootId)) return undefined;
+    const directId = directText(raw, ["blockId", "blockID", "block_id", "id"]);
+    const path = directText(raw, ["hPath", "path", "rootPath", "root_path"]);
+    const title = directText(raw, ["title", "name", "rootTitle", "documentTitle"]) || pathBase(path) || rootId;
+    const snippet = directText(raw, [
+        "snippet", "highlight", "matched", "content", "markdown", "blockContent", "text",
+    ]);
+    return {
+        rootId,
+        blockId: directId || null,
+        title: normalizeText(title, MAX_TITLE_LENGTH) || rootId,
+        path: normalizeText(path, MAX_PATH_LENGTH),
+        snippet: normalizeText(stripSnippetMarkup(snippet), MAX_SNIPPET_LENGTH),
+        updated: directText(raw, ["updated", "updatedAt", "updated_at"]),
+        notebookId: directText(raw, ["notebookId", "notebookID", "notebook_id", "box"]),
+        type: directText(raw, ["type"]),
+        subType: directText(raw, ["subType", "subtype", "sub_type"]),
+        score: directNumber(raw, ["score", "relevance", "rank"]),
+        source: normalizeSource(source || raw.source),
+    };
+}
+
 /**
  * Convert the several shapes returned by SiYuan search endpoints into one
  * small, safe record. Invalid records without a stable root document id are
@@ -410,6 +454,8 @@ function resultNumber(raw, keys) {
  */
 function normalizeSearchResult(raw, source) {
     if (!raw || typeof raw !== "object") return null;
+    const flat = normalizeFlatSearchResult(raw, source);
+    if (flat !== undefined) return flat;
     const rootId = explicitRootId(raw);
     const directId = explicitBlockId(raw);
     const usableRootId = rootId || (BLOCK_ID_RE.test(directId) && isDocumentRecord(raw, rootId, directId) ? directId : "");
@@ -859,8 +905,7 @@ function pinyinTitleHit(title, needle) {
 
 function filterOpenTabs(tabs, query, filters = {}, options = {}) {
     const terms = parseSearchTerms(query);
-    const notebook = normalizeText(filters?.notebook, 64);
-    const paths = normalizeSearchPaths(filters?.paths);
+    const matchesScope = buildSearchDocumentFilterMatcher(filters);
     if (!Array.isArray(tabs)) return [];
     const items = [];
     tabs.forEach((tab, index) => {
@@ -880,14 +925,7 @@ function filterOpenTabs(tabs, query, filters = {}, options = {}) {
             if (terms.excludes.some((needle) => loose.includes(needle))) return;
         }
         const meta = buildTabMeta(tab, index);
-        if (notebook && meta.notebookId !== notebook) return;
-        if (paths.length > 0) {
-            const rawPath = normalizeText(meta.path, MAX_PATH_LENGTH).replace(/\\/g, "/").replace(/^\/+/, "");
-            if (!rawPath) return;
-            const scopedPath = meta.notebookId && rawPath !== meta.notebookId && !rawPath.startsWith(`${meta.notebookId}/`)
-                ? `${meta.notebookId}/${rawPath}` : rawPath;
-            if (!paths.some((path) => scopedPath === path || scopedPath.startsWith(`${path}/`))) return;
-        }
+        if (!matchesScope(meta)) return;
         items.push({
             kind: "tab",
             rootId: meta.rootId,
@@ -1285,10 +1323,9 @@ function normalizeTitleSearchDocuments(documents) {
  */
 function filterSearchDocuments(documents, filters = {}) {
     const normalized = normalizeSearchDocumentFilters(filters);
-    const notebook = normalized.notebook;
-    const paths = normalized.paths;
-    if (!notebook && paths.length === 0) return Array.isArray(documents) ? documents : [];
-    return (Array.isArray(documents) ? documents : []).filter((document) => matchesSearchDocumentFilters(document, {notebook, paths}));
+    if (!normalized.notebook && normalized.paths.length === 0) return Array.isArray(documents) ? documents : [];
+    const matchesScope = buildSearchDocumentFilterMatcher(normalized);
+    return (Array.isArray(documents) ? documents : []).filter(matchesScope);
 }
 
 function normalizeSearchDocumentFilters(filters = {}) {
@@ -1299,25 +1336,43 @@ function normalizeSearchDocumentFilters(filters = {}) {
     };
 }
 
-// Hot-path predicate shared by UI card filtering and batch result filtering.
-// Keeping normalization outside the predicate avoids allocating one-element
-// arrays for every visible tab during interactive typing.
-function matchesSearchDocumentFilters(document, normalized = {}) {
+function searchDocumentNotebookId(document) {
+    if (!document || typeof document !== "object") return "";
+    const directNotebook = firstText(document.notebookId, document.notebookID, document.notebook_id, document.box);
+    return directNotebook || searchResultNotebookId(document);
+}
+
+function searchDocumentPath(document) {
+    if (!document || typeof document !== "object") return "";
+    return normalizeText(
+        document.path || document.rootPath || document.root_path || document.idPath || document.hPath || "",
+        MAX_PATH_LENGTH,
+    ).replace(/\\/g, "/").replace(/^\/+/, "");
+}
+
+function buildSearchDocumentFilterMatcher(filters = {}) {
+    const normalized = normalizeSearchDocumentFilters(filters);
+    const pathPrefixes = normalized.paths.map((path) => `${path}/`);
+    return (document) => {
         if (!document || typeof document !== "object") return false;
-        const documentNotebook = searchResultNotebookId(document);
+        const documentNotebook = searchDocumentNotebookId(document);
         if (normalized.notebook && documentNotebook !== normalized.notebook) return false;
-        const paths = normalized.paths || [];
-        if (paths.length === 0) return true;
-        const rawPath = normalizeText(
-            document.path || document.rootPath || document.root_path || document.idPath || document.hPath || "",
-            MAX_PATH_LENGTH,
-        ).replace(/\\/g, "/").replace(/^\/+/, "");
+        if (normalized.paths.length === 0) return true;
+        const rawPath = searchDocumentPath(document);
         if (!rawPath) return false;
         const notebookPrefix = documentNotebook ? `${documentNotebook}/` : "";
         const scopedPath = documentNotebook && rawPath !== documentNotebook && !rawPath.startsWith(notebookPrefix)
-            ? `${notebookPrefix}${rawPath}`
+            ? `${documentNotebook}/${rawPath}`
             : rawPath;
-        return paths.some((path) => scopedPath === path || scopedPath.startsWith(`${path}/`));
+        for (let index = 0; index < normalized.paths.length; index += 1) {
+            if (scopedPath === normalized.paths[index] || scopedPath.startsWith(pathPrefixes[index])) return true;
+        }
+        return false;
+    };
+}
+
+function matchesSearchDocumentFilters(document, normalized = {}) {
+    return buildSearchDocumentFilterMatcher(normalized)(document);
 }
 
 /**
@@ -1331,6 +1386,7 @@ function buildOpenedDocumentSearchRequests(tabs, query, options = {}) {
     const requests = [];
     const candidates = Array.isArray(tabs) ? tabs : [];
     const scopeFilters = normalizeSearchDocumentFilters(options.filters);
+    const matchesScope = buildSearchDocumentFilterMatcher(scopeFilters);
     for (const tab of candidates) {
         if (requests.length >= maxDocuments) break;
         const scope = buildOpenedDocumentScope(tab);
@@ -1340,7 +1396,7 @@ function buildOpenedDocumentSearchRequests(tabs, query, options = {}) {
         // Without this early gate, a narrow path search would still issue
         // requests for every open tab and only hide those cards afterwards.
         if ((scopeFilters.notebook || scopeFilters.paths.length > 0)
-            && !matchesSearchDocumentFilters({
+            && !matchesScope({
                 path: scope.path,
                 hPath: scope.path,
                 notebookId: scope.notebook,
@@ -1799,6 +1855,7 @@ module.exports = {
     normalizeTitleSearchDocuments,
     filterSearchDocuments,
     normalizeSearchDocumentFilters,
+    buildSearchDocumentFilterMatcher,
     matchesSearchDocumentFilters,
     aggregateSearchResults,
     groupSearchResults,

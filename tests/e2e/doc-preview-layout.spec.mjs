@@ -1,7 +1,5 @@
 import {expect, test} from "@playwright/test";
-import fs from "node:fs";
-import path from "node:path";
-import {openApp, openSwitcher} from "./helpers/app.mjs";
+import {openApp, openSwitcher, artifactPath} from "./helpers/app.mjs";
 
 test("document preview adapts its frame and keeps the header outside body scrolling", async ({page}) => {
     await openApp(page);
@@ -66,6 +64,5 @@ test("document preview adapts its frame and keeps the header outside body scroll
     })).toBe(true);
     await scroll.evaluate(element => {element.style.removeProperty("height"); element.style.removeProperty("flex");});
     await page.setViewportSize({width: 1440, height: 900});
-    fs.mkdirSync(path.resolve(".artifacts/e2e"), {recursive: true});
-    await page.screenshot({path: path.resolve(".artifacts/e2e/doc-preview-layout.png")});
+    await page.screenshot({path: artifactPath("doc-preview-layout.png")});
 });

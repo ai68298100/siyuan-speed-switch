@@ -18,8 +18,8 @@
  * 数据源：window.siyuanCheckin（只读、同步、纯本地，生态 API v4）。
  */
 
-const CHECKIN_SWITCHER_RETRY_MS = 2000;
-const CHECKIN_SWITCHER_MAX_TRIES = 15;
+const CHECKIN_SWITCHER_RETRY_DELAYS = Object.freeze([250, 750, 1500, 3000, 6000]);
+const CHECKIN_SWITCHER_MAX_TRIES = CHECKIN_SWITCHER_RETRY_DELAYS.length + 1;
 const HEATMAP_MAX_CELLS = 371; // 速切热力图硬顶 400；366 天 + 周对齐占位 ≤371
 
 // 与速切侧 src/checkin-bridge-model.js 的 CHECKIN_MODULE_IDS 逐一致。
@@ -59,19 +59,84 @@ function findSwitcherPlugin(app) {
     return plugins.find((plugin) => plugin && typeof plugin.registerHomeModule === "function") || null;
 }
 
-function whenSwitcherReady(app, onReady) {
-    let tries = 0;
-    const timer = setInterval(() => {
-        tries += 1;
-        const switcher = findSwitcherPlugin(app);
-        if (switcher) {
-            clearInterval(timer);
-            onReady(switcher);
-        } else if (tries >= CHECKIN_SWITCHER_MAX_TRIES) {
-            clearInterval(timer); // 速切缺席：本次会话安静放弃，重载打卡插件即恢复
+function normalizeUnregisterHandle(handle) {
+    const invoke = typeof handle === "function"
+        ? handle
+        : handle && typeof handle.unregister === "function"
+            ? () => handle.unregister()
+            : () => undefined;
+    let stopped = false;
+    return () => {
+        if (stopped) return;
+        stopped = true;
+        return invoke();
+    };
+}
+
+function whenSwitcherReady(app, onReady, options = {}) {
+    const retryDelays = Array.isArray(options.retryDelays) && options.retryDelays.length > 0
+        ? options.retryDelays.slice(0, 8).map((delay) => Math.max(0, Number(delay) || 0))
+        : CHECKIN_SWITCHER_RETRY_DELAYS;
+    const schedule = typeof options.setTimeout === "function" ? options.setTimeout : setTimeout;
+    const cancel = typeof options.clearTimeout === "function" ? options.clearTimeout : clearTimeout;
+    let retryIndex = 0;
+    let timer = null;
+    let stopped = false;
+    let gaveUp = false;
+    let activeCleanup = null;
+
+    const cleanupActive = () => {
+        if (!activeCleanup) return;
+        const cleanup = activeCleanup;
+        activeCleanup = null;
+        cleanup();
+    };
+    const giveUp = () => {
+        if (gaveUp || stopped) return;
+        gaveUp = true;
+        if (typeof options.onGiveUp === "function") options.onGiveUp();
+    };
+    const scheduleRetry = () => {
+        if (stopped || retryIndex >= retryDelays.length) {
+            giveUp();
+            return;
         }
-    }, CHECKIN_SWITCHER_RETRY_MS);
-    return () => clearInterval(timer);
+        const delay = retryDelays[retryIndex++];
+        timer = schedule(() => {
+            timer = null;
+            run();
+        }, delay);
+    };
+    const run = () => {
+        if (stopped || activeCleanup) return;
+        const switcher = findSwitcherPlugin(app);
+        if (!switcher) {
+            scheduleRetry();
+            return;
+        }
+        let cleanup = null;
+        try {
+            cleanup = onReady(switcher);
+        } catch (_error) {
+            cleanup = null;
+        }
+        if (typeof cleanup === "function") {
+            activeCleanup = normalizeUnregisterHandle(cleanup);
+            return;
+        }
+        scheduleRetry();
+    };
+    const stop = () => {
+        if (stopped) return;
+        stopped = true;
+        if (timer !== null) {
+            cancel(timer);
+            timer = null;
+        }
+        cleanupActive();
+    };
+    run();
+    return stop;
 }
 
 /* ── 数据访问（等待打卡 API 就绪；能力缺失返回 null） ── */
@@ -380,19 +445,43 @@ function registerCheckinHomeModules(app, options = {}) {
     return whenSwitcherReady(app, (switcher) => {
         const unregisterFns = [];
         const candidates = [todayModule, streakModule, heatmapModule, weeklyModule, occasionsModule, monthlyModule];
-        for (const factory of candidates) {
-            const definition = factory();
-            const unregister = switcher.registerHomeModule(definition);
-            if (typeof unregister === "function") unregisterFns.push(unregister);
+        const definitions = candidates.map((factory) => factory());
+        const cleanup = () => unregisterFns.forEach((unregister) => unregister());
+        try {
+            for (const definition of definitions) {
+                const registration = switcher.registerHomeModule(definition);
+                unregisterFns.push(normalizeUnregisterHandle(registration));
+            }
+            if (typeof switcher.getHomeModules === "function") {
+                const listed = switcher.getHomeModules("desktop");
+                if (Array.isArray(listed) && !definitions.every((definition) => listed.some((item) => item?.moduleId === definition.moduleId))) {
+                    cleanup();
+                    return null;
+                }
+            }
+        } catch (_error) {
+            cleanup();
+            return null;
         }
-        if (typeof options.onRegistered === "function") options.onRegistered(unregisterFns);
-    });
+        try {
+            if (typeof options.onRegistered === "function") options.onRegistered(unregisterFns);
+        } catch (_error) {
+            cleanup();
+            return null;
+        }
+        return cleanup;
+    }, options);
 }
 
 module.exports = {
     CHECKIN_MODULE_IDS,
     CHECKIN_SOURCE,
     HEATMAP_MAX_CELLS,
+    CHECKIN_SWITCHER_RETRY_DELAYS,
+    CHECKIN_SWITCHER_MAX_TRIES,
+    findSwitcherPlugin,
+    normalizeUnregisterHandle,
+    whenSwitcherReady,
     registerCheckinHomeModules,
     buildHeatmapItems,
     heatLevel,

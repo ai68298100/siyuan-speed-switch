@@ -25,6 +25,23 @@ test("home view preserves a bounded adapter empty hint", () => {
     assert.equal(rendered.querySelector(".sw__home-module-status").textContent, "Install a command plugin");
 });
 
+test("home view renders blocked provider state as a non-error placeholder", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView({moduleId: "clipped-unread", title: "Clipped"}, {
+        ok: true,
+        snapshot: {status: "blocked", items: [], emptyHint: "Install the clipping provider"},
+    });
+    assert.equal(view.status, "blocked");
+    assert.equal(view.emptyHint, "Install the clipping provider");
+    const root = renderHomeModuleView(dom.window.document, view, {onRetry: () => { throw new Error("blocked must not retry"); }});
+    const status = root.querySelector(".sw__home-module-status--blocked");
+    assert.ok(status);
+    assert.equal(status.getAttribute("role"), "status");
+    assert.equal(status.getAttribute("aria-live"), "polite");
+    assert.equal(status.textContent, "Install the clipping provider");
+    assert.equal(root.querySelectorAll(".sw__home-module-retry").length, 0);
+});
+
 test("home view builds a stable accessible module contract", () => {
     const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan"}, {ok: true, snapshot: {items: [{label: "One"}]}}, {collapsed: true});
     assert.deepEqual(view, {
@@ -96,6 +113,35 @@ test("home view keeps long mobile labels in semantic item controls", () => {
     assert.equal(item?.tagName, "BUTTON");
     assert.equal(item?.getAttribute("type"), "button");
     assert.equal(item?.textContent, "一个很长很长的待办项目标题");
+});
+
+test("home view renders a collapsible tag tree with inert virtual parents", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const calls = [];
+    const view = buildHomeModuleView({moduleId: "tags", title: "Tags"}, {ok: true, snapshot: {
+        viewType: "tag-tree",
+        items: [
+            {label: "项目", value: "", treePath: "项目", depth: 0, hasChildren: true, expanded: true, virtual: true, disabled: true, secondary: "3 blocks"},
+            {label: "前端", value: "tag:项目/前端", treePath: "项目/前端", depth: 1, secondary: "3 blocks"},
+            {label: "独立", value: "tag:独立", treePath: "独立", depth: 0, secondary: "2 blocks"},
+        ],
+    }});
+    const root = renderHomeModuleView(dom.window.document, view, {
+        labels: {collapse: "Collapse", expand: "Expand", tagVirtual: "Organization node"},
+        onItem: (item) => calls.push(item.value),
+    });
+    const tree = root.querySelector('[role="tree"]');
+    assert.ok(tree);
+    const rows = tree.querySelectorAll('[role="treeitem"]');
+    assert.equal(rows.length, 3);
+    assert.equal(rows[0].getAttribute("aria-expanded"), "true");
+    assert.equal(rows[0].querySelector(".sw__home-tag-tree-action").disabled, true);
+    rows[0].querySelector(".sw__home-tag-tree-toggle").click();
+    assert.equal(rows[1].hidden, true);
+    rows[0].querySelector(".sw__home-tag-tree-toggle").click();
+    assert.equal(rows[1].hidden, false);
+    rows[1].querySelector(".sw__home-tag-tree-action").click();
+    assert.deepEqual(calls, ["tag:项目/前端"]);
 });
 
 test("home view renders calendar grid for viewType calendar", () => {

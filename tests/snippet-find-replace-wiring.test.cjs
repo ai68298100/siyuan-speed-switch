@@ -9,7 +9,7 @@ const model = readSourceFile('src/snippet-studio-model.js');
 
 test('find-replace wiring: toggle expands the find bar inside the editor section', () => {
     assert.ok(uiSource.includes('const findToggleButton = action("snippetFindBar", () => toggleFindBar());'), '工具条必须有查找开关');
-    assert.match(uiSource, /editorSection\.append\(editorBar, findBar, editor, fileInput\);/, '查找条必须位于编辑器上方');
+    assert.match(uiSource, /editorSection\.append\(editorBar, findBar, editor, fileInput, restoreInput\);/, '查找条必须位于编辑器上方，导入入口必须保持隐藏挂载');
     assert.ok(uiSource.includes('findBar.hidden = !findBar.hidden;'), '开关必须切换展开态');
 });
 

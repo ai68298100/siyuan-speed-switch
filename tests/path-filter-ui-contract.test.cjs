@@ -59,6 +59,10 @@ test("path filter stays read-only", () => {
 test("path filter applies to local tab cards and refreshes path metadata", () => {
     assert.match(source, /dataset\.searchPath = buildOpenedDocumentScope\(tab as unknown\)\?\.path \|\| ""/,
         "页签卡片必须记录可筛选的 notebook/path 元数据");
-    assert.match(source, /matchesSearchDocumentFilters\(\{[\s\S]*?searchPath/,
-        "本地卡片筛选必须复用远程结果的路径语义");
+    assert.match(source, /const matchesScope = buildSearchDocumentFilterMatcher\(filters\);/,
+        "本地卡片筛选必须一次编译并复用文档范围匹配器");
+    assert.match(source, /const matchesScopeCard = matchesScope\(\{\s*path: card\.dataset\.searchPath \|\| "",\s*hPath: card\.dataset\.searchPath \|\| "",\s*notebookId: card\.dataset\.notebookId \|\| "",\s*\}\);/,
+        "本地卡片必须把 notebook/path 元数据映射到共享匹配器");
+    assert.match(source, /const match = matchesScopeCard\s*&&/,
+        "本地卡片结果必须实际受共享匹配器约束");
 });

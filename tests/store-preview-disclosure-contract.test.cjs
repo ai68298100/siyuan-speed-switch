@@ -30,12 +30,12 @@ test('preview disclosure explains endpoint privacy', () => assert.match(storeUiS
 test('preview disclosure explains no-content privacy', () => assert.match(storeUiSource, /this\.i18n\.homeStorePrivacyNone/));
 test('preview disclosure renders source text', () => assert.match(storeUiSource, /this\.i18n\.homeStoreSource\.replace\("\{source\}"/));
 test('preview disclosure has a provider fallback', () => assert.match(storeUiSource, /sourceInfo\?\.providerName \|\| "SiYuan"/));
-test('preview disclosure adds source tone', () => assert.match(storeUiSource, /addMeta\(this\.i18n\.homeStoreSource\.replace\("\{source\}", sourceInfo\?\.providerName \|\| "SiYuan"\), "source"\)/));
+test('preview disclosure adds source tone', () => assert.match(storeUiSource, /addMeta\(host\.i18n\.homeStoreSource\.replace\("\{source\}", sourceInfo\?\.providerName \|\| "SiYuan"\), "source"\)/));
 test('preview disclosure adds network tone', () => assert.match(storeUiSource, /sourceInfo\?\.integration === "http" \? "network"/));
 test('preview disclosure adds local tone', () => assert.match(storeUiSource, /sourceInfo\?\.integration === "local-bridge" \? "local"/));
 test('preview disclosure adds offline tone', () => assert.match(storeUiSource, /: "offline"\);/));
 test('preview disclosure adds privacy tone', () => assert.match(storeUiSource, /addMeta\(privacy, "privacy"\)/));
-test('preview disclosure is mounted before preview body', () => assert.match(storeUiSource,/container\.appendChild\(meta\);\s*const body = document\.createElement\("div"\)/));
+test('preview disclosure is mounted before preview body', () => assert.match(storeUiSource,/container\.appendChild\(meta\);\s*const body = bodyTarget \|\| document\.createElement\("div"\)/));
 test('preview meta uses flex layout', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /display: flex/, base)));
 test('preview meta wraps on narrow surfaces', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /flex-wrap: wrap/, base)));
 test('preview meta keeps bounded gaps', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /gap: 5px/, base)));

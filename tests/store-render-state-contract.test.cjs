@@ -18,7 +18,12 @@ const base={topLevel: true};
 
 test('store root initializes render version', () => assert.match(storeUiSource, /root\.dataset\.renderVersion = "0"/));
 test('store root exposes initial busy state', () => assert.match(storeUiSource, /root\.setAttribute\("aria-busy", "false"\)/));
-test('store render marks busy before rebuilding', () => assert.match(storeUiSource, /const renderStore = \(\) => \{\s*root\.setAttribute\("aria-busy", "true"\)/));
+test('store render marks busy before rebuilding', () => {
+    const start = storeUiSource.indexOf('const renderStore = () => {');
+    const busy = storeUiSource.indexOf('root.setAttribute("aria-busy", "true")', start);
+    const rebuild = storeUiSource.indexOf('catalogPane.innerHTML = ""', start);
+    assert.ok(start >= 0 && busy > start && rebuild > busy, '重绘须先宣告 busy 再清空目录');
+});
 test('store render increments version', () => assert.match(storeUiSource, /root\.dataset\.renderVersion = String\(Number\(root\.dataset\.renderVersion/));
 test('store records ready count', () => assert.match(storeUiSource, /root\.dataset\.readyCount = String\(activeIds\.size\)/));
 test('store records pending count', () => assert.match(storeUiSource, /root\.dataset\.pendingCount = String\(pending\.length\)/));

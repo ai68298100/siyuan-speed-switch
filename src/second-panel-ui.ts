@@ -634,6 +634,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         refreshing: this.i18n.homeRefreshing,
                         empty: this.i18n.homeEmptyModule,
                         error: this.i18n.homeModuleError,
+                        blocked: this.i18n.homeBlocked,
                         retry: this.i18n.homeRetry,
                         collapse: this.i18n.homeCollapse,
                         expand: this.i18n.homeExpand,
@@ -652,6 +653,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         previousJournal: this.i18n.homeCalendarJumpPrev,
                         nextJournal: this.i18n.homeCalendarJumpNext,
                         periodPicker: this.i18n.homeCalendarPeriodPicker,
+                        tagVirtual: this.i18n.homeTagVirtual,
                     },
                     calendarWeekdays: this.i18n.homeCalendarWeekdays,
                     onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),
@@ -1332,7 +1334,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             }
                             window.setTimeout(() => cell.classList.remove("sw-home__cell--locate"), 1600);
                         }));
-                        if (row.health !== "ok") {
+                        if (row.health !== "ok" && this.getSettings().homeStore?.retryFailed !== false) {
                             const retryButton = smallButton(this.i18n.homeHealthRetryOne, () => {
                                 // T-7011：双击防护——在途重试不重复触发（不重复写入、不重复请求）
                                 if (inFlightRetries.has(row.instanceId)) return;

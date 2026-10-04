@@ -1,0 +1,44 @@
+[
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "input.addEventListener(\"input\", () => {\n            session.metadata = readMetadataFields();\n            syncFields(true);\n        });",
+    "replace": "input.addEventListener(\"input\", () => {});",
+    "test": "tests/snippet-groups-ui.test.cjs",
+    "expected": "snippet metadata input guards an unblurred draft and survives other field updates"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (!preserveMetadataInput) syncMetadataFields();",
+    "replace": "syncMetadataFields();",
+    "test": "tests/snippet-groups-ui.test.cjs",
+    "expected": "snippet metadata input guards an unblurred draft and survives other field updates"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "const value = session.metadata || (baseline ? snippetGroups.metadata?.entries.find((entry) => entry.snippetId === baseline.id) || {} : {});",
+    "replace": "const value = baseline ? snippetGroups.metadata?.entries.find((entry) => entry.snippetId === baseline.id) || {} : session.metadata || {};",
+    "test": "tests/snippet-groups-ui.test.cjs",
+    "expected": "native metadata input is guarded until change persists it and retains a failed update"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (!metadataSaved) {\n                session.metadata = metadata;\n                syncFields();\n            }",
+    "replace": "if (!metadataSaved) syncFields();",
+    "test": "tests/snippet-groups-ui.test.cjs",
+    "expected": "snippet metadata survives partial native save and retries the same id (late=false)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "return metadataSaved;",
+    "replace": "return true;",
+    "test": "tests/snippet-groups-ui.test.cjs",
+    "expected": "snippet metadata survives partial native save and retries the same id (late=false)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "return finishConfirmedMutation(latest);",
+    "replace": "choose(landed, landed); return true;",
+    "test": "tests/snippet-groups-ui.test.cjs",
+    "expected": "snippet metadata survives partial native save and retries the same id (late=true)"
+  }
+]

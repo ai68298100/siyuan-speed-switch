@@ -1,11 +1,14 @@
 const {Dialog} = require("siyuan");
-const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader, createLeaveIntentCoordinator, createDraftHistory, pushDraftHistory, undoDraftHistory, redoDraftHistory, canUndoDraftHistory, canRedoDraftHistory, nextConflictCopyName, buildConflictCopyEntry, rememberRecentSnippet} = require("./snippet-studio-model.js");
+const {buildEditorLineNumbers, analyzeEditorBrackets} = require("./snippet-editor-model.js");
+const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, SNIPPET_BACKUP_MAX_BYTES, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader, createLeaveIntentCoordinator, createDraftHistory, pushDraftHistory, undoDraftHistory, redoDraftHistory, canUndoDraftHistory, canRedoDraftHistory, nextConflictCopyName, buildConflictCopyEntry, rememberRecentSnippet, buildSnippetBackup, normalizeSnippetBackup, diffSnippetBackup, buildSnippetRestorePlan, snippetSnapshotSignature} = require("./snippet-studio-model.js");
 const {buildSnippetDiff, summarizeDiff, applyDiffHunks} = require("./snippet-diff.js");
 const {lintSnippet} = require("./snippet-lint.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
 const {buildRecycleEntry, appendRecycleEntry, purgeRecycleEntry, normalizeRecycleStore} = require("./snippet-recycle.js");
+const {normalizeSnippetGroupStore, addSnippetGroup, createSnippetGroupId, renameSnippetGroup, setSnippetGroupCollapsed, removeSnippetGroup, moveSnippetToGroup, setSnippetGroupView, reconcileSnippetGroups, setSnippetMetadata, snippetMetadataSignature, projectSnippetMetadata} = require("./snippet-groups.js");
 const {createSnippetPreview, resolvePreviewCapability, formatPreviewCapability, analyzeSelectorDiagnostics, analyzeCssCoverage} = require("./snippet-studio-preview.js");
-const {createSnippetAIClient} = require("./snippet-studio-ai.js");
+const {createSnippetAIClient, selectSnippetAIContext} = require("./snippet-studio-ai.js");
+const {normalizeGistSettings, maskGistToken, rememberGistLink, buildGistImportDraft, fetchGistPreview, publishGist} = require("./snippet-gist.js");
 
 // T-6978：预览样例与探针文案共用一份构造——主编辑器实时预览与商店预览同源，
 // 新增样例/探针文案只改这里（labels 缺键回落到 preview 模块的中文兜底）。
@@ -36,7 +39,7 @@ function previewLabels(t) {
 }
 
 /** Experimental singleton view; native snippets remain the only saved copy. */
-function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = createSnippetStore({getSnippetSettings: () => getConfig()?.snippet}), ai = createSnippetAIClient(), session = {draft: null, baseline: null}, platform = null, onBack = () => {}, objectId = "", recycle = null} = {}) {
+function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = createSnippetStore({getSnippetSettings: () => getConfig()?.snippet}), ai = createSnippetAIClient(), session = {draft: null, baseline: null}, platform = null, onBack = () => {}, objectId = "", recycle = null, groups = null, gist = null} = {}) {
     const doc = root.ownerDocument;
     const win = doc.defaultView;
     // Keep the locale surface statically discoverable by the repository i18n
@@ -46,6 +49,16 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const translations = {
         snippetAbout: locale.i18n.snippetAbout,
         snippetAI: locale.i18n.snippetAI,
+        snippetAIIncludeCode: locale.i18n.snippetAIIncludeCode,
+        snippetAIIncludeHistory: locale.i18n.snippetAIIncludeHistory,
+        snippetAIProviderInfo: locale.i18n.snippetAIProviderInfo,
+        snippetAIContextSummary: locale.i18n.snippetAIContextSummary,
+        snippetAIContextTooLarge: locale.i18n.snippetAIContextTooLarge,
+        snippetAIPermissionDenied: locale.i18n.snippetAIPermissionDenied,
+        snippetAIRetry: locale.i18n.snippetAIRetry,
+        snippetAICopyCandidate: locale.i18n.snippetAICopyCandidate,
+        snippetAIExportCandidate: locale.i18n.snippetAIExportCandidate,
+        snippetAICandidateStale: locale.i18n.snippetAICandidateStale,
         snippetAIAccept: locale.i18n.snippetAIAccept,
         snippetAIAccepted: locale.i18n.snippetAIAccepted,
         snippetAICancel: locale.i18n.snippetAICancel,
@@ -212,6 +225,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetEnabled: locale.i18n.snippetEnabled,
         snippetExperimental: locale.i18n.snippetExperimental,
         snippetExport: locale.i18n.snippetExport,
+        snippetBackup: locale.i18n.snippetBackup,
+        snippetBackupHint: locale.i18n.snippetBackupHint,
         snippetFailed: locale.i18n.snippetFailed,
         snippetImport: locale.i18n.snippetImport,
         snippetImported: locale.i18n.snippetImported,
@@ -236,6 +251,57 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetCascadeHint: locale.i18n.snippetCascadeHint,
         snippetJSCascadeHint: locale.i18n.snippetJSCascadeHint,
         snippetMine: locale.i18n.snippetMine,
+        snippetGroupNew: locale.i18n.snippetGroupNew,
+        snippetMetadata: locale.i18n.snippetMetadata,
+        snippetStore: locale.i18n.snippetStore,
+        snippetStoreDraft: locale.i18n.snippetStoreDraft,
+        snippetStoreBuiltinInfo: locale.i18n.snippetStoreBuiltinInfo,
+        snippetStoreNativeInfo: locale.i18n.snippetStoreNativeInfo,
+        snippetStoreCommunity: locale.i18n.snippetStoreCommunity,
+        snippetAlias: locale.i18n.snippetAlias,
+        snippetTags: locale.i18n.snippetTags,
+        snippetSummary: locale.i18n.snippetSummary,
+        snippetPinned: locale.i18n.snippetPinned,
+        snippetCatalogSort: locale.i18n.snippetCatalogSort,
+        snippetCatalogNativeOrder: locale.i18n.snippetCatalogNativeOrder,
+        snippetCatalogModified: locale.i18n.snippetCatalogModified,
+        snippetGroupRename: locale.i18n.snippetGroupRename,
+        snippetGroupDelete: locale.i18n.snippetGroupDelete,
+        snippetGroupView: locale.i18n.snippetGroupView,
+        snippetGroupTree: locale.i18n.snippetGroupTree,
+        snippetGroupFlat: locale.i18n.snippetGroupFlat,
+        snippetGroupUngrouped: locale.i18n.snippetGroupUngrouped,
+        snippetGroupNamePrompt: locale.i18n.snippetGroupNamePrompt,
+        snippetGroupNameInvalid: locale.i18n.snippetGroupNameInvalid,
+        snippetGroupDeleteConfirm: locale.i18n.snippetGroupDeleteConfirm,
+        snippetGroupDropHint: locale.i18n.snippetGroupDropHint,
+        snippetGist: locale.i18n.snippetGist,
+        snippetGistHint: locale.i18n.snippetGistHint,
+        snippetGistToken: locale.i18n.snippetGistToken,
+        snippetGistTokenSet: locale.i18n.snippetGistTokenSet,
+        snippetGistTokenPlaceholder: locale.i18n.snippetGistTokenPlaceholder,
+        snippetGistSaveToken: locale.i18n.snippetGistSaveToken,
+        snippetGistClearToken: locale.i18n.snippetGistClearToken,
+        snippetGistDescription: locale.i18n.snippetGistDescription,
+        snippetGistUrl: locale.i18n.snippetGistUrl,
+        snippetGistPublish: locale.i18n.snippetGistPublish,
+        snippetGistPublishUpdate: locale.i18n.snippetGistPublishUpdate,
+        snippetGistImportPreview: locale.i18n.snippetGistImportPreview,
+        snippetGistImport: locale.i18n.snippetGistImport,
+        snippetGistPreviewLoading: locale.i18n.snippetGistPreviewLoading,
+        snippetGistPreviewEmpty: locale.i18n.snippetGistPreviewEmpty,
+        snippetGistParseable: locale.i18n.snippetGistParseable,
+        snippetGistUnparseable: locale.i18n.snippetGistUnparseable,
+        snippetGistDiff: locale.i18n.snippetGistDiff,
+        snippetGistLink: locale.i18n.snippetGistLink,
+        snippetGistPublished: locale.i18n.snippetGistPublished,
+        snippetGistImported: locale.i18n.snippetGistImported,
+        snippetGistTokenRequired: locale.i18n.snippetGistTokenRequired,
+        snippetGistReplaceToken: locale.i18n.snippetGistReplaceToken,
+        snippetGistPrepareUpdate: locale.i18n.snippetGistPrepareUpdate,
+        snippetGistStale: locale.i18n.snippetGistStale,
+        snippetGistFailed: locale.i18n.snippetGistFailed,
+        snippetGistPending: locale.i18n.snippetGistPending,
         snippetMore: locale.i18n.snippetMore,
         snippetName: locale.i18n.snippetName,
         snippetNew: locale.i18n.snippetNew,
@@ -260,6 +326,24 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetRecyclePurgeConfirm: locale.i18n.snippetRecyclePurgeConfirm,
         snippetRecycleRestore: locale.i18n.snippetRecycleRestore,
         snippetRecycleRestored: locale.i18n.snippetRecycleRestored,
+        snippetRestore: locale.i18n.snippetRestore,
+        snippetRestoreAdd: locale.i18n.snippetRestoreAdd,
+        snippetRestoreCancel: locale.i18n.snippetRestoreCancel,
+        snippetRestoreConfirm: locale.i18n.snippetRestoreConfirm,
+        snippetRestoreConflict: locale.i18n.snippetRestoreConflict,
+        snippetRestoreDelete: locale.i18n.snippetRestoreDelete,
+        snippetRestoreDone: locale.i18n.snippetRestoreDone,
+        snippetRestoreEmpty: locale.i18n.snippetRestoreEmpty,
+        snippetRestoreInvalid: locale.i18n.snippetRestoreInvalid,
+        snippetRestoreKeep: locale.i18n.snippetRestoreKeep,
+        snippetRestoreNoSelection: locale.i18n.snippetRestoreNoSelection,
+        snippetRestoreOneShot: locale.i18n.snippetRestoreOneShot,
+        snippetRestorePending: locale.i18n.snippetRestorePending,
+        snippetRestorePreview: locale.i18n.snippetRestorePreview,
+        snippetRestoreReplace: locale.i18n.snippetRestoreReplace,
+        snippetRestoreSettings: locale.i18n.snippetRestoreSettings,
+        snippetRestoreUndo: locale.i18n.snippetRestoreUndo,
+        snippetRefreshExternal: locale.i18n.snippetRefreshExternal,
         snippetPreview: locale.i18n.snippetPreview,
         snippetPreviewError: locale.i18n.snippetPreviewError,
         snippetPreviewHint: locale.i18n.snippetPreviewHint,
@@ -361,6 +445,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let loading = true;
     let loadFailed = false;
     let snippets = [];
+    let snippetGroups = (() => {
+        try { return normalizeSnippetGroupStore(groups?.load?.()); } catch (_) { return normalizeSnippetGroupStore(null); }
+    })();
+    let groupIdSeed = 0;
     let draft = session.draft
         ? {...session.draft, disabledInPublish: session.draft.disabledInPublish === true}
         : {id: "", name: "", type: "css", content: "", enabled: false, disabledInPublish: false};
@@ -388,6 +476,19 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let pickerRefresh = null;
     let pickerScrollTop = {root: 0, layout: 0};
     let aiHistory = [];
+    let restoreUndo = session.restoreUndo ? normalizeSnippetBackup(session.restoreUndo) : null;
+    let lastSnapshotSignature = "";
+    let restoreDialog = null;
+    let gistSettings = (() => {
+        try { return normalizeGistSettings(gist?.load?.()); } catch (_) { return normalizeGistSettings(null); }
+    })();
+    let gistPreview = null;
+    let gistBusy = false;
+    let gistController = null;
+    let gistGeneration = 0;
+    let gistSourceUrl = session.gistSourceUrl || "";
+    let gistEditingToken = !gistSettings.token;
+    let gistWriting = false;
     const initialSnippetSettings = getConfig()?.snippet;
     let masterFlags = {
         enabledCSS: typeof initialSnippetSettings?.enabledCSS === "boolean" ? initialSnippetSettings.enabledCSS : null,
@@ -424,8 +525,11 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     headerState.setAttribute("aria-atomic", "true");
     heading.append(titleLine, headerContext);
     const headerActions = node("div", "sw-studio__header-actions");
-    const backButton = action("snippetBack", onBack);
-    headerActions.append(headerState, backButton);
+    const backButton = action("snippetBack", () => guardLeave(() => onBack(true)));
+    const backupButton = action("snippetBackup", () => { void exportBackup(); }, "is-quiet");
+    const restoreButton = action("snippetRestore", () => restoreInput.click(), "is-quiet");
+    const restoreUndoButton = action("snippetRestoreUndo", () => { void undoRestore(); }, "is-quiet");
+    headerActions.append(headerState, backupButton, restoreButton, restoreUndoButton, backButton);
     header.append(heading, headerActions);
     const layout = node("div", "sw-studio__layout");
     const main = node("main", "sw-studio__main");
@@ -552,15 +656,132 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         masterControls.appendChild(button);
     }
     masterSection.append(masterTitle, masterHint, masterControls);
+    const gistSection = node("details", "sw-studio__gist");
+    const gistTitle = node("summary", "sw-studio__master-title", t("snippetGist"));
+    const gistHint = node("p", "sw-studio__hint", t("snippetGistHint"));
+    const gistTokenLabel = node("label", "sw-studio__field", t("snippetGistToken"));
+    const gistTokenInput = node("input", "sw-studio__input");
+    gistTokenInput.type = "password";
+    gistTokenInput.autocomplete = "off";
+    gistTokenInput.spellcheck = false;
+    gistTokenInput.maxLength = 512;
+    gistTokenInput.placeholder = t("snippetGistTokenPlaceholder");
+    gistTokenInput.setAttribute("aria-label", t("snippetGistToken"));
+    gistTokenLabel.appendChild(gistTokenInput);
+    const gistTokenState = node("span", "sw-studio__hint");
+    const gistTokenActions = node("div", "sw-studio__commands");
+    const gistSaveTokenButton = action("snippetGistSaveToken", () => {
+        const token = gistTokenInput.value.trim();
+        const next = normalizeGistSettings({...readGistSettings(), token});
+        if (!next.token) { setStatus(t("snippetGistTokenRequired"), "error"); return; }
+        if (!persistGistSettings(next)) return;
+        gistEditingToken = false;
+        gistTokenInput.value = "";
+        syncGistFields();
+        setStatus(t("snippetGistTokenSet"), "ready");
+    }, "is-quiet");
+    const gistClearTokenButton = action("snippetGistClearToken", () => {
+        if (!persistGistSettings({...readGistSettings(), token: ""})) return;
+        gistEditingToken = true;
+        gistTokenInput.value = "";
+        syncGistFields();
+        setStatus(t("snippetGistClearToken"), "ready");
+    }, "is-quiet");
+    const gistReplaceTokenButton = action("snippetGistReplaceToken", () => {
+        gistEditingToken = true;
+        syncGistFields();
+        gistTokenInput.focus();
+    }, "is-quiet");
+    gistTokenActions.append(gistSaveTokenButton, gistReplaceTokenButton, gistClearTokenButton);
+    const gistDescriptionInput = node("input", "sw-studio__input");
+    gistDescriptionInput.maxLength = 256;
+    gistDescriptionInput.setAttribute("aria-label", t("snippetGistDescription"));
+    const gistDescriptionLabel = node("label", "sw-studio__field", t("snippetGistDescription"));
+    gistDescriptionLabel.appendChild(gistDescriptionInput);
+    const gistUrlInput = node("input", "sw-studio__input");
+    gistUrlInput.type = "url";
+    gistUrlInput.maxLength = 256;
+    gistUrlInput.placeholder = "https://gist.github.com/...";
+    gistUrlInput.setAttribute("aria-label", t("snippetGistUrl"));
+    const gistUrlLabel = node("label", "sw-studio__field", t("snippetGistUrl"));
+    gistUrlLabel.appendChild(gistUrlInput);
+    gistUrlInput.value = gistSettings.links[draft.id] || gistSourceUrl;
+    gistUrlInput.addEventListener("input", () => {
+        cancelGistRequest(false);
+        gistPreview = null;
+        gistPreviewBox.replaceChildren();
+        syncGistFields();
+    });
+    const gistActions = node("div", "sw-studio__commands");
+    const gistPublishButton = action("snippetGistPublish", () => { void publishCurrentGist(); }, "is-primary");
+    const gistUpdateButton = action("snippetGistPublishUpdate", () => { void publishCurrentGist(true); }, "is-secondary");
+    const gistPreviewButton = action("snippetGistImportPreview", () => { void previewGistImport(); }, "is-quiet");
+    const gistCancelButton = action("snippetAICancel", () => cancelGistRequest(), "is-quiet");
+    gistActions.append(gistPublishButton, gistUpdateButton, gistPreviewButton, gistCancelButton);
+    const gistPreviewBox = node("div", "sw-studio__gist-preview");
+    gistSection.append(gistTitle, gistHint, gistTokenLabel, gistTokenState, gistTokenActions, gistDescriptionLabel, gistUrlLabel, gistActions, gistPreviewBox);
     // Keep the original core append contract stable for host wiring audits; optional
     // controls are inserted around that stable spine so the details panel remains
     // ordered without forcing every consumer to understand the newer fields.
     details.append(detailsTitle, selection, nameLabel, typeSelect, typeNote, state, commands, description, capabilities);
+    const metadataDetails = node("details", "sw-studio__metadata");
+    metadataDetails.appendChild(node("summary", "", t("snippetMetadata")));
+    const metadataInputs = {};
+    for (const [key, label, max] of [["alias", "snippetAlias", 64], ["tags", "snippetTags", 263], ["summary", "snippetSummary", 256]]) {
+        const field = node("label", "sw-studio__ai-field", t(label));
+        const input = node("input", "sw-studio__input");
+        input.maxLength = max;
+        input.setAttribute("aria-label", t(label));
+        field.appendChild(input);
+        metadataInputs[key] = input;
+        metadataDetails.appendChild(field);
+    }
+    const pinnedField = node("label", "sw-studio__consent", t("snippetPinned"));
+    metadataInputs.pinned = node("input");
+    metadataInputs.pinned.type = "checkbox";
+    metadataInputs.pinned.setAttribute("aria-label", t("snippetPinned"));
+    pinnedField.prepend(metadataInputs.pinned);
+    metadataDetails.appendChild(pinnedField);
+    details.appendChild(metadataDetails);
+    function readMetadataFields() {
+        return {alias: metadataInputs.alias.value, tags: metadataInputs.tags.value.split(/[,，]/),
+            summary: metadataInputs.summary.value, pinned: metadataInputs.pinned.checked};
+    }
+    function syncMetadataFields() {
+        const value = session.metadata || (baseline ? snippetGroups.metadata?.entries.find((entry) => entry.snippetId === baseline.id) || {} : {});
+        metadataInputs.alias.value = value.alias || "";
+        metadataInputs.tags.value = (value.tags || []).join(", ");
+        metadataInputs.summary.value = value.summary || "";
+        metadataInputs.pinned.checked = value.pinned === true;
+    }
+    function persistSnippetMetadata(snippetId, value) {
+        if (!groups && !value.alias && !value.summary && !value.tags?.some((tag) => tag.trim()) && !value.pinned) return true;
+        const next = setSnippetMetadata(snippetGroups, snippetId, {...value, modifiedAt: Date.now()});
+        try {
+            if (typeof groups?.save !== "function") throw new Error(t("snippetUnavailable"));
+            groups.save(next);
+            snippetGroups = next;
+            pickerRefresh?.();
+            return true;
+        } catch (error) { setStatus(errorText(error), "error"); return false; }
+    }
+    for (const input of Object.values(metadataInputs)) {
+        input.addEventListener("input", () => {
+            session.metadata = readMetadataFields();
+            syncFields(true);
+        });
+        input.addEventListener("change", () => {
+            session.metadata = readMetadataFields();
+            if (baseline && persistSnippetMetadata(baseline.id, session.metadata)) session.metadata = null;
+            syncFields(true);
+        });
+    }
     details.insertBefore(orderMeta, nameLabel);
     details.insertBefore(cascadeHint, nameLabel);
     details.insertBefore(publishField, commands);
     details.insertBefore(publishHint, commands);
     details.insertBefore(masterSection, description);
+    details.insertBefore(gistSection, description);
     const editorSection = node("section", "sw-studio__editor-section");
     // T-6959：查找条状态（声明须先于 DOM 构建；逻辑函数声明提升，见后）
     let findBar = null;
@@ -584,8 +805,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const importButton = action("snippetImport", () => fileInput.click());
     const newButton = action("snippetNew", () => { guardLeave(() => choose({name: "", type: "css", content: ""}, null)); });
     // T-7064：复制草稿全文——Clipboard API 优先，无权限/非安全上下文回退 execCommand
-    const copyButton = action("snippetCopy", () => {
-        const text = draft.content || "";
+    function copyText(text) {
         if (!text) { setStatus(t("snippetCopyEmpty"), "warn"); return; }
         const fallbackCopy = () => {
             const scratch = document.createElement("textarea");
@@ -603,16 +823,23 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             ? navigator.clipboard.writeText(text)
             : Promise.resolve().then(fallbackCopy);
         job.then(() => setStatus(t("snippetCopied"), "ready")).catch(() => setStatus(t("snippetCopyFailed"), "warn"));
-    });
-    editorBar.append(editorLead, draftUndoButton, draftRedoButton, findToggleButton, chooseButton, importButton, newButton, copyButton);
+    }
+    const copyButton = action("snippetCopy", () => copyText(draft.content || ""));
+    const snippetStoreButton = action("snippetStore", () => openPicker(true));
+    editorBar.append(editorLead, draftUndoButton, draftRedoButton, findToggleButton, chooseButton, snippetStoreButton, importButton, newButton, copyButton);
     const editor = node("textarea", "sw-studio__editor");
-    editor.spellcheck = false;
     editor.setAttribute("aria-label", t("snippetCode"));
-    editor.setAttribute("autocapitalize", "off");
+    const editorFrame = node("div", "sw-studio__editor-frame");
+    const lineNumbers = node("div", "sw-studio__line-numbers");
+    editorFrame.append(lineNumbers, editor);
     const fileInput = node("input");
     fileInput.type = "file";
     fileInput.accept = ".css,.js";
     fileInput.hidden = true;
+    const restoreInput = node("input");
+    restoreInput.type = "file";
+    restoreInput.accept = ".json,application/json";
+    restoreInput.hidden = true;
     // T-6959：查找条（隐藏起步）——查找 + 替换为 + 计数 + 上/下一处 + 替换全部（两步确认）
     findBar = node("div", "sw-studio__find");
     findBar.hidden = true;
@@ -663,7 +890,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         }
     });
     findBar.append(findQueryInput, findCountLabel, findPrevButton, findNextButton, findReplaceInput, replaceAllButton, findCloseButton);
-    editorSection.append(editorBar, findBar, editor, fileInput);
+    editorSection.append(editorBar, findBar, editor, fileInput, restoreInput);
+    editorFrame.append(editor);
+    editorSection.insertBefore(editorFrame, fileInput);
     lower.append(details, editorSection);
     main.append(previewSection, lower);
     const aside = node("aside", "sw-studio__ai");
@@ -673,6 +902,19 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const aiProvider = node("span", "sw-studio__state-badge", t("snippetAIIdle"));
     aiHeader.append(aiTitle, aiProvider);
     const aiNote = node("p", "sw-studio__hint", t("snippetAIHint"));
+    const aiProviderInfo = node("p", "sw-studio__hint", t("snippetAIProviderInfo"));
+    const contextOptions = node("div", "sw-studio__ai-context-options");
+    const contextInputs = {};
+    for (const [key, label] of [["code", "snippetAIIncludeCode"], ["history", "snippetAIIncludeHistory"]]) {
+        const field = node("label", "sw-studio__consent", t(label));
+        const input = node("input");
+        input.type = "checkbox";
+        input.setAttribute("aria-label", t(label));
+        field.prepend(input);
+        contextOptions.appendChild(field);
+        contextInputs[key] = input;
+    }
+    const contextSummary = node("p", "sw-studio__hint sw-studio__ai-context");
     const modeSelect = select("snippetAIMode", [["generate", "snippetAIGenerate"], ["optimize", "snippetAIOptimize"], ["explain", "snippetAIExplain"], ["iterate", "snippetAIIterate"]]);
     const modeField = node("label", "sw-studio__ai-field", t("snippetAIMode"));
     modeField.appendChild(modeSelect);
@@ -687,7 +929,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     aiConsent.append(aiConsentInput, doc.createTextNode(t("snippetAIConsent")));
     const aiActions = node("div", "sw-studio__ai-actions");
     const aiButton = action("snippetAISend", () => void generate(), "is-primary");
-    const cancelAIButton = action("snippetAICancel", () => { aiGeneration += 1; ai.cancel(); setAIStatus(t("snippetCancelled")); updateAIActions(); cancelAIButton.disabled = true; });
+    const cancelAIButton = action("snippetAICancel", () => { aiGeneration += 1; ai.cancel(); cancelAIButton.disabled = true; setAIStatus(t("snippetCancelled"), false, "cancelled"); updateAIActions(); });
     cancelAIButton.disabled = true;
     aiButton.disabled = true;
     aiActions.append(aiButton, cancelAIButton);
@@ -756,6 +998,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         setStatus(t("snippetAIAccepted"), "ready");
     }, "is-primary");
     acceptButton.disabled = true;
+    const candidateActions = node("div", "sw-studio__ai-actions");
+    const candidateCopy = action("snippetAICopyCandidate", () => { if (candidate) copyText(candidate.content); });
+    const candidateExport = action("snippetAIExportCandidate", () => {
+        if (!candidate) return;
+        download(`candidate.${candidate.mode === "explain" ? "txt" : candidate.type}`, candidate.content, "text/plain");
+        setAIStatus(t("snippetAIExportCandidate"), true);
+    });
+    const candidateStale = node("p", "sw-studio__hint sw-studio__ai-stale", t("snippetAICandidateStale"));
+    candidateActions.append(candidateCopy, candidateExport);
     const modeHints = {
         generate: "snippetAIGenerateHint",
         optimize: "snippetAIOptimizeHint",
@@ -849,9 +1100,16 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         aiProvider.className = `sw-studio__state-badge${stateClass}`;
     };
     const updateAIActions = () => {
-        if (cancelAIButton.disabled) aiButton.disabled = busy || !aiConsentInput.checked || !prompt.value.trim();
-        aiProvider.textContent = aiConsentInput.checked ? t("snippetAIReady") : t("snippetAIIdle");
-        aiProvider.className = `sw-studio__state-badge${aiConsentInput.checked ? " is-ready" : ""}`;
+        const requiresCode = modeSelect.value !== "generate";
+        contextInputs.history.disabled = modeSelect.value !== "iterate";
+        const contextCode = modeSelect.value === "iterate" && candidate?.type === draft.type && candidate?.mode !== "explain" ? candidate.content : draft.content;
+        const selectedCode = contextInputs.code.checked ? contextCode : "";
+        const historyCount = modeSelect.value === "iterate" && contextInputs.history.checked ? aiHistory.slice(-6).length : 0;
+        contextSummary.textContent = t("snippetAIContextSummary").replace("{bytes}", formatBytes(byteLength(selectedCode))).replace("{messages}", String(historyCount));
+        if (cancelAIButton.disabled) aiButton.disabled = busy || !aiConsentInput.checked || !prompt.value.trim()
+            || (requiresCode && !selectedCode.trim());
+        candidateCopy.disabled = candidateExport.disabled = !candidate;
+        candidateStale.hidden = !candidate || candidate.revision === revision;
     };
     const updateAIMode = () => {
         modeHint.textContent = t(modeHints[modeSelect.value] || modeHints.generate);
@@ -862,10 +1120,12 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     };
     modeSelect.addEventListener("change", () => {
         updateAIMode();
+        updateAIActions();
     });
+    Object.values(contextInputs).forEach((input) => input.addEventListener("change", updateAIActions));
     aiConsentInput.addEventListener("change", updateAIActions);
     prompt.addEventListener("input", updateAIActions);
-    aside.append(aiHeader, aiNote, modeField, modeHint, prompt, aiConsent, aiActions, aiStatus, aiResultPanel, acceptButton);
+    aside.append(aiHeader, aiNote, aiProviderInfo, modeField, modeHint, contextOptions, contextSummary, prompt, aiConsent, aiActions, aiStatus, aiResultPanel, candidateStale, candidateActions, acceptButton);
     layout.append(main, aside);
     const status = node("footer", "sw-studio__status", t("snippetLoading"));
     status.setAttribute("role", "status");
@@ -918,6 +1178,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     dualPaneObserver?.observe(previewShell);
     const errorText = (error) => {
         const code = String(error?.message || error?.code || "");
+        if (code.startsWith("gist-")) {
+            if (code === "gist-token-required" || code === "gist-token-invalid") return t("snippetGistTokenRequired");
+            if (code === "gist-conflict") return t("snippetGistStale");
+            return t("snippetGistFailed");
+        }
+        if (/restore-unverified/i.test(code)) return t("snippetRestorePending");
+        if (code === "permission_denied") return t("snippetAIPermissionDenied");
+        if (code === "context_too_large") return t("snippetAIContextTooLarge");
+        if (/backup|restore/i.test(code)) return t("snippetRestoreInvalid");
         if (/conflict|changed|missing|duplicate/i.test(code)) return t("snippetConflict");
         if (/unsupported|unavailable|404/i.test(code)) return t("snippetUnavailable");
         if (/cancel|abort|disposed/i.test(code)) return t("snippetCancelled");
@@ -926,6 +1195,165 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         if (/invalid|malformed|truncat/i.test(code)) return t("snippetInvalid");
         return t("snippetFailed");
     };
+    const gistFetch = typeof win.fetch === "function" ? win.fetch.bind(win) : globalThis.fetch;
+    function readGistSettings() {
+        try { return gist?.load ? normalizeGistSettings(gist.load()) : gistSettings; }
+        catch (_) { return gistSettings; }
+    }
+    function persistGistSettings(next) {
+        try {
+            gist?.save?.(next);
+            gistSettings = next;
+            return true;
+        } catch (_) {
+            setStatus(t("snippetFailed"), "error");
+            return false;
+        }
+    }
+    function cancelGistRequest(showStatus = true) {
+        const uncertain = gistWriting;
+        gistGeneration += 1;
+        gistController?.abort();
+        gistController = null;
+        gistBusy = false;
+        gistWriting = false;
+        if (!disposed) {
+            syncGistFields();
+            layout.setAttribute("aria-busy", String(loading || busy));
+            if (showStatus) setStatus(t(uncertain ? "snippetGistPending" : "snippetCancelled"), uncertain ? "warn" : "ready");
+        }
+    }
+    function syncGistFields() {
+        const hasToken = Boolean(gistSettings.token);
+        gistTokenState.textContent = hasToken ? `${t("snippetGistTokenSet")} · ${maskGistToken(gistSettings.token)}` : t("snippetGistTokenPlaceholder");
+        gistTokenState.dataset.state = hasToken ? "ready" : "blocked";
+        gistTokenLabel.hidden = hasToken && !gistEditingToken;
+        gistSaveTokenButton.hidden = hasToken && !gistEditingToken;
+        gistReplaceTokenButton.hidden = !hasToken || gistEditingToken;
+        gistReplaceTokenButton.disabled = gistBusy;
+        gistSaveTokenButton.disabled = gistBusy;
+        gistClearTokenButton.disabled = gistBusy || !hasToken;
+        gistPublishButton.disabled = gistBusy || busy || loading || loadFailed || dirty() || !baseline || !draft.content.trim();
+        gistUpdateButton.disabled = gistPublishButton.disabled || !gistUrlInput.value.trim();
+        gistPreviewButton.disabled = gistBusy || loading || loadFailed || !gistUrlInput.value.trim();
+        gistTokenInput.disabled = gistBusy;
+        gistDescriptionInput.disabled = gistBusy;
+        gistUrlInput.disabled = gistBusy;
+        gistCancelButton.hidden = !gistBusy;
+        gistUpdateButton.textContent = t(gistPreview ? "snippetGistPublishUpdate" : "snippetGistPrepareUpdate");
+    }
+    function renderGistPreview() {
+        gistPreviewBox.replaceChildren();
+        if (!gistPreview) return;
+        if (gistPreview.parseable.length === 0) {
+            gistPreviewBox.appendChild(node("p", "sw-studio__hint", t("snippetGistPreviewEmpty")));
+        }
+        gistPreview.files.forEach((file) => {
+            const row = node("div", `sw-studio__gist-row ${file.parseable ? "is-ready" : "is-muted"}`);
+            const title = node("strong", "sw-studio__gist-file", file.filename);
+            const state = node("span", "sw-studio__tag", file.parseable ? t("snippetGistParseable") : t("snippetGistUnparseable"));
+            row.append(title, state);
+            if (file.remoteId && file.parseable) {
+                const local = snippets.find((entry) => entry.id === file.remoteId);
+                if (local) {
+                    const diff = buildSnippetDiff(local.content || "", file.content || "");
+                    const summary = summarizeDiff(local.content || "", file.content || "", diff);
+                    const comparison = node("details", "sw-studio__gist-diff");
+                    comparison.appendChild(node("summary", "sw-studio__hint", t("snippetGistDiff").replace("{added}", String(summary.added)).replace("{removed}", String(summary.removed))));
+                    diff.rows.slice(0, 200).forEach((line) => comparison.appendChild(node("pre", "sw-studio__gist-diff-line is-" + line.type,
+                        (line.type === "ins" ? "+ " : line.type === "del" ? "- " : "  ") + line.text)));
+                    if (diff.rows.length > 200 || diff.degraded) comparison.appendChild(node("p", "sw-studio__hint", t("snippetDiffDegraded")));
+                    row.appendChild(comparison);
+                }
+            }
+            if (file.parseable) {
+                const index = gistPreview.parseable.indexOf(file);
+                const capturedPreview = gistPreview;
+                const importButton = node("button", "sw-studio__button is-quiet", t("snippetGistImport"));
+                importButton.type = "button";
+                importButton.addEventListener("click", () => guardLeave(() => {
+                    const imported = buildGistImportDraft(capturedPreview, index);
+                    choose(imported, null);
+                    setStatus(t("snippetGistImported"), "ready");
+                }));
+                row.appendChild(importButton);
+            }
+            gistPreviewBox.appendChild(row);
+        });
+    }
+    async function previewGistImport() {
+        if (gistBusy || loading || loadFailed || disposed) return;
+        const token = readGistSettings().token;
+        const generation = ++gistGeneration;
+        const startedRevision = revision;
+        gistController = new AbortController();
+        gistBusy = true;
+        gistPreview = null;
+        gistPreviewBox.replaceChildren(node("p", "sw-studio__hint", t("snippetGistPreviewLoading")));
+        syncFields();
+        try {
+            const next = await fetchGistPreview(gistUrlInput.value, {token, fetchImpl: gistFetch, signal: gistController.signal});
+            if (disposed || generation !== gistGeneration) return;
+            if (revision !== startedRevision) { gistPreviewBox.replaceChildren(); setStatus(t("snippetGistStale"), "warn"); return; }
+            gistPreview = next;
+            gistDescriptionInput.value = next.description;
+            renderGistPreview();
+            setStatus(t("snippetGistLink"), "ready");
+        } catch (error) {
+            if (disposed || generation !== gistGeneration) return;
+            gistPreview = null;
+            renderGistPreview();
+            setStatus(errorText(error), "error");
+        } finally {
+            if (!disposed && generation === gistGeneration) {
+                gistBusy = false;
+                gistController = null;
+                syncFields();
+            }
+        }
+    }
+    async function publishCurrentGist(update = false) {
+        if (gistBusy || busy || loading || loadFailed || disposed || !baseline || dirty() || !draft.content.trim()) return;
+        const token = readGistSettings().token;
+        if (!token) { setStatus(t("snippetGistTokenRequired"), "error"); return; }
+        if (update && !gistUrlInput.value.trim()) return;
+        if (update && !gistPreview) { await previewGistImport(); return; }
+        const captured = {...draft};
+        const expected = gistPreview;
+        const generation = ++gistGeneration;
+        gistController = new AbortController();
+        gistBusy = true;
+        gistWriting = true;
+        syncFields();
+        try {
+            const result = await publishGist({
+                token, snippet: captured, gistUrl: update ? gistUrlInput.value : "",
+                description: gistDescriptionInput.value || captured.name, fetchImpl: gistFetch,
+                expected, signal: gistController.signal,
+            });
+            if (disposed || generation !== gistGeneration) return;
+            gistUrlInput.value = result.url;
+            gistPreview = null;
+            gistPreviewBox.replaceChildren();
+            if (!persistGistSettings(rememberGistLink(readGistSettings(), captured.id, result.url))) {
+                setStatus(t("snippetGistPending") + " " + result.url, "warn");
+                return;
+            }
+            setStatus(t("snippetGistPublished"), "ready");
+        } catch (error) {
+            if (disposed || generation !== gistGeneration) return;
+            gistPreview = null;
+            gistPreviewBox.replaceChildren();
+            setStatus(t("snippetGistPending") + " " + errorText(error), "error");
+        } finally {
+            if (!disposed && generation === gistGeneration) {
+                gistBusy = false;
+                gistWriting = false;
+                gistController = null;
+                syncFields();
+            }
+        }
+    }
     const byteLength = (content) => new TextEncoder().encode(String(content || "")).byteLength;
     const lineLength = (content) => content ? String(content).split(/\r\n|\r|\n/).length : 0;
     const formatBytes = (bytes) => bytes < 1024 ? `${bytes} ${t("snippetBytes")}` : `${(bytes / 1024).toFixed(1)} KiB`;
@@ -947,6 +1375,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             const next = await store.readSettings();
             if (disposed || typeof next?.enabledCSS !== "boolean" || typeof next?.enabledJS !== "boolean") return;
             masterFlags = {enabledCSS: next.enabledCSS, enabledJS: next.enabledJS};
+            lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: masterFlags});
             syncFields();
         } catch (_) { /* an unavailable host setting remains visibly unavailable */ }
     }
@@ -977,13 +1406,16 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             if (!disposed) syncFields();
         }
     }
-    function syncFields() {
+    function syncFields(preserveMetadataInput = false) {
         nameInput.value = draft.name;
         typeSelect.value = draft.type;
         editor.value = draft.content;
         publishInput.checked = draft.disabledInPublish === true;
         session.draft = {...draft};
         session.baseline = baseline ? {...baseline} : null;
+        if (!preserveMetadataInput) syncMetadataFields();
+        for (const input of Object.values(metadataInputs)) input.disabled = busy || loading || !groups;
+        session.gistSourceUrl = gistSourceUrl;
         const bytes = byteLength(draft.content);
         const lines = lineLength(draft.content);
         const shortName = draft.name.trim() || t("snippetNew");
@@ -1004,6 +1436,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         headerState.textContent = savedState;
         headerState.className = `sw-studio__state-badge ${stateClass}`;
         editorMeta.textContent = `${formatBytes(bytes)} · ${lines} ${t("snippetLines")}`;
+        syncEditorChrome();
         previewType.textContent = draft.type.toUpperCase();
         compareButton.disabled = busy || !baseline;
         compareButton.title = baseline ? t("snippetCompare") : t("snippetCompareUnavailable");
@@ -1011,21 +1444,25 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             showOriginal = false;
             compareButton.setAttribute("aria-pressed", "false");
         }
-        typeSelect.disabled = Boolean(baseline) || busy;
+        typeSelect.disabled = Boolean(baseline) || busy || gistWriting;
         typeNote.hidden = !baseline;
         saveButton.textContent = t(baseline ? "snippetSave" : "snippetSaveDisabled");
         toggleButton.textContent = t(baseline?.enabled ? "snippetDisable" : "snippetEnable");
         state.textContent = t(baseline ? baseline.enabled ? "snippetEnabled" : "snippetDisabled" : "snippetDraft");
         const masterEnabled = masterFlags[masterKey(draft.type)];
         if (masterEnabled === false) state.textContent += ` · ${t("snippetMasterOff")}`;
-        saveButton.disabled = busy || loading || loadFailed || !draft.name.trim() || !draft.content.trim();
-        toggleButton.disabled = busy || loading || loadFailed || !baseline;
-        deleteButton.disabled = busy || loading || loadFailed || !baseline;
+        saveButton.disabled = busy || gistWriting || loading || loadFailed || !draft.name.trim() || !draft.content.trim();
+        toggleButton.disabled = busy || gistWriting || loading || loadFailed || !baseline;
+        deleteButton.disabled = busy || gistWriting || loading || loadFailed || !baseline;
         exportButton.disabled = !draft.content;
         submissionButton.disabled = !draft.content;
-        chooseButton.disabled = busy;
-        importButton.disabled = busy;
-        newButton.disabled = busy;
+        chooseButton.disabled = busy || gistWriting;
+        importButton.disabled = busy || gistWriting;
+        newButton.disabled = busy || gistWriting;
+        backupButton.disabled = busy || loading || loadFailed;
+        restoreButton.disabled = busy || loading || loadFailed;
+        restoreUndoButton.hidden = !restoreUndo;
+        restoreUndoButton.disabled = busy || loading || loadFailed || !restoreUndo;
         // T-6959：busy 期间查找/替换控件跟随禁用
         if (findQueryInput) findQueryInput.disabled = busy;
         if (findReplaceInput) findReplaceInput.disabled = busy;
@@ -1033,13 +1470,26 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         draftUndoButton.disabled = busy || !canUndoDraftHistory(draftHistory);
         draftRedoButton.disabled = busy || !canRedoDraftHistory(draftHistory);
         refresh.disabled = busy || loading;
-        nameInput.disabled = busy;
-        editor.disabled = busy;
-        publishInput.disabled = busy || loading || loadFailed;
+        nameInput.disabled = busy || gistWriting;
+        editor.disabled = busy || gistWriting;
+        publishInput.disabled = busy || gistWriting || loading || loadFailed;
         syncMasterControls();
-        layout.setAttribute("aria-busy", String(loading || busy));
+        syncGistFields();
+        layout.setAttribute("aria-busy", String(loading || busy || gistBusy));
         updateAIActions();
         updateAIMode();
+    }
+    function syncEditorChrome() {
+        const lineState = buildEditorLineNumbers(editor.value);
+        lineNumbers.textContent = lineState.text;
+        lineNumbers.dataset.lineCount = String(lineState.lineCount);
+        const bracketState = analyzeEditorBrackets(editor.value);
+        let status = bracketState.truncated
+            ? t("snippetTooLarge")
+            : bracketState.issues.length > 0
+                ? `${t("snippetDiagnosticsError")}: ${bracketState.issues.length}`
+                : `${t("snippetDiagnostics")} ✓`;
+        editorMeta.textContent = `${formatBytes(byteLength(editor.value))} · ${lineState.lineCount} ${t("snippetLines")} · ${status}`;
     }
     function renderPreview() {
         clearTimeout(previewTimer);
@@ -1157,6 +1607,13 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         commitDraftHistory();
     });
     editor.addEventListener("input", changed);
+    editor.addEventListener("scroll", () => { lineNumbers.scrollTop = editor.scrollTop; });
+    editorSection.addEventListener("keydown", (event) => {
+        if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === "s" && !event.isComposing) {
+            event.preventDefault();
+            saveButton.click();
+        }
+    });
     // T-6957：输入法组合期内不落账（组合提交后才结算事务）；编辑器聚焦时接管
     // 原生撤销快捷键，走统一草稿历史。
     [nameInput, editor].forEach((field) => {
@@ -1177,7 +1634,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     });
     const dirty = () => baseline
         ? draft.name !== baseline.name || draft.type !== baseline.type || draft.content !== baseline.content || draft.disabledInPublish !== (baseline.disabledInPublish === true)
-        : Boolean(draft.name || draft.content || draft.disabledInPublish === true);
+            || Boolean(session.metadata && snippetMetadataSignature(session.metadata) !== snippetMetadataSignature(
+                snippetGroups.metadata?.entries.find((entry) => entry.snippetId === baseline.id)))
+        : Boolean(draft.name || draft.content || draft.disabledInPublish === true || session.metadata?.alias
+            || session.metadata?.summary || session.metadata?.pinned || session.metadata?.tags?.some((tag) => tag.trim()));
     // T-6957：统一草稿历史（名称/类型/正文事务）——50 步 + 512 KiB 字节预算；
     // 切片（choose 身份变化）重置、保存（同 id choose）保留；IME 组合期内不落账；
     // 撤销/重做把状态写回真实控件后经 changed() 同步，dirty 相对新 baseline 重算。
@@ -1421,6 +1881,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         cancelButton.focus({preventScroll: true});
     }
     function choose(value, native) {
+        cancelGistRequest(false);
+        gistPreview = null;
+        gistPreviewBox.replaceChildren();
         aiGeneration += 1;
         ai.cancel();
         aiButton.disabled = true;
@@ -1428,6 +1891,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         candidate = null;
         aiHistory = [];
         acceptButton.disabled = true;
+        contextInputs.code.checked = false;
+        contextInputs.history.checked = false;
+        aiConsentInput.checked = false;
         acceptButton.hidden = modeSelect.value === "explain";
         aiResult.hidden = true;
         aiResultHeader.hidden = true;
@@ -1439,6 +1905,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         hideAIDiffPanel();
         setAIStatus(t("snippetAIIdle"));
         baseline = native ? {...native} : null;
+        session.metadata = native ? null : {alias: value.alias || "", tags: value.tags || [], summary: value.summary || value.description || "", pinned: false};
         if (native?.id) session.recentIds = rememberRecentSnippet(session.recentIds, native.id);
         selectedSource = native ? "native" : value.source || "draft";
         draft = {
@@ -1449,6 +1916,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             enabled: native?.enabled === true,
             disabledInPublish: native?.disabledInPublish === true,
         };
+        gistSourceUrl = value.sourceUrl || "";
+        session.gistSourceUrl = gistSourceUrl;
+        gistUrlInput.value = gistSettings.links[draft.id] || gistSourceUrl;
+        gistDescriptionInput.value = "";
         // T-6957：仅身份变化时重置草稿历史——保存（同 id choose）保留历史，
         // 撤销到保存前内容时 dirty 相对新 baseline 真实变化。
         const identity = native?.id || `draft:${value.source || "draft"}:${value.name}:${value.type}`;
@@ -1463,6 +1934,194 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         syncFields();
         renderPreview();
     }
+    async function readStudioSnapshot() {
+        if (typeof store.readSnapshot === "function") return store.readSnapshot();
+        const current = await store.read();
+        return {snippets: current, settings: {
+            enabledCSS: masterFlags.enabledCSS === true,
+            enabledJS: masterFlags.enabledJS === true,
+        }};
+    }
+    function applyStudioSnapshot(snapshot, reselect = true) {
+        snippets = Array.isArray(snapshot?.snippets) ? snapshot.snippets : [];
+        reconcileLoadedSnippetGroups();
+        if (snapshot?.settings && typeof snapshot.settings.enabledCSS === "boolean" && typeof snapshot.settings.enabledJS === "boolean") {
+            masterFlags = {enabledCSS: snapshot.settings.enabledCSS, enabledJS: snapshot.settings.enabledJS};
+        }
+        lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: masterFlags});
+        pickerRefresh?.();
+        if (reselect) {
+            const selected = baseline?.id ? snippets.find((item) => item.id === baseline.id) || null : null;
+            choose(selected || {name: "", type: "css", content: ""}, selected);
+        } else {
+            syncFields();
+        }
+    }
+    function restoreActionLabel(actionName) {
+        return t({add: "snippetRestoreAdd", replace: "snippetRestoreReplace", delete: "snippetRestoreDelete", keep: "snippetRestoreKeep"}[actionName] || "snippetRestoreKeep");
+    }
+    function restoreRowText(row) {
+        const item = row.after || row.before || {};
+        const name = item.name || row.id;
+        return `${restoreActionLabel(row.action)} · ${name} · ${item.type ? item.type.toUpperCase() : ""}`;
+    }
+    async function exportBackup() {
+        if (busy || loading || loadFailed || disposed) return;
+        try {
+            const snapshot = await readStudioSnapshot();
+            const backup = buildSnippetBackup(snapshot, {source: "native"});
+            const stamp = new Date(backup.createdAt).toISOString().replace(/[:.]/g, "-");
+            download(`siyuan-snippets-${stamp}.json`, JSON.stringify(backup, null, 2), "application/json");
+            setStatus(t("snippetBackupHint"), "ready");
+        } catch (error) {
+            if (!disposed) setStatus(errorText(error), "error");
+        }
+    }
+    async function openRestorePreview(backup) {
+        if (restoreDialog || busy || loading || loadFailed || disposed) return;
+        let current;
+        try {
+            current = await readStudioSnapshot();
+        } catch (error) {
+            setStatus(errorText(error), "error");
+            return;
+        }
+        if (disposed) return;
+        const diff = diffSnippetBackup(current, backup);
+        const dialog = new Dialog({
+            title: t("snippetRestorePreview"),
+            content: '<div class="sw-studio__restore"></div>',
+            width: "min(680px, 96vw)",
+        });
+        restoreDialog = dialog;
+        const box = dialog.element.querySelector(".sw-studio__restore");
+        if (!box) { dialog.destroy(); restoreDialog = null; return; }
+        const summary = node("p", "sw-studio__restore-summary", `${t("snippetRestorePreview")} · ${t("snippetDiffFindings").replace("{n}", String(diff.summary.changed))}`);
+        const list = node("div", "sw-studio__restore-list");
+        const changedRows = diff.rows.filter((row) => row.action !== "keep");
+        changedRows.forEach((row) => {
+            const label = node("label", `sw-studio__restore-row is-${row.action}`);
+            const input = node("input");
+            input.type = "checkbox";
+            input.checked = true;
+            input.dataset.snippetId = row.id;
+            input.dataset.restoreAction = row.action;
+            label.append(input, node("span", "", restoreRowText(row)));
+            list.appendChild(label);
+        });
+        if (changedRows.length === 0) list.appendChild(node("p", "sw-studio__restore-empty", t("snippetRestoreEmpty")));
+        let settingsInput = null;
+        if (diff.summary.settingsChanged) {
+            const settingsLabel = node("label", "sw-studio__restore-settings");
+            settingsInput = node("input");
+            settingsInput.type = "checkbox";
+            settingsInput.checked = true;
+            settingsLabel.append(settingsInput, node("span", "", t("snippetRestoreSettings")));
+            list.appendChild(settingsLabel);
+        }
+        const hint = node("p", "sw-studio__hint", t("snippetRestoreOneShot"));
+        const actions = node("div", "sw-studio__restore-actions");
+        const cancelButton = node("button", "b3-button b3-button--text", t("snippetRestoreCancel"));
+        const confirmButton = node("button", "b3-button b3-button--cancel", t("snippetRestoreConfirm"));
+        const close = () => { dialog.destroy(); restoreDialog = null; };
+        cancelButton.addEventListener("click", close);
+        confirmButton.addEventListener("click", () => {
+            const ids = new Set(Array.from(list.querySelectorAll("input[data-snippet-id]:checked")).map((input) => input.dataset.snippetId));
+            const restoreSettings = settingsInput ? settingsInput.checked : false;
+            if (ids.size === 0 && !restoreSettings) {
+                setStatus(t("snippetRestoreNoSelection"), "blocked");
+                return;
+            }
+            close();
+            guardLeave(() => { void performRestore(backup, current, ids, restoreSettings); });
+        });
+        actions.append(cancelButton, confirmButton);
+        box.append(summary, list, hint, actions);
+        cancelButton.focus({preventScroll: true});
+    }
+    async function performRestore(backup, expectedCurrent, ids, restoreSettings) {
+        if (busy || loading || loadFailed || disposed) return false;
+        let latest;
+        try {
+            latest = await readStudioSnapshot();
+        } catch (error) {
+            setStatus(errorText(error), "error");
+            return false;
+        }
+        const expectedSignature = snippetSnapshotSignature(expectedCurrent);
+        if (snippetSnapshotSignature(latest) !== expectedSignature) {
+            setStatus(t("snippetRestoreConflict"), "error");
+            return false;
+        }
+        const plan = buildSnippetRestorePlan(latest, backup, {ids, restoreSettings});
+        if (plan.selected.length === 0 && !restoreSettings) {
+            setStatus(t("snippetRestoreNoSelection"), "blocked");
+            return false;
+        }
+        restoreUndo = buildSnippetBackup(latest, {source: "undo"});
+        session.restoreUndo = restoreUndo;
+        busy = true;
+        setStatus(t("snippetRestorePending"), "busy");
+        syncFields();
+        try {
+            if (typeof store.restoreSnapshot !== "function") throw new Error("snippet-restore-unsupported");
+            const confirmed = await store.restoreSnapshot(expectedSignature, plan.snapshot);
+            if (disposed) return false;
+            applyStudioSnapshot(confirmed, true);
+            setStatus(t("snippetRestoreDone"), "ready");
+            return true;
+        } catch (error) {
+            if (!disposed) setStatus(error?.writeLanded ? t("snippetRestorePending") : errorText(error), "error");
+            return false;
+        } finally {
+            busy = false;
+            if (!disposed) syncFields();
+        }
+    }
+    async function undoRestore() {
+        if (!restoreUndo || busy || loading || loadFailed || disposed) return false;
+        const undo = restoreUndo;
+        let current;
+        try {
+            current = await readStudioSnapshot();
+        } catch (error) {
+            setStatus(errorText(error), "error");
+            return false;
+        }
+        busy = true;
+        setStatus(t("snippetRestorePending"), "busy");
+        syncFields();
+        try {
+            if (typeof store.restoreSnapshot !== "function") throw new Error("snippet-restore-unsupported");
+            const confirmed = await store.restoreSnapshot(snippetSnapshotSignature(current), undo);
+            if (disposed) return false;
+            applyStudioSnapshot(confirmed, true);
+            restoreUndo = null;
+            session.restoreUndo = null;
+            setStatus(t("snippetRestoreUndone"), "ready");
+            return true;
+        } catch (error) {
+            if (!disposed) setStatus(error?.writeLanded ? t("snippetRestorePending") : errorText(error), "error");
+            return false;
+        } finally {
+            busy = false;
+            if (!disposed) syncFields();
+        }
+    }
+    async function refreshExternal() {
+        if (disposed || busy || loading) return;
+        try {
+            const snapshot = await readStudioSnapshot();
+            const signature = snippetSnapshotSignature(snapshot);
+            if (signature === lastSnapshotSignature) return;
+            if (dirty()) {
+                setStatus(t("snippetRefreshExternal"), "warn");
+                return;
+            }
+            applyStudioSnapshot(snapshot, true);
+            setStatus(t("snippetRefreshExternal"), "ready");
+        } catch (_) { /* external notification is advisory; manual refresh remains available */ }
+    }
     async function load(reselect = false) {
         const requestGeneration = ++loadGeneration;
         loading = true;
@@ -1472,11 +2131,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             const result = await store.read();
             if (disposed || requestGeneration !== loadGeneration) return;
             snippets = result;
+            reconcileLoadedSnippetGroups();
+            lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: masterFlags});
             loadFailed = false;
             if (reselect && baseline) {
                 const current = snippets.find((item) => item.id === baseline.id);
                 choose(current || {name: "", type: "css", content: ""}, current || null);
             }
+            pickerRefresh?.();
             setStatus(`${t("snippetLoaded")} ${snippets.length}`, "ready");
         } catch (error) {
             if (disposed || requestGeneration !== loadGeneration) return;
@@ -1508,6 +2170,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         setStatus(status.textContent, "busy");
         syncFields();
         const previous = baseline ? {...baseline} : null;
+        const sourceUrl = gistSourceUrl;
+        const metadata = readMetadataFields();
         const input = {...draft, id: baseline?.id || newId(), enabled: actionName === "toggle" ? !baseline?.enabled : baseline?.enabled === true};
         // T-7025（ADR 0100）D1/D2：写前捕获旧快照（overwrite=内容确有变化的旧版本 /
         // delete=删除前快照），原生写入确认成功后才登记；登记失败只影响回收站
@@ -1515,18 +2179,28 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const recycleCandidate = recycle && previous && (actionName === "delete" || (actionName === "save" && previous.content !== input.content))
             ? buildRecycleEntry({origin: actionName === "delete" ? "delete" : "overwrite", snippetId: previous.id, name: previous.name, type: previous.type, content: previous.content}, Date.now())
             : null;
+        const finishConfirmedMutation = (next) => {
+            if (recycleCandidate && recycle) {
+                try { recycle.save(appendRecycleEntry(recycle.load(), recycleCandidate)); } catch (_) {}
+            }
+            snippets = next;
+            lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: masterFlags});
+            const saved = actionName === "delete" ? null : next.find((item) => item.id === input.id) || null;
+            const metadataSaved = !saved || persistSnippetMetadata(saved.id, metadata);
+            reconcileLoadedSnippetGroups();
+            const linkSaved = !saved || !sourceUrl || persistGistSettings(rememberGistLink(readGistSettings(), saved.id, sourceUrl));
+            choose(saved || {name: "", type: "css", content: ""}, saved);
+            if (!metadataSaved) {
+                session.metadata = metadata;
+                syncFields();
+            }
+            setStatus(t(input.type === "js" ? "snippetJSReload" : "snippetSaved") + (linkSaved && metadataSaved ? "" : " · " + t("snippetFailed")), linkSaved && metadataSaved ? "ready" : "warn");
+            return metadataSaved;
+        };
         try {
             const next = await store.mutate(previous, actionName, input);
             if (disposed) return false;
-            if (recycleCandidate && recycle) {
-                try { recycle.save(appendRecycleEntry(recycle.load(), recycleCandidate)); } catch (_) { /* 登记失败如实留空，不影响原生成功回执 */ }
-            }
-            snippets = next;
-            const saved = next.find((item) => item.id === input.id) || null;
-            choose(saved || {name: "", type: "css", content: ""}, saved);
-            setStatus(t(input.type === "js" ? "snippetJSReload" : "snippetSaved"), "ready");
-            return true;
-            return true;
+            return finishConfirmedMutation(next);
         } catch (error) {
             if (disposed) return false;
             // T-6958：写前比对或写后确认发现冲突——打开可决策冲突界面
@@ -1547,14 +2221,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                     const landed = latest.find((item) => item.id === input.id);
                     const confirmedNow = actionName === "delete" ? !landed : (!!landed && landed.name === input.name && landed.content === input.content);
                     if (confirmedNow) {
-                        snippets = latest;
-                        if (recycleCandidate) {
-                            try { recycle.save(appendRecycleEntry(recycle.load(), recycleCandidate)); } catch (_) { /* 登记失败如实留空 */ }
-                        }
-                        const saved = actionName === "delete" ? null : latest.find((item) => item.id === input.id) || null;
-                        choose(saved || {name: "", type: "css", content: ""}, saved);
-                        setStatus(t(input.type === "js" ? "snippetJSReload" : "snippetSaved"), "ready");
-                        return true;
+                        return finishConfirmedMutation(latest);
                     }
                 } catch (_) { /* 核对失败走下方未确认回执 */ }
                 setStatus(t("snippetPendingUnverified"), "error");
@@ -1580,6 +2247,22 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         fileInput.value = "";
         if (!file) return;
         guardLeave(() => { void importFile(file); });
+    });
+    restoreInput.addEventListener("change", () => {
+        const file = restoreInput.files?.[0];
+        restoreInput.value = "";
+        if (!file) return;
+        void (async () => {
+            try {
+                if (file.size > SNIPPET_BACKUP_MAX_BYTES) throw new Error("snippet-backup-too-large");
+                const text = await file.text();
+                const backup = normalizeSnippetBackup(JSON.parse(text));
+                if (!backup) throw new Error("snippet-backup-invalid");
+                await openRestorePreview(backup);
+            } catch (error) {
+                if (!disposed) setStatus(errorText(error), "error");
+            }
+        })();
     });
     // T-7046：导入代际保护——file.text() 返回后核对代际与草稿现场：
     // ①另一轮导入已开始（importGeneration 前移）；②读取期间编辑过草稿或切换过
@@ -1609,13 +2292,25 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         // T-6917（ADR 0083 D3）：迭代模式以上一轮候选为 AI 输入源时，diff 基准也改为
         // 上一轮候选，面板如实标注"本轮改动相对上一轮"，让用户只审本轮引入的变化。
         const iterateFromCandidate = mode === "iterate" && candidate?.mode !== "explain" && candidate?.type === captured.type;
-        const sourceContent = iterateFromCandidate ? candidate.content : captured.content;
-        const history = mode === "iterate" ? aiHistory.slice(-6).map((item) => ({...item})) : [];
+        let selectedContext;
+        try {
+            selectedContext = selectSnippetAIContext({content: iterateFromCandidate ? candidate.content : captured.content,
+                history: aiHistory.slice(-6), includeCode: contextInputs.code.checked,
+                includeHistory: mode === "iterate" && contextInputs.history.checked});
+            if (mode !== "generate" && !selectedContext.content.trim()) return;
+        } catch (error) {
+            setAIStatus(t(error.code === "context_too_large" ? "snippetAIContextTooLarge" : "snippetFailed"), false, "error");
+            return;
+        }
+        const sourceContent = selectedContext.content;
+        const history = selectedContext.history;
         candidate = null;
         acceptButton.disabled = true;
         acceptButton.hidden = mode === "explain";
         aiButton.disabled = true;
         cancelAIButton.disabled = false;
+        aiButton.textContent = t("snippetAISend");
+        candidateCopy.disabled = candidateExport.disabled = true;
         aiResult.hidden = false;
         aiResultHeader.hidden = false;
         aiEmpty.hidden = true;
@@ -1636,8 +2331,63 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             setAIStatus(t("snippetAIDone"), true);
             // 摘要与 diff 如实展示替换差量；迭代轮以"相对上一轮"为基准。
             renderAIDiff(iterateFromCandidate ? sourceContent : draft.content, iterateFromCandidate);
-        } catch (error) { if (!disposed && generation === aiGeneration) setAIStatus(errorText(error), false, "error"); }
+        } catch (error) {
+            if (!disposed && generation === aiGeneration) {
+                setAIStatus(errorText(error), false, "error");
+                aiButton.textContent = t("snippetAIRetry");
+            }
+        }
         finally { if (!disposed && generation === aiGeneration) { cancelAIButton.disabled = true; updateAIActions(); } }
+    }
+    function saveSnippetGroupStore(next) {
+        const normalized = normalizeSnippetGroupStore(next);
+        const changed = JSON.stringify(normalized) !== JSON.stringify(snippetGroups);
+        snippetGroups = normalized;
+        if (!changed || typeof groups?.save !== "function") return changed;
+        try {
+            groups.save(normalized);
+        } catch (error) {
+            setStatus(errorText(error), "error");
+        }
+        return changed;
+    }
+    function reconcileLoadedSnippetGroups() {
+        const result = reconcileSnippetGroups(snippetGroups, snippets);
+        if (result.changed) saveSnippetGroupStore(result.store);
+        return result;
+    }
+    function promptSnippetGroupName(current = "") {
+        if (typeof win.prompt !== "function") return null;
+        return win.prompt(t("snippetGroupNamePrompt"), current);
+    }
+    function createSnippetGroup() {
+        const name = promptSnippetGroupName();
+        if (name === null) return;
+        const result = addSnippetGroup(snippetGroups, name, {id: createSnippetGroupId(Date.now(), groupIdSeed++)});
+        if (!result.changed) {
+            setStatus(t("snippetGroupNameInvalid"), "blocked");
+            return;
+        }
+        saveSnippetGroupStore(result.store);
+        pickerRefresh?.();
+    }
+    function editSnippetGroup(group) {
+        const name = promptSnippetGroupName(group.name);
+        if (name === null) return;
+        const result = renameSnippetGroup(snippetGroups, group.id, name);
+        if (!result.changed) {
+            setStatus(t("snippetGroupNameInvalid"), "blocked");
+            return;
+        }
+        saveSnippetGroupStore(result.store);
+        pickerRefresh?.();
+    }
+    function deleteSnippetGroup(group) {
+        if (typeof win.confirm === "function" && !win.confirm(t("snippetGroupDeleteConfirm"))) return;
+        const result = removeSnippetGroup(snippetGroups, group.id);
+        if (!result.changed) return;
+        saveSnippetGroupStore(result.store);
+        pickerRefresh?.();
     }
     function closePicker() {
         pickerRelease();
@@ -1717,7 +2467,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             overlay.remove();
         });
     }
-    function openPicker() {
+    function openPicker(browse = false) {
         if (picker || busy) return;
         pickerScrollTop = {root: root.scrollTop, layout: layout.scrollTop};
         picker = node("div", "sw-studio__picker");
@@ -1726,6 +2476,36 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         picker.setAttribute("aria-label", t("snippetChoose"));
         const sheet = node("section", "sw-studio__picker-sheet");
         const head = node("div", "sw-studio__section-bar");
+        let storeSelection = null;
+        const storePane = node("section", "sw-studio__store-preview");
+        const storeInfo = node("p", "sw-studio__hint", t("snippetStoreCommunity"));
+        const storeDelta = node("p", "sw-studio__hint sw-studio__store-delta");
+        const storeCode = node("pre", "sw-studio__store-code");
+        const storeCanvas = node("div", "sw-studio__store-canvas");
+        const storePreview = browse ? createSnippetPreview(storeCanvas, {title: t("snippetPreview"), labels: previewLabels(t)}) : null;
+        const storeDraft = action("snippetStoreDraft", () => {
+            if (!storeSelection) return;
+            guardLeave(() => {
+                choose({...storeSelection, enabled: false}, null);
+                closePicker();
+            });
+        }, "is-primary");
+        storeDraft.disabled = true;
+        storePane.append(storeInfo, storeDelta, storeCanvas, storeCode, storeDraft);
+        function previewStoreEntry(item) {
+            storeSelection = item;
+            storeInfo.textContent = `${item.name} · ${t(item.source === "builtin" ? "snippetStoreBuiltinInfo" : "snippetStoreNativeInfo")}`;
+            const diff = buildSnippetDiff(draft.content, item.content);
+            const summary = summarizeDiff(draft.content, item.content, diff);
+            storeDelta.textContent = t("snippetDiffSummary").replace("{hunks}", String(summary.hunks))
+                .replace("{added}", String(summary.added)).replace("{removed}", String(summary.removed))
+                + (diff.degraded ? " · " + t("snippetDiffDegraded") : "");
+            storeCode.textContent = item.content;
+            storeDraft.disabled = false;
+            storePreview.render({type: item.type, content: item.content,
+                dark: doc.documentElement.dataset.themeMode === "dark", scene: previewScene, width: previewWidth});
+            storePane.scrollIntoView?.({block: "nearest"});
+        }
         // T-7025 第二阶段：目录浮层头部提供回收站入口
         head.append(node("strong", "", t("snippetChoose")), action("snippetRecycle", () => openRecycleViewer()), action("snippetClose", closePicker));
         const recentItems = (session.recentIds || []).map((id) => snippets.find((item) => item.id === id)).filter(Boolean);
@@ -1733,7 +2513,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         if (recentItems.length) {
             recent.append(node("strong", "sw-studio__recent-label", t("snippetRecent")));
             for (const item of recentItems) {
-                const button = action("snippetSelect", () => guardLeave(() => { choose(item, item); closePicker(); }));
+                const button = action("snippetSelect", () => {
+                    if (browse) { previewStoreEntry({...item, source: "native"}); return; }
+                    guardLeave(() => { choose(item, item); closePicker(); });
+                });
                 button.className = "sw-studio__recent-item";
                 button.textContent = item.name;
                 button.title = item.name;
@@ -1741,6 +2524,12 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 recent.append(button);
             }
         }
+        const groupToolbar = node("div", "sw-studio__group-toolbar");
+        const groupToolbarTitle = node("strong", "sw-studio__group-toolbar-title", t("snippetGroupView"));
+        const groupView = select("snippetGroupView", [["tree", "snippetGroupTree"], ["flat", "snippetGroupFlat"]]);
+        groupView.value = snippetGroups.view;
+        const groupNew = action("snippetGroupNew", createSnippetGroup, "is-secondary");
+        groupToolbar.append(groupToolbarTitle, groupView, groupNew);
         const filters = node("div", "sw-studio__filters");
         const query = node("input", "sw-studio__input");
         query.placeholder = t("snippetSearch");
@@ -1748,38 +2537,157 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const source = select("snippetSource", [["", "snippetAllSources"], ["builtin", "snippetBuiltins"], ["native", "snippetMine"]]);
         const language = select("snippetType", [["", "snippetAllTypes"], ["css", "snippetCSS"], ["js", "snippetJS"]]);
         const category = select("snippetCategory", [["", "snippetAllCategories"], ["typography", "snippetCategoryTypography"], ["table", "snippetCategoryTable"], ["focus", "snippetCategoryFocus"], ["code", "snippetCategoryCode"], ["font", "snippetCategoryFont"], ["quote", "snippetCategoryQuote"], ["image", "snippetCategoryImage"], ["heading", "snippetCategoryHeading"], ["list", "snippetCategoryList"], ["divider", "snippetCategoryDivider"], ["tag", "snippetCategoryTag"], ["theme", "snippetCategoryTheme"], ["layout", "snippetCategoryLayout"], ["custom", "snippetCategoryCustom"]]);
-        filters.append(query, source, language, category);
+        const catalogSort = select("snippetCatalogSort", [["native", "snippetCatalogNativeOrder"], ["name", "snippetName"], ["modified", "snippetCatalogModified"]]);
+        filters.append(query, source, language, category, catalogSort);
         const list = node("div", "sw-studio__catalog");
         const more = action("snippetMore", () => { limit += 40; render(); });
         let limit = 40;
+        const attachDropTarget = (target, groupId) => {
+            target.addEventListener("dragover", (event) => {
+                if (!event.dataTransfer) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                target.classList.add("is-drag-over");
+            });
+            target.addEventListener("dragleave", (event) => {
+                if (!event.relatedTarget || !target.contains(event.relatedTarget)) target.classList.remove("is-drag-over");
+            });
+            target.addEventListener("drop", (event) => {
+                event.preventDefault();
+                target.classList.remove("is-drag-over");
+                const snippetId = event.dataTransfer?.getData("text/plain") || "";
+                if (!snippetId || !snippets.some((item) => item.id === snippetId)) return;
+                const result = moveSnippetToGroup(snippetGroups, snippetId, groupId);
+                if (!result.changed) return;
+                saveSnippetGroupStore(result.store);
+                setStatus(t("snippetGroupDropHint"), "ready");
+                render();
+            });
+        };
+        const renderCatalogItem = (item, groupId = "", groupName = "") => {
+            const isCurrent = item.source === "native"
+                ? item.id === baseline?.id
+                : !baseline && item.type === draft.type && item.name === draft.name && item.content === draft.content;
+            const button = action("snippetSelect", () => {
+                if (browse) { previewStoreEntry(item); return; }
+                guardLeave(() => {
+                    choose(item, item.source === "native" ? snippets.find((entry) => entry.id === item.id) : null);
+                    closePicker();
+                });
+            });
+            button.className = "sw-studio__catalog-item";
+            button.dataset.snippetId = item.source === "native" ? item.id : "";
+            button.dataset.groupId = groupId;
+            button.draggable = item.source === "native";
+            button.setAttribute("aria-pressed", String(isCurrent));
+            button.setAttribute("aria-label", `${item.name} · ${item.type.toUpperCase()}`);
+            if (isCurrent) button.classList.add("is-current");
+            const parts = [
+                node("span", "sw-studio__catalog-kind", item.type.toUpperCase()),
+                node("strong", "", item.name),
+                node("span", "sw-studio__hint", item.description || t("snippetDescription")),
+            ];
+            if (groupName) parts.push(node("span", "sw-studio__group-item-label", groupName));
+            if (item.pinned) parts.push(node("span", "sw-studio__tag", t("snippetPinned")));
+            if (item.alias || item.summary || item.tags?.length) parts.push(node("span", "sw-studio__hint", [item.alias, item.summary, ...(item.tags || [])].filter(Boolean).join(" · ")));
+            parts.push(node("span", "sw-studio__tag", t(item.source === "builtin" ? "snippetBuiltins" : item.enabled ? "snippetEnabled" : "snippetDisabled")));
+            button.replaceChildren(...parts);
+            if (item.source === "native") {
+                button.addEventListener("dragstart", (event) => {
+                    event.dataTransfer?.setData("text/plain", item.id);
+                    if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+                    button.classList.add("is-dragging");
+                });
+                button.addEventListener("dragend", () => button.classList.remove("is-dragging"));
+            }
+            return button;
+        };
+        const appendGroup = (group, entries, index) => {
+            const section = node("section", "sw-studio__group");
+            section.dataset.groupId = group.id;
+            const header = node("div", "sw-studio__group-header");
+            header.setAttribute("aria-expanded", String(!group.collapsed));
+            const itemsId = `sw-studio-group-items-${index}`;
+            const toggle = node("button", "sw-studio__group-toggle", `${group.name} (${entries.length})`);
+            toggle.type = "button";
+            toggle.setAttribute("aria-expanded", String(!group.collapsed));
+            toggle.setAttribute("aria-controls", itemsId);
+            toggle.addEventListener("click", () => {
+                const result = setSnippetGroupCollapsed(snippetGroups, group.id, !group.collapsed);
+                if (!result.changed) return;
+                saveSnippetGroupStore(result.store);
+                render();
+            });
+            const controls = node("div", "sw-studio__group-actions");
+            const rename = action("snippetGroupRename", () => editSnippetGroup(group), "is-quiet");
+            rename.setAttribute("aria-label", `${t("snippetGroupRename")}: ${group.name}`);
+            const remove = action("snippetGroupDelete", () => deleteSnippetGroup(group), "is-quiet is-danger");
+            remove.setAttribute("aria-label", `${t("snippetGroupDelete")}: ${group.name}`);
+            controls.append(rename, remove);
+            header.append(toggle, controls);
+            const items = node("div", "sw-studio__group-items");
+            items.id = itemsId;
+            items.hidden = group.collapsed;
+            for (const item of entries) items.appendChild(renderCatalogItem(item, group.id, group.name));
+            if (!entries.length) items.appendChild(node("p", "sw-studio__hint sw-studio__group-empty", t("snippetGroupDropHint")));
+            attachDropTarget(header, group.id);
+            attachDropTarget(items, group.id);
+            section.append(header, items);
+            list.appendChild(section);
+        };
+        const appendUngrouped = (entries) => {
+            const section = node("section", "sw-studio__group sw-studio__group--ungrouped");
+            const header = node("div", "sw-studio__group-header");
+            header.setAttribute("aria-expanded", "true");
+            header.append(node("strong", "sw-studio__group-toggle-label", `${t("snippetGroupUngrouped")} (${entries.length})`));
+            const items = node("div", "sw-studio__group-items sw-studio__group-items--ungrouped");
+            for (const item of entries) items.appendChild(renderCatalogItem(item));
+            if (!entries.length) items.appendChild(node("p", "sw-studio__hint sw-studio__group-empty", t("snippetGroupDropHint")));
+            attachDropTarget(header, null);
+            attachDropTarget(items, null);
+            section.append(header, items);
+            list.appendChild(section);
+        };
         const render = () => {
             const builtin = BUILTIN_SNIPPETS.map((item) => ({...item, name: t(item.nameKey), description: t(item.descriptionKey)}));
-            const native = snippets.map((item) => ({...item, source: "native", category: "custom"}));
-            const found = filterSnippetCatalog([...builtin, ...native], {query: query.value, type: language.value, category: category.value, source: source.value});
+            const native = projectSnippetMetadata(snippetGroups, snippets).map((item) => ({...item, source: "native", category: "custom"}));
+            const found = filterSnippetCatalog([...builtin, ...native], {query: query.value, type: language.value, category: category.value, source: source.value, sort: catalogSort.value});
             list.replaceChildren();
             if (!found.length) list.append(node("p", "sw-studio__hint", t("snippetNoResults")));
-            for (const item of found.slice(0, limit)) {
-                const isCurrent = item.source === "native"
-                    ? item.id === baseline?.id
-                    : !baseline && item.type === draft.type && item.name === draft.name && item.content === draft.content;
-                const button = action("snippetSelect", () => {
-                    guardLeave(() => {
-                        choose(item, item.source === "native" ? snippets.find((entry) => entry.id === item.id) : null);
-                        closePicker();
-                    });
-                });
-                button.className = "sw-studio__catalog-item";
-                button.setAttribute("aria-pressed", String(isCurrent));
-                button.setAttribute("aria-label", `${item.name} · ${item.type.toUpperCase()}`);
-                if (isCurrent) button.classList.add("is-current");
-                button.replaceChildren(node("span", "sw-studio__catalog-kind", item.type.toUpperCase()), node("strong", "", item.name), node("span", "sw-studio__hint", item.description || t("snippetDescription")), node("span", "sw-studio__tag", t(item.source === "builtin" ? "snippetBuiltins" : item.enabled ? "snippetEnabled" : "snippetDisabled")));
-                list.appendChild(button);
+            else {
+                const projection = reconcileLoadedSnippetGroups();
+                groupView.value = snippetGroups.view;
+                const foundById = new Map(found.filter((item) => item.source === "native").map((item) => [item.id, item]));
+                const groupEntries = projection.groups.map((group) => ({group, entries: found.filter((item) => item.source === "native" && group.items.some((entry) => entry.id === item.id))}));
+                const ungrouped = [
+                    ...found.filter((item) => item.source !== "native"),
+                    ...projection.ungrouped.map((item) => foundById.get(item.id)).filter(Boolean),
+                ];
+                const visibleEntries = (items) => items.slice(0, limit);
+                if (snippetGroups.view === "tree") {
+                    groupEntries.forEach(({group, entries}, index) => appendGroup(group, visibleEntries(entries), index));
+                    appendUngrouped(visibleEntries(ungrouped));
+                } else {
+                    const flat = [];
+                    groupEntries.forEach(({group, entries}) => entries.forEach((item) => flat.push({item, group})));
+                    ungrouped.forEach((item) => flat.push({item, group: null}));
+                    const rank = new Map(found.map((item, index) => [item, index]));
+                    flat.sort((first, second) => rank.get(first.item) - rank.get(second.item));
+                    for (const entry of flat.slice(0, limit)) list.appendChild(renderCatalogItem(entry.item, entry.group?.id || "", entry.group?.name || ""));
+                }
             }
             more.hidden = found.length <= limit;
         };
         pickerRefresh = render;
-        [query, source, language, category].forEach((input) => input.addEventListener("input", () => { limit = 40; render(); }));
-        sheet.append(head, recent, filters, list, more);
+        groupView.addEventListener("change", () => {
+            const result = setSnippetGroupView(snippetGroups, groupView.value);
+            if (!result.changed) return;
+            saveSnippetGroupStore(result.store);
+            render();
+        });
+        [query, source, language, category, catalogSort].forEach((input) => input.addEventListener("input", () => { limit = 40; render(); }));
+        sheet.append(head, recent, groupToolbar, filters, list, more);
+        if (browse) sheet.appendChild(storePane);
         picker.appendChild(sheet);
         root.appendChild(picker);
         const keydown = (event) => {
@@ -1802,12 +2710,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         };
         // The host also listens for Escape. Capture while the nested selector is open.
         doc.addEventListener("keydown", keydown, true);
-        pickerRelease = () => doc.removeEventListener("keydown", keydown, true);
+        pickerRelease = () => { storePreview?.dispose(); doc.removeEventListener("keydown", keydown, true); };
         render(); query.focus();
     }
     syncFields();
     renderPreview();
     const ready = load();
+    const unsubscribeStore = typeof store.subscribe === "function"
+        ? store.subscribe(() => refreshExternal())
+        : () => {};
     // Resolve the native flags through the store as well, so a recently
     // persisted host setting wins over a stale in-memory config snapshot.
     void refreshMasterFlags();
@@ -1834,7 +2745,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 guardLeave(() => platform.onNavigate?.(surface));
             },
             onClose: () => {
-                guardLeave(() => platform.onClose?.());
+                guardLeave(() => platform.onClose?.(true));
             },
             closeLabel: locale.i18n.close || "Close",
         });
@@ -1854,12 +2765,13 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             // 待执行意图继续（platform.onClose 会再次触发宿主关闭）。干净则放行。
             if (busy) return false;
             if (!dirty()) return true;
-            const verdict = leave.requestLeave(true, busy, () => platform.onClose?.());
+            const verdict = leave.requestLeave(true, busy, () => platform.onClose?.(true));
             if (verdict.action === "confirm") openLeaveDialog();
             return false;
         },
         dispose() {
             disposed = true;
+            cancelGistRequest(false);
             aiGeneration += 1;
             session.draft = {...draft};
             session.baseline = baseline ? {...baseline} : null;
@@ -1869,6 +2781,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             previewSaved.dispose();
             dualPaneObserver?.disconnect();
             ai.dispose();
+            unsubscribeStore();
             store.dispose();
             root.replaceChildren();
         },

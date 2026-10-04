@@ -71,6 +71,8 @@ export function ensureRegister(open?: () => void): boolean {
 
 要点：①重试**必须有界**（到顶放弃并打日志），不要无限轮询拖慢宿主；②`registerHomeModule` 失败时返回的是 no-op 句柄而非异常，用 `getHomeModules()` 核验是否真的注册成功；③卸载时同时清定时器与注册，保证禁用/重载干净。
 
+当一个 provider 提供多个组件时，把一轮注册当作一个小事务处理：先注册全部定义，再用 `getHomeModules("desktop")` 核验全部 `moduleId`；缺任何一个就调用本轮已有注销句柄清理，并按同一退避序列重试。只有完整核验通过后才触发自己的 `onRegistered` 或把 provider 标记为 ready。注册返回值兼容函数句柄、带 `unregister()` 的对象和旧宿主的空值；空值只能归一化为幂等 no-op，不能在存在列表 API 时当作注册成功的证据。没有列表 API 的旧宿主只能接受“未知”结果，provider 不应据此宣称完成了可见性验证。
+
 ## 字段说明
 
 | 字段 | 必填 | 约束 |
@@ -224,6 +226,32 @@ source: {
 若你的插件与宿主使用**相同的 moduleId**，后注册者会完整覆盖先注册者（token 校验），
 因此宿主侧可以先做桥接实现、由插件原生实现后续接管，用户配置不漂移。
 
+### 剪藏待读提供方
+
+`clipped-unread` 是一个约定的外部提供方 moduleId。小驴雷切内置一个只返回
+`status: "blocked"` 的占位适配器，不会查询 `blocks.tag`，因此普通“剪藏”标签不会被
+误当成剪藏插件数据。支持剪藏的插件应使用同一 moduleId 注册，并声明来源身份：
+
+```ts
+switcher.registerHomeModule({
+    moduleId: "clipped-unread",
+    title: "剪藏待读",
+    icon: "iconBookmark",
+    category: "plugin",
+    source: {pluginId: "siyuan-clipper", name: "思源剪藏", icon: "iconBookmark", collection: "剪藏"},
+    supportedDevices: ["desktop", "sidebar", "mobile"],
+    sizes: ["small", "medium", "tall"],
+    read: async (config, device) => ({
+        items: await readUnreadClips(config, device),
+    }),
+});
+```
+
+provider 存在时它完全接管同一 moduleId；注销后平台会恢复内置 blocked 占位，已添加
+实例和布局保留。provider 的 `unregister` 必须在插件卸载时调用；旧句柄不会注销后续
+注册。提供方可以读取面板传入的既有配置，但必须自行保证数据来源确实来自剪藏能力，
+不能把通用标签扫描当作协议实现。
+
 已知限制：来源组以展示名 `name` 作为商店的分组键与折叠键，两个不同插件若填了
 **完全相同的 `name`**，会被合并进同一个组头（折叠状态也会共享）。请让 `name`
 自带可区分信息；等出现真实撞名案例，再把分组键换成 `pluginId`。
@@ -251,6 +279,7 @@ source: {
 - `read` 里 `console.log` 会在生产构建被小驴雷切忽略（平台不打第三方日志），请用思源开发者工具在自己的插件里排查；
 - 组件读取失败时面板显示"暂时无法加载 / 重试 / 打开插件"，可用 `open` 保证失败态仍有出路；
 - 注册与注销都要走 `registerHomeModule` 返回的 `unregister`，插件 `onunload` 时务必调用，否则残留配置会在用户重建面板时以"跳过"处理。
+- 多组件 provider 的重试定时器和所有已成功注册的句柄必须由同一个 `onunload` 清理函数拥有；失败的半注册批次也要先清理再进入下一次尝试。
 
 ## 生命周期与失效恢复（协议 v2.3+）
 

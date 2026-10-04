@@ -109,6 +109,8 @@ test("third-party home modules survive host normalization and store preview hono
     // P2：预览对话框必须优先用户所选尺寸，而非恒 medium
     assert.match(storeUiSource, /const sizeKey = preferredSize && sizes\.includes\(preferredSize\) \? preferredSize : \(sizes\.includes\("medium"\) \? "medium" : sizes\[0\]\);/,
         "预览尺寸必须优先用户所选档位");
-    assert.match(storeUiSource, /openStoreWidgetPreview\.call\(this, moduleId, def, device, selectedTile\?\.dataset\.size \|\| card\.dataset\.currentSize \|\| ""\)/,
-        "预览按钮必须传卡片当前选中/已添加尺寸（邻接锚定）");
+    assert.match(storeUiSource, /const previewSize = selectedLayout\?\.size \|\| resolveHomeTileDefaultSize\(storeSelectedModule, supportedSizes, "medium"\)/,
+        "内联预览必须使用卡片当前已添加尺寸或同一默认档位");
+    assert.match(storeUiSource, /buildReadyCard\(storeSelectedModule, detailDef, "detail", inlinePreview\.mount\.setSize\)/,
+        "尺寸按钮必须把变化同步到内联预览");
 });

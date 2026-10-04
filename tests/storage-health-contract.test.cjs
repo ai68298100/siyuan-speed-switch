@@ -13,7 +13,7 @@ const indexSource = readSourceFile('src/index.ts');
 const css = readSourceFile('src/index.scss');
 const base = {topLevel: true};
 
-// 全部 15 个持久化 key（字面量 → constants 常量名，settings-sections 以常量登记）
+// 全部 18 个持久化 key（字面量 → constants 常量名，settings-sections 以常量登记）
 const PERSISTENT_KEY_LITERALS = [
     ['sw_mru', 'MRU_KEY'], ['sw_open_history', 'HISTORY_KEY'], ['sw_closed_history', 'CLOSED_HISTORY_KEY'],
     ['sw_pinned', 'PINNED_KEY'], ['sw_favorites', 'FAV_KEY'], ['sw_fav_groups', 'FAV_GROUPS_KEY'],
@@ -21,6 +21,7 @@ const PERSISTENT_KEY_LITERALS = [
     ['sw_related_swr', 'RELATED_SWR_KEY'], ['sw_settings', 'SETTINGS_KEY'], ['sw_quick_actions', 'QUICK_ACTIONS_KEY'],
     ['sw_quick_actions_defaults', 'QUICK_ACTIONS_DEFAULTS_KEY'], ['sw_document_sets', 'DOCUMENT_SETS_KEY'],
     ['sw_rss_read', 'RSS_READ_KEY'], ['sw_schema_version', 'SCHEMA_VERSION_KEY'],
+    ['sw_snippet_recycle', 'SNIPPET_RECYCLE_KEY'], ['sw_snippet_groups', 'SNIPPET_GROUPS_KEY'],
 ];
 const KEY_LABEL_KEYS = {
     sw_mru: 'storageKeyMru', sw_open_history: 'storageKeyOpenHistory', sw_closed_history: 'storageKeyClosedHistory',
@@ -29,6 +30,7 @@ const KEY_LABEL_KEYS = {
     sw_related_swr: 'storageKeyRelatedSwr', sw_settings: 'storageKeySettings', sw_quick_actions: 'storageKeyQuickActions',
     sw_quick_actions_defaults: 'storageKeyQuickActionsDefaults', sw_document_sets: 'storageKeyDocumentSets',
     sw_rss_read: 'storageKeyRssRead', sw_schema_version: 'storageKeySchemaVersion',
+    sw_snippet_recycle: 'storageKeySnippetRecycle', sw_snippet_groups: 'storageKeySnippetGroups',
 };
 
 test('storage usage table registers every persistent key in bilingual groups (T-7004)', () => {

@@ -1,0 +1,30 @@
+[
+  {
+    "target": "src/snippet-gist.js",
+    "find": "if (token) headers.Authorization = \"Bearer \" + token;",
+    "replace": "if (token) headers.Authorization = \"Basic \" + token;",
+    "test": "tests/snippet-gist.test.cjs",
+    "expected": "gist request confines token to Authorization and disables credentials, redirects and referrers"
+  },
+  {
+    "target": "src/snippet-gist.js",
+    "find": "return {name: file.name, type: file.type, content: file.content, enabled: false,",
+    "replace": "return {name: file.name, type: file.type, content: file.content, enabled: true,",
+    "test": "tests/snippet-gist.test.cjs",
+    "expected": "gist preview imports a new disabled draft even when the remote ID is local and enabled"
+  },
+  {
+    "target": "src/snippet-gist.js",
+    "find": "if (received > GIST_REMOTE_RESPONSE_MAX_BYTES) {",
+    "replace": "if (received > GIST_REMOTE_RESPONSE_MAX_BYTES * 2) {",
+    "test": "tests/snippet-gist.test.cjs",
+    "expected": "declared and streamed response limits cancel the body before importing"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (revision !== startedRevision) { gistPreviewBox.replaceChildren(); setStatus(t(\"snippetGistStale\"), \"warn\"); return; }",
+    "replace": "",
+    "test": "tests/snippet-gist-ui.test.cjs",
+    "expected": "a late Gist read cannot replace a draft edited during the request"
+  }
+]

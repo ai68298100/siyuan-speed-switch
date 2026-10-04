@@ -8,6 +8,7 @@ const assert = require("node:assert/strict");
 const ts = require("typescript");
 const {readSourceFile} = require("./source-scan.cjs");
 const {createSearchSession, beginSearch, cacheSearchResult} = require("../src/search-session.js");
+const {normalizeTitleSearchDocuments} = require("../src/search-model.js");
 
 const uiSource = readSourceFile("src/doc-search-ui.ts");
 const sourceFile = ts.createSourceFile("doc-search-ui.ts", uiSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -25,6 +26,7 @@ function makeRunner(overrides = {}) {
         "getDocSearchSession", "renderDocResults", "updateDocSearchHealth", "disposeDocSearchSession",
         "runOpenedDocumentContentSearch", "runFullTextSearchFallback", "filterDocSearchResults", "canUseTitleSearch",
         "buildSearchCacheKey", "cacheSearchResult", "DOC_SEARCH_FETCH_LIMIT", "logger", "fetch",
+        "normalizeTitleSearchDocuments",
         `${compiled}\nreturn runDocSearchFetch;`,
     )(
         overrides.getDocSearchSession || function (scrollElement) {
@@ -63,6 +65,7 @@ function makeRunner(overrides = {}) {
         overrides.DOC_SEARCH_FETCH_LIMIT || 24,
         overrides.logger || {warn() {}},
         overrides.fetch || (async () => ({ok: true, json: async () => ({data: []})})),
+        overrides.normalizeTitleSearchDocuments || normalizeTitleSearchDocuments,
     );
 }
 
@@ -101,7 +104,7 @@ test("fetch: current version from the reordered signature reaches the kernel end
     const runner = makeRunner({
         fetch: async (endpoint) => {
             calls.push(endpoint);
-            return titleResponse([{id: "20260901000000-abcdefab", path: "/a/b", content: "b"}]);
+            return titleResponse([{path: "/20260901000000-notebook/20260901000000-abcdefab.sy", box: "20260901000000-notebook", name: "b"}]);
         },
     });
     const host = makeHost();

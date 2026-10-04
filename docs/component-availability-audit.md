@@ -12,6 +12,12 @@
 - 已有思源 3.8.2 桌面实测覆盖：商店添加/尺寸、闪卡待复习（空数据态）、随机回顾、本月日记、标签；其余组件仍缺少逐项真实宿主证据（见 `docs/acceptance-v0.16.37.md`）。
 - **已修复的确定缺陷（P0）**：`recent-writing-activity` 与 `today-reservations` 曾使用错误的日期正则，现已修正为匹配 `YYYYMMDD` 并显示为 `YYYY-MM-DD`，回归测试已覆盖；内置 adapter 注册丢失 `viewType/configSchema` 的问题也已修复，日历会按真实网格渲染。
 
+## 当前修订（T-6997，2026-10-04）
+
+历史表格保留当日审计事实；当前生产结论已更新：`clipped-unread` 不再被视为通用标签 SQL 组件，改由剪藏插件通过 `registerHomeModule()` 提供。无提供方时内置适配器返回 `blocked` 占位并显示前置条件；提供方注销后恢复该占位，用户实例和布局保留。对应协议与取舍见 [ADR 0121](adr/0121-t6997-clipped-provider-contract.md)。
+
+这项调整把 `clipped-unread` 的当前评级从“依赖标签约定的 C”改为“第三方协议依赖的 D（可条件恢复）”：数据源身份可验证，缺少插件时不会产生假数据；仍需在安装真实剪藏插件后补一次宿主读取验收。
+
 ## 评级定义
 
 - **A 可直接用**：不依赖额外宿主数据或配置，读取/动作链路明确。
@@ -29,7 +35,7 @@
 | `fixed-document` 指定文档 | B | 配置合法 block ID 后打开 | `BLOCK_ID_RE` 校验；未配置时为空态，不是故障 | 配置表单增加文档选择器，减少手填 ID |
 | `favorites` 收藏 | B | 本地收藏；rootId 优先、旧 key 迁移后打开 | `jumpToFavorite` 已兼容移动/桌面和旧数据；无收藏为空态 | 补旧收藏迁移的真实回归 |
 | `document-sets` 文档集 | B | 本地文档集预检、确认、逐项恢复 | 复用恢复链，缺失/取消不伪造成功 | 商店描述增加“需先创建文档集” |
-| `tags` 标签 | B | `/api/tag/getTag`，点击打开标签 dock | 已兼容 3.8.x 裸数组和旧包装；桌面实测“剪藏 (25)” | 以后改用稳定 tag ID，处理重名/特殊字符 |
+| `tags` 标签 | B | `/api/tag/getTag`，树节点点击打开标签 dock | T-6976 已消费 3.8.x `children/count/depth`，嵌套树、计数、搜索祖先和虚拟父节点均有模型/视图证据；路径值仍受宿主 dock 协议约束 | 后续若思源提供稳定 tag ID，再替换路径值并补真实宿主验收 |
 | `bookmarks` 书签 | B/C | `/api/bookmark/getBookmark`，点击打开书签 dock | 已兼容裸数组/包装；当前用名称作为协议值，重名或特殊字符定位不稳定 | 改用内核稳定 ID 或显式搜索参数 |
 | `journal-monthly` 本月日记 | C | SQL 按 `YYYY-MM` 标题，首项打开/创建今日日记 | 桌面实测显示 2026-09-11；严格依赖标准日记标题 | 商店显示“标题需 YYYY-MM-DD” |
 | `note-stats` 笔记统计 | B | SQL 聚合文档数、`length` 字数、本周新增/修改 | 查询真实存在；`length` 依赖思源 blocks 字段语义，尚无旧宿主证据 | 对空库/字段缺失增加明确降级说明 |

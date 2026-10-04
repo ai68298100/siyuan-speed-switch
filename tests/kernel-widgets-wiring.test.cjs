@@ -308,10 +308,10 @@ test('new command and widget i18n keys exist in both languages', () => {
         "homeFavoritesAvailableEmpty", "homeFavoritesUnavailable", "homeFavoritesSessionOnly",
         "homeDocumentSetsEmpty", "homeFixedDocumentConfigHint", "homeFixedDocumentUnavailable",
         "homePinnedDocsStat", "homePinnedDocsChildren", "homePinnedDocsUnavailable", "homePinnedDocsUnavailableShort",
-        "homeTagsEmpty", "homeTagsFilteredEmpty", "homeBookmarksEmpty", "homeBookmarksFilteredEmpty", "homeBookmarkEmptyEntry",
+        "homeTagsEmpty", "homeTagsFilteredEmpty", "homeTagVirtual", "homeBookmarksEmpty", "homeBookmarksFilteredEmpty", "homeBookmarkEmptyEntry",
         "homeRelationChild", "homeRelationReference", "homeRelationReferenceCount", "homeRelationsEmpty", "homeRelationsFilteredEmpty",
         "homeOutlineLevel", "homeOutlineEmpty", "homeOutlineFilteredEmpty", "homeCurrentDocumentMissing", "homeUnitBlocks",
-        "homeClippedEmpty", "homeStatOnThisDay", "homeOnThisDayEmpty", "homeStatRecentDaily", "homeRecentDailyEmpty",
+        "homeBlocked", "homeClippedProviderMissing", "homeStatOnThisDay", "homeOnThisDayEmpty", "homeStatRecentDaily", "homeRecentDailyEmpty",
         "homeReservationToday", "homeReservationOverdue", "homeReservationsEmpty", "homeReservationsFilteredEmpty",
         "homePluginCommandsFilteredEmpty", "homePluginCommandsStat",
     ];
@@ -779,8 +779,8 @@ test('platform surface context: singleton dialogs, FAB restore and workbench edi
     // 会话级最近表面记录：openPlatformSurface 与 openSnippetStudio 都要落记录。
     assert.match(indexSource, /private notePlatformSurface\(surface: PlatformSurface, context\?: PlatformSurfaceContext \| null\)/,
         'session-level last-surface recorder must exist');
-    assert.match(indexSource, /this\.notePlatformSurface\(surface, context\);\s*\n\s*if \(surface === "switcher"\)/,
-        'openPlatformSurface must record the surface before dispatching');
+    assert.match(indexSource, /this\.notePlatformSurface\(surface, context\);\s*\n\s*const openSurface = createPlatformSurfaceAdapter\(/,
+        'openPlatformSurface must record the surface before adapter dispatching');
     assert.match(indexSource, /this\.notePlatformSurface\("studio", context\);/,
         'studio open must record the surface too');
     assert.match(secondPanelSource, /this\.notePlatformSurfaceOpened\?\.\("workbench", context\);/,
@@ -1041,9 +1041,9 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
     assert.match(indexSource, /onClose: \(\) => dialog\.destroy\(\)/,
         'switcher and workbench dialogs must wire close to destroy');
     const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
-    assert.match(studioUi, /onClose: \(\) => \{\s*guardLeave\(\(\) => platform\.onClose\?\.\(\)\);\s*\}/,
+    assert.match(studioUi, /onClose: \(\) => \{\s*guardLeave\(\(\) => platform\.onClose\?\.\(true\)\);\s*\}/,
         'studio close must go through the leave-intent dirty guard (T-6956)');
-    assert.match(indexSource, /onClose: \(\) => \{\s*dialog\.destroy\(\);\s*\},\s*closeLabel: this\.i18n\.close/,
+    assert.match(indexSource, /onClose: \(guarded = false\) => \{\s*if \(!guarded && holder\.controller && !holder\.controller\.canClose\(\)\) return;\s*dialog\.destroy\(\);\s*\},\s*closeLabel: this\.i18n\.close/,
         'studio host must destroy only after the studio dirty guard succeeds');
     // SCSS 原语：块级断言（选择器块内声明了关键属性，非文件级共现）。
     assert.ok(declaresIn(shell, '.sw-platform-status::before', /content:\s*""/),
@@ -1511,9 +1511,10 @@ test('snippet studio export interops with usercss headers (T-6912/T-6923)', () =
 });
 
 test('snippet catalog ranks native entries before builtin samples (T-6913)', () => {
-    const modelSource = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-model.js'));
-    assert.match(modelSource, /return found\.sort\(\(a, b\) => \(a\?\.source === "native" \? 0 : 1\) - \(b\?\.source === "native" \? 0 : 1\)\);/,
-        'the filtered catalog must rank native snippets before builtin samples');
+    const {filterSnippetCatalog} = require('../src/snippet-studio-model.js');
+    const builtin = {id: 'builtin', source: 'builtin', name: 'Built-in'};
+    const native = {id: 'native', source: 'native', name: 'Native'};
+    assert.deepEqual(filterSnippetCatalog([builtin, native]), [native, builtin]);
 });
 
 test('AI candidate renders a local summary and line diff before acceptance (T-6915)', () => {

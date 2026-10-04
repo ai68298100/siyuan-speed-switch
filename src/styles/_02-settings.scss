@@ -262,6 +262,7 @@
 
     .sw-settings__tab {
         flex: none;
+        min-height: 36px;
         padding: 8px 10px;
         border: none;
         border-radius: 8px;
@@ -289,6 +290,19 @@
         &:focus-visible {
             outline: none;
             box-shadow: var(--sw-settings-focus-ring);
+        }
+    }
+
+    .sw-settings__search-clear,
+    .sw-settings__search-chip,
+    .sw-settings__search-option,
+    .sw-settings__group-reset,
+    .sw-settings__save-retry,
+    .sw-settings__undo,
+    .sw-settings__range-number .sw-settings__range-value {
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 2px;
         }
     }
 
@@ -678,7 +692,19 @@
             display: flex;
             align-items: center;
             justify-content: flex-end;
+            min-width: 0;
+            max-width: 100%;
             min-width: 42px;
+
+            > * {
+                min-width: 0;
+                max-width: 100%;
+            }
+        }
+
+        .sw-settings__item-title,
+        .sw-settings__item-desc {
+            overflow-wrap: anywhere;
         }
     }
 
@@ -739,9 +765,11 @@
 
         .sw-settings__tab {
             min-width: max-content;
+            min-height: 44px;
             padding: 7px 10px;
             text-align: center;
             scroll-snap-align: center;
+            touch-action: manipulation;
         }
 
         .sw-settings__panels {
@@ -764,6 +792,7 @@
                 justify-content: stretch;
 
                 > * {
+                    min-width: 0;
                     max-width: 100%;
                 }
 
@@ -786,6 +815,32 @@
                 width: auto;
                 min-width: 0;
             }
+        }
+
+        .sw-settings__search-input {
+            min-height: 40px;
+            height: 40px;
+        }
+
+        .sw-settings__search-clear {
+            top: 8px;
+            right: 18px;
+            width: 44px;
+            height: 44px;
+            touch-action: manipulation;
+        }
+
+        .sw-settings__search-chip,
+        .sw-settings__group-reset,
+        .sw-settings__save-retry,
+        .sw-settings__undo {
+            min-height: 36px;
+            touch-action: manipulation;
+        }
+
+        .sw-settings__search-option {
+            min-height: 44px;
+            touch-action: manipulation;
         }
     }
 }

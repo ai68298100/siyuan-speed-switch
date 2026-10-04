@@ -11,7 +11,7 @@
 ## 真实插件样例：小驴打卡（siyuan-checkin）
 
 [`siyuan-checkin-home-modules.js`](./siyuan-checkin-home-modules.js) 是**提供方自行注册**路径的
-完整参考实现——5 个只读组件、带 `source` 来源声明、按能力门控注册、有界重试应对加载顺序。
+完整参考实现——6 个只读组件、带 `source` 来源声明、按能力门控注册、有界 `setTimeout` 重试、完整列表核验和半注册回收。
 `tests/widget-example-checkin.test.cjs` 钉住它与速切侧桥接实现的 moduleId 一致性。
 
 ### 与速切内置桥接的分工（ADR 0057）

@@ -64,6 +64,57 @@ test('studio mount: the lab mounts, renders the first preview and the capability
     assert.ok(document.querySelector('.sw-studio__preview-canvas iframe'), '首渲染必须产出预览 iframe');
 });
 
+test('studio AI sends only selected context and copies the candidate instead of the draft', async (t) => {
+    const {dom, document, mountSnippetStudio, i18n} = createHarness(t);
+    let requested = null;
+    let resolveRequest;
+    const ai = {cancel: () => {}, dispose: () => {}, generate: (options) => {
+        requested = options;
+        return new Promise((resolve) => {resolveRequest = resolve;});
+    }};
+    const controller = mountSnippetStudio(document.getElementById('root'), {i18n, ai,
+        store: {read: async () => [], dispose: () => {}}});
+    await controller.ready;
+    const editor = document.querySelector('.sw-studio__editor');
+    editor.value = '.private{}';
+    editor.dispatchEvent(new dom.window.Event('input', {bubbles: true}));
+    const prompt = document.querySelector('.sw-studio__prompt');
+    prompt.value = 'Create another rule';
+    prompt.dispatchEvent(new dom.window.Event('input', {bubbles: true}));
+    const consent = document.querySelector('.sw-studio__ai > .sw-studio__consent input');
+    consent.checked = true;
+    consent.dispatchEvent(new dom.window.Event('change', {bubbles: true}));
+    const button = Array.from(document.querySelectorAll('button')).find((element) => element.textContent === i18n.snippetAISend);
+    button.click();
+    assert.equal(requested.content, '');
+    assert.deepEqual(requested.history, []);
+    resolveRequest({type: 'css', content: '.candidate{}'});
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(editor.value, '.private{}');
+    let copied = '';
+    document.execCommand = () => {copied = document.body.lastElementChild.value; return true;};
+    Array.from(document.querySelectorAll('button')).find((element) => element.textContent === i18n.snippetAICopyCandidate).click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(copied, '.candidate{}');
+    editor.value = '.changed{}';
+    editor.dispatchEvent(new dom.window.Event('input', {bubbles: true}));
+    assert.equal(document.querySelector('.sw-studio__ai-stale').hidden, false);
+    const mode = document.querySelector(`[aria-label="${i18n.snippetAIMode}"]`);
+    mode.value = 'optimize';
+    mode.dispatchEvent(new dom.window.Event('change', {bubbles: true}));
+    assert.equal(button.disabled, true);
+    const code = document.querySelector(`[aria-label="${i18n.snippetAIIncludeCode}"]`);
+    code.checked = true;
+    code.dispatchEvent(new dom.window.Event('change', {bubbles: true}));
+    assert.equal(button.disabled, false);
+    button.click();
+    assert.equal(requested.content, '.changed{}');
+    Array.from(document.querySelectorAll('.sw-studio__ai button')).find((element) => element.textContent === i18n.snippetAICancel).click();
+    assert.equal(button.disabled, false);
+    assert.equal(editor.value, '.changed{}');
+    controller.dispose();
+});
+
 test('studio mount: editing drives the diagnostics panel with verdicts and error positions (v0.43.1 regression)', (t) => {
     const {dom, document, mountSnippetStudio, i18n, fakeStore} = createHarness(t);
     mountSnippetStudio(document.getElementById('root'), {

@@ -8,11 +8,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
+const {readCompiledCssContracts} = require('./compiled-css-contracts.cjs');
 const { isDocumentOpenSuccess, openDocumentOnMobile, openDocumentOnDesktop } = require('../src/document-actions.js');
 const { ensureTodayJournal } = require('../src/journal-actions.js');
 
 const REPO = path.resolve(__dirname, '..');
-const distCss = path.join(REPO, 'dist', 'index.css');
+const distCss = process.env.SWSS_SMOKE_CSS_PATH || path.join(REPO, 'dist', 'index.css');
 const baseCssPath = process.env.SIYUAN_BASE_CSS || path.join(__dirname, 'fixtures', 'siyuan-mobile-base.css');
 
 if (!fs.existsSync(distCss)) {
@@ -358,13 +359,13 @@ const homeCalendarA11yOk = homeViewSource.includes('onCalendarNavigate')
     && pluginCss.includes('.sw__home-calendar-cell')
     && /min-width:\s*28px/.test(pluginCss)
     && /min-height:\s*28px/.test(pluginCss)
-    && pluginCss.includes('prefers-reduced-motion: reduce');
+    && readCompiledCssContracts(pluginCss).reducedMotion;
 console.log(`${homeCalendarA11yOk ? 'PASS' : 'FAIL'} home calendar keyboard and motion rules`);
 if (!homeCalendarA11yOk) allPassed = false;
 const homeSkeletonOk = homeViewSource.includes('sw__home-loading-skeleton')
     && pluginCss.includes('sw-home-skeleton-pulse')
-    && pluginCss.includes('prefers-reduced-motion: reduce')
-    && pluginCss.includes('prefers-reduced-data: reduce')
+    && readCompiledCssContracts(pluginCss).reducedMotion
+    && readCompiledCssContracts(pluginCss).reducedData
     && pluginCss.includes('sw__home-module-status--empty');
 console.log(`${homeSkeletonOk ? 'PASS' : 'FAIL'} home loading skeleton motion fallback`);
 if (!homeSkeletonOk) allPassed = false;
@@ -426,8 +427,8 @@ const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
     && pluginCss.includes('.sw__history-section-title')
     && pluginCss.includes('.sw__home-module')
     && pluginCss.includes('.sw__home-module-status--error')
-    && pluginCss.includes('env(safe-area-inset-bottom, 0px)')
-    && pluginCss.includes('prefers-reduced-motion: reduce')
+    && readCompiledCssContracts(pluginCss).safeArea
+    && readCompiledCssContracts(pluginCss).reducedMotion
     && /z-index:\s*2147483647/.test(pluginCss)
     // 排序按钮图标自带显式尺寸：裸 <svg> 在插件样式未就绪时会退回浏览器默认
     // 300×150，顶栏错乱首帧（详见 tests/mobile-icon-fallback-contract.test.cjs）
@@ -437,7 +438,7 @@ if (!responsiveRulesOk) allPassed = false;
 
 const stateSemanticsOk = pluginCss.includes('.sw__empty-title')
     && pluginCss.includes('.sw__doc-status--error')
-    && pluginCss.includes('color-mix(in srgb, var(--b3-theme-error)')
+    && readCompiledCssContracts(pluginCss).errorMix
     && pluginCss.includes('.sw__mobile-sheet-empty')
     && docSearchUiSource.includes('empty.setAttribute("role", "status")')
     && docSearchUiSource.includes('empty.setAttribute("aria-live", "polite")')

@@ -38,6 +38,16 @@ test("weather catches unavailable errors", () => assert.match(adapters, /return 
 test("weather preserves abort semantics", () => assert.match(adapters, /if \(error\?\.message === "aborted"\) throw error;/));
 
 test("Bangumi uses the proxy fetcher", () => assert.match(adapters, /loadBangumiCalendar\(\{signal: context\?\.signal, fetchImpl:/));
+test("Bangumi uses browser direct fetch before the proxy fallback", () => {
+    assert.match(adapters, /fetchBangumiCalendar\(url, init\)/);
+    assert.match(source, /private async fetchBangumiCalendar\(url: string, init:/);
+    assert.match(source, /if \(response\.ok\) return response;/);
+    assert.match(source, /return this\.fetchActivityWatchViaKernel\(url, \{signal: init\?\.signal\}\);/);
+});
+test("Bangumi passes cancellation to proxy fallback", () => {
+    assert.match(source, /body: JSON\.stringify\(proxyBody\),\s*signal: init\?\.signal,/);
+    assert.match(source, /return this\.fetchActivityWatchViaKernel\(url, \{signal: init\?\.signal\}\);/);
+});
 test("Bangumi keeps empty schedule state", () => assert.match(adapters, /homeBangumiEmpty, items: \[\], updatedAt/));
 test("Bangumi catches unavailable errors", () => assert.match(adapters, /homeBangumiEmpty\} · \$\{this\.i18n\.homeRetry/));
 test("Bangumi preserves abort semantics", () => assert.ok(adapterWindow("external-anime-bangumi").includes(ABORT_SNIPPET), "aborted 语义须保留"));

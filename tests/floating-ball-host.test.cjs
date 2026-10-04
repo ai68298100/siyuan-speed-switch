@@ -110,6 +110,7 @@ function mount(t, options = {}) {
         getFloatingBallActions: () => [], getQuickActionSupport: () => "supported", getQuickActionDeclaredTargets: () => undefined,
         getDockByType: () => null, openJournal() {},
         showSwitcher: (...args) => calls.switcher.push(args),
+        showMobileSwitcher: (...args) => calls.switcher.push(args),
         openSetting: (...args) => calls.settings.push(args),
     });
     return {host, calls, document, get config() { return settings.floatingBall; }};
@@ -416,8 +417,8 @@ test("floating ball host forwards size, margin and snap on creation and live con
     assert.deepEqual(host.getSettings().floatingBall.position.mobile, {edge: "right", yRatio: 0.72});
 });
 
-test("floating ball host honors yieldToModals off and releases each dialog callback once", (t) => {
-    const {host, calls, config} = mount(t, {mobile: true});
+async function assertDialogYieldDisabled(t, options = {}) {
+    const {host, calls, config} = mount(t, {...options, mobile: true});
     config.enabled.mobile = true;
     config.behavior.yieldToModals = false;
     host.updateFloatingBallVisibility();
@@ -429,11 +430,31 @@ test("floating ball host honors yieldToModals off and releases each dialog callb
     assert.equal(host.fabElement.classList.contains("sw__fab--hidden"), false);
     controller.config.onOpenSwitcher();
     assert.equal(calls.switcher.length, 1, "yield disabled must also permit the switcher callback");
+    assert.deepEqual(calls.switcher[0], [false, "switcher", {entry: "fab"}]);
+    await settleAction();
+    assert.deepEqual(calls.messages, [], "mobile routing must not silently fail in the executor");
+    assert.equal(controller.restoreCount, 1);
     assert.ok(calls.panels[0].closeCount > 0, "dialog still closes the action panel");
     release();
     release();
     assert.equal(released, 1);
     assert.equal(host.fabModalDepth, 0);
+}
+
+test("floating ball host honors yieldToModals off and releases each dialog callback once", async (t) => {
+    await assertDialogYieldDisabled(t);
+});
+
+test("floating ball modal host contract detects a lost mobile route and ignored yield preference", async (t) => {
+    const original = methods.join("\n");
+    for (const [target, replacement, failure] of [
+        ["this.showMobileSwitcher(false, nextReturnTo, nextContext)", "undefined", "yield disabled must also permit the switcher callback"],
+        ["this.fabModalDepth === 0 || current.behavior?.yieldToModals === false", "this.fabModalDepth === 0", "yield disabled must also permit the switcher callback"],
+    ]) {
+        assert.equal(original.split(target).length - 1, 1, `mutation target exists exactly once: ${target}`);
+        await assert.rejects(() => assertDialogYieldDisabled(t, {transformSource: (source) => source.replace(target, replacement)}),
+            (error) => error instanceof assert.AssertionError && error.message.includes(failure));
+    }
 });
 
 test("floating ball dialog channel restores focus to the host origin control (T-7014)", (t) => {
@@ -467,7 +488,7 @@ test("floating ball dialog channel restores focus to the host origin control (T-
     release3();
     assert.equal(document.activeElement, elsewhere, "用户已聚焦别处时不得抢占焦点");
 });
-test("floating ball host tracks nested dialogs while surfaces are enabled and modal preference changes", (t) => {
+test("floating ball host tracks nested dialogs while surfaces are enabled and modal preference changes", async (t) => {
     const {host, calls, config} = mount(t, {mobile: true});
     const outer = host.suspendFABForDialog();
     assert.equal(host.fabModalDepth, 1, "dialogs count before any surface is mounted");
@@ -485,6 +506,8 @@ test("floating ball host tracks nested dialogs while surfaces are enabled and mo
     assert.equal(host.fabElement.classList.contains("sw__fab--hidden"), false);
     controller.config.onOpenSwitcher();
     assert.equal(calls.switcher.length, 1);
+    await settleAction();
+    assert.deepEqual(calls.messages, [], "nested-dialog mobile route must complete without failure feedback");
     config.behavior.yieldToModals = true;
     host.updateFloatingBallVisibility();
     assert.equal(controller.suspended, true);

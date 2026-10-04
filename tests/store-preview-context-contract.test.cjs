@@ -40,7 +40,7 @@ test('preview body references metadata', () => assert.match(storeUiSource, /body
 test('preview body is keyboard focusable', () => assert.match(storeUiSource, /body\.tabIndex = 0/));
 // 旧断言 `/addMeta\(this\.i18n\.homeStorePreviewSize[\s\S]*?"context"\)/` 允许两实参之间
 // 跨任意代码；现按真实调用原文（home-store-ui.ts:116）精确匹配整条语句。
-test('preview uses a context chip tone', () => assert.match(storeUiSource, /addMeta\(this\.i18n\.homeStorePreviewSize\.replace\("\{size\}", sizeKey\), "context"\)/));
+test('preview uses a context chip tone', () => assert.match(storeUiSource, /sizeChip\.textContent = host\.i18n\.homeStorePreviewSize\.replace\("\{size\}", sizeKey\)/));
 test('preview metadata is sticky', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /position: sticky/, base)));
 test('preview metadata stays above scrolling content', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /z-index: 2/, base)));
 test('preview metadata keeps a top inset', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /top: 0/, base)));

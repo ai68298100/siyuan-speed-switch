@@ -9,12 +9,14 @@ import {spawn} from "node:child_process";
 export const PLUGIN_NAME = "siyuan-speed-switch";
 export const STORAGE_DIR = `storage/petal/${PLUGIN_NAME}`;
 export const MARKER_FILE = "swss-e2e.json";
+const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 
 export function e2eConfig() {
     const workspace = process.env.SWSS_E2E_WORKSPACE || path.join(os.homedir(), "SiYuan-SpeedSwitch-E2E");
     const host = "127.0.0.1";
     const port = Number(process.env.SWSS_E2E_PORT || 6837);
-    return {workspace, host, port, baseURL: `http://${host}:${port}`};
+    const artifactDir = path.resolve(process.env.SWSS_E2E_ARTIFACT_DIR || path.join(REPO_ROOT, ".artifacts", "e2e"));
+    return {workspace, host, port, baseURL: `http://${host}:${port}`, artifactDir};
 }
 
 /** 只允许指向本机回环，避免测试打到用户的远端思源。 */

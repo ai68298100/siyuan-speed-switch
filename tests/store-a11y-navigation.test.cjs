@@ -29,7 +29,7 @@ test('store groups have stable ids', () => assert.match(storeUiSource, /const gr
 test('store groups expose ids on grids', () => assert.match(storeUiSource, /groupGrid\.id = groupId/));
 test('group toggles reference controlled grids', () => assert.match(storeUiSource,/groupToggle\.setAttribute\("aria-controls", groupId\)/));
 test('add action has an accessible label', () => assert.match(storeUiSource, /addButton\.setAttribute\("aria-label"/));
-test('preview action has an accessible label', () => assert.match(storeUiSource, /previewButton\.setAttribute\("aria-label"/));
+test('selected detail mounts an accessible inline preview', () => assert.match(storeUiSource, /const inlinePreview = buildInlinePreview\(storeSelectedModule, detailDef, previewSize\)/));
 test('tab activation stores selected key', () => assert.match(storeUiSource, /storeTab = button\.dataset\.tabKey/));
 test('tab activation reapplies filter', () => assert.ok(activateBody.includes('applyFilter();'), '激活 tab 须重新应用筛选'));
 test('tab focus order uses only visible tab controls', () => assert.match(storeUiSource, /querySelectorAll<HTMLElement>\("\.sw-home-store__tab"\)/));
@@ -39,7 +39,7 @@ test('home key selects first tab', () => assert.match(storeUiSource, /if \(event
 test('end key selects last tab', () => assert.match(storeUiSource, /if \(event\.key === "End"\) next = buttons\.length - 1/));
 test('group toggle remains a button', () => assert.match(storeUiSource, /groupToggle\.type = "button"/));
 test('add action remains a button', () => assert.match(storeUiSource, /tiles\.insertAdjacentHTML\("beforeend", `<button/));
-test('preview action remains a button', () => assert.match(storeUiSource, /previewButton\.className = "sw-home-store__size sw-home-store__preview-btn"/));
+test('selected detail does not add a duplicate preview button', () => assert.doesNotMatch(storeUiSource, /previewButton\.className/));
 test('store tabs remain tab role', () => assert.match(storeUiSource, /btn\.setAttribute\("role", "tab"\)/));
 test('store tablist remains tablist role', () => assert.match(storeUiSource, /tabBar\.setAttribute\("role", "tablist"\)/));
 test('aria controls value is deterministic', () => assert.match(storeUiSource,/orderedGroups\.indexOf\(label\)/));

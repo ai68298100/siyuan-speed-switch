@@ -53,6 +53,44 @@ test('home card palette accepts only bounded presets', () => {
     assert.equal(normalizeSettings({homePalette: 'url("javascript:bad")'}, options).homePalette, 'auto');
 });
 
+test('T-7001 settings fields keep safe defaults and clean nested workbench state', () => {
+    const defaultsWithT7001 = {
+        ...defaults,
+        journalAutoCreate: true,
+        rememberScrollPosition: true,
+        homeStore: {rememberState: true, defaultViewMode: 'grid', retryFailed: true},
+    };
+    const normalized = normalizeSettings({
+        journalAutoCreate: 'yes',
+        rememberScrollPosition: 1,
+        homeStore: {
+            rememberState: false,
+            defaultViewMode: 'list',
+            retryFailed: false,
+            density: 'compact',
+            viewMode: 'list',
+            sort: 'title',
+            collapsedGroups: ['  Journal  ', 'Journal', 42],
+            unexpected: 'drop me',
+        },
+    }, {...options, defaults: defaultsWithT7001});
+    assert.equal(normalized.journalAutoCreate, false);
+    assert.equal(normalized.rememberScrollPosition, false);
+    assert.deepEqual(normalized.homeStore, {
+        rememberState: false,
+        defaultViewMode: 'list',
+        retryFailed: false,
+        density: 'compact',
+        viewMode: 'list',
+        sort: 'title',
+        collapsedGroups: ['Journal'],
+    });
+    const legacy = normalizeSettings({}, {...options, defaults: defaultsWithT7001});
+    assert.equal(legacy.journalAutoCreate, true);
+    assert.equal(legacy.rememberScrollPosition, true);
+    assert.deepEqual(legacy.homeStore, defaultsWithT7001.homeStore);
+});
+
 test('group by mode accepts known values and rejects unknown ones', () => {
     assert.equal(normalizeSettings({groupBy: 'favorites'}, options).groupBy, 'favorites');
     assert.equal(normalizeSettings({groupBy: 'none'}, options).groupBy, 'none');

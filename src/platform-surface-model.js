@@ -214,11 +214,26 @@ function filterSurfacesByVisibility(surfaces, visibility) {
     return (Array.isArray(surfaces) ? surfaces : []).filter((surface) => isSurfaceModuleEnabled(surface, visibility));
 }
 
+function createPlatformSurfaceAdapter(handlers = {}) {
+    const routes = Object.freeze({
+        switcher: typeof handlers.switcher === "function" ? handlers.switcher : null,
+        workbench: typeof handlers.workbench === "function" ? handlers.workbench : null,
+        studio: typeof handlers.studio === "function" ? handlers.studio : null,
+    });
+    return (surface, returnTo, context) => {
+        const handler = PLATFORM_SURFACE_IDS.includes(surface) ? routes[surface] : null;
+        if (typeof handler !== "function") return false;
+        handler(returnTo, context);
+        return true;
+    };
+}
+
 module.exports = {
     MODULE_TOGGLE_KEYS,
     normalizeModuleVisibility,
     isSurfaceModuleEnabled,
     filterSurfacesByVisibility,
+    createPlatformSurfaceAdapter,
     PLATFORM_SURFACE_IDS,
     PLATFORM_SURFACE_ENTRIES,
     PLATFORM_OBJECT_KINDS,

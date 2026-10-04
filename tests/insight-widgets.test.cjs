@@ -14,7 +14,7 @@ test("insight-style widgets are registered with bounded sizes", () => {
     assert.equal(noteStats.configSchema.find((field) => field.key === "days").max, 90);
     const yearProgress = byId.get("year-progress");
     assert.ok(yearProgress, "year-progress registered");
-    assert.deepEqual(yearProgress.sizes, ["xs", "small"]);
+    assert.deepEqual(yearProgress.sizes, ["xs", "small", "medium"]);
     const recentEdits = byId.get("recent-edits");
     assert.ok(recentEdits, "recent-edits registered");
     assert.deepEqual(recentEdits.sizes, ["medium", "wide", "large"]);
@@ -267,7 +267,8 @@ test("journal and dated-content adapters use bounded notebook-aware actions", ()
     const reservations = slice("today-reservations", "plugin-commands");
     assert.match(monthly, /buildJournalMonthlySnapshot\(/);
     assert.match(monthly, /buildNotebookBoxScope\(notebook, "b"\)/);
-    assert.match(clipped, /buildNotebookBoxScope\(normalized\.notebook, "b"\)/);
+    assert.match(clipped, /status: "blocked"/);
+    assert.doesNotMatch(clipped, /fetchKernelJson\("\/api\/query\/sql"/);
     assert.match(memory, /buildNotebookBoxScope\(normalized\.notebook\)/);
     assert.match(reservations, /normalizeTodayReservationsConfig\(config\)/);
     assert.match(reservations, /buildNotebookBoxScope\(normalized\.notebook, "B"\)/);
@@ -280,7 +281,6 @@ test("dated widgets use pure projections, future-date guards, and bounded caches
     const path = require("node:path");
     const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     const checks = [
-        ["clipped-unread", "buildClippedUnreadSnapshot", /COUNT\(\*\) OVER\(\)/],
         ["on-this-day", "buildOnThisDaySnapshot", /content GLOB/],
         ["recent-daily-notes", "buildRecentDailyNotesSnapshot", /content < '\$\{today\}~/],
     ];
@@ -342,7 +342,7 @@ test("view assembly honors snapshot-driven viewType within the whitelisted set (
     // 快照驱动的视图切换必须走同一白名单，且允许快照覆盖静态定义。
     // 断言锚定 **赋值表达式**（`= allowedViewTypes...`）而非裸文本——
     // `false && allowedViewTypes...` 这类死代码化注入必须被精确拦截。
-    assert.match(source, /const allowedViewTypes = \["calendar", "weekdays", "media", "heatmap"\];/);
+    assert.match(source, /const allowedViewTypes = \["calendar", "weekdays", "media", "heatmap", "tag-tree"\];/);
     assert.match(source, /= allowedViewTypes\.includes\(snapshot\.viewType\)/, "snapshot viewType override must be live and whitelisted");
     assert.match(source, /= allowedViewTypes\.includes\(snapshot\.viewType\)\s*\? snapshot\.viewType\b/, "the override value must actually flow into the effective view type");
     assert.match(source, /:\s*\(allowedViewTypes\.includes\(definition\.viewType\) \? definition\.viewType : ""\)/, "definition viewType remains the fallback");

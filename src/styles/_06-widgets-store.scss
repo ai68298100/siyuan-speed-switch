@@ -342,6 +342,52 @@
     }
 }
 
+// T-7024：桌面商店是主工作区，直接占满宿主视口；移动端继续由 sheet 规则接管。
+.b3-dialog__container.sw-home-store-dialog.sw-dialog--fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
+.b3-dialog__container.sw-home-store-dialog.sw-dialog--fullscreen .b3-dialog__body {
+    min-height: 0;
+    padding: 0;
+}
+
+.sw-home-store__live-preview {
+    display: grid;
+    gap: 6px;
+    margin: 0 0 12px;
+    padding: 10px;
+    border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 24%, var(--b3-border-color));
+    border-radius: var(--sw-radius-card, 14px);
+    background: color-mix(in srgb, var(--b3-theme-primary) 4%, var(--b3-theme-surface));
+}
+
+.sw-home-store__inline-preview {
+    min-height: 220px;
+    overflow: auto;
+}
+
+.sw-home-store__inline-preview > .sw-home__cell {
+    min-height: 190px;
+    overflow: hidden;
+}
+
+.sw-home-store__inline-preview .sw-home__cell-body {
+    min-height: 160px;
+}
+
+.sw-home-store__inline-preview .sw-store-preview__body {
+    min-height: 150px;
+    padding: 0;
+}
+
+@media (max-width: 560px) {
+    .sw-home-store__live-preview { margin-bottom: 10px; padding: 8px; }
+    .sw-home-store__inline-preview { min-height: 180px; }
+    .sw-home-store__inline-preview > .sw-home__cell { min-height: 160px; }
+}
+
 .sw-home-store[data-density="compact"] .sw-home-store__card {
     padding-block: 8px;
     gap: 7px;

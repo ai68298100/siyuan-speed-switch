@@ -27,7 +27,8 @@ export type HomeExternalAdapterRegister = (
 
 export interface HomeExternalAdapterHost {
     i18n: Record<string, string>;
-    fetchActivityWatchViaKernel: (url: string, init: {body?: string; headers?: Record<string, string>}) => Promise<any>;
+    fetchActivityWatchViaKernel: (url: string, init: {body?: string; headers?: Record<string, string>; signal?: AbortSignal}) => Promise<any>;
+    fetchBangumiCalendar: (url: string, init: {signal?: AbortSignal; headers?: Record<string, string>}) => Promise<any>;
     // T-6685 RSS 已读状态（有界，宿主持久化 sw_rss_read）
     rssReadState?: () => Record<string, number>;
     markRssItemsSeen?: (keys: string[]) => void;
@@ -122,7 +123,7 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
         // 浏览器 WebView 使用自身 User-Agent；接口返回、封面地址和跳转地址都经过独立白名单归一化。
         register("external-anime-bangumi", this.i18n.homeBangumi, "iconVideo", this.i18n.homeDescBangumi, [], async (config, _device, context) => {
             try {
-                const payload = await loadBangumiCalendar({signal: context?.signal, fetchImpl: (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init)});
+                const payload = await loadBangumiCalendar({signal: context?.signal, fetchImpl: (url: string, init: {signal?: AbortSignal; headers?: Record<string, string>}) => this.fetchBangumiCalendar(url, init)});
                 const locale = document.documentElement.lang || navigator.language || "zh-CN";
                 const english = locale.toLowerCase().startsWith("en");
                 const snapshot = buildBangumiSnapshot(payload, config, {

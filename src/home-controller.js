@@ -232,6 +232,7 @@ function createHomeModuleController(options = {}) {
             if (requestController?.signal.aborted) return {ok: false, reason: "aborted", view: currentView};
             const result = await read(config, {...readOptions, signal: requestController?.signal || externalSignal});
             if (disposed || token !== generation) return {ok: false, reason: "stale", view: currentView};
+            if (result?.reason === "stale") return {ok: false, reason: "stale", view: currentView};
             // 读取失败但上一次的好数据还在（如同步高峰期超时）：继续展示陈旧快照并
             // 标注"缓存"，不清成错误页——数据陈旧可见比整块报错更有用
             const stale = result?.ok === false

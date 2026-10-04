@@ -152,6 +152,7 @@ export const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID →
 export const FAV_COLLAPSED_KEY = "sw_fav_collapsed"; // 收藏下拉中已折叠的分组名（持久化，重启后保持展开/折叠状态）
 export const SCHEMA_VERSION_KEY = "sw_schema_version"; // 存储版本戳（D-401）：持久化 STORAGE_SCHEMA_VERSION，识别降级/未知版本
 export const SNIPPET_RECYCLE_KEY = "sw_snippet_recycle"; // 片段回收站（T-7025，ADR 0100）：三限有界旧版本快照
+export const SNIPPET_GROUPS_KEY = "sw_snippet_groups"; // 片段分组（T-6972）：分组元数据、归属和视图偏好
 export const RSS_READ_KEY = "sw_rss_read"; // RSS 已读状态（T-6685）：条目键 → 标记时间 ms，有界 200 条
 export const RELATED_SWR_KEY = "sw_related_swr"; // 关联内容 SWR 持久缓存（T-6840）：rootId → 投影快照，有界 8 条、7 天年龄上界
 // 全部持久化 key 的唯一清单。加载（loadPersistentKeys）与容量测量都必须遍历它，
@@ -161,7 +162,7 @@ export const PERSISTENT_KEYS: readonly string[] = Object.freeze([
     MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY,
     FAV_GROUPS_KEY, FAV_COLLAPSED_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY,
     QUICK_ACTIONS_DEFAULTS_KEY, DOCUMENT_SETS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY,
-    SCHEMA_VERSION_KEY, RSS_READ_KEY, RELATED_SWR_KEY, SNIPPET_RECYCLE_KEY,
+    SCHEMA_VERSION_KEY, RSS_READ_KEY, RELATED_SWR_KEY, SNIPPET_RECYCLE_KEY, SNIPPET_GROUPS_KEY,
 ]);
 
 export const QUICK_ACTIONS_MAX = 12;

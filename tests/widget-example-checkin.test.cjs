@@ -64,7 +64,9 @@ test('registration entry returns a stop handle and never throws without a host',
     const stop = example.registerCheckinHomeModules({plugins: []});
     assert.equal(typeof stop, 'function');
     stop();
-    assert.equal(typeof example.registerCheckinHomeModules(null), 'function');
+    const missingStop = example.registerCheckinHomeModules(null);
+    assert.equal(typeof missingStop, 'function');
+    missingStop();
 });
 
 test('registration entry hands every unregister handle back to the caller', () => {
@@ -79,7 +81,7 @@ test('registration entry hands every unregister handle back to the caller', () =
         onRegistered: (fns) => assert.equal(fns.length, 5),
     });
     stop();
-    // 有界重试尚未触发（2s 后才首次探测），这里只保证入口不抛错且可停止。
+    // 有界重试尚未触发（250ms 后才首次探测），这里只保证入口不抛错且可停止。
     assert.ok(typeof stop === 'function');
 });
 

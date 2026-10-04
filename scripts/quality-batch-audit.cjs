@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const {RAW_BUNDLE_BUDGET_BYTES, RAW_BUNDLE_BUDGET_ADR} = require('./release-readiness-metrics.cjs');
 const root = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const exists = (file) => fs.existsSync(path.join(root, file));
@@ -58,9 +59,11 @@ add('plugin icon exists', exists('icon.png'));
 add('plugin preview exists', exists('preview.png'));
 add('widget protocol ADR references exist', exists('docs/adr/0057-widget-source-and-store-grouping.md'));
 add('schema ADR references exist', exists('docs/adr/0034-quick-action-schema-version.md'));
-add('release readiness references current raw-line ADR', /ADR 0092/.test(read('docs/release-readiness.md')));
+add('release readiness references current raw-line ADR', read('docs/release-readiness.md').split(/\r?\n/).some((line) =>
+    line.startsWith('<!-- Current artifact snapshot:') && line.includes('raw self-discipline line ' + RAW_BUNDLE_BUDGET_BYTES / 1024 + ' KiB (ADR ' + RAW_BUNDLE_BUDGET_ADR + ',')));
 add('roadmap has current section', read('ROADMAP.md').includes('8.0.4 2026-09-19'));
-add('blockers says no current blockers', read('BLOCKERS.md').includes('当前无阻塞'));
+add('current engineering blocker status is explicit and clear', read('BLOCKERS.md').split(/\r?\n/)
+    .filter((line) => line.startsWith('<!-- Current engineering blockers:')).join('\n') === '<!-- Current engineering blockers: none -->');
 add('dev plan has next batch', read('docs/dev-plan-2026-09-19.md').includes('T-6552'));
 add('quality audit is local-only', !/https?:\/\//.test(read('scripts/quality-batch-audit.cjs')));
 add('quality audit has exactly fifty checks', (read('scripts/quality-batch-audit.cjs').match(/add\('/g) || []).length === 50);

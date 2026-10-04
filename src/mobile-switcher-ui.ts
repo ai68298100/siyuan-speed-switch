@@ -106,6 +106,8 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
                 available: ["switcher", "workbench"],
                 context: context || null,
                 onNavigate: navigatePlatformSurface,
+                onClose: () => dialog.destroy(),
+                closeLabel: this.i18n.close,
             });
         }
         let readyFrame: number | null = null;

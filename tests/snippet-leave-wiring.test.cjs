@@ -8,7 +8,7 @@ const uiSource = readSourceFile('src/snippet-studio-ui.js');
 const model = readSourceFile('src/snippet-studio-model.js');
 
 test('leave intent wiring: canClose stays synchronous and blocks dirty drafts', () => {
-    assert.match(uiSource, /canClose: \(\) => \{\s*\/\/ T-6956：宿主发起的关闭先同步阻止；脏稿经三选一，得到明确结果后由\s*\n\s*\/\/ 待执行意图继续（platform\.onClose 会再次触发宿主关闭）。干净则放行。\s*\n\s*if \(busy\) return false;\s*\n\s*if \(!dirty\(\)\) return true;\s*\n\s*const verdict = leave\.requestLeave\(true, busy, \(\) => platform\.onClose\?\.\(\)\);\s*\n\s*if \(verdict\.action === "confirm"\) openLeaveDialog\(\);\s*\n\s*return false;\s*\n\s*\},/,
+    assert.match(uiSource, /canClose: \(\) => \{\s*\/\/ T-6956：宿主发起的关闭先同步阻止；脏稿经三选一，得到明确结果后由\s*\n\s*\/\/ 待执行意图继续（platform\.onClose 会再次触发宿主关闭）。干净则放行。\s*\n\s*if \(busy\) return false;\s*\n\s*if \(!dirty\(\)\) return true;\s*\n\s*const verdict = leave\.requestLeave\(true, busy, \(\) => platform\.onClose\?\.\(true\)\);\s*\n\s*if \(verdict\.action === "confirm"\) openLeaveDialog\(\);\s*\n\s*return false;\s*\n\s*\},/,
         'canClose 必须同步阻止脏稿关闭并打开三选一，不得把 Promise 当布尔');
 });
 

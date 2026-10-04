@@ -1,0 +1,16 @@
+[
+  {
+    "target": "src/index.ts",
+    "find": "if (response.ok) return response;",
+    "replace": "if (false) return response;",
+    "test": "tests/external-widget-availability-contract.test.cjs",
+    "expected": "Bangumi uses browser direct fetch before the proxy fallback"
+  },
+  {
+    "target": "src/index.ts",
+    "find": "signal: init?.signal,",
+    "replace": "signal: undefined,",
+    "test": "tests/external-widget-availability-contract.test.cjs",
+    "expected": "Bangumi passes cancellation to proxy fallback"
+  }
+]

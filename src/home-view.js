@@ -6,7 +6,7 @@ const CALENDAR_MAX_ITEMS = 42;
 const HEATMAP_MAX_ITEMS = 371;
 const HARD_ITEM_CEILING = 400;
 const MAX_TEXT = 256;
-const STATUSES = new Set(["loading", "ready", "empty", "error"]);
+const STATUSES = new Set(["loading", "ready", "empty", "error", "blocked"]);
 const NAVIGATION_LIST_MODULES = new Set([
     "recent-documents", "pinned-docs", "favorites", "tags", "bookmarks", "document-sets",
     "fixed-document", "current-document-outline", "document-relations-summary",
@@ -126,6 +126,11 @@ function normalizeHomeViewResult(value, options = {}) {
         if (item?.outside === true) entry.outside = true;
         if (["off", "work"].includes(item?.holiday)) entry.holiday = item.holiday;
         if (Number.isFinite(item?.count) && item.count >= 0) entry.count = Math.trunc(item.count);
+        if (Number.isFinite(item?.depth)) entry.depth = Math.min(8, Math.max(0, Math.trunc(item.depth)));
+        if (typeof item?.treePath === "string") entry.treePath = text(item.treePath, 160);
+        if (item?.hasChildren === true) entry.hasChildren = true;
+        if (item?.expanded === false) entry.expanded = false;
+        if (item?.virtual === true) entry.virtual = true;
         // level 由模型层量化（如 GitHub 贡献的 0~4 档），视图只透传不重写阈值，避免第二事实源；-1 = 窗口外。
         if (Number.isFinite(item?.level)) entry.level = Math.min(4, Math.max(-1, Math.trunc(item.level)));
         if (Number.isFinite(item?.rank) && item.rank > 0) entry.rank = Math.min(9999, Math.trunc(item.rank));
@@ -134,7 +139,7 @@ function normalizeHomeViewResult(value, options = {}) {
         if (typeof item?.utcOffset === "string") entry.utcOffset = item.utcOffset;
         return entry;
     }).filter((item) => options.keepEmptyItems === true || item.label || item.value || item.href);
-    const explicitStatus = STATUSES.has(source.status) ? source.status : "";
+    const explicitStatus = STATUSES.has(source.status) ? source.status : STATUSES.has(rawSnapshot.status) ? rawSnapshot.status : "";
     // 统计卡可以只有 stat（例如关闭日期行的本地时钟）；它仍是有内容的 ready
     // 状态，不能因列表为空而退化成 empty 并失去时钟的局部刷新语义。
     const hasStat = rawSnapshot.stat && typeof rawSnapshot.stat === "object"
@@ -182,7 +187,7 @@ function buildHomeModuleView(module, result, options = {}) {
     // T-6684：快照可携带 viewType 覆盖静态定义（受限同一白名单）——配置驱动的
     // 视图切换（如 activity 年历网格）无需拆分新模块；仅改变既有有界条目的呈现，
     // 不引入任何新能力面。
-    const allowedViewTypes = ["calendar", "weekdays", "media", "heatmap"];
+    const allowedViewTypes = ["calendar", "weekdays", "media", "heatmap", "tag-tree"];
     const snapshot = result && typeof result === "object" && result.snapshot && typeof result.snapshot === "object" ? result.snapshot : {};
     const effectiveViewType = allowedViewTypes.includes(snapshot.viewType)
         ? snapshot.viewType
@@ -228,6 +233,7 @@ function renderHomeModuleView(doc, view, options = {}) {
         loading: "加载中…",
         empty: "暂无内容",
         error: "暂时无法加载",
+        blocked: "暂不可用",
         retry: "重试",
         collapse: "收起",
         expand: "展开",
@@ -243,6 +249,7 @@ function renderHomeModuleView(doc, view, options = {}) {
         heatmapEmpty: "无贡献",
         heatmapUnit: "次贡献",
         heatmapLegend: "少 → 多",
+        tagVirtual: "组织节点",
         ...(options.labels && typeof options.labels === "object" ? options.labels : {}),
     };
     const root = doc.createElement("section");
@@ -621,6 +628,83 @@ function renderHomeModuleView(doc, view, options = {}) {
         root.appendChild(body);
         return root;
     }
+    if (view.status === "ready" && view.viewType === "tag-tree") {
+        const tree = doc.createElement("ul");
+        tree.className = "sw__home-tag-tree";
+        tree.setAttribute("role", "tree");
+        const records = (Array.isArray(view.items) ? view.items : []).map((item, index) => {
+            const row = doc.createElement("li");
+            row.className = "sw__home-tag-tree-item" + (item.virtual === true ? " is-virtual" : "");
+            row.dataset.swRow = String(index);
+            row.dataset.treePath = item.treePath || item.label || "";
+            row.setAttribute("role", "treeitem");
+            const depth = Number.isFinite(item.depth) ? item.depth : 0;
+            row.setAttribute("aria-level", String(depth + 1));
+            row.style.setProperty("--sw-tag-depth", String(depth));
+            if (item.hasChildren === true) row.setAttribute("aria-expanded", String(item.expanded !== false));
+            const line = doc.createElement("div");
+            line.className = "sw__home-tag-tree-line";
+            const toggle = doc.createElement("button");
+            toggle.type = "button";
+            toggle.className = "sw__home-tag-tree-toggle";
+            toggle.dataset.focusKey = `tag-toggle:${item.treePath || item.label || index}`;
+            toggle.setAttribute("aria-label", item.expanded === false ? labels.expand : labels.collapse);
+            toggle.disabled = item.hasChildren !== true;
+            toggle.textContent = item.hasChildren === true ? (item.expanded === false ? "›" : "⌄") : "·";
+            line.appendChild(toggle);
+            const action = doc.createElement("button");
+            action.type = "button";
+            action.className = "sw__home-module-item-action sw__home-tag-tree-action";
+            action.disabled = item.disabled === true || item.virtual === true;
+            action.dataset.value = item.value || "";
+            action.dataset.focusKey = `tag:${item.treePath || item.label || index}`;
+            const label = doc.createElement("span");
+            label.className = "sw__home-module-item-label";
+            label.textContent = item.label || item.value || "";
+            action.appendChild(label);
+            if (item.secondary) {
+                const secondary = doc.createElement("small");
+                secondary.className = "sw__home-module-item-secondary";
+                secondary.textContent = item.secondary;
+                action.appendChild(secondary);
+            }
+            const description = [label.textContent, item.secondary, item.virtual === true ? labels.tagVirtual : ""].filter(Boolean).join(" · ");
+            if (description) action.setAttribute("aria-label", description);
+            if (typeof options.onItem === "function" && action.disabled !== true) action.addEventListener("click", () => options.onItem(item, view));
+            line.appendChild(action);
+            row.appendChild(line);
+            toggle.addEventListener("click", (event) => {
+                event.preventDefault();
+                if (item.hasChildren !== true) return;
+                item.expanded = item.expanded === false;
+                row.setAttribute("aria-expanded", String(item.expanded));
+                toggle.setAttribute("aria-label", item.expanded ? labels.collapse : labels.expand);
+                toggle.textContent = item.expanded ? "⌄" : "›";
+                updateVisibility();
+            });
+            return {item, row};
+        });
+        const updateVisibility = () => {
+            records.forEach((record, index) => {
+                let depth = Number.isFinite(record.item.depth) ? record.item.depth : 0;
+                let visible = true;
+                for (let cursor = index - 1; cursor >= 0 && depth > 0; cursor -= 1) {
+                    const candidate = records[cursor].item;
+                    const candidateDepth = Number.isFinite(candidate.depth) ? candidate.depth : 0;
+                    if (candidateDepth < depth) {
+                        if (candidate.hasChildren === true && candidate.expanded === false) visible = false;
+                        depth = candidateDepth;
+                    }
+                }
+                record.row.hidden = !visible;
+            });
+        };
+        records.forEach((record) => tree.appendChild(record.row));
+        updateVisibility();
+        body.appendChild(tree);
+        root.appendChild(body);
+        return root;
+    }
     if (view.status === "ready") {
         const list = doc.createElement("ul");
         list.className = "sw__home-module-list";
@@ -773,7 +857,8 @@ function renderHomeModuleView(doc, view, options = {}) {
         // adapter to surface a stable reason such as timeout/unsupported in a
         // localized way without exposing raw exception text.
         const reasonCode = view.status === "error" && view.reason && !labels[view.reason] ? ` · ${view.reason}` : "";
-        status.textContent = (view.status === "empty" && view.emptyHint ? view.emptyHint : (labels[view.reason] || labels[view.status] || labels.empty)) + reasonCode;
+        const hint = (view.status === "empty" || view.status === "blocked") && view.emptyHint ? view.emptyHint : "";
+        status.textContent = (hint || labels[view.reason] || labels[view.status] || labels.empty) + reasonCode;
         body.appendChild(status);
         if (view.status === "error" && options.onRetry) {
             const retry = doc.createElement("button");

@@ -1,5 +1,5 @@
 import {expect, test} from "@playwright/test";
-import {openApp, openSwitcher, createClient} from "./helpers/app.mjs";
+import {openApp, openSwitcher, createClient, artifactPath} from "./helpers/app.mjs";
 
 async function openStudio(page) {
     await openApp(page);
@@ -18,7 +18,7 @@ test("studio unsaved state follows edits, save and exact reversion", async ({pag
     const badge = root.locator(".sw-studio__header-actions .sw-studio__state-badge");
     const selection = root.locator(".sw-studio__selection .sw-studio__state-badge");
     const editor = root.locator(".sw-studio__editor");
-    const nameInput = root.locator(".sw-studio__details input");
+    const nameInput = root.locator('.sw-studio__details input[aria-label="Name"]');
     try {
         await expect(badge).toHaveText("Draft");
         await nameInput.fill(name);
@@ -60,7 +60,7 @@ test("studio unsaved state follows edits, save and exact reversion", async ({pag
 test("studio save stays reachable while details scroll and safety boundaries remain", async ({page}) => {
     const root = await openStudio(page);
     const save = root.getByRole("button", {name: "Save draft", exact: true});
-    await root.locator(".sw-studio__details input").fill("Layout-only draft");
+    await root.locator('.sw-studio__details input[aria-label="Name"]').fill("Layout-only draft");
     await root.locator(".sw-studio__editor").fill("body { color: red; }");
     for (const size of [{width: 1440, height: 900}, {width: 960, height: 600}, {width: 800, height: 600}]) {
         await page.setViewportSize(size);
@@ -83,5 +83,33 @@ test("studio save stays reachable while details scroll and safety boundaries rem
     await page.setViewportSize({width: 960, height: 720});
     await root.locator(".sw-studio__details").evaluate(element => {element.scrollTop = 0;});
     await root.locator(".sw-studio__layout").evaluate(element => {element.scrollTop = 0;});
-    await page.screenshot({path: ".artifacts/e2e/studio-editing-footer.png"});
+    await page.screenshot({path: artifactPath("studio-editing-footer.png")});
+});
+
+test("studio lightweight editor keeps line numbers, bracket status and shortcut save", async ({page}) => {
+    const root = await openStudio(page);
+    const client = createClient();
+    const name = `studio-editor-enhancement-${Date.now()}`;
+    const editor = root.locator(".sw-studio__editor");
+    const gutter = root.locator(".sw-studio__line-numbers");
+    const editorStatus = root.locator(".sw-studio__editor-meta").first();
+    try {
+        await root.locator('.sw-studio__details input[aria-label="Name"]').fill(name);
+        await editor.fill("body {\n  color: red;\n}");
+        await expect(gutter).toHaveAttribute("data-line-count", "3");
+        await expect(gutter).toContainText("1");
+        await expect(editorStatus).toContainText("✓");
+        await editor.fill("body {\n  color: red;\n}\n");
+        await expect(gutter).toHaveAttribute("data-line-count", "4");
+        await editor.press("Control+s");
+        await expect(root.locator(".sw-studio__status")).toHaveText("Saved");
+        await root.locator(".sw-platform-header__close").click();
+        await expect(root).toHaveCount(0);
+    } finally {
+        const stored = await client.postChecked("/api/snippet/getSnippet", {type: "all", enabled: 2});
+        const snippets = stored.snippets.filter(item => item.name !== name);
+        if (snippets.length !== stored.snippets.length) {
+            await client.postChecked("/api/snippet/setSnippet", {snippets});
+        }
+    }
 });

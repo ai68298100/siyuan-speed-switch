@@ -45,6 +45,51 @@ test("home runtime replacement invalidates the previous registration", () => {
     runtime.dispose();
 });
 
+test("home runtime restores a builtin fallback after a provider takes over", async () => {
+    const runtime = createHomeRuntime();
+    const builtin = runtime.registerAdapter({
+        moduleId: "clipped-unread", builtin: true, title: "Clipped", supportedDevices: ["desktop"],
+        read: () => ({status: "blocked", emptyHint: "provider missing", items: []}),
+    });
+    assert.equal((await runtime.read("clipped-unread", "desktop")).snapshot.status, "blocked");
+    const provider = runtime.registerAdapter({
+        moduleId: "clipped-unread", title: "Provider", supportedDevices: ["desktop"],
+        read: () => ({items: [{label: "Unread"}]}),
+    });
+    assert.equal((await runtime.read("clipped-unread", "desktop")).snapshot.items[0].label, "Unread");
+    assert.equal(provider.unregister(), true);
+    const restored = await runtime.read("clipped-unread", "desktop", {}, {force: true});
+    assert.equal(restored.ok, true);
+    assert.equal(restored.snapshot.status, "blocked");
+    assert.equal(restored.snapshot.emptyHint, "provider missing");
+    assert.equal(provider.unregister(), false);
+    assert.equal(builtin.unregister(), true);
+    assert.equal((await runtime.read("clipped-unread", "desktop")).reason, "unregistered");
+    runtime.dispose();
+});
+
+test("home runtime invalidates provider cache when replacing and restoring adapters", async () => {
+    const runtime = createHomeRuntime();
+    let reads = 0;
+    runtime.registerAdapter({
+        moduleId: "cache-provider", builtin: true, title: "Fallback", supportedDevices: ["desktop"],
+        read: () => ({status: "blocked", items: []}), cacheTtlMs: 60000,
+    });
+    runtime.registerAdapter({
+        moduleId: "cache-provider", title: "Provider", supportedDevices: ["desktop"],
+        read: () => ({items: [{label: `read-${++reads}`}]}), cacheTtlMs: 60000,
+    });
+    assert.equal((await runtime.read("cache-provider", "desktop")).snapshot.items[0].label, "read-1");
+    const provider = runtime.registerAdapter({
+        moduleId: "cache-provider", title: "Provider 2", supportedDevices: ["desktop"],
+        read: () => ({items: [{label: `read-${++reads}`}]}), cacheTtlMs: 60000,
+    });
+    assert.equal((await runtime.read("cache-provider", "desktop")).snapshot.items[0].label, "read-2");
+    assert.equal(provider.unregister(), true);
+    assert.equal((await runtime.read("cache-provider", "desktop")).snapshot.status, "blocked");
+    runtime.dispose();
+});
+
 test("home runtime unregister removes dynamic modules from device listings", () => {
     const runtime = createHomeRuntime([{moduleId: "built-in", title: "Built in", supportedDevices: ["desktop"], read: () => ({})}]);
     const registration = runtime.registerAdapter({moduleId: "dynamic", title: "Dynamic", supportedDevices: ["desktop"], read: () => ({})});

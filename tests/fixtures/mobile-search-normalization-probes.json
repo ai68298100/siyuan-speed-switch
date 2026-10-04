@@ -1,0 +1,9 @@
+[
+  {
+    "target": "src/doc-search-ui.ts",
+    "find": "normalizeTitleSearchDocuments(rawDocs) as IDocSearchResult[]",
+    "replace": "rawDocs as IDocSearchResult[]",
+    "test": "tests/doc-search-pagination-contract.test.cjs",
+    "expected": "title search normalizes native path-only document records before rendering"
+  }
+]

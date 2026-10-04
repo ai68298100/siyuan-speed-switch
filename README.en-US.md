@@ -19,6 +19,8 @@ The four plugins currently developed under the Xiaolv series are:
 
 QQ community group: **871707735**
 
+The four plugins are independent packages; each plugin's own repository defines its version and release cadence. LvSpeed Switch only connects to other plugins through public component contracts and does not bundle their code or configuration. For Workbench integrations, start with [`docs/widget-protocol.md`](docs/widget-protocol.md).
+
 ## Table of Contents
 
 - [Xiaolv Plugins And Community](#xiaolv-plugins-and-community)
@@ -169,6 +171,9 @@ Read-only capabilities declare `localRead` and never declare write, egress, or e
 5. **Dock it**: hit the "Sidebar mode" toolbar button to pin the switcher to the right dock.
 6. **Workbench**: use the Workbench surface entry or `Alt+Shift+P` to open the widget workbench; cards expose source, capabilities, and health.
 7. **Snippet Lab**: choose “Snippet Lab” in the switcher's platform header, or use a snippet object's “Open in lab” action. It is desktop-only; mobile shows the capability boundary.
+
+The development build adds a collapsed Gist section. Public reads need no token; imports create new disabled drafts. Publishing requires a GitHub token with gist permission, stored as plain text in plugin settings and masked in the UI. New Gists are unlisted and accessible to anyone with the link.
+
 8. **Floating ball**: tap to restore the last surface; bind up/down/left/right flicks and More actions in Settings, with per-device 1–9 slots for actions or saved searches.
 9. **Customize**: use `+` in the bottom/right action area to add Docks, plugin commands, or change per-surface visibility.
 10. **Sizing**: desktop surfaces open fullscreen by default; adaptive and fixed sizes remain selectable in Settings.
@@ -326,6 +331,15 @@ The entry is persisted in Quick Actions settings and can target surfaces indepen
 ## Development Roadmap And Decision Records
 
 See [ROADMAP.md](./ROADMAP.md) for the planned feature order, design constraints, and release gates; all architecture decisions live in [`docs/adr/`](docs/adr/). Recent key decisions:
+
+### Documentation Map
+
+| Purpose | Documents |
+| --- | --- |
+| User acceptance and real-host boundaries | [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), [`BLOCKERS.md`](BLOCKERS.md) |
+| Widget integration and store protocol | [`docs/widget-protocol.md`](docs/widget-protocol.md), [`docs/component-store-guide.md`](docs/component-store-guide.md) |
+| Agent capabilities and data boundaries | [`docs/agent-document-context-m2.md`](docs/agent-document-context-m2.md), the Agent section in [ROADMAP.md](ROADMAP.md) |
+| Current roadmap and decisions | [`ROADMAP.md`](ROADMAP.md), [`docs/release-readiness.md`](docs/release-readiness.md), [`docs/adr/`](docs/adr/) |
 
 - [ADR-0057 widget sources as first-class citizens](docs/adr/0057-widget-source-and-store-grouping.md) — widget protocol v2.4 and store source grouping
 - [ADR-0058 database table projection](docs/adr/0058-av-widget-bounded-list-projection.md) — why the database widget is a read-only bounded list projection

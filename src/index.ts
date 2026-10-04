@@ -7,9 +7,9 @@ import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sor
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, updatedChangedWithin, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, formatUpdatedBadge, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId, updateSavedSearchEntry} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, buildSearchHealthSnapshot, buildSearchDocumentFilterMatcher, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, formatUpdatedBadge, isSemanticEmbeddingConfigured, matchesParsedQuery, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId, updateSavedSearchEntry} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
-import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayJournalSnapshot, normalizeTodayJournalConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildClippedUnreadSnapshot, normalizeClippedUnreadConfig, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
+import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayJournalSnapshot, normalizeTodayJournalConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
 import {favoriteDocumentIdsForProbe, buildFavoritesWidgetSnapshot, buildDocumentSetsWidgetSnapshot, normalizeFixedDocumentConfig, buildFixedDocumentSnapshot} from "./document-widget-model";
 import {
     sanitizeQuickActions,
@@ -77,13 +77,14 @@ import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from
 import {collectSettingsSearchEntries, collectEntryGroups, searchSettingsIndex} from "./settings-search-model";
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet, orderDocumentSetRestoreEntries} from "./document-sets";
-import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
+import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore, mergeRelatedSwrEntry, beginRelatedContentRequest, isRelatedContentRequestCurrent, finishRelatedContentRequest} from "./related-content-model";
 import {normalizeRecycleStore} from "./snippet-recycle";
-import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, encodeSurfaceFocusSource, resolveSurfaceFocusRestoreTarget, buildSurfaceContextCaption, projectSnippetObjects, filterSnippetObjects, normalizeModuleVisibility, isSurfaceModuleEnabled, filterSurfacesByVisibility} from "./platform-surface-model";
+import {normalizeSnippetGroupStore} from "./snippet-groups";
+import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, encodeSurfaceFocusSource, resolveSurfaceFocusRestoreTarget, buildSurfaceContextCaption, projectSnippetObjects, filterSnippetObjects, normalizeModuleVisibility, isSurfaceModuleEnabled, filterSurfacesByVisibility, createPlatformSurfaceAdapter} from "./platform-surface-model";
 import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
-import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
+import {ensureTodayJournal as ensureTodayJournalAction, findTodayJournal as findTodayJournalAction} from "./journal-actions";
 import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry, normalizeFavoriteSmartGroups, buildTagSmartGroupQuery, projectTagSmartGroupEntries} from "./favorite-actions";
 import {normalizeSettings, resolvePanelSize, normalizeEssentials} from "./settings-model";
 import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction, resolveFloatingActionAvailability, normalizeFloatingBallConfig, applyFloatingBallPreset, pickNextFloatingBallPreset} from "./floating-ball-model";
@@ -208,6 +209,7 @@ import {
     THUMB_CACHE_KEY,
     RELATED_SWR_KEY,
     SNIPPET_RECYCLE_KEY,
+    SNIPPET_GROUPS_KEY,
     FAV_COLLAPSED_KEY,
     QUICK_ACTIONS_KEY,
     QUICK_ACTIONS_DEFAULTS_KEY,
@@ -565,6 +567,7 @@ declare module "./search-model" {
         notebook: string;
         paths: string[];
     };
+    export function buildSearchDocumentFilterMatcher(filters?: Record<string, unknown>): (value: unknown) => boolean;
     export function normalizeTitleSearchDocuments(value: unknown[]): unknown[];
     export function resolveSearchNotebookId(value: unknown, current?: unknown, model?: unknown, initData?: unknown): string;
     export function buildOpenedDocumentScope(value: unknown): {rootId: string; notebook: string; path: string} | null;
@@ -726,10 +729,12 @@ declare module "./snippet-studio-ui" {
         i18n?: Record<string, string>;
         getConfig?: () => unknown;
         store?: {read: () => Promise<unknown>; readSettings?: () => unknown; setMaster?: (type: "css" | "js", enabled: boolean) => Promise<unknown>; mutate: (baseline: unknown, action: string, draft?: unknown) => Promise<unknown>; dispose: () => void};
+        groups?: {load: () => unknown; save: (value: unknown) => void};
+        gist?: {load: () => unknown; save: (value: unknown) => void};
         ai?: {generate: (options?: Record<string, unknown>) => Promise<unknown>; cancel: () => void; dispose: () => void};
         session?: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null; recentIds?: string[]};
         objectId?: string;
-        onBack?: () => void;
+        onBack?: (guarded?: boolean) => void;
         platform?: {
             labels: PlatformSurfaceLabels;
             available?: readonly PlatformSurface[];
@@ -740,10 +745,11 @@ declare module "./snippet-studio-ui" {
                 available?: readonly PlatformSurface[];
                 context?: PlatformSurfaceContext | null;
                 onNavigate?: (surface: PlatformSurface) => void;
-                onClose?: () => void;
+                onClose?: (guarded?: boolean) => void;
                 closeLabel?: string;
             }) => HTMLElement;
             onNavigate?: (surface: PlatformSurface) => void;
+            onClose?: (guarded?: boolean) => void;
         };
     }): {ready: Promise<unknown>; canClose: () => boolean; dispose: () => void};
 }
@@ -798,6 +804,8 @@ const DEFAULT_SETTINGS: ISwSettings = {
     mobileColumns: MOBILE_COLUMNS_AUTO, // 默认自动（竖屏单列，横屏双列）
     mobileThumbHeight: 80, // 手机端缩略图高度
     journalNotebook: "",   // 默认日记笔记本 id，空=未设置（首次点击日记按钮时弹出选择）
+    journalAutoCreate: true, // 日记不存在时自动创建
+    rememberScrollPosition: true, // 会话级文档滚动位置记忆
     lastSettingsTab: "appearance", // 设置面板上次所在标签页（打开时直接跳转，提升反复进入设置的操作效率）
     quickActions: getDefaultQuickActions() as IQuickAction[],
     quickActionsRightRail: false,
@@ -818,7 +826,8 @@ const DEFAULT_SETTINGS: ISwSettings = {
     density: "comfortable", // T-6823 密度默认舒适
     reuseOpenTabs: false, // T-6830 打开策略默认总是新开
     documentSetEssentials: [], // T-6810 Essentials 常驻文档
-    homeStore: {}, // T-6851 组件商店视图状态（空=全默认）
+    homeStore: {rememberState: true, defaultViewMode: "grid", retryFailed: true}, // T-6851/T-7001 工作台偏好与现场记忆
+    snippetGist: {token: "", links: {}},
 };
 
 // 左侧面板显示方式
@@ -875,10 +884,13 @@ export interface ISwSettings {
     pinyinMatch: boolean; // T-6805 拼音辅助匹配（全拼/首字母），默认开
     density: "comfortable" | "compact"; // T-6823 密度档位（默认 comfortable）
     /** T-6851 组件商店视图状态（密度/视图模式/排序/折叠分组，normalize 有界清洗） */
-    homeStore: {density?: string; viewMode?: string; sort?: string; collapsedGroups?: string[]};
+    homeStore: {rememberState?: boolean; defaultViewMode?: "grid" | "list"; retryFailed?: boolean; density?: string; viewMode?: string; sort?: string; collapsedGroups?: string[]};
+    rememberScrollPosition: boolean;
+    journalAutoCreate: boolean;
     reuseOpenTabs: boolean; // T-6830 打开策略：命中已开页签时聚焦复用（默认关=总是新开）
     showCardUpdatedBadge: boolean; // T-6848 页签卡更新时间与改动标记（默认关）
     documentSetEssentials: string[]; // T-6810 Essentials：每次文档集恢复后自动打开的必需文档
+    snippetGist: {token: string; links: Record<string, string>};
 }
 
 export interface IGroupedTab {
@@ -1567,6 +1579,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (relatedSwr.entries.length > 0 && JSON.stringify(this.data[RELATED_SWR_KEY]) !== JSON.stringify(relatedSwr)) {
             this.data[RELATED_SWR_KEY] = relatedSwr;
             this.saveDataDebounced(RELATED_SWR_KEY);
+        }
+        const snippetGroups = normalizeSnippetGroupStore(this.data[SNIPPET_GROUPS_KEY]);
+        if (JSON.stringify(this.data[SNIPPET_GROUPS_KEY]) !== JSON.stringify(snippetGroups)) {
+            this.data[SNIPPET_GROUPS_KEY] = snippetGroups;
+            this.saveDataDebounced(SNIPPET_GROUPS_KEY);
         }
     }
 
@@ -2354,6 +2371,46 @@ export default class SpeedSwitchPlugin extends Plugin {
         return wrap;
     }
 
+    private rangeNumber(value: number, min: number, max: number, step: number, unit: string, onChange: (v: number) => void, label?: string): HTMLElement {
+        const wrap = document.createElement("div");
+        wrap.className = "sw-settings__range-number";
+        const range = document.createElement("input");
+        range.type = "range";
+        range.className = "sw-settings__range";
+        range.min = String(min);
+        range.max = String(max);
+        range.step = String(step);
+        range.value = String(value);
+        if (label) range.setAttribute("aria-label", label);
+        const numeric = document.createElement("input");
+        numeric.className = "b3-text-field fn__flex-center sw-settings__range-value";
+        numeric.type = "number";
+        numeric.inputMode = "numeric";
+        numeric.min = String(min);
+        numeric.max = String(max);
+        numeric.step = String(step);
+        numeric.value = String(value);
+        if (label) numeric.setAttribute("aria-label", label);
+        const unitEl = document.createElement("span");
+        unitEl.className = "sw-settings__num-unit";
+        unitEl.textContent = unit;
+        const sync = (raw: unknown) => {
+            const normalized = this.clampNum(raw, min, max, value);
+            range.value = String(normalized);
+            numeric.value = String(normalized);
+            return normalized;
+        };
+        const apply = (raw: unknown) => {
+            const normalized = sync(raw);
+            onChange(normalized);
+        };
+        range.addEventListener("input", () => sync(range.value));
+        range.addEventListener("change", () => apply(range.value));
+        numeric.addEventListener("change", () => apply(numeric.value));
+        wrap.append(range, numeric, unitEl);
+        return wrap;
+    }
+
     // 下拉选择控件
     private select(options: Array<{value: string, label: string}>, value: string, onChange: (v: string) => void): HTMLElement {
         const selectEl = document.createElement("select");
@@ -2752,14 +2809,16 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     private async openJournal(preferredNotebook = "") {
-        let notebook = normalizeAgentNotebookId(preferredNotebook) || this.getSettings().journalNotebook;
+        let notebook = normalizeAgentNotebookId(preferredNotebook) || normalizeAgentNotebookId(this.getSettings().journalNotebook);
         if (!notebook) {
             notebook = await this.promptJournalNotebook();
             if (!notebook) {
                 return; // 鐢ㄦ埛鍙栨秷閫夋嫨
             }
         }
-        const id = await this.ensureTodayJournal(notebook);
+        const id = this.getSettings().journalAutoCreate === false
+            ? await this.findTodayJournal(notebook)
+            : await this.ensureTodayJournal(notebook);
         if (!id) {
             showMessage(this.i18n.journalFailed, MESSAGE_DEFAULT_MS, "error");
             return;
@@ -2775,6 +2834,10 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 调用内核 createDailyNote：已有当日日记时返回其 id（不重复创建）
     private async ensureTodayJournal(notebook: string): Promise<string | null> {
         return ensureTodayJournalAction({notebook, fetchImpl: fetch, logger});
+    }
+
+    private async findTodayJournal(notebook: string): Promise<string | null> {
+        return findTodayJournalAction({notebook, fetchImpl: fetch, logger});
     }
 
     // 首次点击日记按钮：弹窗选择默认日记笔记本，选择后保存并返回
@@ -3600,17 +3663,14 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         this.notePlatformSurface(surface, context);
-        if (surface === "switcher") {
-            this.showSwitcher(false, returnTo, context);
-            return;
-        }
-        if (surface === "workbench") {
-            openSecondPanel.call(this, context);
-            return;
-        }
-        if (surface === "studio") {
-            this.openSnippetStudio(returnTo, context);
-        }
+        const openSurface = createPlatformSurfaceAdapter({
+            switcher: (nextReturnTo: PlatformSurface, nextContext: PlatformSurfaceContext | null) => this.isMobile
+                ? this.showMobileSwitcher(false, nextReturnTo, nextContext)
+                : this.showSwitcher(false, nextReturnTo, nextContext),
+            workbench: (_nextReturnTo: PlatformSurface, nextContext: PlatformSurfaceContext | null) => openSecondPanel.call(this, nextContext),
+            studio: (nextReturnTo: PlatformSurface, nextContext: PlatformSurfaceContext | null) => this.openSnippetStudio(nextReturnTo, nextContext),
+        });
+        openSurface(surface, returnTo, context);
     }
 
     // T-6869：平台表面打开时的会话级记录（悬浮球"恢复上次表面"的数据来源）。
@@ -3815,6 +3875,17 @@ export default class SpeedSwitchPlugin extends Plugin {
                         this.saveDataDebounced(SNIPPET_RECYCLE_KEY);
                     },
                 },
+                groups: {
+                    load: () => normalizeSnippetGroupStore(this.data[SNIPPET_GROUPS_KEY]),
+                    save: (next: unknown) => {
+                        this.data[SNIPPET_GROUPS_KEY] = normalizeSnippetGroupStore(next);
+                        this.saveDataDebounced(SNIPPET_GROUPS_KEY);
+                    },
+                },
+                gist: {
+                    load: () => this.getSettings().snippetGist,
+                    save: (next: unknown) => this.updateSettings({snippetGist: next as ISwSettings["snippetGist"]}),
+                },
                 objectId: !context?.objectKind || context.objectKind === "snippet" ? context.objectId || "" : "",
                 platform: {
                     labels: this.getPlatformSurfaceLabels(),
@@ -3831,13 +3902,14 @@ export default class SpeedSwitchPlugin extends Plugin {
                             query: context?.query, ...(focusSource ? {focusSource} : {}),
                         });
                     },
-                    onClose: () => {
+                    onClose: (guarded = false) => {
+                        if (!guarded && holder.controller && !holder.controller.canClose()) return;
                         dialog.destroy();
                     },
                     closeLabel: this.i18n.close,
                 },
-                onBack: () => {
-                    if (holder.controller && !holder.controller.canClose()) return;
+                onBack: (guarded = false) => {
+                    if (!guarded && holder.controller && !holder.controller.canClose()) return;
                     // T-7012：返回前捕获焦点来源（studio 内多为无描述符控件，空值诚实降级）。
                     const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
                     dialog.destroy();
@@ -5748,6 +5820,7 @@ const updatedMap: {[rootId: string]: string} = {};
     // T-6814 关联内容：拉取 + 填充。缓存以 rootId 绑定（60s TTL，FIFO ≤8），
     // 面板被移除/卸载后竞态丢弃；失败静默收起该行，不给空查询工作台添噪音。
     private relatedContentCache = new Map<string, {rootId: string; at: number; projection: {items: Array<{id: string; source: string; title: string; hPath: string}>; counts: {backlinks: number; mentions: number; shown: number}; truncated: boolean}}>();
+    private relatedContentRequestGenerations = new Map<string, number>();
 
     // T-6840 SWR 持久层：sw_related_swr 落盘（≤8 条、7 天年龄上界，归一化在模型层）。
     // 命中时先显"缓存"标注的投影再后台刷新，重启冷启动消除；60s 会话 TTL 语义不变。
@@ -5759,6 +5832,9 @@ const updatedMap: {[rootId: string]: string} = {};
     }
 
     private async fillRelatedContent(box: HTMLElement, rootId: string, onClose: IOverlayClose): Promise<void> {
+        const requestGeneration = beginRelatedContentRequest(this.relatedContentRequestGenerations, rootId);
+        const isCurrentRequest = () => isRelatedContentRequestCurrent(this.relatedContentRequestGenerations, rootId, requestGeneration);
+        const finishRequest = () => finishRelatedContentRequest(this.relatedContentRequestGenerations, rootId, requestGeneration);
         const now = Date.now();
         const cached = this.relatedContentCache.get(rootId);
         let projection = cached && isRelatedCacheHit(cached, rootId, now) ? cached.projection : null;
@@ -5775,10 +5851,23 @@ const updatedMap: {[rootId: string]: string} = {};
                 if (delayMs) {
                     await new Promise((resolve) => window.setTimeout(resolve, delayMs));
                     // 仅重试路径提前判连：首次调用时工作台尚未插入 DOM（同步执行段）
-                    if (!box.isConnected || this.isUnloading) return;
+                    if (!box.isConnected || this.isUnloading || !isCurrentRequest()) {
+                        finishRequest();
+                        return;
+                    }
                 }
-                const payload = await this.fetchKernelJson("/api/ref/getBacklink2", {id: rootId, k: "", mk: "", includeMentions: true});
-                if (!box.isConnected) return;
+                let payload;
+                try {
+                    payload = await this.fetchKernelJson("/api/ref/getBacklink2", {id: rootId, k: "", mk: "", includeMentions: true});
+                } catch {
+                    if (!persisted && box.isConnected && !this.isUnloading && isCurrentRequest()) box.remove();
+                    finishRequest();
+                    return;
+                }
+                if (!box.isConnected || this.isUnloading || !isCurrentRequest()) {
+                    finishRequest();
+                    return;
+                }
                 projection = payload ? projectRelatedContent(payload.data) : null;
                 if (!projection || projection.items.length === 0) {
                     if (retried < 5) {
@@ -5795,28 +5884,32 @@ const updatedMap: {[rootId: string]: string} = {};
                     }
                     // 终态：重试耗尽仍无数据 → 已有缓存内容时保留（SWR 语义），
                     // 否则移除空占位框，不留空白
-                    if (!persisted && box.dataset.swRelatedRendered !== "1") {
-                        box.remove();
+                    if (isCurrentRequest()) {
+                        if (!persisted && box.dataset.swRelatedRendered !== "1") {
+                            box.remove();
+                        }
                     }
+                    finishRequest();
                     return;
                 }
-                if (this.relatedContentCache.size >= 8) {
-                    const oldest = this.relatedContentCache.keys().next().value;
-                    if (oldest !== undefined) this.relatedContentCache.delete(oldest);
+                const storedAt = Date.now();
+                this.relatedContentCache.delete(rootId);
+                this.relatedContentCache.set(rootId, {rootId, at: storedAt, projection});
+                while (this.relatedContentCache.size > 8) {
+                    const oldest = [...this.relatedContentCache.values()].sort((left, right) => left.at - right.at)[0];
+                    if (!oldest) break;
+                    this.relatedContentCache.delete(oldest.rootId);
                 }
-                this.relatedContentCache.set(rootId, {rootId, at: Date.now(), projection});
-                // T-6840：成功取数后同步持久层（FIFO ≤8）并落盘
-                if (this.relatedSwrStore.size >= 8) {
-                    const oldest = this.relatedSwrStore.keys().next().value;
-                    if (oldest !== undefined) this.relatedSwrStore.delete(oldest);
-                }
-                this.relatedSwrStore.set(rootId, {rootId, at: Date.now(), projection});
+                const nextRelatedSwr = mergeRelatedSwrEntry([...this.relatedSwrStore.values()], {rootId, at: storedAt, projection});
+                this.relatedSwrStore = new Map(nextRelatedSwr.entries.map((entry) => [entry.rootId, entry]));
                 this.persistRelatedSwr();
                 this.renderRelatedRow(box, projection, onClose);
+                finishRequest();
             };
             return void attempt(0, 0);
         }
         this.renderRelatedRow(box, projection, onClose);
+        finishRequest();
     }
 
     private renderRelatedRow(box: HTMLElement, projection: {items: Array<{id: string; source: string; title: string; hPath: string}>; counts: {backlinks: number; mentions: number; shown: number}; truncated: boolean}, onClose: IOverlayClose, options: {cached?: boolean} = {}): void {
@@ -6073,7 +6166,7 @@ const updatedMap: {[rootId: string]: string} = {};
     // 外部生活组件在桌面 WebView 中可能受 CORS/代理环境影响。这里复用思源公开的
     // JSON 正向代理；目标在发出前仍必须命中生活组件 HTTPS 白名单或 ActivityWatch
     // 回环地址 + 固定 query 路由，避免形成任意 SSRF 通道。
-    private async fetchActivityWatchViaKernel(url: string, init: {body?: string; headers?: Record<string, string>}): Promise<any> {
+    private async fetchActivityWatchViaKernel(url: string, init: {body?: string; headers?: Record<string, string>; signal?: AbortSignal}): Promise<any> {
         // T-6466：补上 Miniflux 两条路由（entries/categories）——此前代理门禁不含
         // Miniflux，真实请求会被 blocked_endpoint 拦截（单测 mock fetchImpl 掩盖）。
         if (!allowedActivityWatchUrl(url) && !allowedLifeWidgetUrl(url)
@@ -6102,6 +6195,7 @@ const updatedMap: {[rootId: string]: string} = {};
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(proxyBody),
+            signal: init?.signal,
         });
         if (!response.ok) throw new Error("proxy_http_error");
         const envelope = await response.json();
@@ -6113,6 +6207,20 @@ const updatedMap: {[rootId: string]: string} = {};
             headers: {get: (name: string) => name.toLowerCase() === "content-length" ? String(body.length) : null},
             text: async () => body,
         };
+    }
+
+    // Bangumi 的固定公开日历在浏览器直连时具备 CORS；部分环境的思源代理出口
+    // 无法连接 api.bgm.tv，因此先走浏览器网络，失败再回退同一白名单代理。
+    private async fetchBangumiCalendar(url: string, init: {signal?: AbortSignal; headers?: Record<string, string>}): Promise<any> {
+        if (url !== "https://api.bgm.tv/calendar") throw new Error("blocked_endpoint");
+        try {
+            const response = await fetch(url, init);
+            if (response.ok) return response;
+        } catch (error) {
+            if (init?.signal?.aborted) throw new Error("aborted");
+        }
+        if (init?.signal?.aborted) throw new Error("aborted");
+        return this.fetchActivityWatchViaKernel(url, {signal: init?.signal});
     }
 
     // 内置只读适配器：面板数据全部来自插件既有领域数据（最近/收藏/日记/文档集/指定文档）。
@@ -6129,7 +6237,7 @@ const updatedMap: {[rootId: string]: string} = {};
             source?: {pluginId?: string; name?: string; icon?: string; version?: string; homepage?: string; collection?: string; order?: number},
         ) => {
             const result = this.homeRuntime.registerAdapter({
-                moduleId, title, icon, description, category: "siyuan",
+                moduleId, title, icon, description, category: "siyuan", builtin: true,
                 supportedDevices: ["desktop", "sidebar", "mobile"],
                 refreshOn,
                 read,
@@ -6459,21 +6567,10 @@ const updatedMap: {[rootId: string]: string} = {};
                 emptyScoped: this.i18n.homeRandomReviewScopedEmpty,
             }) || {items: [], emptyHint: this.i18n.homeRandomReviewEmpty};
         }, {timeoutMs: 1500, cacheTtlMs: 15000});
-        // 剪藏待读：按标签聚合的待读清单（Safari 阅读列表风格）；点击直达文档
-        register("clipped-unread", this.i18n.homeClippedUnread, "iconBookmark", this.i18n.homeDescClippedUnread, ["loaded-protyle", "destroy-protyle"], async (config) => {
-            const normalized = normalizeClippedUnreadConfig({...config, tag: config.tag || "剪藏"});
-            const tag = normalized.tag.replace(/[%_]/g, "").split("'").join("");
-            if (!tag) return {items: [], emptyHint: this.i18n.homeClippedEmpty};
-            const notebookScope = buildNotebookBoxScope(normalized.notebook, "b");
-            const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT b.root_id AS root_id, d.content AS title, d.hpath AS hpath, MAX(b.created) AS latest, COUNT(*) OVER() AS total_count FROM blocks b JOIN blocks d ON d.id = b.root_id WHERE b.tag LIKE '%${tag}%'${notebookScope} AND b.root_id <> '' GROUP BY b.root_id ORDER BY latest DESC LIMIT 48`,
-            });
-            const snapshot = buildClippedUnreadSnapshot(json?.data, normalized, {
-                title: this.i18n.homeClippedUnread, stat: this.i18n.homeStatClipped, empty: this.i18n.homeClippedEmpty,
-            });
-            if (!snapshot) throw new Error("invalid_clipped_unread");
-            return snapshot;
-        }, {timeoutMs: 1200, cacheTtlMs: 1500});
+        // 剪藏待读由剪藏插件通过同一 moduleId 提供；宿主只保留 blocked 占位，避免把普通标签误判为剪藏数据。
+        register("clipped-unread", this.i18n.homeClippedUnread, "iconBookmark", this.i18n.homeDescClippedUnread, ["loaded-protyle", "destroy-protyle"], async () => ({
+            status: "blocked", items: [], emptyHint: this.i18n.homeClippedProviderMissing,
+        }), {timeoutMs: 400, cacheTtlMs: 0});
         // 往年今日：同月同日的往年日记/文档（照片"回忆"风格）
         register("on-this-day", this.i18n.homeOnThisDay, "iconClock", this.i18n.homeDescOnThisDay, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const now = new Date();
@@ -8358,24 +8455,23 @@ const updatedMap: {[rootId: string]: string} = {};
         const allowLocalTitleMatch = (!filters.method || filters.method === "keyword")
             && (!filters.types || filters.types.document === true)
             && !filters.subTypes;
-        const normalizedScope = normalizeSearchDocumentFilters(filters);
+        const matchesScope = buildSearchDocumentFilterMatcher(filters);
         let visible = 0;
         scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
             const title = (card.dataset.title || "").toLowerCase();
             const rootId = card.dataset.rootId || "";
-            const matchesNotebook = !normalizedScope.notebook || card.dataset.notebookId === normalizedScope.notebook;
-            const matchesPath = matchesSearchDocumentFilters({
+            const matchesScopeCard = matchesScope({
                 path: card.dataset.searchPath || "",
                 hPath: card.dataset.searchPath || "",
                 notebookId: card.dataset.notebookId || "",
-            }, normalizedScope);
+            });
             // T-6802：有解析结果时用运算符语义（短语+词 AND、排除项剔除），
             // 否则维持旧的"原始子串包含"。
             const titleMatch = parsedPositive > 0 || parsed.excludes.length > 0
                 ? matchesParsedQuery(title, parsed)
                     || (pinyinOn && (parsed.terms.concat(parsed.phrases)).some((needle) => pinyinTitleHit(title, needle)))
                 : (!kw || title.includes(kw));
-            const match = matchesNotebook && matchesPath
+            const match = matchesScopeCard
                 && (!kw || (allowLocalTitleMatch && titleMatch) || contentRoots.has(rootId));
             card.classList.toggle("fn__none", !match);
             if (match) {
@@ -8989,6 +9085,10 @@ private rootIdOf(tab: Tab): string | null {
     private suppressJumpCapture = false;
 
     private captureDocScrollFromElement(rootId: string, element: HTMLElement) {
+        if (this.getSettings().rememberScrollPosition === false) {
+            this.docScrollMemory.clear();
+            return;
+        }
         if (!BLOCK_ID_RE.test(rootId)) return;
         const container = element.querySelector<HTMLElement>(".protyle-content");
         if (!container) return;
@@ -9006,6 +9106,10 @@ private rootIdOf(tab: Tab): string | null {
     }
 
     private captureActiveDocScroll() {
+        if (this.getSettings().rememberScrollPosition === false) {
+            this.docScrollMemory.clear();
+            return;
+        }
         const editor = this.resolveActiveHostEditor();
         const element = (editor?.protyle as unknown as {element?: HTMLElement} | undefined)?.element;
         if (!element) return;
@@ -9014,6 +9118,10 @@ private rootIdOf(tab: Tab): string | null {
     }
 
     private applyDocScrollAfterOpen(rootId: string) {
+        if (this.getSettings().rememberScrollPosition === false) {
+            this.docScrollMemory.clear();
+            return;
+        }
         const ratio = this.docScrollMemory.get(rootId);
         if (typeof ratio !== "number" || !Number.isFinite(ratio)) return;
         let attempts = 0;

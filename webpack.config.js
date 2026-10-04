@@ -2,6 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const webpack = require("webpack");
 const {EsbuildPlugin} = require("esbuild-loader");
+const TerserPlugin = require("terser-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
 const ZipPlugin = require("zip-webpack-plugin");
@@ -116,6 +117,7 @@ module.exports = (env, argv) => {
                     mtime: RELEASE_ZIP_MTIME,
                     mode: 0o100664,
                     compress: true,
+                    compressionLevel: 9,
                     forceZip64Format: false,
                 },
                 include: [/dist/],
@@ -168,7 +170,8 @@ module.exports = (env, argv) => {
             minimizer: [
                 // legalComments:none 剥离压缩产物中保留的许可证注释；
                 // LICENSE 仍由 BannerPlugin 以完整文本形式附在产物头部。
-                new EsbuildPlugin({legalComments: "none"}),
+                new TerserPlugin({parallel: 2, extractComments: false, terserOptions: {ecma: 2020, format: {comments: false}}}),
+                new EsbuildPlugin({legalComments: "none", css: true, include: /\.css$/i}),
             ],
         },
         resolve: {

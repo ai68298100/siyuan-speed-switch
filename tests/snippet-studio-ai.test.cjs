@@ -174,7 +174,8 @@ test("snippet AI reports unavailable host, unsupported endpoint and sanitized tr
     const cases = [
         [new Response("missing", {status: 404}), "unsupported"],
         [new Response("method", {status: 405}), "unsupported"],
-        [new Response("denied", {status: 403}), "request_failed"],
+        [new Response("denied", {status: 403}), "permission_denied"],
+        [new Response("unauthorized", {status: 401}), "permission_denied"],
         [Response.json({code: -1, msg: "no provider configured"}), "ai_unavailable"],
         [Response.json({code: 0, data: "not a stream"}), "request_failed"],
     ];

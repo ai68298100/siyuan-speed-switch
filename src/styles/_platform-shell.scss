@@ -204,7 +204,7 @@
     cursor: pointer;
     font: inherit;
     white-space: nowrap;
-    transition: color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease, border-color $sw-dur-fast $sw-ease;
+    transition: none;
 }
 
 .sw-platform-surface-nav__item:hover,
@@ -213,12 +213,26 @@
     background: var(--sw-platform-accent-soft);
 }
 
+.sw-platform-surface-nav__item:active {
+    border-color: var(--sw-platform-accent);
+    color: var(--sw-platform-accent);
+    background: var(--sw-platform-accent-pressed);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--sw-platform-accent) 30%, transparent);
+    transform: translateY(1px);
+}
+
 .sw-platform-surface-nav__item[aria-current="page"],
 .sw-platform-surface-nav__item.is-active {
     border-color: color-mix(in srgb, var(--sw-platform-accent) 24%, var(--sw-platform-line));
     color: var(--sw-platform-accent);
     background: var(--sw-platform-accent-soft);
     box-shadow: inset 0 -2px 0 var(--sw-platform-accent);
+}
+
+.sw-platform-surface-nav__item:focus-visible {
+    outline: 2px solid var(--sw-platform-accent);
+    outline-offset: 2px;
+    box-shadow: var(--sw-platform-focus);
 }
 
 // Context and state ----------------------------------------------------------
@@ -492,6 +506,7 @@
     .sw-platform-shell *,
     .sw-platform-shell *::before,
     .sw-platform-shell *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+    .sw-platform-surface-nav__item:active { transform: none; }
 }
 
 @media (prefers-contrast: more) {

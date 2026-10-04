@@ -19,6 +19,8 @@
 
 交流 QQ 群：**871707735**
 
+四款插件是独立安装包，版本和发布节奏以各自仓库为准；小驴雷切只通过公开的组件协议接入其他插件，不把其他插件代码或配置打包进本插件。需要接入工作台组件时，请先阅读 [`docs/widget-protocol.md`](docs/widget-protocol.md)。
+
 ## 目录
 
 - [小驴插件与交流](#小驴插件与交流)
@@ -170,6 +172,9 @@
 5. **常驻**：桌面端通过侧栏按钮把切换器固定到右侧 Dock。
 6. **工作台**：顶栏工作台入口或 `Alt+Shift+P` 打开组件工作台；组件卡会显示来源、能力和健康状态。
 7. **片段实验室**：在切换器平台头部选择「实验室」，或从片段对象的“在实验室打开”动作进入；桌面端可用，移动端保留能力提示。支持导入 Stylus usercss（自动按默认值解析变量），导出自带元数据头可直接装回 Stylus；AI 候选以"摘要 + 差异 + 逐条接受"呈现，接受前有确定性规则审查。
+
+开发版新增折叠的 Gist 发布与导入区：读取公开链接无需 Token，导入为新的禁用草稿；发布需具有 gist 权限的 GitHub Token。Token 明文存于插件设置，界面打码；新建 Gist 为 unlisted，知道链接即可访问。
+
 8. **悬浮球**：轻触恢复上次表面；单击、双击、长按可分别绑定动作，向上、下、左、右快滑和更多面板动作以及 1–9 固定槽可在设置中绑定。
 9. **自定义**：点击底部或右侧入口栏中的 `+`，选择 Dock、其他插件命令或调整三端可见性。
 10. **尺寸**：三表面桌面入口默认全屏；自适应和固定尺寸仍可在设置中选择。
@@ -330,6 +335,15 @@ this.unregisterSpeedSwitchAction?.();
 ## 开发路线与决策记录
 
 后续功能顺序、设计约束和发版门槛见 [ROADMAP.md](./ROADMAP.md)；全部架构决策见 [`docs/adr/`](docs/adr/)。近期关键决策：
+
+### 文档导航
+
+| 目的 | 文档 |
+| --- | --- |
+| 用户验收与真实宿主边界 | [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)、[`BLOCKERS.md`](BLOCKERS.md) |
+| 组件接入与商店协议 | [`docs/widget-protocol.md`](docs/widget-protocol.md)、[`docs/component-store-guide.md`](docs/component-store-guide.md) |
+| Agent 能力与数据边界 | [`docs/agent-document-context-m2.md`](docs/agent-document-context-m2.md)、[ROADMAP.md](ROADMAP.md) 的 Agent 专项 |
+| 当前路线与取舍 | [`ROADMAP.md`](ROADMAP.md)、[`docs/release-readiness.md`](docs/release-readiness.md)、[`docs/adr/`](docs/adr/) |
 
 - [ADR-0057 组件来源一等公民](docs/adr/0057-widget-source-and-store-grouping.md) — 组件协议 v2.4 与商店来源分组
 - [ADR-0058 数据库表格投影](docs/adr/0058-av-widget-bounded-list-projection.md) — 数据库组件为什么是只读的有界列表投影

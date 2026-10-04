@@ -910,44 +910,122 @@ function normalizeTagListConfig(value) {
     };
 }
 
-function flattenTagEntries(nodes, parent = "", depth = 0, out = [], visited = new Set()) {
-    if (!Array.isArray(nodes) || depth > 8 || out.length >= 128) return out;
-    for (const node of nodes) {
-        if (!node || typeof node !== "object" || visited.has(node) || out.length >= 128) continue;
-        visited.add(node);
-        const name = boundedText(node.name || node.label, 96);
-        if (!name) continue;
-        const path = parent ? `${parent}/${name}` : name;
-        const rawCount = Math.trunc(Number(node.count ?? node.blockCount));
-        out.push({name, path: boundedText(path, 160), count: Number.isFinite(rawCount) ? Math.max(0, rawCount) : 0, order: out.length});
-        flattenTagEntries(Array.isArray(node.children) ? node.children : node.tags, path, depth + 1, out, visited);
+function tagNodeChildren(node) {
+    return Array.isArray(node?.children) ? node.children : Array.isArray(node?.tags) ? node.tags : [];
+}
+
+function tagNodeName(node) {
+    return boundedText(node?.name || node?.label, 96).replace(/^#+/, "").trim();
+}
+
+function addTagTreeNode(children, name, path, order, explicit = false, rawCount = null) {
+    const key = path.toLocaleLowerCase();
+    let node = children.find((candidate) => candidate.path.toLocaleLowerCase() === key);
+    if (!node) {
+        node = {name, path: boundedText(path, 160), children: [], order, explicit: false, rawCount: null, virtual: true, count: 0};
+        children.push(node);
+    }
+    if (explicit) {
+        node.explicit = true;
+        node.rawCount = rawCount;
+        node.virtual = rawCount === null || rawCount <= 0;
+    }
+    return node;
+}
+
+function collectTagTreeNodes(nodes, parent = null, out = {roots: [], order: 0}, depth = 0, visited = new Set()) {
+    if (!Array.isArray(nodes) || depth > 8 || out.order >= 128) return out;
+    for (const rawNode of nodes) {
+        if (!rawNode || typeof rawNode !== "object" || visited.has(rawNode) || out.order >= 128) continue;
+        visited.add(rawNode);
+        const rawName = tagNodeName(rawNode);
+        if (!rawName) continue;
+        const parts = rawName.split(/[\\/]/).map((part) => part.trim()).filter(Boolean).slice(0, 9);
+        if (parts.length === 0) continue;
+        let children = parent ? parent.children : out.roots;
+        let path = parent?.path || "";
+        let current = null;
+        for (const part of parts) {
+            path = path ? `${path}/${part}` : part;
+            current = addTagTreeNode(children, part, path, out.order++);
+            children = current.children;
+        }
+        const parsedCount = Math.trunc(Number(rawNode.count ?? rawNode.blockCount));
+        const rawCount = Number.isFinite(parsedCount) ? Math.max(0, parsedCount) : null;
+        current.explicit = true;
+        current.rawCount = rawCount;
+        current.virtual = rawCount === null || rawCount <= 0;
+        collectTagTreeNodes(tagNodeChildren(rawNode), current, out, depth + 1, visited);
     }
     return out;
+}
+
+function finalizeTagTreeNodes(nodes) {
+    const result = [];
+    for (const node of Array.isArray(nodes) ? nodes : []) {
+        const children = finalizeTagTreeNodes(node.children);
+        const childCount = children.reduce((total, child) => total + child.count, 0);
+        const count = node.rawCount !== null && node.rawCount > 0 ? node.rawCount : childCount;
+        if (count <= 0 && children.length === 0) continue;
+        const sortScore = Math.max(count, ...children.map((child) => child.sortScore || child.count));
+        result.push({...node, children, count, sortScore, virtual: node.virtual || !node.explicit});
+    }
+    return result;
+}
+
+function sortTagTreeNodes(nodes, sortBy) {
+    const sorted = [...nodes].sort((left, right) => sortBy === "名称"
+        ? compareText(left.path, right.path) || left.order - right.order
+        : right.sortScore - left.sortScore || compareText(left.path, right.path) || left.order - right.order);
+    sorted.forEach((node) => { node.children = sortTagTreeNodes(node.children, sortBy); });
+    return sorted;
+}
+
+function filterTagTreeNodes(nodes, query) {
+    return (Array.isArray(nodes) ? nodes : []).map((node) => {
+        const children = filterTagTreeNodes(node.children, query);
+        const matches = !query || node.path.toLocaleLowerCase().includes(query);
+        if (!matches && children.length === 0) return null;
+        return {...node, children, matches};
+    }).filter(Boolean);
+}
+
+function flattenTagTreeNodes(nodes, output = [], depth = 0) {
+    for (const node of Array.isArray(nodes) ? nodes : []) {
+        if (output.length >= 128) break;
+        output.push({...node, depth});
+        flattenTagTreeNodes(node.children, output, depth + 1);
+    }
+    return output;
 }
 
 function buildTagListSnapshot(tags, config, labels = {}, now = Date.now(), status = "fresh") {
     if (!Array.isArray(tags)) return null;
     const normalized = normalizeTagListConfig(config);
     const query = normalized.query.toLocaleLowerCase();
-    const seen = new Set();
-    const entries = flattenTagEntries(tags).filter((entry) => {
-        const key = entry.path.toLocaleLowerCase();
-        if (entry.count === 0 || seen.has(key) || (query && !key.includes(query))) return false;
-        seen.add(key);
-        return true;
+    const collected = collectTagTreeNodes(tags);
+    const tree = sortTagTreeNodes(filterTagTreeNodes(finalizeTagTreeNodes(collected.roots), query), normalized.sortBy);
+    const allEntries = flattenTagTreeNodes(tree);
+    const entries = allEntries.slice(0, normalized.limit);
+    const items = entries.map((entry, index) => {
+        const virtual = entry.virtual === true;
+        return {
+            label: normalized.showHierarchy ? entry.name : entry.name,
+            value: virtual ? "" : `tag:${entry.path}`,
+            ...(normalized.showCount ? {secondary: `${entry.count} ${boundedText(labels.blocks, 24) || "个块"}`} : {}),
+            ...(normalized.showRank ? {rank: index + 1} : {}),
+            count: entry.count,
+            depth: entry.depth,
+            treePath: entry.path,
+            hasChildren: entry.children.length > 0,
+            expanded: true,
+            ...(virtual ? {virtual: true, disabled: true} : {}),
+        };
     });
-    entries.sort((left, right) => normalized.sortBy === "名称"
-        ? compareText(left.path, right.path) || left.order - right.order
-        : right.count - left.count || compareText(left.path, right.path) || left.order - right.order);
-    const items = entries.slice(0, normalized.limit).map((entry, index) => ({
-        label: normalized.showHierarchy ? entry.path : entry.name,
-        value: `tag:${entry.path}`,
-        ...(normalized.showCount ? {secondary: `${entry.count} ${boundedText(labels.blocks, 24) || "个块"}`} : {}),
-        ...(normalized.showRank ? {rank: index + 1} : {}),
-    }));
     const snapshot = snapshotOf(boundedText(labels.title, 64) || "标签", items, labels, now, status,
         normalized.query ? (boundedText(labels.emptyFiltered, 96) || "没有符合筛选条件的标签") : (boundedText(labels.empty, 96) || "还没有标签"));
-    snapshot.stat = {value: entries.length > items.length ? `${items.length}/${entries.length}` : String(entries.length), label: boundedText(labels.stat, 32) || "个标签"};
+    snapshot.viewType = "tag-tree";
+    snapshot.stat = {value: allEntries.length > items.length ? `${items.length}/${allEntries.length}` : String(allEntries.length), label: boundedText(labels.stat, 32) || "个标签"};
     return snapshot;
 }
 

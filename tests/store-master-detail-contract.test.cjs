@@ -33,10 +33,10 @@ test('chips: exactly six source filters remain', () => {
 });
 
 test('detail pane: selected module renders a full card with suffixed ids', () => {
-    assert.match(ui, /const buildReadyCard = \(moduleId: string, def: any, variant: "catalog" \| "detail" = "catalog"\) => \{/,
+    assert.match(ui, /const buildReadyCard = \(moduleId: string, def: any, variant: "catalog" \| "detail" = "catalog", onSizeChange: \(size: string\) => void = \(\) => undefined\) => \{/,
         '卡片构建必须支持目录/详情双变体');
     assert.match(ui, /const idSuffix = variant === "detail" \? "-detail" : "";/, '详情卡 id 必须加后缀避免 aria 引用冲突');
-    assert.match(ui, /buildReadyCard\(storeSelectedModule, detailDef, "detail"\)/, '详情窗格以 detail 变体渲染选中组件');
+    assert.match(ui, /buildReadyCard\(storeSelectedModule, detailDef, "detail", inlinePreview\.mount\.setSize\)/, '详情窗格以 detail 变体渲染选中组件');
     assert.match(ui, /storeSelectedModule = ready\[0\]\?\.moduleId \|\| "";/, '详情默认选中首个就绪组件');
     assert.match(ui, /sw-home-store__detail-note/, '详情窗格给「添加后」说明');
 });

@@ -6,7 +6,7 @@ const MOBILE_HOME_SIZE = "medium";
 const AVAILABILITY_LEVELS = Object.freeze(["ready", "conditional", "external"]);
 const CONDITIONAL_MODULES = new Set([
     "today-tasks", "bookmarks", "journal-monthly", "flashcard-due", "quick-capture",
-    "clipped-unread", "on-this-day", "recent-daily-notes", "document-relations-summary",
+    "on-this-day", "recent-daily-notes", "document-relations-summary",
     "current-document-outline", "today-reservations", "journal-calendar", "writing-streak", "plugin-commands",
 ]);
 
@@ -81,7 +81,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showTrend", label: "显示环比趋势", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showStrength", label: "显示写作强度", type: "select", options: ["是", "否"], defaults: "否"},
     ]},
-    {moduleId: "year-progress", title: "年度进度", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small"], protocolVersion: 2, configSchema: [
+    {moduleId: "year-progress", title: "年度进度", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "period", label: "统计周期", type: "select", options: ["年度", "季度", "月份"], defaults: "年度"},
         {key: "showElapsed", label: "显示已过天数", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRemaining", label: "显示剩余天数", type: "select", options: ["是", "否"], defaults: "是"},
@@ -92,7 +92,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showDate", label: "显示日期", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "emphasis", label: "数字大小", type: "select", options: ["标准", "大", "特大"], defaults: "标准"},
     ]},
-    {moduleId: "external-world-clock", title: "世界时钟", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
+    {moduleId: "external-world-clock", title: "世界时钟", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "cities", label: "城市（中文名或 IANA，逗号分隔，如 上海,东京）", type: "text", defaults: ""},
         {key: "hourFormat", label: "小时制", type: "select", options: ["24 小时制", "12 小时制"], defaults: "24 小时制"},
     ]},
@@ -187,7 +187,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showTime", label: "显示时间", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRank", label: "显示排名", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
-    {moduleId: "external-activitywatch-time", title: "使用时长", icon: "iconClock", category: "siyuan", availability: "external", supportedDevices: ["desktop", "sidebar"], readOnly: true, sizes: ["small", "medium", "wide", "large"], protocolVersion: 2, configSchema: [
+    {moduleId: "external-activitywatch-time", title: "使用时长", icon: "iconClock", category: "siyuan", availability: "external", supportedDevices: ["desktop", "sidebar"], readOnly: true, sizes: ["small", "medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "ActivityWatch 本机地址", type: "text", defaults: "http://127.0.0.1:5600"},
         {key: "hours", label: "统计范围（小时）", type: "number", min: 1, max: 168, defaults: 24},
         {key: "limit", label: "应用上限", type: "number", min: 3, max: 10, defaults: 6},
@@ -224,7 +224,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "initialText", label: "预填短语（最多 24 字）", type: "text", defaults: ""},
         {key: "includeTime", label: "预填当前时间", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
-    {moduleId: "clipped-unread", title: "剪藏待读", icon: "iconBookmark", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
+    {moduleId: "clipped-unread", title: "剪藏待读", icon: "iconBookmark", category: "siyuan", availability: "external", source: {pluginId: "siyuan-clipper", name: "思源剪藏", icon: "iconBookmark", collection: "剪藏"}, supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
         {key: "tag", label: "标签名", type: "text", defaults: "剪藏"},
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
@@ -315,7 +315,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "weeklyGoal", label: "每周达标天数（0 为关闭）", type: "number", min: 0, max: 7, defaults: 0},
         {key: "restDays", label: "豁免休息日（不计达标也不断签）", type: "select", options: ["无", "周末", "周六", "周日", "周一", "周二", "周三", "周四", "周五"], defaults: "无"},
     ]},
-    {moduleId: "countdown", title: "倒数日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
+    {moduleId: "countdown", title: "倒数日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium", "large"], protocolVersion: 2, configSchema: [
         {key: "title", label: "名称", type: "text", defaults: ""},
         {key: "targetDate", label: "目标日期", type: "date", defaults: ""},
         {key: "mode", label: "统计方式", type: "select", options: ["倒数", "累计"], defaults: "倒数"},
@@ -443,7 +443,7 @@ function normalizeLayout(value) {
         const n = Number(source[key]);
         return Number.isFinite(n) ? Math.max(0, Math.min(max, Math.floor(n))) : fallback;
     };
-    const size = ["small", "medium", "wide", "large"].includes(source.size) ? source.size : "";
+    const size = ["xs", "small", "medium", "tall", "wide", "large", "full"].includes(source.size) ? source.size : "";
     return {x: number("x", 0, 99), y: number("y", 0, 999), w: Math.max(1, number("w", 1, 12)), h: Math.max(1, number("h", 1, 12)), collapsed: source.collapsed === true, size};
 }
 
@@ -463,6 +463,7 @@ const HOME_TILE_MATERIALS = {
     'writing-streak': 'accent',
     'today-writing': 'accent',
     countdown: 'accent',
+    'checkin-summary': 'accent',
 };
 
 // T-6969 Slice 2：每模块默认档位——添加组件时商店默认选中的档位（键 = 既有
@@ -484,7 +485,7 @@ const HOME_TILE_DEFAULT_SIZES = {
     'external-quote-daily': 'small',
     countdown: 'small',
     'year-progress': 'small',
-    'external-local-time': 'small',
+    'external-local-time': 'medium',
     'external-rss-subscription': 'wide',
     'external-rss-miniflux': 'wide',
     // T-6971 批次⑥修复：键名必须等于真实 moduleId（external-hot-news-dailyhot），
@@ -519,11 +520,11 @@ const HOME_TILE_DEFAULT_SIZES = {
     'today-reservations': 'small',
     'flashcard-due': 'small',
     'inbox-shorthands': 'medium',
-    'quick-capture': 'medium',
+    'quick-capture': 'small',
     'clipped-unread': 'small',
-    'external-anime-bangumi': 'wide',
+    'external-anime-bangumi': 'medium',
     'external-fx-frankfurter': 'small',
-    'external-status-uptimekuma': 'medium',
+    'external-status-uptimekuma': 'small',
     'external-device-battery': 'small',
     // T-6971 批次⑦：写作统计家族默认档（规格总表「实现对照」）
     'today-writing': 'small',

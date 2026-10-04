@@ -3,6 +3,29 @@ const {normalizeModuleVisibility} = require("./platform-surface-model");
 
 const {normalizeFloatingBallConfig} = require("./floating-ball-model.js");
 
+function normalizeSnippetGistUrl(value) {
+    if (typeof value !== "string" || value.length > 256) return "";
+    const match = value.trim().match(/^https:\/\/gist\.github\.com\/(?:([a-z0-9](?:[a-z0-9-]{0,38}))\/)?([a-f0-9]{8,64})\/?$/i);
+    if (!match) return "";
+    return "https://gist.github.com/" + (match[1] ? match[1] + "/" : "") + match[2];
+}
+
+function normalizeSnippetGistSettings(value) {
+    const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const candidate = typeof source.token === "string" ? source.token.trim() : "";
+    const token = candidate.length <= 512 && !/\s|[\u0000-\u001f\u007f]/.test(candidate) ? candidate : "";
+    const links = {};
+    if (source.links && typeof source.links === "object" && !Array.isArray(source.links)) {
+        for (const [id, url] of Object.entries(source.links)) {
+            if (Object.keys(links).length >= 256) break;
+            if (!/^\d{14}-[a-z0-9]{7}$/i.test(id) || typeof url !== "string") continue;
+            const normalized = normalizeSnippetGistUrl(url);
+            if (normalized) links[id] = normalized;
+        }
+    }
+    return {token, links};
+}
+
 /**
  * Normalize persisted settings independently from DOM and plugin instances.
  * `options` supplies range and enum validators so this module remains a small
@@ -36,9 +59,22 @@ function normalizeSkin(value) {
 
 // T-6851：组件商店视图状态清洗——密度/视图模式白名单、排序白名单、折叠分组
 // 名称有界（≤32 条、每条 ≤48 字符、去重）。只保留有值字段，空对象=无状态。
-function normalizeHomeStoreState(value) {
+function normalizeHomeStoreState(value, defaults = {}) {
     const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const defaultState = defaults && typeof defaults === "object" && !Array.isArray(defaults) ? defaults : {};
     const cleaned = {};
+    const rememberState = typeof raw.rememberState === "boolean"
+        ? raw.rememberState
+        : (typeof defaultState.rememberState === "boolean" ? defaultState.rememberState : undefined);
+    if (typeof rememberState === "boolean") cleaned.rememberState = rememberState;
+    const defaultViewMode = raw.defaultViewMode === "grid" || raw.defaultViewMode === "list"
+        ? raw.defaultViewMode
+        : (defaultState.defaultViewMode === "list" ? "list" : defaultState.defaultViewMode === "grid" ? "grid" : undefined);
+    if (defaultViewMode) cleaned.defaultViewMode = defaultViewMode;
+    const retryFailed = typeof raw.retryFailed === "boolean"
+        ? raw.retryFailed
+        : (typeof defaultState.retryFailed === "boolean" ? defaultState.retryFailed : undefined);
+    if (typeof retryFailed === "boolean") cleaned.retryFailed = retryFailed;
     if (raw.density === "compact" || raw.density === "comfortable") cleaned.density = raw.density;
     if (raw.viewMode === "grid" || raw.viewMode === "list") cleaned.viewMode = raw.viewMode;
     if (typeof raw.sort === "string" && ["relevance", "title", "status", "category"].includes(raw.sort)) {
@@ -173,7 +209,8 @@ function normalizeSettings(saved, options = {}) {    const defaults = options.de
         density: source.density === "compact" ? "compact" : "comfortable",
         // T-6851 组件商店视图状态跨会话记忆（密度/视图模式/排序/折叠分组，均有界；
         // 空对象=无状态，各字段缺省时商店 UI 走自己的默认值）
-        homeStore: normalizeHomeStoreState(source.homeStore),
+        homeStore: normalizeHomeStoreState(source.homeStore, defaults.homeStore),
+        snippetGist: normalizeSnippetGistSettings(source.snippetGist),
         // T-6830 打开策略：开启后搜索结果命中已开页签时聚焦而非新开（防重复页签），默认关
         reuseOpenTabs: source.reuseOpenTabs === undefined ? false : source.reuseOpenTabs === true,
         // T-6848 页签卡改动信息：显示更新时间与近 7 天改动标记，默认关
@@ -183,7 +220,9 @@ function normalizeSettings(saved, options = {}) {    const defaults = options.de
         mobileColumns: clamp(source.mobileColumns, ...range("mobileColumns"), defaults.mobileColumns),
         mobileThumbHeight: clamp(source.mobileThumbHeight, ...range("mobileThumbHeight"), defaults.mobileThumbHeight),
         journalNotebook: string("journalNotebook"),
+        journalAutoCreate: source.journalAutoCreate === undefined ? true : source.journalAutoCreate === true,
         lastSettingsTab: string("lastSettingsTab"),
+        rememberScrollPosition: source.rememberScrollPosition === undefined ? true : source.rememberScrollPosition === true,
         quickActions,
         quickActionsRightRail: bool("quickActionsRightRail"),
         quickActionsDisplayDesktop: display("quickActionsDisplayDesktop"),
@@ -250,4 +289,4 @@ function buildStorageUsageSummary(entries) {
     return {rows, total};
 }
 
-module.exports = {normalizeSettings, resolvePanelSize, formatStorageBytes, buildStorageUsageSummary, normalizeSkin, normalizeEssentials, SKIN_IDS};
+module.exports = {normalizeSettings, resolvePanelSize, formatStorageBytes, buildStorageUsageSummary, normalizeSkin, normalizeEssentials, normalizeSnippetGistSettings, normalizeSnippetGistUrl, SKIN_IDS};

@@ -3,7 +3,7 @@
    这是"搜索 → 打开"主路径的真实宿主证据（不 mock 任何内核请求）。
    每轮使用唯一后缀，避免命中历史运行残留的旧文档；启动时清理残留笔记本。 */
 import {expect, test} from "@playwright/test";
-import {openApp, openSwitcher, createClient} from "./helpers/app.mjs";
+import {openApp, openSwitcher, createClient, artifactPath} from "./helpers/app.mjs";
 
 const RUN = String(Date.now()).slice(-6);
 const NOTEBOOK_PREFIX = "速切E2E打开链路";
@@ -96,7 +96,7 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
             await expect(page.locator(".sw__doc-preview-block--quote")).toContainText("速切引用内容");
             await expect(page.locator(".sw__doc-preview-block--code")).toContainText("const preview = 1;");
             await expect(page.locator(".sw__doc-preview-outline")).not.toContainText("&nbsp;");
-            await page.screenshot({path: ".artifacts/e2e/doc-preview-expanded.png"});
+            await page.screenshot({path: artifactPath("doc-preview-expanded.png")});
             // T-6838：结果行 ↑/↓ 行导航——焦点行随方向键移动并跟随滚动
             const secondDoc = page.locator(".sw__doc-grid .sw__doc-item").nth(1);
             if (await secondDoc.count()) {

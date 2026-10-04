@@ -34,6 +34,11 @@ test("ctrl+click on a search result opens the document in a right split", async 
             markdown: `# ${DOC_TITLE}\n\n${DOC_TITLE} 的内容首段`,
         });
         expect(String(doc || "").length).toBeGreaterThan(0);
+        await expect.poll(async () => {
+            const docs = await client.postChecked("/api/filetree/searchDocs", {k: DOC_TITLE});
+            return Array.isArray(docs) && docs.some(item => item.id === doc
+                || String(item.path || "").includes(doc));
+        }, {timeout: 20000}).toBe(true);
 
         await openApp(page);
         await openSwitcher(page);
@@ -55,7 +60,7 @@ test("ctrl+click on a search result opens the document in a right split", async 
         console.log("[split-before]\n" + await dumpLayout());
         const containersBefore = await page.locator(".layout-tab-container").count();
         await page.locator(".sw__doc-item", {hasText: DOC_TITLE}).first().click({modifiers: ["Control"]});
-        await page.waitForTimeout(1800);
+        await expect.poll(() => page.locator(".layout-tab-container").count()).toBeGreaterThan(containersBefore);
         console.log("[split-after]\n" + await dumpLayout());
 
         // 右侧分屏 = 布局中出现新的页签容器（Wnd）

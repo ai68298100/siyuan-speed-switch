@@ -6,7 +6,7 @@ import {Dialog, Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
 import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId, SAVED_SEARCH_NAME_MAX, SAVED_SEARCH_QUERY_MAX} from "./search-model";
+import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, normalizeTitleSearchDocuments, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId, SAVED_SEARCH_NAME_MAX, SAVED_SEARCH_QUERY_MAX} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {applyPreviewFind, clampScrollTop, clearPreviewFind, HIT_CLASS, nextHitIndex} from "./doc-preview-find";
@@ -760,8 +760,8 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
                     if (!current()) return;
                     if (json?.code !== undefined && json.code !== 0) throw new Error("searchDocs failed");
                     if (!Array.isArray(json?.data)) throw new Error("searchDocs invalid response");
-                    docs = filterDocSearchResults.call(this,
-                        json.data.filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object"), filters);
+                    const rawDocs = json.data.filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object");
+                    docs = filterDocSearchResults.call(this, normalizeTitleSearchDocuments(rawDocs) as IDocSearchResult[], filters);
                 } catch (error) {
                     if ((error as DOMException)?.name === "AbortError") throw error;
                     if (!current()) return;

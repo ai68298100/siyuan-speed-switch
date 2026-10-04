@@ -196,7 +196,7 @@ test('production bundle remains within the mobile performance budget when built'
     // fullscreen, cross-surface objects). Reduction audit found no meaningful
     // dead weight on the raw line; hard ceilings unchanged.
     // 2026-09-28 (ADR 0092): T-6979 starts with only 1,061 B headroom,
-    // so the reviewed self-discipline line is now 1120 KiB.
+    // so the reviewed self-discipline line is now 1160 KiB (ADR 0125).
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

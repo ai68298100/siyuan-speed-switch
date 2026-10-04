@@ -2,6 +2,8 @@
 import {defineConfig} from "@playwright/test";
 import path from "node:path";
 
+const artifactDir = path.resolve(process.env.SWSS_E2E_ARTIFACT_DIR || ".artifacts/e2e");
+
 export default defineConfig({
     testDir: "./tests/e2e/readonly",
     testMatch: "**/*.spec.mjs",
@@ -10,8 +12,8 @@ export default defineConfig({
     workers: 1,
     retries: 1,
     fullyParallel: false,
-    outputDir: ".artifacts/e2e/test-results",
-    reporter: [["list"], ["json", {outputFile: ".artifacts/e2e/results-readonly.json"}]],
+    outputDir: path.join(artifactDir, "test-results"),
+    reporter: [["list"], ["json", {outputFile: path.join(artifactDir, "results-readonly.json")}]],
     use: {
         headless: true,
         viewport: {width: 1440, height: 900},

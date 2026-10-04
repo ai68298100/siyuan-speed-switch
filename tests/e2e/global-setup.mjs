@@ -1,5 +1,5 @@
 /* E2E 全局前置（T-6833）：准备独立工作区 → 装入 dist → 起内核 → 等就绪 → 启用插件 →
-   落盘 target.json；返回的清理函数负责关内核并把内核日志与错误摘要写到 .artifacts/e2e/。 */
+   落盘 target.json；返回的清理函数负责关内核并把内核日志与错误摘要写到独立产物目录。 */
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -17,7 +17,7 @@ import {
 } from "../../scripts/e2e/lib.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
-const artifactDir = path.join(repoRoot, ".artifacts", "e2e");
+const artifactDir = e2eConfig().artifactDir;
 export const targetFile = path.join(artifactDir, "target.json");
 
 export default async function globalSetup() {
@@ -53,6 +53,6 @@ export default async function globalSetup() {
         fs.writeFileSync(path.join(artifactDir, "kernel.log"), running.lines.join("\n"));
         const errors = kernelErrorLines(running.lines);
         fs.writeFileSync(path.join(artifactDir, "kernel-errors.log"), errors.join("\n"));
-        if (errors.length) console.warn(`[e2e] 内核日志有 ${errors.length} 行错误，见 .artifacts/e2e/kernel-errors.log`);
+        if (errors.length) console.warn(`[e2e] 内核日志有 ${errors.length} 行错误，见 ${path.join(artifactDir, "kernel-errors.log")}`);
     };
 }

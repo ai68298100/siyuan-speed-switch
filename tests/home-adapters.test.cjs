@@ -572,7 +572,8 @@ guarded("home adapters: unload during pending read remains safe", async () => {
     adapters.unregisterHomeAdapter(map, "pending");
     resolve({items: [{label: "late"}]});
     const result = await read;
-    assert.equal(result.ok, true);
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "stale");
     assert.equal(map.has("pending"), false);
 });
 
@@ -663,4 +664,11 @@ guarded("home adapters discard invalid feed health and rank", () => {
     const snapshot = adapters.normalizeSnapshot({sourceHealth: "broken", items: [{label: "A", rank: -1}]});
     assert.equal(snapshot.sourceHealth, undefined);
     assert.equal(snapshot.items[0].rank, undefined);
+});
+
+guarded("home adapters preserve the blocked provider state and bounded hint", () => {
+    const snapshot = adapters.normalizeSnapshot({status: "blocked", emptyHint: "  provider missing  ", items: []});
+    assert.equal(snapshot.status, "blocked");
+    assert.equal(snapshot.emptyHint, "provider missing");
+    assert.equal(snapshot.empty, true);
 });

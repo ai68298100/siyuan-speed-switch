@@ -1,4 +1,4 @@
-const {readNativeSnippetResponse, buildSnippetMutation, projectSnippetListForWire} = require("./snippet-studio-model.js");
+const {readNativeSnippetResponse, buildSnippetMutation, projectSnippetListForWire, normalizeSnippetSnapshot, snippetSnapshotSignature} = require("./snippet-studio-model.js");
 
 const SNIPPET_ENDPOINTS = new Set([
     "/api/snippet/getSnippet",
@@ -10,7 +10,8 @@ const SNIPPET_ENDPOINTS = new Set([
 // SiYuan exposes whole-list replacement, not compare-and-swap: re-read immediately
 // before mutation and compare the selected row; never claim cross-plugin atomicity.
 function createSnippetStore({fetchImpl = fetch, timeoutMs = 10000,
-    getSnippetSettings = () => globalThis.window?.siyuan?.config?.snippet} = {}) {
+    getSnippetSettings = () => globalThis.window?.siyuan?.config?.snippet,
+    getWindow = () => globalThis.window} = {}) {
     let disposed = false;
     let tail = Promise.resolve();
     // The native endpoint may persist a setting before the host-side config
@@ -18,6 +19,7 @@ function createSnippetStore({fetchImpl = fetch, timeoutMs = 10000,
     // subsequent whole-list mutation cannot overwrite it with stale flags.
     let settingsShadow = null;
     const controllers = new Set();
+    const subscriptions = new Set();
     async function request(path, body) {
         if (disposed) throw new Error("disposed");
         if (!SNIPPET_ENDPOINTS.has(path)) throw new Error("unsupported");
@@ -51,6 +53,7 @@ function createSnippetStore({fetchImpl = fetch, timeoutMs = 10000,
         }
     }
     const read = async () => readNativeSnippetResponse(await request("/api/snippet/getSnippet", {type: "all", enabled: 2}));
+    const readSnapshot = async () => ({snippets: await read(), settings: readSnippetFlags()});
     const readSnippetFlags = () => {
         const settings = getSnippetSettings();
         if (typeof settings?.enabledCSS !== "boolean" || typeof settings?.enabledJS !== "boolean") {
@@ -63,7 +66,21 @@ function createSnippetStore({fetchImpl = fetch, timeoutMs = 10000,
     };
     return {
         read,
+        readSnapshot,
         readSettings() { return readSnippetFlags(); },
+        subscribe(callback) {
+            const target = getWindow();
+            if (!target || typeof callback !== "function" || typeof target.addEventListener !== "function") return () => {};
+            const refresh = (event) => {
+                if (disposed) return;
+                Promise.resolve(callback({reason: event?.type || "external"})).catch(() => undefined);
+            };
+            const events = ["focus", "storage", "visibilitychange", "sw-snippet-changed"];
+            events.forEach((event) => target.addEventListener(event, refresh));
+            const unsubscribe = () => events.forEach((event) => target.removeEventListener(event, refresh));
+            subscriptions.add(unsubscribe);
+            return () => { unsubscribe(); subscriptions.delete(unsubscribe); };
+        },
         setMaster(type, enabled) {
             if (type !== "css" && type !== "js") return Promise.reject(new Error("snippet-invalid-master"));
             const run = tail.catch(() => undefined).then(async () => {
@@ -115,7 +132,41 @@ function createSnippetStore({fetchImpl = fetch, timeoutMs = 10000,
             tail = run;
             return run;
         },
-        dispose() { disposed = true; controllers.forEach((controller) => controller.abort()); controllers.clear(); },
+        restoreSnapshot(expectedSignature, nextSnapshot) {
+            const run = tail.catch(() => undefined).then(async () => {
+                const current = await readSnapshot();
+                if (expectedSignature && snippetSnapshotSignature(current) !== expectedSignature) {
+                    throw new Error("snippet-conflict");
+                }
+                const normalized = normalizeSnippetSnapshot(nextSnapshot);
+                let landed = false;
+                try {
+                    await request("/api/snippet/setSnippet", {snippets: normalized.snippets});
+                    landed = true;
+                    await request("/api/setting/setSnippet", normalized.settings);
+                    settingsShadow = normalized.settings;
+                    const confirmed = await readSnapshot();
+                    if (snippetSnapshotSignature(confirmed) !== snippetSnapshotSignature(normalized)) {
+                        const error = new Error("snippet-restore-unverified");
+                        error.writeLanded = true;
+                        throw error;
+                    }
+                    return confirmed;
+                } catch (error) {
+                    if (landed && String(error?.message || "") !== "snippet-conflict") error.writeLanded = true;
+                    throw error;
+                }
+            });
+            tail = run;
+            return run;
+        },
+        dispose() {
+            disposed = true;
+            subscriptions.forEach((unsubscribe) => unsubscribe());
+            subscriptions.clear();
+            controllers.forEach((controller) => controller.abort());
+            controllers.clear();
+        },
     };
 }
 

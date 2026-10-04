@@ -43,9 +43,9 @@ test('store card status records state', () => assert.match(storeUiSource, /statu
 test('store card status is live', () => assert.match(storeUiSource, /status\.setAttribute\("aria-live", "polite"\)/));
 test('store card references status description', () => assert.match(storeUiSource, /card\.setAttribute\("aria-describedby", status\.id\)/));
 test('store preview records module id', () => assert.match(storeUiSource, /preview\.dataset\.moduleId = moduleId/));
-test('store preview action declares button type', () => assert.match(storeUiSource, /previewButton\.type = "button"/));
-test('store preview action records operation', () => assert.match(storeUiSource, /previewButton\.dataset\.action = "preview"/));
-test('store preview action announces dialog', () => assert.match(storeUiSource, /previewButton\.setAttribute\("aria-haspopup", "dialog"\)/));
+test('store detail preview is mounted inline', () => assert.match(storeUiSource, /detailPane\.appendChild\(inlinePreview\.section\)/));
+test('store detail preview has a labelled live region', () => assert.match(storeUiSource, /container\.setAttribute\("role", "region"\)/));
+test('store detail does not expose a duplicate preview action', () => assert.doesNotMatch(storeUiSource, /previewButton\.dataset\.action = "preview"/));
 test('store configure action records operation', () => assert.match(storeUiSource, /configButton\.dataset\.action = "configure"/));
 test('store configure action announces dialog', () => assert.match(storeUiSource, /configButton\.setAttribute\("aria-haspopup", "dialog"\)/));
 test('store remove action records operation', () => assert.match(storeUiSource, /removeButton\.dataset\.action = "remove"/));

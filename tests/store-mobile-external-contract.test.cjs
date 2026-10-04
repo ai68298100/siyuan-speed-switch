@@ -73,7 +73,7 @@ test("action set reports disabled external add", () => assert.equal(store.buildH
 
 test("preview marks integration metadata in the DOM contract", () => assert.match(storeUiSource, /container\.dataset\.integration = sourceInfo\?\.integration \|\| "direct"/));
 test("preview marks privacy metadata in the DOM contract", () => assert.match(storeUiSource, /container\.dataset\.privacy = sourceInfo\?\.privacy \|\| "none"/));
-test("preview exposes a source chip", () => assert.match(storeUiSource, /addMeta\(this\.i18n\.homeStoreSource\.replace\("\{source\}"/));
+test("preview exposes a source chip", () => assert.match(storeUiSource, /addMeta\(host\.i18n\.homeStoreSource\.replace\("\{source\}"/));
 test("preview exposes a network chip tone", () => assert.match(storeUiSource, /sourceInfo\?\.integration === "http" \? "network"/));
 test("preview exposes a local bridge chip tone", () => assert.match(storeUiSource, /sourceInfo\?\.integration === "local-bridge" \? "local"/));
 test("preview exposes privacy chip metadata", () => assert.match(storeUiSource, /addMeta\(privacy, "privacy"\)/));

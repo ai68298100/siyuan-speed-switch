@@ -2,10 +2,14 @@
    通过 window.siyuanSpeedSwitch（onLayoutReady 挂载）打开切换器。 */
 import fs from "node:fs";
 import path from "node:path";
-import {SiyuanClient} from "../../../scripts/e2e/lib.mjs";
+import {e2eConfig, SiyuanClient} from "../../../scripts/e2e/lib.mjs";
 
-const artifactsDir = path.resolve(import.meta.dirname, "..", "..", "..", ".artifacts", "e2e");
+const artifactsDir = e2eConfig().artifactDir;
 export const PLUGIN_NAME = "siyuan-speed-switch";
+
+export function artifactPath(...parts) {
+    return path.join(artifactsDir, ...parts);
+}
 
 /** 目标信息按名字分文件：默认桌面实例，只读实例走 target-readonly.json。 */
 export function target(name = "target") {

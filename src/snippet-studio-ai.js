@@ -8,7 +8,7 @@ const MAX_EVENT_BYTES = SNIPPET_AI_MAX_BYTES * 8;
 const SNIPPET_AI_HISTORY_MAX_MESSAGES = 8;
 const SNIPPET_AI_HISTORY_MAX_BYTES = SNIPPET_AI_MAX_BYTES;
 const SNIPPET_AI_MODES = Object.freeze(["generate", "optimize", "explain", "iterate"]);
-const ERROR_CODES = new Set(["unsupported", "ai_unavailable", "timeout", "cancelled", "invalid_output", "request_failed"]);
+const ERROR_CODES = new Set(["unsupported", "ai_unavailable", "timeout", "cancelled", "invalid_output", "request_failed", "permission_denied", "context_too_large"]);
 
 function newTaskID() {
     if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
@@ -23,6 +23,18 @@ function aiError(code) {
 
 function bytes(value) {
     return new TextEncoder().encode(value).byteLength;
+}
+
+function selectSnippetAIContext({content = "", history = [], includeCode = false, includeHistory = false} = {}) {
+    const selectedContent = includeCode === true ? content : "";
+    if (typeof selectedContent !== "string") throw aiError("invalid_output");
+    if (includeHistory === true && Array.isArray(history) && history.length <= SNIPPET_AI_HISTORY_MAX_MESSAGES
+        && history.every((message) => typeof message?.content === "string")
+        && bytes(JSON.stringify(history)) > SNIPPET_AI_HISTORY_MAX_BYTES) throw aiError("context_too_large");
+    const selectedHistory = includeHistory === true ? normalizeSnippetAIHistory(history) : [];
+    const byteLength = bytes(selectedContent) + bytes(JSON.stringify(selectedHistory));
+    if (byteLength > SNIPPET_AI_MAX_BYTES) throw aiError("context_too_large");
+    return {content: selectedContent, history: selectedHistory, byteLength};
 }
 
 function normalizeSnippetAIHistory(history) {
@@ -158,6 +170,7 @@ function createSnippetAIClient({fetchImpl = globalThis.fetch} = {}) {
             });
             assertCurrent();
             if (response.status === 404 || response.status === 405) throw aiError("unsupported");
+            if (response.status === 401 || response.status === 403) throw aiError("permission_denied");
             if (!response.ok) throw aiError("request_failed");
             if (!(response.headers.get("Content-Type") || "").toLowerCase().includes("text/event-stream")) {
                 let payload;
@@ -267,4 +280,5 @@ module.exports = {
     SNIPPET_AI_MAX_BYTES, SNIPPET_AI_TIMEOUT_MS, SNIPPET_AI_HISTORY_MAX_MESSAGES,
     SNIPPET_AI_HISTORY_MAX_BYTES, SNIPPET_AI_MODES, SNIPPET_AI_POLICY_VERSION, buildSnippetAIRequest,
     normalizeSnippetAIHistory, parseSnippetAIExplanation, parseSnippetAIOutput, createSnippetAIClient,
+    selectSnippetAIContext,
 };
