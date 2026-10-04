@@ -1,3 +1,4 @@
-# This legacy module is stored with CRLF in Git; keep byte-level line endings
-# stable so a focused edit does not become a whole-file normalization diff.
-src/second-panel-ui.ts -text whitespace=cr-at-eol
+* text=auto eol=lf
+*.ps1 -text
+*.bat -text
+*.cmd -text
