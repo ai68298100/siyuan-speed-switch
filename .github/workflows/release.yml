@@ -34,6 +34,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install Chromium for browser smoke
+        shell: bash
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          browser_path="$(node -e "process.stdout.write(require('@playwright/test').chromium.executablePath())")"
+          test -x "$browser_path"
+          printf 'BROWSER_PATH=%s\n' "$browser_path" >> "$GITHUB_ENV"
+
       - name: Verify tag version
         run: node scripts/release-version-preflight.cjs
 

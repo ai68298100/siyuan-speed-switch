@@ -26,6 +26,24 @@ test('release workflow delegates local gates to verify:release exactly once', ()
         'release workflow must not drift into a partial duplicate gate');
 });
 
+test('release workflow provisions Chromium and exports its executable path', () => {
+    const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'release.yml'), 'utf8');
+    assert.match(workflow, /pnpm\s+exec\s+playwright\s+install\s+--with-deps\s+chromium/);
+    assert.match(workflow, /require\(['"]@playwright\/test['"]\)\.chromium\.executablePath\(\)/);
+    assert.match(workflow, /test\s+-x\s+"\$browser_path"/);
+    assert.match(workflow, /printf\s+'BROWSER_PATH=%s\\n'\s+"\$browser_path"\s+>>\s+"\$GITHUB_ENV"/);
+});
+
+test('release browser setup runs before the complete gate and package gate', () => {
+    const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'release.yml'), 'utf8');
+    const browserSetup = workflow.indexOf('name: Install Chromium for browser smoke');
+    const completeGate = workflow.indexOf('name: Complete local release gate');
+    const packageGate = workflow.indexOf('name: Package integrity gate');
+    assert.ok(browserSetup >= 0, 'release workflow must name the browser setup step');
+    assert.ok(completeGate > browserSetup, 'browser must be installed before the complete gate');
+    assert.ok(packageGate > completeGate, 'package integrity must remain after the complete gate');
+});
+
 test('dry-run asset list remains bounded and explicit', () => {
     // 原实现自造 const assets = ['package.zip'] 再断言其等于自己、长度 <= 4，
     // 断言的全部输入都来自测试自身，从未读取 workflow（见 docs/host-gate-audit.md）。

@@ -12,8 +12,8 @@ function audit() { return spawnSync(process.execPath, [auditPath], {cwd: root, e
 test("current status index is valid and points to existing evidence", () => {
     const result = audit();
     assert.equal(result.status, 0, result.stderr || result.stdout);
-    assert.match(result.stdout, /current-status-audit: 9 tasks valid/);
-    assert.match(result.stdout, /"completed":3/);
+    assert.match(result.stdout, /current-status-audit: 10 tasks valid/);
+    assert.match(result.stdout, /"completed":4/);
     assert.match(result.stdout, /"in_progress":1/);
 });
 

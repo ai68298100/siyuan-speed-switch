@@ -12,7 +12,8 @@
     {"id":"T-7117","status":"blocked","priority":"P1","owner":"external","blockedBy":["B-007","B-008","B-009","B-010","B-011"],"evidence":["BLOCKERS.md","docs/dev-plan-2026-09-27.md"],"next":"T-7118"},
     {"id":"T-7118","status":"planned","priority":"P2","owner":"release","evidence":["docs/dev-plan-2026-09-27.md","docs/release-readiness.md"],"next":"T-7119"},
     {"id":"T-7119","status":"deferred","priority":"P2","owner":"product","deferredBy":["ADR-0129"],"evidence":["docs/adr/0129-snippet-code-editor.md","docs/dev-plan-2026-09-27.md"],"next":"T-7120"},
-    {"id":"T-7120","status":"deferred","priority":"P2","owner":"product","deferredBy":["ADR-0133","B-011"],"evidence":["docs/adr/0133-snippet-ai-context-and-receipts.md","BLOCKERS.md","docs/dev-plan-2026-09-27.md"],"next":null}
+    {"id":"T-7120","status":"deferred","priority":"P2","owner":"product","deferredBy":["ADR-0133","B-011"],"evidence":["docs/adr/0133-snippet-ai-context-and-receipts.md","BLOCKERS.md","docs/dev-plan-2026-09-27.md"],"next":null},
+    {"id":"T-7121","status":"completed","priority":"P1","owner":"local","evidence":[".github/workflows/release.yml","tests/host/release-dry-run.test.cjs","docs/adr/0144-release-browser-runtime.md","docs/dev-plan-2026-09-27.md"],"next":"T-7115"}
   ],
   "global": {"jsRunner":"blocked","release":"not_started","personalInstall":"not_updated","mainlineMerge":"forbidden_until_user_action"}
 }
