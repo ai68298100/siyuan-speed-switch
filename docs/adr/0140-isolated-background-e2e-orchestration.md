@@ -1,6 +1,6 @@
 # ADR 0140：多插件隔离后台 E2E 编排
 
-- 状态：已接受，待实施
+- 状态：已接受，已实施
 - 日期：2026-10-05
 - 任务：T-7112
 
@@ -21,3 +21,19 @@
 - 两个或更多实例可同时启动，端口、工作区、插件数据和产物互不覆盖。
 - 任一实例失败或超时都能清理自己的内核与浏览器进程，并保留独立日志。
 - 共享构建快照的哈希一致；测试运行期间改写 dist/ 能被拒绝或明确报告。
+
+## 实施与证据
+
+- `scripts/e2e/background-orchestrator.mjs` 提供任务配置、端口租约、构建快照、独立工作区/产物目录、超时和 PID 树清理；`pnpm run test:e2e:background` 为入口。
+- `scripts/e2e/lib.mjs`、`tests/e2e/global-setup.mjs` 支持从 `SWSS_E2E_PLUGIN_SOURCE` 固定快照安装，并记录内核 PID；Windows PowerShell-only 环境通过 Corepack `pnpm.js` 启动。
+- 编排器契约 **4/4**；快照被修改时精确失败，端口租约重复占用和释放均有测试。
+- 真实思源双实例：`speed-switch-a@19300` 与 `speed-switch-b@19301` 并行执行桌面 smoke，均退出码 0；共享快照 SHA-256 为 `4f39ef6fa20f7e136c7f44729d627c4fd69f8aaef217891c6269ce70b8934d93`，独立结果见 `.artifacts/t7112-background/20261004180200-17436-e43ae9`。
+
+## 使用
+
+```powershell
+pnpm run test:e2e:background -- --count 2 --remove-workspaces
+pnpm run test:e2e:background -- --jobs-file .tmp/t7112-jobs.json --remove-workspaces
+```
+
+`jobs` 中每项可指定 `id`、`repoRoot`、`distDir`、`pluginName`、`command` 和 `env`。编排器会把 `SWSS_E2E_WORKSPACE`、`SWSS_E2E_PORT`、`SWSS_E2E_ARTIFACT_DIR`、`SWSS_E2E_PLUGIN_SOURCE` 和实例标识注入该命令。实例之间的数据和端口隔离，但 CPU、内存、浏览器进程、网络出口及外部 API 限流仍是共享资源。

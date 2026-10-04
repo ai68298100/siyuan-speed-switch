@@ -25,8 +25,8 @@ export default async function globalSetup() {
     const cfg = e2eConfig();
     const install = resolveInstall();
     const prepared = prepareWorkspace(cfg.workspace);
-    const installed = installPlugin(cfg.workspace, repoRoot);
-    if (!fs.existsSync(path.join(cfg.workspace, "data", "plugins", PLUGIN_NAME, "i18n", "zh-CN.json"))) {
+    const installed = installPlugin(cfg.workspace, repoRoot, cfg.pluginSource || undefined, cfg.pluginName);
+    if (cfg.pluginName === PLUGIN_NAME && !fs.existsSync(path.join(cfg.workspace, "data", "plugins", cfg.pluginName, "i18n", "zh-CN.json"))) {
         throw new Error("E2E plugin install did not copy nested i18n resources");
     }
     console.log(`[e2e] 工作区 ${cfg.workspace}（${prepared.created ? "新建" : "复用"}）· 插件 v${installed.version} · 内核 ${install.kernel}`);
@@ -43,9 +43,9 @@ export default async function globalSetup() {
     const token = readAccessToken(cfg.workspace);
     client = new SiyuanClient({baseURL: cfg.baseURL, token});
     const kernelVersion = await client.version();
-    const enabled = await enablePlugin({client, workspace: cfg.workspace, pluginName: PLUGIN_NAME});
+    const enabled = await enablePlugin({client, workspace: cfg.workspace, pluginName: cfg.pluginName});
     console.log(`[e2e] 插件已启用并下发：${enabled.name} v${enabled.version}（js ${Math.round(enabled.jsBytes / 1024)}KB / css ${Math.round(enabled.cssBytes / 1024)}KB）`);
-    fs.writeFileSync(targetFile, JSON.stringify({baseURL: cfg.baseURL, token, workspace: cfg.workspace, kernelVersion, pluginVersion: installed.version}, null, 2));
+    fs.writeFileSync(targetFile, JSON.stringify({baseURL: cfg.baseURL, token, workspace: cfg.workspace, kernelPid: running.child.pid, kernelVersion, pluginVersion: installed.version, pluginSource: process.env.SWSS_E2E_PLUGIN_SOURCE || null}, null, 2));
     console.log(`[e2e] 就绪：思源 ${kernelVersion} @ ${cfg.baseURL}${token ? "（带访问码）" : "（回环免鉴权）"}`);
 
     return async () => {

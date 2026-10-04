@@ -16,7 +16,9 @@ export function e2eConfig() {
     const host = "127.0.0.1";
     const port = Number(process.env.SWSS_E2E_PORT || 6837);
     const artifactDir = path.resolve(process.env.SWSS_E2E_ARTIFACT_DIR || path.join(REPO_ROOT, ".artifacts", "e2e"));
-    return {workspace, host, port, baseURL: `http://${host}:${port}`, artifactDir};
+    const pluginName = process.env.SWSS_E2E_PLUGIN_NAME || PLUGIN_NAME;
+    const pluginSource = process.env.SWSS_E2E_PLUGIN_SOURCE || "";
+    return {workspace, host, port, baseURL: `http://${host}:${port}`, artifactDir, pluginName, pluginSource};
 }
 
 /** 只允许指向本机回环，避免测试打到用户的远端思源。 */
@@ -67,16 +69,16 @@ export function prepareWorkspace(workspace) {
 }
 
 /** 把 dist/ 装进工作区插件目录；思源要求 plugin.json.name 与目录名一致，否则整包静默不加载。 */
-export function installPlugin(workspace, repoRoot) {
-    const dist = path.join(repoRoot, "dist");
+export function installPlugin(workspace, repoRoot, sourceDir = process.env.SWSS_E2E_PLUGIN_SOURCE || path.join(repoRoot, "dist"), pluginName = process.env.SWSS_E2E_PLUGIN_NAME || PLUGIN_NAME) {
+    const dist = path.resolve(sourceDir);
     for (const required of ["index.js", "index.css", "plugin.json"]) {
         if (!fs.existsSync(path.join(dist, required))) {
             throw new Error(`dist/${required} 不存在，请先执行 pnpm run build`);
         }
     }
     const manifest = JSON.parse(fs.readFileSync(path.join(dist, "plugin.json"), "utf8"));
-    if (manifest.name !== PLUGIN_NAME) throw new Error(`dist/plugin.json.name=${manifest.name} 与目录名 ${PLUGIN_NAME} 不一致`);
-    const target = path.join(workspace, "data", "plugins", PLUGIN_NAME);
+    if (manifest.name !== pluginName) throw new Error(`dist/plugin.json.name=${manifest.name} 与目录名 ${pluginName} 不一致`);
+    const target = path.join(workspace, "data", "plugins", pluginName);
     fs.rmSync(target, {recursive: true, force: true});
     fs.mkdirSync(target, {recursive: true});
     fs.cpSync(dist, target, {recursive: true, force: true});
@@ -89,7 +91,7 @@ export function installPlugin(workspace, repoRoot) {
         fs.mkdirSync(lazyDir, {recursive: true});
         fs.renameSync(lazyChunk, path.join(lazyDir, "snippet-studio.js"));
     }
-    return {target, version: manifest.version};
+    return {target, version: manifest.version, pluginName};
 }
 
 /** extraArgs 必须是 serve 子命令的旗标（如 --readonly true），放在子命令之后。 */

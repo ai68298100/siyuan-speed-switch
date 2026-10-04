@@ -42,9 +42,9 @@ export default async function globalSetup() {
     client = new SiyuanClient({baseURL: cfg.baseURL, token: readAccessToken(cfg.workspace)});
     const kernelVersion = await client.version();
     const petals = await client.post("/api/petal/loadPetals", {frontend: "desktop"});
-    if (!(petals.data || []).some((item) => item.name === PLUGIN_NAME)) {
+    if (!(petals.data || []).some((item) => item.name === cfg.pluginName)) {
         await stopKernel({client, child: running.child});
-        throw new Error(`只读实例未下发插件 ${PLUGIN_NAME}`);
+        throw new Error(`只读实例未下发插件 ${cfg.pluginName}`);
     }
     // 前置自证：只读内核必须真的拒绝写入，否则后续断言无意义
     const rejected = await client.putFile("swss-e2e-readonly-probe", {probe: true}).then(() => null, (error) => error);
