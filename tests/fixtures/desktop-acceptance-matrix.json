@@ -73,7 +73,7 @@
       },
       "host": {
         "status": "partial",
-        "evidence": [{"path": "docs/desktop-acceptance-template.md", "kind": "acceptance-template"}]
+        "evidence": [{"path": ".artifacts/t7115-desktop/results.json", "kind": "real-host-e2e"}]
       }
     },
     {
