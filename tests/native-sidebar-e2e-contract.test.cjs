@@ -24,6 +24,12 @@ test("T-7115 native sidebar E2E measures the host divider and rejects viewport-o
     assert.match(source, /toHaveAttribute\("data-filter-count", ""\)/);
 });
 
+test("T-7115 native sidebar E2E captures a scoped visual artifact", () => {
+    assert.match(source, /const sidebarBox = await sidebarRoot\.boundingBox\(\);/);
+    assert.match(source, /await page\.screenshot\(\{path: artifactPath\("native-sidebar-narrow\.png"\), clip: sidebarBox\}\);/);
+    assert.match(source, /visualEvidence: \{artifact: "native-sidebar-narrow\.png", scope: SIDEBAR_SELECTOR/);
+});
+
 test("T-7115 contract rejects removing the opt-in guard, host marker or width assertion", () => {
     assert.throws(() => {
         const mutated = source.replace('test.skip(!enabled, "真实原生 dock 证据需要 SWSS_E2E_NATIVE_SIDEBAR=1");', "");
@@ -37,4 +43,8 @@ test("T-7115 contract rejects removing the opt-in guard, host marker or width as
         const mutated = source.replace('expect(narrowWidth, "拖动真实宿主分隔条后侧栏必须变窄").toBeLessThan(wideAfterSetup);', "");
         assert.match(mutated, /拖动真实宿主分隔条后侧栏必须变窄/);
     }, /拖动真实宿主分隔条后侧栏必须变窄/);
+    assert.throws(() => {
+        const mutated = source.replace('await page.screenshot({path: artifactPath("native-sidebar-narrow.png"), clip: sidebarBox});', "");
+        assert.match(mutated, /await page\.screenshot\(\{path: artifactPath\("native-sidebar-narrow\.png"\), clip: sidebarBox\}\);/);
+    }, /page\\.screenshot/);
 });

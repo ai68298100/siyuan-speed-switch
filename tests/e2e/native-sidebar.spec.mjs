@@ -147,6 +147,11 @@ test("T-7115 opt-in real host dock: narrow layout keeps filters, focus and contr
     expect(controls.sortLabel?.overflow).toBe("hidden");
     expect(controls.sortLabel?.whiteSpace).toBe("nowrap");
 
+    const sidebarRoot = page.locator(SIDEBAR_SELECTOR);
+    const sidebarBox = await sidebarRoot.boundingBox();
+    if (!sidebarBox) throw new Error("real host sidebar root has no visual bounding box");
+    await page.screenshot({path: artifactPath("native-sidebar-narrow.png"), clip: sidebarBox});
+
     const filterButton = page.locator(`${SIDEBAR_SELECTOR} .sw__search-filter-btn`);
     await page.evaluate(() => {
         const plugin = window.siyuan?.ws?.app?.plugins?.find((item) => item?.name === "siyuan-speed-switch");
@@ -183,6 +188,7 @@ test("T-7115 opt-in real host dock: narrow layout keeps filters, focus and contr
             narrowWidth,
             controls: controls.controls.map(({selector, width, height, tabIndex}) => ({selector, width, height, tabIndex})),
             noHorizontalOverflow: controls.root.scrollWidth <= controls.root.clientWidth + 1 && controls.toolbar.scrollWidth <= controls.toolbar.clientWidth + 1,
+            visualEvidence: {artifact: "native-sidebar-narrow.png", scope: SIDEBAR_SELECTOR, width: sidebarBox.width, height: sidebarBox.height},
         },
     };
     fs.mkdirSync(artifactPath(), {recursive: true});
