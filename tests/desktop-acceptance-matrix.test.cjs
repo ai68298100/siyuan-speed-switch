@@ -8,8 +8,8 @@ test("T-7115 desktop acceptance matrix has complete local and host boundaries", 
     const summary = validateMatrix(readMatrix());
     assert.equal(summary.cases, 11);
     assert.equal(summary.localVerified, 10);
-    assert.equal(summary.partialHost, 4);
-    assert.equal(summary.pendingHost, 7);
+    assert.equal(summary.partialHost, 5);
+    assert.equal(summary.pendingHost, 6);
 });
 
 test("T-7115 matrix rejects browser-only host verification", () => {
@@ -21,7 +21,7 @@ test("T-7115 matrix rejects browser-only host verification", () => {
 
 test("T-7115 matrix rejects a pending host case without its blocker", () => {
     const matrix = readMatrix();
-    const item = matrix.cases.find((entry) => entry.id === "narrow_sidebar.chip-clear-focus");
+    const item = matrix.cases.find((entry) => entry.id === "desktop.theme-light-dark");
     delete item.host.blockers;
     assert.throws(() => validateMatrix(matrix), /pending 必须有 blockers/);
 });

@@ -53,11 +53,14 @@
       "requirement": "the narrow sidebar keeps the path chip, clear action and keyboard focus reachable",
       "local": {
         "status": "prepared",
-        "evidence": [{"path": "docs/search-path-filter-sidebar-evaluation.md", "kind": "design"}]
+        "evidence": [
+          {"path": "docs/search-path-filter-sidebar-evaluation.md", "kind": "design"},
+          {"path": "tests/native-sidebar-e2e-contract.test.cjs", "kind": "contract"}
+        ]
       },
       "host": {
-        "status": "pending",
-        "blockers": ["B-005"]
+        "status": "partial",
+        "evidence": [{"path": "docs/native-sidebar-host-evidence.md", "kind": "real-host-e2e"}]
       }
     },
     {
