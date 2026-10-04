@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "task": "T-7114",
+  "evidence": ["docs/siyuan-compatibility-matrix.md"],
+  "versions": [
+    {
+      "version": "3.8.4-beta.2",
+      "evidence": "docs/path-filter-host-evidence.md",
+      "titleSearch": {
+        "shape": "path_only",
+        "record": {
+          "path": "/20261005000000-root384.sy",
+          "hPath": "/兼容探针/3.8.4",
+          "box": "20261005000000-box384",
+          "name": "兼容探针 3.8.4",
+          "alias": ""
+        },
+        "expected": {
+          "id": "20261005000000-root384",
+          "rootId": "20261005000000-root384",
+          "title": "兼容探针 3.8.4",
+          "notebookId": "20261005000000-box384",
+          "source": "title"
+        }
+      },
+      "pathFilter": {
+        "notebook": "20261005000000-box384",
+        "path": "/",
+        "payload": {
+          "code": 0,
+          "data": {
+            "box": "20261005000000-box384",
+            "path": "/",
+            "effectiveSortMode": 0,
+            "files": [{
+              "id": "20261005000000-root384",
+              "name": "兼容探针 3.8.4",
+              "path": "/20261005000000-root384.sy",
+              "subFileCount": 1,
+              "childrenSortMode": 0
+            }]
+          }
+        },
+        "expected": {
+          "id": "20261005000000-root384",
+          "title": "兼容探针 3.8.4",
+          "path": "/20261005000000-root384.sy",
+          "hasChildren": true
+        }
+      }
+    },
+    {
+      "version": "3.8.6",
+      "evidence": "docs/siyuan-compatibility-matrix.md",
+      "titleSearch": {
+        "shape": "path_only_with_box_icon",
+        "record": {
+          "path": "/20261005000000-root386.sy",
+          "hPath": "/兼容探针/3.8.6",
+          "box": "20261005000000-box386",
+          "boxIcon": "1f4c4",
+          "name": "兼容探针 3.8.6",
+          "alias": ""
+        },
+        "expected": {
+          "id": "20261005000000-root386",
+          "rootId": "20261005000000-root386",
+          "title": "兼容探针 3.8.6",
+          "notebookId": "20261005000000-box386",
+          "source": "title"
+        }
+      },
+      "pathFilter": {
+        "notebook": "20261005000000-box386",
+        "path": "/",
+        "payload": {
+          "code": 0,
+          "data": {
+            "box": "20261005000000-box386",
+            "path": "/",
+            "effectiveSortMode": 0,
+            "files": [{
+              "id": "20261005000000-root386",
+              "name": "兼容探针 3.8.6",
+              "path": "/20261005000000-root386.sy",
+              "subFileCount": 0,
+              "childrenSortMode": 0
+            }]
+          }
+        },
+        "expected": {
+          "id": "20261005000000-root386",
+          "title": "兼容探针 3.8.6",
+          "path": "/20261005000000-root386.sy",
+          "hasChildren": false
+        }
+      }
+    }
+  ],
+  "aliases": [
+    {
+      "name": "rootID and notebookID",
+      "record": {
+        "rootID": "20261005000000-aliasroot",
+        "documentTitle": "别名文档",
+        "path": "/20261005000000-aliasroot.sy",
+        "notebookID": "20261005000000-aliasbox"
+      },
+      "expected": {
+        "rootId": "20261005000000-aliasroot",
+        "notebookId": "20261005000000-aliasbox",
+        "title": "别名文档"
+      }
+    },
+    {
+      "name": "rootPath and box",
+      "record": {
+        "rootPath": "/20261005000000-aliaspath.sy",
+        "box": "20261005000000-aliaspathbox",
+        "name": "路径别名文档"
+      },
+      "expected": {
+        "rootId": "20261005000000-aliaspath",
+        "notebookId": "20261005000000-aliaspathbox",
+        "title": "路径别名文档"
+      }
+    }
+  ],
+  "lifecycle": {
+    "source": "src/index.ts",
+    "required": [
+      "async onload()",
+      "onLayoutReady()",
+      "async onunload()",
+      "whenReady: () => true",
+      "delete (window as any).siyuanSpeedSwitch"
+    ]
+  }
+}

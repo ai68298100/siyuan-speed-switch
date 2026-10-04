@@ -13,7 +13,7 @@ test("current status index is valid and points to existing evidence", () => {
     const result = audit();
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.match(result.stdout, /current-status-audit: 9 tasks valid/);
-    assert.match(result.stdout, /"completed":2/);
+    assert.match(result.stdout, /"completed":3/);
     assert.match(result.stdout, /"in_progress":1/);
 });
 
@@ -33,11 +33,11 @@ test("current status audit rejects blocked tasks without a blocker", () => {
     const backup = fs.readFileSync(indexPath);
     try {
         const index = JSON.parse(backup);
-        index.tasks.find((item) => item.id === "T-7115").blockedBy = [];
+        index.tasks.find((item) => item.id === "T-7116").blockedBy = [];
         fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
         const result = audit();
         assert.notEqual(result.status, 0);
-        assert.match(result.stderr, /T-7115 blocked 必须有 blockedBy/);
+        assert.match(result.stderr, /T-7116 blocked 必须有 blockedBy/);
     } finally { fs.writeFileSync(indexPath, backup); }
 });
 

@@ -49,6 +49,8 @@ const DEBT_REASONS = {
         "断言的对象就是注释本身（JSDoc 声明的不变量 / 声明行尾的 key 说明），必须读原始文本。",
     "json-data":
         "读的是 src/i18n/*.json：JSON 无注释语义，剥注释无收益。",
+    "source-rewrite-contract":
+        "夹具必须读取生产原文并注入受控违规，才能证明门禁会拒绝真实接线漂移。",
 };
 
 const SOURCE_SCAN_DEBT = [
@@ -57,6 +59,8 @@ const SOURCE_SCAN_DEBT = [
     {file: "tests/storage-migration.test.cjs", reason: "doc-comment-contract"},
     // T-7018：对 webpackChunkName 魔法注释的断言对象就是注释本身（readSourceText 会剥掉）
     {file: "tests/snippet-studio-bundle.test.cjs", reason: "doc-comment-contract"},
+    // T-7114：生命周期探针需要在生产源码中替换公开清理语句，断言注释之外的原文合同
+    {file: "tests/siyuan-compatibility-probe.test.cjs", reason: "source-rewrite-contract"},
     {file: "tests/shipped-i18n-parity.test.cjs", reason: "json-data"},
 ];
 
@@ -76,6 +80,8 @@ const DEBT_REASON_CHECKS = {
     ),
     // "读的是 JSON（无注释语义）"：文件确实在解析 JSON
     "json-data": (text) => text.includes("JSON.parse("),
+    // "读取生产原文后注入违规"：必须同时保留原文读取和替换操作
+    "source-rewrite-contract": (text) => text.includes("readFileSync(") && text.includes(".replace("),
 };
 
 function discoverRawReaderFiles() {
@@ -146,6 +152,8 @@ test("every debt entry's reason tag matches the content it describes (T-6282)", 
         "doc-comment-contract": 'assert.ok(source.includes("case x:"));',
         // 读代码但不解析 JSON
         "json-data": 'const t = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");',
+        // 只读取原文但没有注入违规
+        "source-rewrite-contract": 'const t = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");',
     };
     for (const [tag, probe] of Object.entries(DEBT_REASON_COUNTEREXAMPLES)) {
         assert.equal(
