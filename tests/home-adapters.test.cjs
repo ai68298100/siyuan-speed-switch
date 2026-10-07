@@ -13,6 +13,7 @@ test("home adapter regression matrix remains discoverable", () => {
     assert.equal(typeof adapters?.planHomeRefresh, "function");
     assert.equal(typeof adapters?.planHomeLifecycleRefresh, "function");
     assert.equal(typeof adapters?.getHomeAdapterDiagnostics, "function");
+    assert.equal(typeof adapters?.getHomeAdapterResourceStats, "function");
     assert.equal(typeof adapters?.consumeHomeAdapterDiagnostics, "function");
     assert.equal(typeof adapters?.coalesceHomeRefreshEvents, "function");
 });
@@ -21,6 +22,29 @@ test("home adapter API normalizes invalid device and refresh arguments", () => {
     assert.deepEqual(adapters.planHomeRefresh({device: "tablet", stale: true}), {shouldRefresh: true, reason: "stale", device: "desktop", delayMs: 0});
     assert.deepEqual(adapters.planHomeLifecycleRefresh(null, {visible: true, stale: false}), {shouldRefresh: false, reason: "fresh", device: "desktop", delayMs: 0});
     assert.deepEqual(adapters.coalesceHomeRefreshEvents("bad", {visible: true, stale: false}), {shouldRefresh: false, reason: "fresh", device: "desktop", delayMs: 0});
+});
+
+guarded("home adapters: provider unload clears cache counts and completed generation tombstones", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([{
+        moduleId: "resource-stats",
+        supportedDevices: ["desktop"],
+        read: () => ({title: "private", items: [{label: "payload"}]}),
+    }]);
+    await adapters.readHomeModule(map, "resource-stats", "desktop", {secret: "never-returned"}, {cacheTtlMs: 1000});
+    const stats = adapters.getHomeAdapterResourceStats();
+    assert.equal(stats.snapshotCacheEntries, 1);
+    assert.equal(stats.inFlightReads, 0);
+    assert.equal(Object.prototype.hasOwnProperty.call(stats, "keys"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(stats, "snapshots"), false);
+    adapters.unregisterHomeAdapter(map, "resource-stats");
+    const afterUnload = adapters.getHomeAdapterResourceStats();
+    assert.equal(afterUnload.snapshotCacheEntries, 0);
+    assert.equal(afterUnload.failureBackoffEntries, 0);
+    assert.equal(afterUnload.inFlightReads, 0);
+    assert.equal(afterUnload.readGenerationEntries, 0);
+    assert.equal(afterUnload.invalidatedReadGenerationEntries, 0);
+    adapters.clearHomeSnapshotCache();
 });
 
 test("home adapter snapshots keep fields consistent across devices", () => {
@@ -575,6 +599,10 @@ guarded("home adapters: unload during pending read remains safe", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.reason, "stale");
     assert.equal(map.has("pending"), false);
+    const stats = adapters.getHomeAdapterResourceStats();
+    assert.equal(stats.inFlightReads, 0);
+    assert.equal(stats.readGenerationEntries, 0);
+    assert.equal(stats.invalidatedReadGenerationEntries, 0);
 });
 
 guarded("home adapters: unloaded reads cannot repopulate a replacement cache", async () => {
@@ -593,6 +621,31 @@ guarded("home adapters: unloaded reads cannot repopulate a replacement cache", a
     assert.equal(newRead.snapshot.title, "new-1");
     assert.equal(cached.cached, true);
     assert.equal(cached.snapshot.title, "new-1");
+});
+
+guarded("home adapters: global cache clear invalidates an older pending response", async () => {
+    adapters.clearHomeSnapshotCache();
+    let resolveOld;
+    const oldPending = new Promise((resolve) => { resolveOld = resolve; });
+    let mode = "old";
+    const map = adapters.registerHomeAdapters([{
+        moduleId: "clear-race",
+        supportedDevices: ["desktop"],
+        read: () => mode === "old" ? oldPending : {title: "new", items: [{label: "new"}]},
+    }]);
+    const oldRead = adapters.readHomeModule(map, "clear-race", "desktop", {}, {cacheTtlMs: 1000});
+    adapters.clearHomeSnapshotCache();
+    mode = "new";
+    const newRead = await adapters.readHomeModule(map, "clear-race", "desktop", {}, {cacheTtlMs: 1000, force: true, dedupe: false});
+    resolveOld({title: "old", items: [{label: "old"}]});
+    const oldResult = await oldRead;
+    assert.equal(oldResult.reason, "stale");
+    assert.equal(newRead.snapshot.title, "new");
+    const cached = await adapters.readHomeModule(map, "clear-race", "desktop", {}, {cacheTtlMs: 1000});
+    assert.equal(cached.cached, true);
+    assert.equal(cached.snapshot.title, "new");
+    adapters.unregisterHomeAdapter(map, "clear-race");
+    adapters.clearHomeSnapshotCache();
 });
 
 guarded("home adapters: refresh planner is device-aware and never refreshes hidden modules", () => {

@@ -1,8 +1,8 @@
 # T-7153 资源趋势 probe 契约
 
-日期：2026-10-07
+日期：2026-10-08
 
-本轮交付可执行的浏览器采样契约和 120 轮隔离真实压力运行，并修复商店重复重绘的监听器生命周期。它还没有完成 T-7153 的长时/缓存趋势验收。probe 位于测试目录，生产 bundle 不引用它。
+本轮交付可执行的浏览器采样契约和隔离真实压力运行，并修复商店重复重绘的监听器生命周期。它还没有完成 T-7153 的长时验收。probe 位于测试目录，生产 bundle 不引用它。
 
 ## 采样内容
 
@@ -44,6 +44,16 @@ node --test tests/resource-trend-probe.test.cjs
 
 本轮已给 E2E 补充真实目录卡片重绘时必须先移除旧渲染监听、Dialog 关闭后插件渲染监听活动数归零的断言。约 233 秒的操作压力没有依据证明等价于 2 小时；heap 读数固定且当前未采样插件缓存，因此不把这次运行标为 T-7153 完成。provider 卸载/重试还需要隔离 provider 夹具。
 
+## 2026-10-08 provider 与缓存趋势复验
+
+新增 `getHomeAdapterResourceStats()`，只返回快照、退避、in-flight、generation、invalidated generation 和诊断条目数量，不返回缓存 key 或 provider 内容；`home-runtime` 透出同一受限计数供隔离诊断使用。provider fixture 通过公开 `registerHomeModule` / `readHomeModule` 覆盖成功、缓存命中、失败退避、pending、卸载、迟到回包、重新注册和恢复读取。
+
+- 运行 `20261007181410-29436-80d19c` 在 3.8.6 隔离内核、端口 6867 完成 6 轮工作台/商店循环，并完成 provider 生命周期夹具；页面测试通过。
+- fixture 观察到首次成功、缓存命中、失败后 `backoff`、卸载后的旧请求 `stale`；卸载后 `snapshotCacheEntries/failureBackoffEntries/inFlightReads/readGenerationEntries/invalidatedReadGenerationEntries` 全为 `0`，重新注册后可成功读取，最终再次卸载五项仍全为 `0`。
+- 6 轮稳定样本的缓存计数为 `3,3,3,3,3,3`，generation 计数为 `3,3,3,3,3,3`，两个范围均为 `0`；这说明本轮观察面内没有持续增长，不代表全插件内存无泄漏。
+- 新增负向纯逻辑测试覆盖 `pending old → clearHomeSnapshotCache() → 同 key 新读 → 旧回包`，确认旧回包为 `stale` 且不能污染新缓存；这是修复前未覆盖的清理代次竞态。
+- 反向注入把清理时的 generation 推进改为不推进后，`home adapters: global cache clear invalidates an older pending response` 按预期失败；源码随后按原字节恢复。
+
 ## 2026-10-08 定向重绘复验
 
 为直接覆盖 `renderStore()`，E2E 在商店中点击目录卡片触发真实重绘；不通过会持久化排序的操作触发重绘。probe 增加 `sw-home-store__*` 节点监听的显式 add/remove 计数，并将完整 breakdown 改为按需采样，避免逐轮生成宿主全量 listener 明细。
@@ -55,4 +65,4 @@ node --test tests/resource-trend-probe.test.cjs
 
 ## T-7153 后续执行
 
-T-7153 保持 `in_progress`。下一轮需要增加至少一项有依据的长时趋势证据、读取插件自有缓存的受限计数（不采集条目内容），并通过隔离 provider 夹具覆盖卸载/重试；本轮的 120 轮压力与监听器修复只作为已完成的子交付。
+T-7153 保持 `in_progress`。下一轮仍需要增加有依据的 2 小时或等价长会话证据，并决定是否扩大到其他插件级缓存观察面；本轮的缓存计数、provider 卸载/重试和清理竞态修复作为已完成的子交付。

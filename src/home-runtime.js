@@ -1,7 +1,7 @@
 "use strict";
 
 const {DEVICES, registerModules, modulesForDevice, normalizeModuleDefinition} = require("./home-model.js");
-const {registerHomeAdapters, unregisterHomeAdapter, readHomeModule, getHomeAdapterDiagnostics} = require("./home-adapters.js");
+const {registerHomeAdapters, unregisterHomeAdapter, readHomeModule, getHomeAdapterDiagnostics, getHomeAdapterResourceStats} = require("./home-adapters.js");
 
 function createHomeRuntime(definitions = []) {
     const baseDefinitions = registerModules(definitions);
@@ -117,7 +117,7 @@ function createHomeRuntime(definitions = []) {
         builtinRegistrations.clear();
         adapters = new Map();
     }
-    return {registerAdapter, unregister, listModules, read, diagnostics: getHomeAdapterDiagnostics, dispose};
+    return {registerAdapter, unregister, listModules, read, diagnostics: getHomeAdapterDiagnostics, resourceStats: getHomeAdapterResourceStats, dispose};
 }
 
 module.exports = {createHomeRuntime};

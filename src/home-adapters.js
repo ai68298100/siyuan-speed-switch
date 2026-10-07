@@ -91,23 +91,25 @@ function buildHomeAdapterCacheKey(moduleId, device, normalizedConfig = {}) {
 function unregisterHomeAdapter(adapters, moduleId) {
     const map = adapters instanceof Map ? adapters : registerHomeAdapters(adapters);
     const id = safeText(moduleId, 64);
+    const pendingKeys = new Set();
     map.delete(id);
     const prefix = `${id}:`;
     for (const key of snapshotCache.keys()) if (key.startsWith(prefix)) snapshotCache.delete(key);
     for (const key of failureBackoff.keys()) if (key.startsWith(prefix)) failureBackoff.delete(key);
     for (const key of inFlightReads.keys()) {
         if (!key.startsWith(prefix)) continue;
+        pendingKeys.add(key);
         inFlightReads.delete(key);
         const invalidatedGeneration = (readGenerations.get(key) || 0) + 1;
         readGenerations.set(key, invalidatedGeneration);
         invalidatedReadGenerations.set(key, invalidatedGeneration);
     }
-    for (const key of readGenerations.keys()) {
-        if (key.startsWith(prefix) && !inFlightReads.has(key)) {
-            const invalidatedGeneration = (readGenerations.get(key) || 0) + 1;
-            readGenerations.set(key, invalidatedGeneration);
-            invalidatedReadGenerations.set(key, invalidatedGeneration);
-        }
+    for (const key of [...readGenerations.keys()]) {
+        if (!key.startsWith(prefix) || pendingKeys.has(key)) continue;
+        // Completed reads have no stale promise left to guard. Remove their
+        // generation tombstones so provider rotation cannot grow maps forever.
+        readGenerations.delete(key);
+        invalidatedReadGenerations.delete(key);
     }
     for (let index = diagnostics.length - 1; index >= 0; index -= 1) {
         if (diagnostics[index].moduleId === id) diagnostics.splice(index, 1);
@@ -248,20 +250,51 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
     inFlightReads.set(cacheKey, run);
     try { return await run; } finally {
         if (inFlightReads.get(cacheKey) === run) inFlightReads.delete(cacheKey);
+        const invalidatedGeneration = invalidatedReadGenerations.get(cacheKey);
+        if (!inFlightReads.has(cacheKey)
+            && invalidatedGeneration !== undefined
+            && readGenerations.get(cacheKey) === invalidatedGeneration) {
+            invalidatedReadGenerations.delete(cacheKey);
+            readGenerations.delete(cacheKey);
+        }
     }
 }
 
 function clearHomeSnapshotCache() {
     snapshotCache.clear();
     failureBackoff.clear();
-    inFlightReads.clear();
-    readGenerations.clear();
-    invalidatedReadGenerations.clear();
+    // Keep pending promises visible while invalidating their generation. A
+    // later read with the same key must not accept a pre-clear response.
+    for (const key of inFlightReads.keys()) {
+        const invalidatedGeneration = (readGenerations.get(key) || 0) + 1;
+        readGenerations.set(key, invalidatedGeneration);
+        invalidatedReadGenerations.set(key, invalidatedGeneration);
+    }
+    for (const key of [...readGenerations.keys()]) {
+        if (!inFlightReads.has(key)) {
+            readGenerations.delete(key);
+            invalidatedReadGenerations.delete(key);
+        }
+    }
     diagnostics.length = 0;
 }
 
 function getHomeAdapterDiagnostics() {
     return diagnostics.map((item) => ({...item}));
+}
+
+// Resource trend probes observe only bounded state counts. Cache keys and
+// provider payloads stay inside this module and never cross the diagnostic
+// boundary.
+function getHomeAdapterResourceStats() {
+    return {
+        snapshotCacheEntries: snapshotCache.size,
+        failureBackoffEntries: failureBackoff.size,
+        inFlightReads: inFlightReads.size,
+        readGenerationEntries: readGenerations.size,
+        invalidatedReadGenerationEntries: invalidatedReadGenerations.size,
+        diagnosticEntries: diagnostics.length,
+    };
 }
 
 function planHomeRefresh({visible = true, device = "desktop", stale = false, force = false, failure = false} = {}) {
@@ -303,4 +336,4 @@ function consumeHomeAdapterDiagnostics(device) {
     return filtered.map((item) => ({...item}));
 }
 
-module.exports = {MAX_SNAPSHOT_ITEMS, CALENDAR_MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, buildHomeAdapterCacheKey, normalizeHomeAdapterConfig: normalizeConfig, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics, consumeHomeAdapterDiagnostics, planHomeRefresh, planHomeLifecycleRefresh, coalesceHomeRefreshEvents};
+module.exports = {MAX_SNAPSHOT_ITEMS, CALENDAR_MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, buildHomeAdapterCacheKey, normalizeHomeAdapterConfig: normalizeConfig, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics, getHomeAdapterResourceStats, consumeHomeAdapterDiagnostics, planHomeRefresh, planHomeLifecycleRefresh, coalesceHomeRefreshEvents};

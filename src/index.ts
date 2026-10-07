@@ -369,6 +369,7 @@ declare module "./home-runtime" {
         listModules(device?: string): unknown[];
         read(moduleId: string, device?: string, config?: Record<string, unknown>, options?: Record<string, unknown>): Promise<unknown>;
         diagnostics(): Array<{type: string; moduleId: string; device: string; at: number}>;
+        resourceStats(): {snapshotCacheEntries: number; failureBackoffEntries: number; inFlightReads: number; readGenerationEntries: number; invalidatedReadGenerationEntries: number; diagnosticEntries: number};
         dispose(): void;
     };
 }
