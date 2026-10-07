@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 仓库 | `ai68298100/siyuan-speed-switch`，公开仓库，MIT，2 stars、1 fork | 仓库可见性和许可证清楚；About 已有四入口定位和 9 个 Topics |
 | 默认分支 | `dev/thispc-1002` | 这是开发分支，不应在分支策略未确认前直接改成 `main` |
-| 分支关系 | 远端 dev/thispc-1002 比 main 多 7 个提交；本轮工作树已推送并与远端同名分支保持一致 | 开发分支已同步；仍不能把它写成稳定 Release，也不能直接删除 feature 分支 |
+| 分支关系 | 远端 `dev/thispc-1002` 当前领先 `main`；本轮工作树已推送并与远端同名分支保持一致（领先数量以实时 Git 查询为准） | 开发分支已同步；仍不能把它写成稳定 Release，也不能直接删除 feature 分支 |
 | 最新 Release | `v0.44.1`，2026-09-30，目标发布线为 `main`，`package.zip` 568,951 bytes | 这是当前稳定安装包；后续工作树改动尚未进入 Release |
 | Actions | CI workflow 已覆盖当前开发分支与 dev/**；本轮同步触发的最新 run 已完成并通过；此前 run `37599763303` 在桌面本机证据缺失处失败，已由 T-7191 修复。Dependabot 两条更新 run 已完成并通过 | 云端 CI 与本地门禁均已通过 |
 | 分支保护 | `main` 和 `dev/thispc-1002` 均未启用保护规则 | 允许直接 push、force-push 或删除，发布线风险高 |

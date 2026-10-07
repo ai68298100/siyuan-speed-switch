@@ -74,7 +74,8 @@
     "T-7190",
     "T-7191",
     "T-7192",
-    "T-7193"
+    "T-7193",
+    "T-7194"
   ],
   "tasks": [
     {
@@ -1828,6 +1829,22 @@
         "ROADMAP.md",
         "docs/github-repository-audit-2026-10-07.md",
         "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7151"
+    },
+    {
+      "id": "T-7194",
+      "title": "校准历史同步回执与远端分支事实",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "release",
+      "dependsOn": [
+        "T-7193"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/github-repository-audit-2026-10-07.md"
       ],
       "next": "T-7151"
     }
