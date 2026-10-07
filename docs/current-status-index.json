@@ -76,7 +76,8 @@
     "T-7192",
     "T-7193",
     "T-7194",
-    "T-7195"
+    "T-7195",
+    "T-7196"
   ],
   "tasks": [
     {
@@ -1864,6 +1865,23 @@
         "docs/t7151-performance-evidence-2026-10-07.md",
         "tests/e2e/global-setup.mjs",
         "scripts/e2e/lib.mjs"
+      ],
+      "next": "T-7151"
+    },
+    {
+      "id": "T-7196",
+      "title": "验证隔离规模探针的启动前安全链路",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "performance",
+      "dependsOn": [
+        "T-7195"
+      ],
+      "evidence": [
+        "scripts/e2e/background-orchestrator.mjs",
+        "docs/adr/0149-t7151-host-scale-benchmark-boundaries.md",
+        "docs/dev-plan-2026-10-06.md"
       ],
       "next": "T-7151"
     }
