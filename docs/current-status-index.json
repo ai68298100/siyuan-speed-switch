@@ -1880,6 +1880,7 @@
       ],
       "evidence": [
         "scripts/e2e/background-orchestrator.mjs",
+        "scripts/e2e/host-scale-probe.mjs",
         "docs/adr/0149-t7151-host-scale-benchmark-boundaries.md",
         "docs/dev-plan-2026-10-06.md"
       ],
