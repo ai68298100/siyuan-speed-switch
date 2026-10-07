@@ -75,7 +75,8 @@
     "T-7191",
     "T-7192",
     "T-7193",
-    "T-7194"
+    "T-7194",
+    "T-7195"
   ],
   "tasks": [
     {
@@ -1845,6 +1846,24 @@
       "evidence": [
         "docs/dev-plan-2026-10-06.md",
         "docs/github-repository-audit-2026-10-07.md"
+      ],
+      "next": "T-7151"
+    },
+    {
+      "id": "T-7195",
+      "title": "明确 T-7151 宿主规模性能证据边界",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "performance",
+      "dependsOn": [
+        "T-7151"
+      ],
+      "evidence": [
+        "docs/adr/0149-t7151-host-scale-benchmark-boundaries.md",
+        "docs/t7151-performance-evidence-2026-10-07.md",
+        "tests/e2e/global-setup.mjs",
+        "scripts/e2e/lib.mjs"
       ],
       "next": "T-7151"
     }
