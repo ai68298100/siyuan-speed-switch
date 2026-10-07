@@ -198,11 +198,11 @@ importers:
         specifier: ^17.0.0
         version: 17.0.1(sass@1.105.0)(webpack@5.111.1)
       siyuan:
-        specifier: 1.2.8
-        version: 1.2.8
+        specifier: 1.2.9
+        version: 1.2.9
       terser-webpack-plugin:
         specifier: 5.3.16
-        version: 5.3.16(webpack@5.111.1)
+        version: 5.3.16(esbuild@0.28.2)(webpack@5.111.1)
       tslib:
         specifier: ^2.8.1
         version: 2.8.1
@@ -211,7 +211,7 @@ importers:
         version: 5.9.3
       webpack:
         specifier: ^5.111.1
-        version: 5.111.1(postcss@8.5.26)(webpack-cli@7.2.3)
+        version: 5.111.1(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
       webpack-cli:
         specifier: ^7.0.3
         version: 7.2.3(json5@2.2.3)(webpack@5.111.1)
@@ -1158,8 +1158,8 @@ packages:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
 
-  siyuan@1.2.8:
-    resolution: {integrity: sha512-44tTh1leDkrgj8wQChLjkkbBvDk2lDF0QiAfs1GXmAlAEkber4kx5TLNIGzgsDnTR+Hw3L5kPz5m6s0YckpKew==}
+  siyuan@1.2.9:
+    resolution: {integrity: sha512-2bZTzTZocnOxPqY4liGtY2ZDhnhkYgySrlVLCCKWHjmGZ4kJYru0T1hFz5Hro0bz7cvecIEAx7XRV4plIvW1jQ==}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -1712,7 +1712,7 @@ snapshots:
       schema-utils: 4.3.3
       serialize-javascript: 7.1.1
       tinyglobby: 0.2.17
-      webpack: 5.111.1(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.111.1(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
 
   cross-spawn@7.0.6:
     dependencies:
@@ -1731,7 +1731,7 @@ snapshots:
       postcss-value-parser: 4.2.0
       semver: 7.8.5
     optionalDependencies:
-      webpack: 5.111.1(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.111.1(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
 
   css-tree@3.2.1:
     dependencies:
@@ -1774,7 +1774,7 @@ snapshots:
       esbuild: 0.28.2
       get-tsconfig: 4.14.3
       loader-utils: 2.0.4
-      webpack: 5.111.1(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.111.1(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
       webpack-sources: 3.5.1
 
   esbuild@0.28.2:
@@ -1943,16 +1943,17 @@ snapshots:
     dependencies:
       schema-utils: 4.3.3
       tapable: 2.3.3
-      webpack: 5.111.1(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.111.1(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
 
-  minimizer-webpack-plugin@5.8.0(postcss@8.5.26)(webpack@5.111.1):
+  minimizer-webpack-plugin@5.8.0(esbuild@0.28.2)(postcss@8.5.26)(webpack@5.111.1):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       jest-worker: 27.5.1
       schema-utils: 4.5.0
       terser: 5.51.2
-      webpack: 5.111.1(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.111.1(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
     optionalDependencies:
+      esbuild: 0.28.2
       postcss: 8.5.26
 
   nanoid@3.3.18: {}
@@ -2066,7 +2067,7 @@ snapshots:
   sass-loader@17.0.1(sass@1.105.0)(webpack@5.111.1):
     optionalDependencies:
       sass: 1.105.0
-      webpack: 5.111.1(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.111.1(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
 
   sass@1.105.0:
     dependencies:
@@ -2112,7 +2113,7 @@ snapshots:
 
   shebang-regex@3.0.0: {}
 
-  siyuan@1.2.8:
+  siyuan@1.2.9:
     dependencies:
       '@dop251/types-goja_nodejs-buffer': 0.0.0-20260918183711-b481721df8a2
       '@dop251/types-goja_nodejs-global': 0.0.0-20260918183711-b481721df8a2
@@ -2136,14 +2137,16 @@ snapshots:
 
   tapable@2.3.3: {}
 
-  terser-webpack-plugin@5.3.16(webpack@5.111.1):
+  terser-webpack-plugin@5.3.16(esbuild@0.28.2)(webpack@5.111.1):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       jest-worker: 27.5.1
       schema-utils: 4.5.0
       serialize-javascript: 6.0.2
       terser: 5.51.2
-      webpack: 5.111.1(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.111.1(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
+    optionalDependencies:
+      esbuild: 0.28.2
 
   terser@5.51.2:
     dependencies:
@@ -2206,7 +2209,7 @@ snapshots:
       import-local: 3.2.0
       interpret: 3.1.1
       rechoir: 0.8.0
-      webpack: 5.111.1(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.111.1(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
       webpack-merge: 6.0.1
     optionalDependencies:
       json5: 2.2.3
@@ -2219,7 +2222,7 @@ snapshots:
 
   webpack-sources@3.5.1: {}
 
-  webpack@5.111.1(postcss@8.5.26)(webpack-cli@7.2.3):
+  webpack@5.111.1(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3):
     dependencies:
       '@types/estree': 1.0.9
       '@types/json-schema': 7.0.15
@@ -2233,7 +2236,7 @@ snapshots:
       events: 3.3.0
       graceful-fs: 4.2.11
       mime-db: 1.54.0
-      minimizer-webpack-plugin: 5.8.0(postcss@8.5.26)(webpack@5.111.1)
+      minimizer-webpack-plugin: 5.8.0(esbuild@0.28.2)(postcss@8.5.26)(webpack@5.111.1)
       schema-utils: 4.5.0
       tapable: 2.3.3
       watchpack: 2.5.2
@@ -2288,7 +2291,7 @@ snapshots:
 
   zip-webpack-plugin@4.0.3(webpack-sources@3.5.1)(webpack@5.111.1):
     dependencies:
-      webpack: 5.111.1(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.111.1(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
       webpack-sources: 3.5.1
       yazl: 3.3.1
 
