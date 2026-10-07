@@ -70,7 +70,8 @@
     "T-7160",
     "T-7161",
     "T-7165",
-    "T-7154"
+    "T-7154",
+    "T-7190"
   ],
   "tasks": [
     {
@@ -1750,6 +1751,28 @@
         "tests/kernel-widgets-wiring.test.cjs"
       ],
       "next": "T-7134"
+    },
+    {
+      "id": "T-7190",
+      "title": "开发分支同步到 GitHub（不合并主干/不推集市）",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "release",
+      "dependsOn": [
+        "T-7159",
+        "T-7160",
+        "T-7161",
+        "T-7164",
+        "T-7166"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/github-repository-audit-2026-10-07.md",
+        "CONTRIBUTING.md",
+        "README.md"
+      ],
+      "next": "T-7151"
     }
   ],
   "global": {

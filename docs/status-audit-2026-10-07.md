@@ -5,7 +5,7 @@
 用户指定的相邻动作目录当前只有 `.mimosa` 审查记录，没有插件源码。本次按本仓库（siyuan-speed-switch）审查；后续修复已直接落在本仓库，本文件是交接记录。
 
 - 版本 0.44.1，最低思源版本 3.8.0。
-- 当前分支 dev/thispc-1002；工作树有大量未提交源码、测试、文档、CI 和素材改动。
+- 本次同步前分支 dev/thispc-1002 有大量源码、测试、文档、CI 和素材改动；已由提交 `a07b014` 推送到 GitHub，工作树已清洁（忽略的本地产物仍不入库）。
 - 状态索引：51 completed、6 in_progress、2 blocked、16 planned、2 deferred。
 - 当前任务 T-7115；下一本地任务 T-7151。
 - 全局状态：release=not_started、personalInstall=not_updated、mainlineMerge=forbidden_until_user_action。
