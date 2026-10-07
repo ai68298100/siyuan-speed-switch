@@ -7,6 +7,8 @@ body:
       value: |
         感谢提议！请描述你想解决的问题和使用场景——场景越具体，越容易被采纳。
         Thanks! Describe the problem and context — concrete scenarios get adopted faster.
+        请不要在示例、截图或配置中放入 Token、笔记正文或完整本地路径。
+        Do not include tokens, note content, or full local paths in examples or screenshots.
 
   - type: textarea
     id: problem
@@ -32,7 +34,11 @@ body:
       description: 现在其他工具或手动流程是怎么做的 / workarounds you use today
 
   - type: checkboxes
+    id: privacy-check
     attributes:
       label: 确认 / Confirm
       options:
         - label: 我已检索 README 与既有 issue，未发现重复 / checked README and existing issues
+        - label: 我已移除示例中的敏感信息 / removed sensitive data from examples
+    validations:
+      required: true

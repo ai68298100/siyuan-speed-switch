@@ -6,6 +6,7 @@ import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels
 import {clampOversizedIcons} from "./util";
 import {buildHomeConfigSections, resolveHomeConfigHint, resolveHomeConfigIntegration, resolveHomeConfigKind, resolveHomeConfigPlaceholder, resolveHomeStoreSourceInfo, summarizeHomeConfigDraft} from "./home-store-model";
 import {CITY_TIME_ZONES} from "./local-time-model";
+import {mountPlatformDialogCloseHint} from "./platform-dom";
 
 export interface HomeConfigFormHost {
     i18n: Record<string, string>;
@@ -35,8 +36,20 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
         const sourceInfo = resolveHomeStoreSourceInfo(inst.moduleId);
         const configKind = resolveHomeConfigKind(inst.moduleId, def.category);
         const integration = resolveHomeConfigIntegration(sourceInfo, def.category);
-        // T-6479：图标钳制观察器的释放挂宿主 destroyCallback（不再覆写 dialog.destroy）。
-        let releaseConfigForm: () => void = () => undefined;
+        // T-6479/T-7122：配置表单的观察器、搜索防抖与首焦点 timer 统一挂宿主
+        // destroyCallback。弹窗关闭后不得让迟到回调继续持有已脱离 DOM 的表单闭包。
+        const configFormCleanups: Array<() => void> = [];
+        let configFormDisposed = false;
+        const registerConfigFormCleanup = (cleanup: () => void) => {
+            configFormCleanups.push(cleanup);
+        };
+        let releaseConfigForm: () => void = () => {
+            configFormDisposed = true;
+            const cleanups = configFormCleanups.splice(0);
+            cleanups.forEach((cleanup) => {
+                try { cleanup(); } catch (_) { /* 单个清理失败不阻断其余句柄回收 */ }
+            });
+        };
         const dialog = new Dialog({
             title: `${this.i18n.homeConfig} · ${def.title || inst.moduleId}`,
             // Legacy title contract: title: `${this.i18n.homeConfig} · ${inst.moduleId}`
@@ -45,6 +58,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
             height: this.isMobile ? "min(420px, 80vh)" : "360px",
             destroyCallback: () => releaseConfigForm(),
         });
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const root = dialog.element.querySelector<HTMLElement>(".sw-home-config");
         if (!root) return;
         root.innerHTML = "";
@@ -195,6 +209,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 select.addEventListener("change", () => { draft[field.key] = select.value; updateSummary(); });
                 row.appendChild(select);
                 void this.loadNotebooks().then((notebooks) => {
+                    if (configFormDisposed) return;
                     fill(notebooks);
                 });
             } else if (field.type === "favorite-group") {
@@ -250,6 +265,13 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 let knownDocuments: Array<{id: string; title: string}> = openedDocuments.map((entry) => ({id: entry.rootId, title: entry.title}));
                 let requestGeneration = 0;
                 let queryTimer: number | null = null;
+                registerConfigFormCleanup(() => {
+                    requestGeneration += 1;
+                    if (queryTimer !== null) {
+                        window.clearTimeout(queryTimer);
+                        queryTimer = null;
+                    }
+                });
                 const renderSelection = (preferredTitle = "") => {
                     selection.innerHTML = "";
                     const id = String(draft[field.key] || "");
@@ -309,7 +331,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 const load = (query: string) => {
                     const generation = ++requestGeneration;
                     void this.loadHomeDocumentOptions(query).then((items) => {
-                        if (generation !== requestGeneration) return;
+                        if (configFormDisposed || generation !== requestGeneration) return;
                         truncatedHint = items.truncated ? (this.i18n.homeConfigOptionsTruncated || "结果较多，仅显示前一部分，请继续输入关键词") : "";
                         const merged = [...openedDocuments.map((entry) => ({id: entry.rootId, title: entry.title})), ...items];
                         const seen = new Set<string>();
@@ -320,19 +342,31 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                         });
                         render(knownDocuments);
                         renderSelection();
-                    }).catch(() => { if (generation === requestGeneration) render([]); });
+                    }).catch(() => { if (!configFormDisposed && generation === requestGeneration) render([]); });
                 };
                 const queueLoad = () => {
                     if (queryTimer !== null) window.clearTimeout(queryTimer);
                     const unsafeQueryChars = new Set(["'", '"', "`", ";", "\\"]);
                     const query = Array.from(input.value.trim(), (char) => unsafeQueryChars.has(char) ? " " : char).join("").slice(0, 48);
                     const direct = openedDocuments.find((entry) => entry.rootId === query);
-                    if (direct) { choose({id: direct.rootId, title: direct.title}); return; }
-                    queryTimer = window.setTimeout(() => load(query), query ? 180 : 0);
+                    if (direct) {
+                        requestGeneration += 1;
+                        queryTimer = null;
+                        choose({id: direct.rootId, title: direct.title});
+                        return;
+                    }
+                    queryTimer = window.setTimeout(() => {
+                        queryTimer = null;
+                        load(query);
+                    }, query ? 180 : 0);
                 };
                 input.addEventListener("input", queueLoad);
                 input.addEventListener("sw-config-reset", () => {
                     requestGeneration += 1;
+                    if (queryTimer !== null) {
+                        window.clearTimeout(queryTimer);
+                        queryTimer = null;
+                    }
                     input.value = "";
                     list.innerHTML = "";
                     renderSelection();
@@ -416,11 +450,24 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 };
                 let queryTimer: number | null = null;
                 let allItems: Array<{id: string; title: string}> = [];
+                registerConfigFormCleanup(() => {
+                    if (queryTimer !== null) {
+                        window.clearTimeout(queryTimer);
+                        queryTimer = null;
+                    }
+                });
                 const queueRender = () => {
                     if (queryTimer !== null) window.clearTimeout(queryTimer);
                     const query = input.value.trim().replace(/["'`;\\]/g, " ").slice(0, 48);
-                    if (!query) { list.innerHTML = ""; updateSummary(); return; }
+                    if (!query) {
+                        queryTimer = null;
+                        list.innerHTML = "";
+                        updateSummary();
+                        return;
+                    }
                     queryTimer = window.setTimeout(() => {
+                        queryTimer = null;
+                        if (configFormDisposed) return;
                         const lower = query.toLocaleLowerCase();
                         const filtered = allItems.filter((item) => `${item.title} ${item.id}`.toLocaleLowerCase().includes(lower));
                         // T-6470：手填/粘贴库 ID（独立库不产生 av 块，SQL 发现不到）直接成为可选条目
@@ -429,15 +476,25 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     }, 180);
                 };
                 void this.loadHomeDatabaseOptions().then((items) => {
+                    if (configFormDisposed) return;
                     allItems = items;
                     truncatedHint = items.truncated ? (this.i18n.homeConfigOptionsTruncated || "结果较多，仅显示前一部分，请继续输入关键词") : "";
                     renderSelection();
                     queueRender();
-                }).catch(() => { allItems = []; list.innerHTML = ""; renderSelection(); });
+                }).catch(() => {
+                    if (configFormDisposed) return;
+                    allItems = [];
+                    list.innerHTML = "";
+                    renderSelection();
+                });
                 input.addEventListener("input", () => {
                     queueRender();
                 });
                 input.addEventListener("sw-config-reset", () => {
+                    if (queryTimer !== null) {
+                        window.clearTimeout(queryTimer);
+                        queryTimer = null;
+                    }
                     list.innerHTML = "";
                     input.value = "";
                     renderSelection();
@@ -491,8 +548,8 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     if (!/^[0-9]{14}-[0-9a-z]+$/i.test(blockId)) { render([]); return; }
                     const generation = ++loadGeneration;
                     void this.loadHomeDatabaseColumns(blockId).then((items) => {
-                        if (generation === loadGeneration && blockId === String(draft.blockId || "")) render(items);
-                    }).catch(() => { if (generation === loadGeneration) render([]); });
+                        if (!configFormDisposed && generation === loadGeneration && blockId === String(draft.blockId || "")) render(items);
+                    }).catch(() => { if (!configFormDisposed && generation === loadGeneration) render([]); });
                 };
                 const databaseControl = controls.get("blockId");
                 databaseControl?.addEventListener("input", load);
@@ -514,6 +571,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 loading.textContent = this.i18n.setStorageMeasuring || "加载中…";
                 select.append(loading);
                 void this.loadMinifluxCategoryOptions(String(draft.endpoint || ""), String(draft.token || "")).then((categories) => {
+                    if (configFormDisposed) return;
                     select.innerHTML = "";
                     const all = document.createElement("option");
                     all.value = "";
@@ -532,6 +590,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     }
                     select.value = saved;
                 }).catch(() => {
+                    if (configFormDisposed) return;
                     select.innerHTML = "";
                     const fallback = document.createElement("option");
                     fallback.value = "";
@@ -558,6 +617,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 void Promise.resolve(typeof this.loadActivityWatchBuckets === "function"
                     ? this.loadActivityWatchBuckets(String(draft.endpoint || ""))
                     : Promise.resolve([])).then((buckets) => {
+                    if (configFormDisposed) return;
                     select.innerHTML = "";
                     const auto = document.createElement("option");
                     auto.value = "";
@@ -576,6 +636,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     }
                     select.value = saved;
                 }).catch(() => {
+                    if (configFormDisposed) return;
                     select.innerHTML = "";
                     const fallback = document.createElement("option");
                     fallback.value = "";
@@ -742,7 +803,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
         if (typeof MutationObserver === "function") {
             const iconClampObserver = new MutationObserver(() => clampOversizedIcons(root));
             iconClampObserver.observe(root, {childList: true, subtree: true});
-            releaseConfigForm = () => iconClampObserver.disconnect();
+            registerConfigFormCleanup(() => iconClampObserver.disconnect());
         }
         const save = document.createElement("button");
         save.type = "button";
@@ -794,5 +855,15 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
         actions.append(reset, cancel, save);
         root.appendChild(actions);
         updateSummary();
-        window.setTimeout(() => controls.values().next().value?.focus(), 0);
+        let initialFocusTimer: number | null = window.setTimeout(() => {
+            initialFocusTimer = null;
+            const first = controls.values().next().value;
+            if (root.isConnected) first?.focus();
+        }, 0);
+        registerConfigFormCleanup(() => {
+            if (initialFocusTimer !== null) {
+                window.clearTimeout(initialFocusTimer);
+                initialFocusTimer = null;
+            }
+        });
     }

@@ -492,7 +492,8 @@ if (!switcherRefreshFallbackOk) allPassed = false;
 
 const searchSourceUiOk = pluginCss.includes('.sw__doc-source')
     && docSearchUiSource.includes('this.i18n.docSearchSourceOpened')
-    && docSearchUiSource.includes('this.i18n.docSearchSourceGlobal')
+    && docSearchUiSource.includes('this.i18n.docSearchSourceTitle')
+    && docSearchUiSource.includes('this.i18n.docSearchSourceFullText')
     && source.includes('docSearchHitId')
     && documentActionsSource.includes('cb-get-scroll')
     && source.includes('openDocumentOnDesktop');
@@ -521,9 +522,9 @@ const sortLifecycleOk = [
     && mobileSwitcherSource.includes('document.addEventListener("keydown", onDocumentKeyDown, true)')
     && mobileSwitcherSource.includes('document.removeEventListener("keydown", onDocumentKeyDown, true)')
     && mobileSwitcherSource.includes('list.setAttribute("role", "menu")')
-    && source.includes('item.setAttribute("role", "menuitemradio")')
+    && mobileSwitcherSource.includes('item.setAttribute("role", "menuitemradio")')
     && mobileSwitcherSource.includes('item.tabIndex = value === sortSelect.value ? 0 : -1')
-    && mobileSwitcherSource.includes('event.key !== "ArrowDown" && event.key !== "ArrowUp"')
+    && mobileSwitcherSource.includes('["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)')
     && source.includes('overlay.addEventListener("click", (event) =>')
     && source.includes('return () => {');
 console.log(`${sortLifecycleOk ? 'PASS' : 'FAIL'} mobile sort options and lifecycle cleanup`);
@@ -665,7 +666,7 @@ console.log(`${mobileFirstFrameFallbackOk ? 'PASS' : 'FAIL'} mobile first-frame 
 if (!mobileFirstFrameFallbackOk) allPassed = false;
 const animationFrameHelperOk = source.includes('private scheduleAnimationFrame(callback: FrameRequestCallback): number')
     && source.includes('return window.setTimeout(() => callback(Date.now()), 16);')
-    && mobileSwitcherSource.includes('if (overlay.isConnected) overlay.focus({preventScroll: true})')
+    && mobileSwitcherSource.includes('if (overlay.isConnected && !sheet.contains(document.activeElement)) focusSelection()')
     && mobileSwitcherSource.includes('if (sheet.isConnected) sheet.classList.add("sw__mobile-sheet--open")');
 console.log(`${animationFrameHelperOk ? 'PASS' : 'FAIL'} mobile transient animation fallback`);
 if (!animationFrameHelperOk) allPassed = false;

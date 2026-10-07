@@ -534,6 +534,8 @@ test('quick capture: multi-target flow with destination preview and receipts (T-
         '当前文档目标仅桌面提供');
     assert.match(indexSource, /previewLine\.setAttribute\("aria-live", "polite"\);/,
         '目的地预览行必须存在（提交前声明写到哪里）');
+    assert.match(indexSource, /previewLine\.setAttribute\("role", "status"\);/,
+        '目的地预览行必须使用 status 语义承载动态播报');
     assert.match(indexSource, /const capture = this\.resolveActiveCaptureRoot\(\);\n\s*if \(!capture\) \{/,
         '当前文档写入前必须解析活动文档（缺失即分步失败原因）');
     assert.match(indexSource, /quickCapturePreviewCurrent\.replace\("\{x\}", capture\.title\)/,
@@ -808,7 +810,7 @@ test('platform surface context: singleton dialogs, FAB restore and workbench edi
     assert.match(indexSource, /onSwitcher: \(\) => this\.openPlatformFromBall\(\),/,
         'the floating-ball executor onSwitcher must restore the last surface');
     // 工作台编辑现场：表面导航离开时记录、重开时恢复且焦点回到布局开关。
-    assert.match(secondPanelSource, /this\.workbenchResumeEditing = editing;\s*\n\s*dialog\.destroy\(\);/,
+    assert.match(secondPanelSource, /this\.workbenchResumeEditing = editing;[\s\S]{0,500}?dialog\.destroy\(\);/,
         'leaving the workbench via surface nav must record the editing state');
     assert.match(secondPanelSource, /let editing = this\.workbenchResumeEditing === true;\s*\n\s*this\.workbenchResumeEditing = false;/,
         'reopening must consume the resume flag exactly once');
@@ -819,7 +821,7 @@ test('platform surface context: singleton dialogs, FAB restore and workbench edi
         'chrome mount must render through the caption builder');
     assert.match(indexSource, /this\.openPlatformSurface\(surface, returnTo, \{\s*\n\s*entry: "surface-nav",/,
         'desktop chrome nav must carry the surface-nav entry');
-    assert.match(secondPanelSource, /this\.openPlatformSurface\?\.\(surface, "workbench", \{\s*\n\s*entry: "surface-nav",/,
+    assert.match(secondPanelSource, /this\.openPlatformSurface\?\.\(surface, "workbench", \{[\s\S]{0,500}?entry: "surface-nav",/,
         'workbench chrome nav must carry the surface-nav entry');
     assert.match(mobileSwitcherSource, /this\.openPlatformSurface\?\.\(surface, returnTo, \{\s*\n\s*entry: "surface-nav",/,
         'mobile chrome nav must carry the surface-nav entry');
@@ -833,6 +835,10 @@ test('platform surface context: singleton dialogs, FAB restore and workbench edi
         'studio lazy chunk failures must be logged at the host boundary');
     assert.match(indexSource, /showMessage\(this\.i18n\.snippetFailed\);\s*\n\s*this\.showSwitcher\(false, returnTo\);/,
         'studio lazy chunk failure must restore the switcher with a user-visible receipt');
+    assert.match(indexSource, /const loading = document\.createElement\("div"\);[\s\S]{0,900}mountPlatformChrome\(root, \{[\s\S]{0,700}onClose: \(\) => dialog\.destroy\(\)/,
+        'lazy Studio loading must expose a temporary platform close action');
+    assert.match(indexSource, /const loadingKeydown = \(event: KeyboardEvent\) => \{[\s\S]{0,320}event\.key !== "Escape"[\s\S]{0,260}dialog\.destroy\(\);/,
+        'lazy Studio loading must close from Escape before the controller exists');
 });
 
 // T-7012：平台外壳统一合同——query 透传、焦点来源捕获/恢复与设置互返。
@@ -855,8 +861,10 @@ test('platform surface contract: query passthrough, focus restore and settings r
     assert.match(mobileSwitcherSource, /query: context\?\.query, \.\.\.\(focusSource \? \{focusSource\} : \{\}\),/,
         'mobile chrome nav must pass the query and focus source through');
     // 工作台：focusSource 的 object:<id> 形式参与回跳目标解析；nav 透传 query。
-    assert.match(secondPanelSource, /\(context\?\.focusSource \|\| ""\)\.startsWith\("object:"\)/,
-        'workbench must honor the focusSource object target');
+    assert.match(secondPanelSource, /const focusObjectId = context\?\.objectKind === "widget"[\s\S]{0,260}?startsWith\("object:"\)/,
+        'workbench must honor the focusSource object target on return');
+    assert.match(secondPanelSource, /const activeElement = dialog\.element\.ownerDocument\?\.activeElement as HTMLElement \| null;[\s\S]{0,260}const focusedWidgetId = activeCell && root\.contains\(activeCell\)/,
+        'workbench navigation must only carry the widget currently focused at the moment of leaving');
     assert.match(secondPanelSource, /\.\.\.\(context\?\.query \? \{query: context\.query\} : \{\}\),/,
         'workbench chrome nav must pass the query through');
     // 片段 chips 打开实验室必须携带查询词（studio 上下文回执可见）。
@@ -871,16 +879,16 @@ test('platform surface contract: query passthrough, focus restore and settings r
     assert.match(indexSource, /target\?\.focus\(\{preventScroll: true\}\);\s*\n\s*\}, 0\);/,
         'focus restore must run after assembly in a macro task');
     // 设置互返：openSetting 接受 returnTo，关闭后恢复来源表面；面板入口传参。
-    assert.match(indexSource, /openSetting\(initialPanel\?: string, returnTo\?: PlatformSurface \| null\)/,
-        'openSetting must accept the returnTo surface');
+    assert.match(indexSource, /openSetting\(initialPanel\?: string, returnTo\?: PlatformSurface \| null, returnContext\?: PlatformSurfaceContext \| null\)/,
+        'openSetting must accept the return surface context');
     assert.match(indexSource, /const restoreSurface = normalizeSurfaceId\(returnTo \|\| "", ""\);/,
         'the restore surface must go through the id whitelist');
-    assert.match(indexSource, /if \(restoreSurface && !this\.isUnloading\) \{[\s\S]{0,200}?this\.openPlatformSurface\(restoreSurface, "switcher", \{entry: "back"\}\);/,
-        'settings close must restore the originating surface behind the unload guard');
-    assert.match(indexSource, /this\.openSetting\(undefined, "switcher"\);/,
-        'the desktop switcher settings button must request restore');
-    assert.match(mobileSwitcherSource, /this\.openSetting\(undefined, "switcher"\);/,
-        'the mobile switcher settings button must request restore');
+    assert.match(indexSource, /if \(restoreSurface && !this\.isUnloading\) \{[\s\S]{0,700}?this\.openPlatformSurface\(restoreSurface, "switcher", \{[\s\S]{0,260}?entry: "back"/,
+        'settings close must restore the originating surface and context behind the unload guard');
+    assert.match(indexSource, /this\.openSetting\(undefined, "switcher", \{[\s\S]{0,420}?focusSource/,
+        'the desktop switcher settings button must preserve query/focus context');
+    assert.match(mobileSwitcherSource, /this\.openSetting\(undefined, "switcher", \{[\s\S]{0,420}?focusSource/,
+        'the mobile switcher settings button must preserve query/focus context');
 });
 
 // T-7007：第一面板主焦点模型与过滤 chips 语义收口。
@@ -942,15 +950,35 @@ test('switcher focus model: chip keyboard path and capture targets use aria-pres
     assert.doesNotMatch(cycleSlice, /aria-selected/,
         'chips 键盘路径不得残留 aria-selected');
     const targetSlice = indexSource.slice(
+        indexSource.indexOf('const targets = document.createElement("div");'),
         indexSource.indexOf('const setActiveTarget = (next: CaptureTarget) => {'),
-        indexSource.indexOf('const setActiveTarget') >= 0
-            ? indexSource.indexOf('updatePreview();', indexSource.indexOf('const setActiveTarget'))
-            : -1,
     );
-    assert.match(targetSlice, /el\.setAttribute\("aria-pressed", String\(key === target\)\);/,
-        '快速捕获目标按钮组必须用 aria-pressed 表达单选');
+    assert.match(targetSlice, /targets\.setAttribute\("role", "group"\);/,
+        '快速捕获目标必须是 aria-pressed 按钮组，而不是不完整的 tablist');
+    assert.match(targetSlice, /aria-label/,
+        '快速捕获目标组必须有可访问名称');
+    assert.doesNotMatch(targetSlice, /setAttribute\("role", "tab(list)?"\)/,
+        '快速捕获目标按钮组不得残留 tab 语义');
+    assert.match(indexSource.slice(indexSource.indexOf('const setActiveTarget = (next: CaptureTarget) => {'), indexSource.indexOf('const updatePreview = () => {')),
+        /el\.setAttribute\("aria-pressed", String\(key === target\)\);/,
+        '快速捕获目标按钮必须表达 pressed 状态');
     assert.doesNotMatch(targetSlice, /aria-selected/,
         '快速捕获目标按钮组不得残留 aria-selected');
+});
+
+test('quick icon categories use a pressed filter group instead of incomplete tabs (T-7141)', () => {
+    const iconSlice = indexSource.slice(
+        indexSource.indexOf('const cats = document.createElement("div");'),
+        indexSource.indexOf('const renderIcons = () => {'),
+    );
+    assert.match(iconSlice, /cats\.setAttribute\("role", "group"\);/,
+        'icon categories filter one grid and must expose group semantics');
+    assert.match(iconSlice, /aria-label/,
+        'icon category group must have an accessible name');
+    assert.match(iconSlice, /chip\.setAttribute\("aria-pressed", String\(category === activeCategory\)\);/,
+        'icon category selection must be announced as pressed state');
+    assert.doesNotMatch(iconSlice, /setAttribute\("role", "tab(list)?"\)|aria-selected/,
+        'icon category filter must not expose incomplete tab semantics');
 });
 
 // T-7041：侧栏独立日记入口（ROADMAP §2.2 三端必备）——桌面弹窗与手机快捷动作均有
@@ -1033,6 +1061,10 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
             'close button must carry an opaque surface background');
         assert.ok(declaresIn(shellScss, '.sw-platform-header__close:hover', /border-color: var\(--sw-platform-accent/, base),
             'close button hover must use the accent border');
+        assert.ok(declaresIn(shellScss, '.sw-platform-header__close:active', /transform:\s*translateY\(1px\)/, base),
+            'close button active state must provide a pressed feedback');
+        assert.ok(declaresIn(shellScss, '.sw-platform-header__close:active', /transform:\s*none/, {atRule: /prefers-reduced-motion: reduce/}),
+            'reduced motion must neutralize close button press movement');
     }
     // 切换器是首个消费点：上下文栏常驻 Tab/1-9/Enter/Alt 预览。
     assert.match(indexSource, /kbdHints: \["Tab", "1-9", "Enter", this\.i18n\.platformKbdPreview\]/,
@@ -1069,6 +1101,17 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
     const coarse = shell.slice(shell.indexOf('@media (pointer: coarse)'));
     assert.match(coarse, /\.sw-platform-seg__item \{ min-height: 38px; \}/,
         'coarse pointer must raise segmented hit area to 44px total');
+    // T-7189：末位短窗压缩规则不得覆盖粗指针关闭按钮的 44px 命中区。
+    const uiPolish = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_11-ui-polish.scss'));
+    assert.match(uiPolish, /@media \(max-height: 640px\) and \(pointer: fine\)/,
+        'short-window compression must be limited to fine pointers');
+    const compactMedia = '@media (max-height: 640px) and (pointer: fine)';
+    const compactIndex = uiPolish.indexOf(compactMedia);
+    const compactClose = '.sw-platform-header__close { width: 30px; height: 30px; min-width: 30px; }';
+    const compactCloseIndex = uiPolish.indexOf(compactClose, compactIndex);
+    const nextMediaIndex = uiPolish.indexOf('@media ', compactIndex + compactMedia.length);
+    assert.ok(compactCloseIndex > compactIndex && (nextMediaIndex < 0 || compactCloseIndex < nextMediaIndex),
+        'fine-pointer short-window close button may use the compact 30px size');
     // i18n 双语键。
     const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
     const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
@@ -1229,6 +1272,59 @@ test('quick capture segmented targets, pill save and honest kbd hints (T-6875 RZ
         'the hints must live in their own slot');
     assert.ok(declaresIn(captureScss, '.sw-quick-capture__kbd-hints', /margin-right:\s*auto/),
         'the hints must left-align against the action buttons');
+    // 固定高度必须覆盖底部动作行；窄端关闭按钮要达到触控命中基线。
+    assert.match(indexSource, /height:\s*this\.isMobile \? "min\(320px, 68vh\)" : "288px"/,
+        'quick capture must reserve room for the complete action row');
+    assert.ok(declaresIn(captureScss, '.sw-quick-capture__close', /width:\s*44px/),
+        'coarse pointer close action must expose a 44px hit area');
+});
+
+test('switcher card actions remain reachable from keyboard focus (T-7185)', () => {
+    const switcherScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    assert.match(switcherScss,
+        /\.sw__card:focus-within \.sw__close,[\s\S]{0,180}\.sw__card:focus-within \.sw__fav-btn[\s\S]{0,80}display:\s*flex/,
+        'card utility actions must be revealed when the card receives keyboard focus');
+});
+
+test('favorite dropdown items expose a visible keyboard focus state (T-7186)', () => {
+    const switcherScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    const favBlock = switcherScss.slice(switcherScss.indexOf('.sw__fav-panel'), switcherScss.indexOf('// 无分组时的平铺列表'));
+    assert.match(favBlock, /\.sw__fav-group-head[\s\S]{0,2200}:focus-visible[\s\S]{0,160}box-shadow:\s*inset var\(--sw-focus-ring\)/,
+        'favorite group headings must expose a focus ring');
+    assert.match(favBlock, /\.sw__fav-item[\s\S]{0,2500}:focus-visible[\s\S]{0,180}box-shadow:\s*inset var\(--sw-focus-ring\)/,
+        'favorite items must expose a focus ring');
+});
+
+test('desktop favorite and history dropdowns close from Escape and restore trigger state (T-7187)', () => {
+    assert.match(indexSource, /trigger\.setAttribute\("aria-haspopup", "menu"\);\s*trigger\.setAttribute\("aria-expanded", "false"\);/,
+        'history trigger must expose menu semantics while closed');
+    assert.match(indexSource, /panel\.addEventListener\("keydown", \(event\) => \{[\s\S]{0,260}event\.key !== "Escape"[\s\S]{0,260}close\(\);/,
+        'history panel must close from Escape');
+    assert.match(indexSource, /trigger\.setAttribute\("aria-expanded", "true"\);\s*this\.positionOpenHistoryPanel/,
+        'history trigger must announce the expanded state');
+    assert.match(indexSource, /trigger\?\.setAttribute\("aria-haspopup", "menu"\);\s*trigger\?\.setAttribute\("aria-expanded", "false"\);/,
+        'favorite trigger must expose menu semantics while closed');
+    assert.match(indexSource, /panel\?\.addEventListener\("keydown", \(event\) => \{[\s\S]{0,260}event\.key !== "Escape"[\s\S]{0,260}closePanel\(\);/,
+        'favorite panel must close from Escape');
+    assert.match(indexSource, /trigger\.setAttribute\("aria-expanded", "true"\);\s*this\.positionFavPanel/,
+        'favorite trigger must announce the expanded state');
+    assert.match(indexSource, /const focusInside = panel\.contains\(document\.activeElement\);[\s\S]{0,520}trigger\.focus\(\{preventScroll: true\}\);/,
+        'history close must return focus to its trigger');
+    assert.match(indexSource, /const focusInside = panel\?\.contains\(document\.activeElement\) \?\? false;/,
+        'favorite close must return focus to its trigger');
+    assert.match(indexSource, /if \(focusInside && trigger\?\.isConnected\) trigger\.focus\(\{preventScroll: true\}\);/,
+        'favorite close must focus its trigger when the panel owned focus');
+});
+
+test('command mode activation hints use the shared keyboard chip language (T-7188)', () => {
+    const switcherScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    const commandKind = switcherScss.slice(switcherScss.indexOf('.sw__command-kind'), switcherScss.indexOf('// ==================== T-6911'));
+    assert.match(commandKind, /display:\s*inline-flex/,
+        'command activation hints must have a stable inline chip box');
+    assert.match(commandKind, /border:\s*1px solid var\(--b3-border-color\)/,
+        'command activation hints must carry a quiet border');
+    assert.match(commandKind, /font-family:\s*var\(--b3-font-family-code/,
+        'command activation hints must use code typography');
 });
 
 test('mobile stacked quick-action bar and converged sheet language (T-6876 RZ-6)', () => {
@@ -1337,7 +1433,7 @@ test('workbench health receipt: per-cell health markers and aggregate receipt ba
     // 健康记录：refresh 包装器把结果 ok 写回单元 data-sw-health 并触发聚合。
     // T-6880 起判定提升为 const ok = result?.ok === true（供对象描述复用）。
     // T-6954 起同一包装器记录最近尝试/成功时间（供健康详情与脱敏诊断）。
-    assert.match(secondPanelSource, /const ok = result\?\.ok === true;\s*\n\s*if \(ok\) health\.lastOkAt = health\.lastAttemptAt;\s*\n\s*else health\.lastFailReason = String\(result\?\.reason \|\| "failed"\);\s*\n\s*cell\.dataset\.swHealth = ok \? "ok" : "failed";/,
+    assert.match(secondPanelSource, /const ok = result\?\.ok === true;\s*\n\s*if \(ok\) health\.lastOkAt = health\.lastAttemptAt;\s*\n\s*else health\.lastFailReason = String\(result\?\.reason \|\| "failed"\);\s*\n\s*const stale = !ok[\s\S]{0,180}?cell\.dataset\.swHealth = ok \? "ok" : stale \? "stale" : "failed";/,
         'the refresh wrapper must record per-cell health plus attempt/success times (T-6879/T-6954)');
     assert.match(secondPanelSource, /updateWorkbenchReceipt\(\);/,
         'the wrapper must refresh the receipt after each refresh');
@@ -1380,7 +1476,7 @@ test('widget object descriptors and two-channel failure marking (T-6880)', () =>
     assert.match(secondPanelSource, /updateCellDescription\(\);\s*\n\s*updateWorkbenchReceipt\(\);/,
         'the descriptor must update before each health receipt');
     // 失败两通道：颜色边框之外补 attr() 文字 chip（OK 态清空标记）。
-    assert.match(secondPanelSource, /cell\.dataset\.swHealthText = this\.i18n\.homeHealthFailed;/,
+    assert.match(secondPanelSource, /cell\.dataset\.swHealthText = stale \? this\.i18n\.homeHealthStale : this\.i18n\.homeHealthFailed;/,
         'failed cells must set the chip text attribute');
     assert.match(secondPanelSource, /delete cell\.dataset\.swHealthText;/,
         'healthy cells must clear the chip text attribute');
@@ -1648,10 +1744,10 @@ test('workbench widget objectId returns to the exact instance (T-6890)', () => {
         'the return target must use the instance id, not the module id');
     assert.match(secondPanelSource, /cell\.tabIndex = 0;/,
         'widget cards must be reachable by keyboard before their focus can be remembered');
-    assert.match(secondPanelSource, /lastFocusedWidgetId = cell\.dataset\.swObjectId \|\| "";/,
-        'focus within a widget must remember the instance before navigation moves focus');
-    assert.match(secondPanelSource, /objectKind: "widget", objectId: lastFocusedWidgetId/,
-        'workbench surface navigation must carry the selected widget');
+    assert.match(secondPanelSource, /const activeElement = dialog\.element\.ownerDocument\?\.activeElement as HTMLElement \| null;[\s\S]{0,260}?const focusedWidgetId = activeCell && root\.contains\(activeCell\)/,
+        'focus within a widget must be read from the active instance before navigation moves focus');
+    assert.match(secondPanelSource, /objectKind: "widget", objectId: focusedWidgetId/,
+        'workbench surface navigation must carry only the selected widget');
     assert.match(secondPanelSource, /cell\.dataset\.swObjectId === focusObjectId/,
         'return must find the exact widget instance (focusSource object:<id> included, T-7012)');
     assert.match(secondPanelSource, /targetWidget\.focus\(\{preventScroll: true\}\);/,

@@ -43,6 +43,7 @@ import {openHomeConfigForm} from "./home-config-form";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {buildHomeStoreProviderGroups, buildHomeStoreSourceGroups, buildHomeStoreSourceSearchText, resolveHomeModuleSource} from "./home-source-model";
+import {mountPlatformDialogCloseHint} from "./platform-dom";
 
 export interface HomeStoreUiHost {
     i18n: Record<string, string>;
@@ -220,6 +221,7 @@ export function openStoreWidgetPreview(this: HomeStoreUiHost, moduleId: string, 
         height: this.isMobile ? "min(560px, 80vh)" : `${Math.max(320, Math.round(preset.h * 86))}px`,
         destroyCallback: () => disposePreview(),
     });
+    mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
     const container = dialog.element.querySelector<HTMLElement>(".sw-store-preview");
     if (!container) return;
     const mount = mountStoreWidgetPreview(this, moduleId, def, device, container, sizeKey, null, () => dialog.destroy());
@@ -248,6 +250,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             height: this.isMobile ? "min(560px, 85vh)" : `${Math.min(720, Math.round(window.innerHeight * 0.84))}px`,
             destroyCallback: () => disposeStore(),
         });
+        mountPlatformDialogCloseHint(storeDialog.element, this.i18n.platformCloseHint || "to close");
         if (!this.isMobile) {
             storeDialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen", "sw-home-store-dialog");
         }
@@ -1444,6 +1447,9 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 activeCard?.classList.add("is-active");
                 activeCard?.setAttribute("aria-current", "true");
             }
+            const mobileDetailReturnFocus = storeSelectedModule
+                ? catalogPane.querySelector<HTMLElement>(`.sw-home-store__card[data-module-id="${storeSelectedModule}"]`)
+                : null;
             if (storeSelectedModule) {
                 const detailDef = defs.get(storeSelectedModule);
                 if (detailDef) {
@@ -1463,6 +1469,15 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                         sheetBack.setAttribute("aria-label", this.i18n.homeStoreBackToList);
                         sheetBack.addEventListener("click", () => {
                             delete root.dataset.detailOpen;
+                            const target = mobileDetailReturnFocus?.isConnected
+                                ? mobileDetailReturnFocus
+                                : catalogPane.querySelector<HTMLElement>(`.sw-home-store__card[data-module-id="${storeSelectedModule}"]`);
+                            if (!target) return;
+                            try {
+                                target.focus({preventScroll: true});
+                            } catch (_) {
+                                target.focus();
+                            }
                         });
                         sheetBar.appendChild(sheetBack);
                         detailPane.appendChild(sheetBar);

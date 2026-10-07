@@ -12,6 +12,75 @@
     flex-direction: column;
     gap: 10px;
 
+    &__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 30px;
+        color: var(--b3-theme-on-background);
+        font-size: 13px;
+    }
+
+    &__header-title { font-weight: 650; }
+
+    &__header-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: auto;
+    }
+
+    &__close-hint {
+        display: inline-flex;
+        align-items: center;
+        color: var(--b3-theme-on-surface-light);
+    }
+
+    &__close-hint .sw-platform-kbd {
+        min-width: 28px;
+        height: 20px;
+        padding-inline: 5px;
+        border-radius: 5px;
+        font-size: 10px;
+    }
+
+    &__close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+        padding: 0;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+        border-radius: 7px;
+        color: var(--b3-theme-on-surface-light);
+
+        &:hover,
+        &:focus-visible {
+            border-color: var(--b3-theme-primary);
+            color: var(--b3-theme-primary);
+            background: color-mix(in srgb, var(--b3-theme-primary) 10%, transparent);
+        }
+
+        svg { width: 16px; height: 16px; }
+    }
+
+    // 窄端关闭动作与平台外壳保持同一触控命中基线；视觉图标仍保持克制尺寸。
+    @media (pointer: coarse) {
+        &__close {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+        }
+    }
+
+    @media (min-width: 561px) {
+        // 桌面 Dialog 自带标题栏，内容层只保留统一的退出动作，避免标题重复。
+        &__header-title { display: none; }
+    }
+
     &__input {
         resize: vertical;
         min-height: 64px;

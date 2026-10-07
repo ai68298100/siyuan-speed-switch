@@ -28,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: "24.15.0"
           cache: pnpm
 
       - name: Install dependencies
@@ -47,7 +47,7 @@ jobs:
 
       # This is the single local release gate. It includes type checking,
       # reproducible builds, the complete test suite, status/compatibility/
-      # desktop matrices, audits, and smoke checks.
+      # desktop matrices, audits, and all UI smoke checks.
       - name: Complete local release gate
         run: pnpm verify:release
 

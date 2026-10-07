@@ -373,6 +373,12 @@
                     &:hover {
                         background: var(--b3-list-hover);
                     }
+
+                    &:focus-visible {
+                        outline: none;
+                        background: var(--sw-hover-bg);
+                        box-shadow: inset var(--sw-focus-ring);
+                    }
                 }
 
                 .sw__fav-items {
@@ -412,6 +418,13 @@
                     &:hover {
                         background: var(--b3-list-hover);
                         color: var(--b3-theme-primary);
+                    }
+
+                    &:focus-visible {
+                        outline: none;
+                        background: var(--sw-hover-bg);
+                        color: var(--b3-theme-primary);
+                        box-shadow: inset var(--sw-focus-ring);
                     }
                 }
 
@@ -956,10 +969,23 @@
             }
 
             .sw__command-kind {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 20px;
+                height: 18px;
+                padding: 0 5px;
+                box-sizing: border-box;
+                border: 1px solid var(--b3-border-color);
+                border-radius: 5px;
+                background: var(--b3-theme-background);
                 flex-shrink: 0;
                 color: var(--b3-theme-on-surface-light);
-                font-size: 11px;
-                opacity: .8;
+                font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
+                font-size: 10px;
+                font-weight: 600;
+                line-height: 1;
+                opacity: 1;
             }
         }
     }
@@ -1023,6 +1049,12 @@
             grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
             grid-auto-rows: 1fr;
             gap: 12px;
+        }
+
+        .sw__window-label .sw__doc-scope-summary {
+            color: var(--b3-theme-on-surface-light);
+            font-size: 11px;
+            font-weight: 400;
         }
 
         .sw__doc-item {
@@ -1117,6 +1149,19 @@
                 font-size: 11px;
                 line-height: 1.2;
                 opacity: .86;
+            }
+
+            .sw__search-match-source {
+                display: inline-flex;
+                align-items: center;
+                min-height: 18px;
+                padding: 0 6px;
+                border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 28%, transparent);
+                border-radius: 999px;
+                color: var(--b3-theme-primary);
+                font-size: 10px;
+                line-height: 1.2;
+                white-space: nowrap;
             }
 
             .sw__doc-path {
@@ -2274,6 +2319,14 @@
     .sw__card:hover .sw__close,
     .sw__card:hover .sw__pin,
     .sw__card:hover .sw__fav-btn {
+        display: flex;
+    }
+
+    // 键盘聚焦卡片时也揭示同一组附属动作；否则按钮 display:none，
+    // :focus-within 无法进入 pin/收藏/关闭动作，键盘用户会失去可达性。
+    .sw__card:focus-within .sw__close,
+    .sw__card:focus-within .sw__pin,
+    .sw__card:focus-within .sw__fav-btn {
         display: flex;
     }
 

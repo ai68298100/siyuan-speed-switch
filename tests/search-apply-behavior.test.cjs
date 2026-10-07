@@ -62,7 +62,7 @@ test("command mode aborts prior search and debounce without cancelling another s
     f.otherSession.controller = otherController;
     f.session.timer = setTimeout(() => { pendingRan = true; }, 5);
     try {
-        f.host.applySearch(f.scroll, {value: "> diary"}, f.close);
+        f.host.applySearch(f.scroll, {value: "> diary", dataset: {}}, f.close);
         assert.equal(controller.signal.aborted, true, "entering command mode must abort in-flight document search");
         assert.equal(f.session.controller, null);
         assert.equal(f.session.timer, null);
@@ -83,15 +83,15 @@ test("command mode aborts prior search and debounce without cancelling another s
 test("leaving command mode resumes document search with a fresh session version", async () => {
     const f = fixture();
     try {
-        f.host.applySearch(f.scroll, {value: "> diary"}, f.close);
-        f.host.applySearch(f.scroll, {value: "alpha"}, f.close);
+        f.host.applySearch(f.scroll, {value: "> diary", dataset: {}}, f.close);
+        f.host.applySearch(f.scroll, {value: "alpha", dataset: {}}, f.close);
         const version = f.session.version;
         assert.equal(f.health.get(f.scroll).remote, true);
         assert.equal(f.health.get(f.scroll).state, "loading");
         await new Promise((resolve) => setTimeout(resolve, 20));
         assert.deepEqual(f.requests, [{scroll: f.scroll, keyword: "alpha", version}]);
         assert.equal(f.session.timer, null);
-        f.host.applySearch(f.scroll, {value: ""}, f.close);
+        f.host.applySearch(f.scroll, {value: "", dataset: {}}, f.close);
         assert.equal(f.session.version, version + 1);
         assert.equal(f.health.get(f.scroll).remote, false);
         assert.equal(f.health.get(f.scroll).state, "idle");

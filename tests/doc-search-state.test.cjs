@@ -5,6 +5,8 @@ const {JSDOM} = require("jsdom");
 const {readSourceFile} = require("./source-scan.cjs");
 const {buildNativeSearchTabConfig, buildSearchHealthSnapshot} = require("../src/search-model.js");
 const {createPlatformStatus} = require("../src/platform-dom.js");
+const {buildKeywordHighlightSegments} = require("../src/search-model.js");
+const {readSourceFile: readSource} = require("./source-scan.cjs");
 
 const source = readSourceFile("src/doc-search-ui.ts");
 const ast = ts.createSourceFile("doc-search-state.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -59,6 +61,11 @@ function fixture() {
             docSearchErrorHint: "Opened-tab results are preserved",
             docSearchRetry: "Retry workspace search",
             docSearchHealthUnavailable: "Workspace layer unavailable",
+            docSearchHealthFallback: "Fell back to full text",
+            docSearchScopeTitle: "Title/path scope",
+            docSearchScopeFullText: "Full-text scope",
+            searchFilterNotebook: "Notebook",
+            searchFilterPath: "Path",
             docSearchViewAll: "View all in SiYuan Search",
         },
     };
@@ -118,6 +125,31 @@ test("document search health badge exposes loading and unavailable remote states
         f.host.docSearchState.health.set(f.scroll, {remote: false, state: "error"});
         f.api.appendDocSearchHealthBadge.call(f.host, localLabel, f.scroll);
         assert.equal(localLabel.childElementCount, 0, "local-only health must not claim a remote outage");
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("document search health badge exposes successful full-text fallback and active scope", () => {
+    const f = fixture();
+    try {
+        f.host.docSearchState.filters.set(f.scroll, {notebook: "nb-1", paths: ["/Projects"]});
+        f.host.docSearchState.notebookNames = new WeakMap([[f.scroll, new Map([["nb-1", "Projects"]])]]);
+        f.host.docSearchState.pathTitles = new WeakMap([[f.scroll, new Map([["/Projects", "Projects"]])]]);
+        f.host.docSearchState.health.set(f.scroll, {
+            remote: true,
+            state: "degraded",
+            fallbackUsed: true,
+            fallbackReason: "title-unavailable",
+            sources: [{key: "global", status: "ready"}],
+        });
+        const label = f.document.createElement("div");
+        f.api.appendDocSearchHealthBadge.call(f.host, label, f.scroll);
+        assert.equal(label.querySelector(".sw__doc-health-status")?.dataset.state, "stale");
+        assert.match(label.textContent, /Fell back to full text/);
+        assert.match(label.textContent, /Notebook: Projects/);
+        assert.match(label.textContent, /Path: Projects/);
+        assert.match(label.textContent, /Full-text scope/);
     } finally {
         f.dom.window.close();
     }
@@ -189,5 +221,80 @@ test("health updates replace stale badges and stay scoped to their search surfac
         assert.equal(otherBadge.dataset.state, "loading");
     } finally {
         f.dom.window.close();
+    }
+});
+
+test("document result cards distinguish title, full-text and opened-content sources", () => {
+    const uiSource = readSource("src/doc-search-ui.ts");
+    const uiFile = ts.createSourceFile("doc-search-ui.ts", uiSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const declaration = uiFile.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === "buildDocResultItem");
+    assert.ok(declaration, "production result card builder must remain available");
+    const cardCode = ts.transpileModule(declaration.getText(uiFile).replace(/^export\s+/, ""), {
+        compilerOptions: {target: ts.ScriptTarget.ES2020},
+    }).outputText;
+    const buildCard = new Function(
+        "document", "buildKeywordHighlightSegments", "docSearchHitId", "activateDocResultItem",
+        "openDocSearchResult", "BLOCK_ID_RE",
+        `${cardCode}\nreturn buildDocResultItem;`,
+    )(
+        new JSDOM("").window.document,
+        buildKeywordHighlightSegments,
+        () => null,
+        () => undefined,
+        () => Promise.resolve(),
+        /^\d{14}-[0-9a-z]+$/,
+    );
+    const doc = new JSDOM("");
+    try {
+        const host = {isMobile: true, i18n: {
+            docSearchSourceOpened: "Opened content",
+            docSearchSourceTitle: "Title/path",
+            docSearchSourceFullText: "Full-text hit",
+        }};
+        for (const [source, expected] of [["title", "Title/path"], ["fulltext", "Full-text hit"], ["opened", "Opened content"]]) {
+            const card = buildCard.call(host, {id: "doc-1", title: "Alpha", source}, "doc-1", () => {}, "alpha");
+            assert.equal(card.querySelector(".sw__doc-source")?.textContent, expected);
+        }
+    } finally {
+        doc.window.close();
+    }
+});
+
+test("local tab cards expose the opened-content reason only for content-only matches", () => {
+    const sourceText = readSource("src/index.ts");
+    const indexFile = ts.createSourceFile("index.ts", sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const klass = indexFile.statements.find((node) => ts.isClassDeclaration(node) && node.name?.text === "SpeedSwitchPlugin");
+    const method = klass?.members.find((node) => ts.isMethodDeclaration(node) && node.name?.getText(indexFile) === "filterCards");
+    assert.ok(method, "production tab filter must remain available");
+    const methodCode = ts.transpileModule(`class Host {${method.getText(indexFile)}}`, {
+        compilerOptions: {target: ts.ScriptTarget.ES2020},
+    }).outputText;
+    const dom = new JSDOM("<div id='scroll'><div class='sw__group'><div class='sw__card' data-title='Unrelated' data-root-id='doc-content' data-search-path='/work' data-notebook-id='nb'><div class='sw__meta'></div></div><div class='sw__card' data-title='Alpha title' data-root-id='doc-title' data-search-path='/work' data-notebook-id='nb'><div class='sw__meta'></div></div></div></div>");
+    try {
+        const Host = new Function(
+            "buildSearchDocumentFilterMatcher", "matchesParsedQuery", "pinyinTitleHit", "parseSearchQuery", "document",
+            `${methodCode}\nreturn Host;`,
+        )(
+            () => () => true,
+            (title, parsed) => Boolean(parsed.terms?.some((term) => title.includes(term))),
+            () => false,
+            () => ({phrases: [], excludes: [], terms: ["alpha"]}),
+            dom.window.document,
+        );
+        const host = Object.assign(new Host(), {
+            docSearchState: {filters: new Map()},
+            getSettings: () => ({pinyinMatch: false}),
+            updateDigitBadges() {},
+            i18n: {docSearchSourceOpened: "Opened content"},
+        });
+        const scroll = dom.window.document.getElementById("scroll");
+        assert.equal(host.filterCards(scroll, "alpha", new Set(["doc-content"])), 2);
+        const cards = scroll.querySelectorAll(".sw__card");
+        assert.equal(cards[0].dataset.swSearchMatch, "opened-content");
+        assert.equal(cards[0].querySelector(".sw__search-match-source")?.textContent, "Opened content");
+        assert.equal(cards[1].dataset.swSearchMatch, "title");
+        assert.equal(cards[1].querySelector(".sw__search-match-source"), null);
+    } finally {
+        dom.window.close();
     }
 });

@@ -9,16 +9,21 @@ import type {EventBus, TEventBus} from "siyuan";
 import {HOME_WIDGET_SIZES, PANEL_SCALE_DEFAULT, PANEL_SIZE_MIN_PX} from "./constants";
 import type {HomeSizeMode, HomeWidgetSize} from "./constants";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries, buildHomeHealthReport, buildHomeDiagnosticSummary, formatHealthTime} from "./home-controller";
-import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, DEFAULT_MODULES, resolveHomeTileDefaultSize, LIFE_HEARTBEAT_MODULE_IDS} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, resolveHomeTileDefaultSize, LIFE_HEARTBEAT_MODULE_IDS} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
 import {createLayoutHistory, layoutSnapshotOf, pushLayoutHistory, undoLayoutHistory, redoLayoutHistory, canUndoLayoutHistory, canRedoLayoutHistory, peekUndoLabel, peekRedoLabel, reconcileLayoutSnapshot} from "./home-layout-history";
 import {openHomeConfigForm} from "./home-config-form";
 import {openHomeWidgetStore} from "./home-store-ui";
 import {millisecondsToNextMinute, millisecondsToNextSecond} from "./local-time-model";
-import {projectWidgetObject} from "./platform-surface-model";
+import {encodeSurfaceFocusSource, projectWidgetObject} from "./platform-surface-model";
 import {resolvePanelSize} from "./settings-model";
 import {clampOversizedIcons} from "./util";
+import {mountPlatformDialogCloseHint} from "./platform-dom";
 import type {ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, PlatformSurfaceContext, PlatformSurfaceLabels} from "./index";
+
+// 空工作台只给出少量稳定、无需理解组件生态的默认入口；其余组件仍由商店按需添加。
+// 这个清单同时作为“恢复默认”范围，避免把整个目录误当成默认布局。
+const EMPTY_WORKBENCH_DEFAULT_IDS = ["recent-documents", "today-journal", "today-tasks"] as const;
 
 export interface SecondPanelUiHost {
     i18n: Record<string, string>;
@@ -37,10 +42,12 @@ export interface SecondPanelUiHost {
     executeHomeCommand(command: string, close: () => void): boolean;
     getHomeState(): {schemaVersion: number; instances: Array<{instanceId: string; moduleId: string; enabled: boolean; config: Record<string, unknown>}>; layouts: Record<string, Array<{instanceId: string; x: number; y: number; w: number; h: number; collapsed: boolean}>>};
     getSettings(): ISwSettings;
+    openSetting(initialPanel?: string, returnTo?: PlatformSurface | null, returnContext?: PlatformSurfaceContext | null): void;
     handleHomeItemAction(item: { label?: string; value?: string; href?: string; command?: string }, close: () => void): void;
     migrateHomeLayoutSize(entry: {w?: number; h?: number; size?: string}, sizes: string[]): string;
     openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void): void;
     openPlatformSurface?(surface: PlatformSurface, returnTo?: PlatformSurface, context?: PlatformSurfaceContext | null): void;
+    getAvailablePlatformSurfaces?(): PlatformSurface[];
     getPlatformSurfaceLabels?(): PlatformSurfaceLabels;
     mountPlatformChrome?(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement;
     // T-6869：工作台单例守卫字段 + 跨表面导航的编辑现场 + 会话级表面记录钩子
@@ -56,6 +63,10 @@ export interface SecondPanelUiHost {
 }
 
 export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfaceContext | null) {
+        if (this.getSettings().moduleVisibility?.workbench === false) {
+            showMessage((this.i18n.moduleDisabledReceipt || "{x} is disabled").replace("{x}", this.i18n.moduleWorkbench || this.i18n.secondPanel || "Workbench"));
+            return;
+        }
         const settings = this.getSettings();
         // T-6869 单例守卫：工具栏/悬浮球/表面导航等重复入口不再叠出多个工作台，
         // 先销毁旧实例（其 destroyCallback 串行释放组件心跳与 FAB 挂起），再开新实例。
@@ -71,6 +82,33 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         let layoutHistory: ReturnType<typeof createLayoutHistory> | null = null;
         let layoutOpLabel = "";
         let suppressLayoutHistoryPush = false;
+        const prepareLayoutMutation = () => {
+            if (!layoutHistory) layoutHistory = createLayoutHistory(layoutSnapshotOf(this.getHomeState()));
+        };
+        const commitLayoutMutation = (next: any) => {
+            prepareLayoutMutation();
+            layoutHistory = pushLayoutHistory(layoutHistory!, layoutSnapshotOf(next), this.i18n.homeHistoryUpdate);
+        };
+        const applyLayoutSnapshot = (snapshot: any) => {
+            const current = this.getHomeState();
+            const next = reconcileLayoutSnapshot(snapshot, current);
+            const known = new Set(this.homeRuntime.listModules(device).map((m: any) => m.moduleId));
+            const gone = (next.instances as Array<any>).filter((inst: any) => !known.has(inst.moduleId));
+            if (gone.length > 0) {
+                const goneIds = new Set(gone.map((inst: any) => inst.instanceId));
+                next.instances = (next.instances as Array<any>).filter((inst: any) => known.has(inst.moduleId));
+                Object.keys(next.layouts).forEach((key) => {
+                    next.layouts[key] = (next.layouts[key] as Array<any>).filter((entry: any) => !goneIds.has(entry.instanceId));
+                });
+            }
+            this.saveHomeState(next);
+            if (gone.length > 0) {
+                showMessage(this.i18n.homeHistoryProviderGone.replace("{x}", String(gone.length)));
+            }
+            suppressLayoutHistoryPush = true;
+            renderPanel();
+            suppressLayoutHistoryPush = false;
+        };
         const viewport = {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX};
         // 组件面板独立尺寸模式：follow=跟随第一面板；adaptive=独立 90% 自适应；custom=固定尺寸；fullscreen=全屏
         const mode: HomeSizeMode = settings.homeSizeMode || "follow";
@@ -104,30 +142,25 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         const root = dialog.element.querySelector<HTMLElement>(".sw-home");
         if (!root) return;
         root.dataset.swSurface = "workbench";
-        // 记录最后交互的组件实例。点击 SurfaceNav 后焦点已移到导航按钮，
-        // 因此回跳目标必须在组件内部获得焦点时记住，不能在导航点击时读 activeElement。
-        // T-7012：widget 对象与 focusSource 的 object:<id> 形式都可作为回跳目标。
+        // T-7012：只消费进入工作台时携带的稳定对象描述符；离开时不复用旧焦点。
         const focusObjectId = context?.objectKind === "widget"
             ? context.objectId || ""
             : (context?.focusSource || "").startsWith("object:")
                 ? context.focusSource.slice("object:".length)
                 : "";
-        let lastFocusedWidgetId = focusObjectId;
-        root.addEventListener("focusin", (event) => {
-            const target = event.target as HTMLElement | null;
-            const cell = target?.closest<HTMLElement>(".sw-home__cell");
-            if (cell && root.contains(cell)) lastFocusedWidgetId = cell.dataset.swObjectId || "";
-        });
         const platformLabels = this.getPlatformSurfaceLabels?.();
         const navigatePlatformSurface = this.openPlatformSurface
             ? (surface: PlatformSurface) => {
                 if (!dialog.element.isConnected) return;
                 // T-6869 编辑现场：经表面导航离开时记录编辑态，返回工作台时恢复。
                 this.workbenchResumeEditing = editing;
+                const activeElement = dialog.element.ownerDocument?.activeElement as HTMLElement | null;
+                const activeCell = activeElement?.closest<HTMLElement>(".sw__home__cell, .sw-home__cell");
+                const focusedWidgetId = activeCell && root.contains(activeCell) ? activeCell.dataset.swObjectId || "" : "";
                 dialog.destroy();
                 this.openPlatformSurface?.(surface, "workbench", {
                     entry: "surface-nav",
-                    ...(lastFocusedWidgetId ? {objectKind: "widget", objectId: lastFocusedWidgetId} : {}),
+                    ...(focusedWidgetId ? {objectKind: "widget", objectId: focusedWidgetId} : {}),
                     ...(context?.query ? {query: context.query} : {}),
                 });
             }
@@ -235,15 +268,20 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     receipt.remove();
                     return;
                 }
-                const ok = cells.filter((c) => c.dataset.swHealth === "ok").length;
-                const failed = cells.filter((c) => c.dataset.swHealth === "failed").length;
-                const pending = cells.length - ok - failed;
-                receipt.dataset.state = failed ? "error" : pending ? "loading" : "ready";
+                const unavailable = cells.filter((c) => c.classList.contains("sw-home__cell--unavailable")).length;
+                const availableCells = cells.filter((c) => !c.classList.contains("sw-home__cell--unavailable"));
+                const ok = availableCells.filter((c) => c.dataset.swHealth === "ok").length;
+                const failed = availableCells.filter((c) => c.dataset.swHealth === "failed").length;
+                const stale = availableCells.filter((c) => c.dataset.swHealth === "stale").length;
+                const pending = availableCells.length - ok - failed - stale;
+                receipt.dataset.state = failed ? "error" : pending ? "loading" : unavailable ? "blocked" : "ready";
                 receipt.firstChild!.textContent = this.i18n.homeReceiptSummary
                     .replace("{ok}", String(ok))
-                    .replace("{total}", String(cells.length))
+                    .replace("{total}", String(availableCells.length))
                     + (failed > 0 ? " · " + this.i18n.homeReceiptFailed.replace("{x}", String(failed)) : "")
-                    + (pending > 0 ? " · " + this.i18n.homeLoading + " " + pending : "");
+                    + (stale > 0 ? " · " + this.i18n.homeReceiptStale.replace("{x}", String(stale)) : "")
+                    + (pending > 0 ? " · " + this.i18n.homeLoading + " " + pending : "")
+                    + (unavailable > 0 ? " · " + this.i18n.homeReceiptUnavailable.replace("{x}", String(unavailable)) : "");
             };
             panelEventCleanup?.();
             panelEventCleanup = null;
@@ -252,8 +290,21 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             if (this.mountPlatformChrome && platformLabels) this.mountPlatformChrome(root, {
                 surface: "workbench",
                 labels: platformLabels,
-                available: this.isMobile ? ["switcher", "workbench"] : ["switcher", "workbench", "studio"],
+                available: this.getAvailablePlatformSurfaces?.() || (this.isMobile ? ["switcher", "workbench"] : ["switcher", "workbench", "studio"]),
                 context: context || null,
+                status: {state: "ready", label: this.i18n.platformConnected || "Kernel connected"},
+                onSettings: () => {
+                    if (!dialog.element.isConnected) return;
+                    const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
+                    dialog.destroy();
+                    this.openSetting(undefined, "workbench", {
+                        entry: "back", ...(context?.objectKind ? {objectKind: context.objectKind} : {}),
+                        ...(context?.objectId ? {objectId: context.objectId} : {}), ...(context?.query ? {query: context.query} : {}),
+                        ...(focusSource ? {focusSource} : {}),
+                    });
+                },
+                settingsLabel: this.i18n.settings || "Settings",
+                closeHint: this.i18n.platformCloseHint || "退出",
                 onNavigate: navigatePlatformSurface,
                 onClose: () => dialog.destroy(),
                 closeLabel: this.i18n.close,
@@ -305,6 +356,43 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 renderPanel();
             });
             bar.appendChild(editToggle);
+            // 查看态的空态推荐/恢复同样可撤销；按钮留在工具栏，避免用户必须进入编辑态才能找回布局。
+            if (!editing && layoutHistory && (canUndoLayoutHistory(layoutHistory) || canRedoLayoutHistory(layoutHistory))) {
+                if (canUndoLayoutHistory(layoutHistory)) {
+                    const undoButton = document.createElement("button");
+                    undoButton.type = "button";
+                    undoButton.className = "b3-button b3-button--text sw-home__history sw-home__history--view";
+                    undoButton.dataset.homeAction = "undo";
+                    undoButton.textContent = this.i18n.homeUndo;
+                    const undoTarget = peekUndoLabel(layoutHistory) || this.i18n.homeHistoryUpdate;
+                    undoButton.setAttribute("aria-label", this.i18n.homeUndoLabel.replace("{x}", undoTarget));
+                    undoButton.title = this.i18n.homeUndoLabel.replace("{x}", undoTarget);
+                    undoButton.addEventListener("click", () => {
+                        const result = undoLayoutHistory(layoutHistory!);
+                        if (!result.snapshot) return;
+                        layoutHistory = result.history;
+                        applyLayoutSnapshot(result.snapshot);
+                    });
+                    bar.appendChild(undoButton);
+                }
+                if (canRedoLayoutHistory(layoutHistory)) {
+                    const redoButton = document.createElement("button");
+                    redoButton.type = "button";
+                    redoButton.className = "b3-button b3-button--text sw-home__history sw-home__history--view";
+                    redoButton.dataset.homeAction = "redo";
+                    redoButton.textContent = this.i18n.homeRedo;
+                    const redoTarget = peekRedoLabel(layoutHistory) || this.i18n.homeHistoryUpdate;
+                    redoButton.setAttribute("aria-label", this.i18n.homeRedoLabel.replace("{x}", redoTarget));
+                    redoButton.title = this.i18n.homeRedoLabel.replace("{x}", redoTarget);
+                    redoButton.addEventListener("click", () => {
+                        const result = redoLayoutHistory(layoutHistory!);
+                        if (!result.snapshot) return;
+                        layoutHistory = result.history;
+                        applyLayoutSnapshot(result.snapshot);
+                    });
+                    bar.appendChild(redoButton);
+                }
+            }
             // 一键强制刷新全部组件（绕过 3s 缓存与失败退避）；空面板时无意义，隐藏
             if (cells.length > 0) {
                 const refreshAllButton = document.createElement("button");
@@ -384,27 +472,6 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     layoutHistory = null;
                     renderPanel();
                 });
-                // T-6953：撤销/重做——按钮带可读操作名；应用时保留存活实例的最新配置
-                const applyLayoutSnapshot = (snapshot: any) => {
-                    const current = this.getHomeState();
-                    const next = reconcileLayoutSnapshot(snapshot, current);
-                    const known = new Set(this.homeRuntime.listModules(device).map((m: any) => m.moduleId));
-                    const gone = (next.instances as Array<any>).filter((inst: any) => !known.has(inst.moduleId));
-                    if (gone.length > 0) {
-                        const goneIds = new Set(gone.map((inst: any) => inst.instanceId));
-                        next.instances = (next.instances as Array<any>).filter((inst: any) => known.has(inst.moduleId));
-                        Object.keys(next.layouts).forEach((key) => {
-                            next.layouts[key] = (next.layouts[key] as Array<any>).filter((entry: any) => !goneIds.has(entry.instanceId));
-                        });
-                    }
-                    this.saveHomeState(next);
-                    if (gone.length > 0) {
-                        showMessage(this.i18n.homeHistoryProviderGone.replace("{x}", String(gone.length)));
-                    }
-                    suppressLayoutHistoryPush = true;
-                    renderPanel();
-                    suppressLayoutHistoryPush = false;
-                };
                 banner.appendChild(bannerHint);
                 if (layoutHistory && canUndoLayoutHistory(layoutHistory)) {
                     const undoButton = document.createElement("button");
@@ -464,11 +531,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     tierHint.textContent = this.i18n.homeEmptyTierHint;
                     empty.append(tierHint);
                     const existingModules = new Set((this.getHomeState().instances as Array<any>).map((candidate: any) => candidate.moduleId));
-                    const defaultOrder = DEFAULT_MODULES.map((candidate) => candidate.moduleId);
-                    const candidates = [...defs.keys()]
-                        .filter((moduleId) => !existingModules.has(moduleId))
-                        .sort((a, b) => (defaultOrder.indexOf(a) + 1 || 99) - (defaultOrder.indexOf(b) + 1 || 99))
-                        .slice(0, 3);
+                    const candidates = EMPTY_WORKBENCH_DEFAULT_IDS
+                        .filter((moduleId) => defs.has(moduleId) && !existingModules.has(moduleId));
                     if (candidates.length > 0) {
                         const recRow = document.createElement("div");
                         recRow.className = "sw-home__empty-recs";
@@ -481,9 +545,31 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             const add = document.createElement("button");
                             add.type = "button";
                             add.className = "b3-button b3-button--outline sw-home__empty-rec";
-                            add.textContent = candidateDef.title || moduleId;
+                            const candidateTitle = candidateDef.title || moduleId;
+                            const availability = candidateDef.availability === "conditional" || candidateDef.availability === "external"
+                                ? candidateDef.availability
+                                : "ready";
+                            const availabilityLabel = availability === "external"
+                                ? this.i18n.homeStoreAvailabilityExternal
+                                : availability === "conditional"
+                                    ? this.i18n.homeStoreAvailabilityConditional
+                                    : this.i18n.homeStoreAvailabilityReady;
+                            add.dataset.availability = availability;
+                            add.setAttribute("aria-label", `${candidateTitle} · ${availabilityLabel}`);
+                            const title = document.createElement("span");
+                            title.className = "sw-home__empty-rec-title";
+                            title.textContent = candidateTitle;
+                            const state = document.createElement("span");
+                            state.className = `sw-home__empty-rec-state sw-home__empty-rec-state--${availability}`;
+                            state.textContent = availabilityLabel;
+                            add.append(title, state);
                             add.addEventListener("click", () => {
-                                // 可取消/可回退：走与商店一致的添加管线（默认档实例），可随时移除
+                                const impact = this.i18n.homeEmptyRecommendedConfirm
+                                    .replace("{x}", candidateTitle)
+                                    .replace("{availability}", availabilityLabel);
+                                if (!confirm(impact)) return;
+                                // 可取消/可回退：保留已有布局，在当前设备布局末尾添加一个默认档实例。
+                                prepareLayoutMutation();
                                 const next = this.getHomeState();
                                 const layoutList = (next.layouts[device] || []) as Array<any>;
                                 const supported: string[] = Array.isArray(candidateDef.sizes) && candidateDef.sizes.length > 0 ? candidateDef.sizes : ["medium"];
@@ -493,6 +579,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                                 layoutList.push({instanceId: moduleId, x: 0, y: 0, w: preset2.w, h: preset2.h, collapsed: false, size: sizeKey});
                                 next.layouts[device] = layoutList;
                                 this.saveHomeState(next);
+                                commitLayoutMutation(next);
                                 layoutOpLabel = this.i18n.homeHistoryUpdate;
                                 renderPanel();
                             });
@@ -500,29 +587,53 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         });
                         empty.append(recRow);
                     }
-                    // 恢复默认布局：空态下仅重建默认模块实例与布局（不动 provider 数据；
-                    // 已存在同模块实例的不再重复创建实例，只补布局条目）
+                    // 恢复默认布局：仅补齐精选默认组件，保留当前设备已有布局；
+                    // 执行前明确影响，避免把整个目录静默写入工作台。
                     const restore = document.createElement("button");
                     restore.type = "button";
                     restore.className = "b3-button b3-button--outline sw-home__empty-restore";
                     restore.textContent = this.i18n.homeEmptyRestoreDefault;
                     restore.addEventListener("click", () => {
                         const next = this.getHomeState();
-                        const layoutList: Array<any> = [];
-                        const seenModules = new Set((next.instances as Array<any>).map((candidate: any) => candidate.moduleId));
-                        DEFAULT_MODULES.forEach((candidate) => {
-                            const candidateDef = defs.get(candidate.moduleId);
+                        const layoutList: Array<any> = [...((next.layouts[device] || []) as Array<any>)];
+                        const instancesByModule = new Map<string, any>();
+                        (next.instances as Array<any>).forEach((candidate: any) => {
+                            if (!instancesByModule.has(candidate.moduleId)) instancesByModule.set(candidate.moduleId, candidate);
+                        });
+                        const isLaidOut = (instanceId: string) => layoutList.some((entry) => entry.instanceId === instanceId);
+                        const candidates = EMPTY_WORKBENCH_DEFAULT_IDS.map((moduleId) => ({moduleId, def: defs.get(moduleId)}))
+                            .filter((candidate) => candidate.def);
+                        const missing = candidates.filter((candidate) => {
+                            const existing = instancesByModule.get(candidate.moduleId);
+                            return !existing || !isLaidOut(existing.instanceId);
+                        });
+                        if (missing.length === 0) {
+                            showMessage(this.i18n.homeEmptyRestoreNothing);
+                            return;
+                        }
+                        const impact = this.i18n.homeEmptyRestoreConfirm
+                            .replace("{count}", String(missing.length))
+                            .replace("{existing}", String(layoutList.length));
+                        if (!confirm(impact)) return;
+                        prepareLayoutMutation();
+                        candidates.forEach(({moduleId, def: candidateDef}) => {
                             if (!candidateDef) return;
+                            const existing = instancesByModule.get(moduleId);
+                            const targetInstanceId = existing?.instanceId || moduleId;
+                            if (isLaidOut(targetInstanceId)) return;
                             const supported: string[] = Array.isArray(candidateDef.sizes) && candidateDef.sizes.length > 0 ? candidateDef.sizes : ["medium"];
-                            const sizeKey = resolveHomeTileDefaultSize(candidate.moduleId, supported, "medium");
+                            const sizeKey = resolveHomeTileDefaultSize(moduleId, supported, "medium");
                             const preset2 = HOME_WIDGET_SIZES[(sizeKey || "medium") as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
-                            if (!seenModules.has(candidate.moduleId)) {
-                                (next.instances as Array<any>).push({instanceId: candidate.moduleId, moduleId: candidate.moduleId, config: {}, enabled: true});
+                            if (!existing) {
+                                const restored = {instanceId: moduleId, moduleId, config: {}, enabled: true};
+                                (next.instances as Array<any>).push(restored);
+                                instancesByModule.set(moduleId, restored);
                             }
-                            layoutList.push({instanceId: candidate.moduleId, x: 0, y: 0, w: preset2.w, h: preset2.h, collapsed: false, size: sizeKey});
+                            layoutList.push({instanceId: targetInstanceId, x: 0, y: 0, w: preset2.w, h: preset2.h, collapsed: false, size: sizeKey});
                         });
                         next.layouts[device] = layoutList;
                         this.saveHomeState(next);
+                        commitLayoutMutation(next);
                         layoutOpLabel = this.i18n.homeHistoryUpdate;
                         renderPanel();
                     });
@@ -548,10 +659,13 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     ghost.className = "sw-home__cell sw-home__cell--unavailable";
                     ghost.dataset.instanceId = inst.instanceId;
                     ghost.style.gridColumn = `span min(${layout.w || 4}, 12)`;
+                    const ghostTitle = document.createElement("strong");
+                    ghostTitle.className = "sw-home__unavailable-title";
+                    ghostTitle.textContent = this.i18n.homeCellUnavailableTitle || this.i18n.homeCellUnavailable;
                     const ghostLabel = document.createElement("p");
                     ghostLabel.className = "sw-home__hint";
                     ghostLabel.textContent = this.i18n.homeCellUnavailable;
-                    ghost.appendChild(ghostLabel);
+                    ghost.append(ghostTitle, ghostLabel);
                     if (editing) {
                         const ghostRemove = document.createElement("button");
                         ghostRemove.type = "button";
@@ -634,11 +748,16 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         refreshing: this.i18n.homeRefreshing,
                         empty: this.i18n.homeEmptyModule,
                         error: this.i18n.homeModuleError,
+                        timeout: this.i18n.homeReasonTimeout,
+                        unsupported: this.i18n.homeReasonUnsupported,
+                        unregistered: this.i18n.homeReasonUnregistered,
+                        backoff: this.i18n.homeReasonBackoff,
                         blocked: this.i18n.homeBlocked,
                         retry: this.i18n.homeRetry,
                         collapse: this.i18n.homeCollapse,
                         expand: this.i18n.homeExpand,
                         cached: this.i18n.homeCached,
+                        staleRefreshFailed: this.i18n.homeStaleRefreshFailed,
                         updated: this.i18n.homeUpdated,
                         sourceFresh: this.i18n.homeSourceFresh,
                         sourceCached: this.i18n.homeSourceCached,
@@ -733,11 +852,12 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         const ok = result?.ok === true;
                         if (ok) health.lastOkAt = health.lastAttemptAt;
                         else health.lastFailReason = String(result?.reason || "failed");
-                        cell.dataset.swHealth = ok ? "ok" : "failed";
+                        const stale = !ok && (result as {view?: {stale?: boolean}} | null)?.view?.stale === true;
+                        cell.dataset.swHealth = ok ? "ok" : stale ? "stale" : "failed";
                         if (ok) {
                             delete cell.dataset.swHealthText;
                         } else {
-                            cell.dataset.swHealthText = this.i18n.homeHealthFailed;
+                            cell.dataset.swHealthText = stale ? this.i18n.homeHealthStale : this.i18n.homeHealthFailed;
                         }
                         updateCellDescription();
                         updateWorkbenchReceipt();
@@ -1022,7 +1142,16 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 const handler = () => {
                     moduleIds.forEach((id) => pendingModules.add(id));
                     if (homeRefreshTimer) return;
-                    homeRefreshTimer = window.setTimeout(homeFlushRefresh, 500);
+                    const refreshHandle = window.setTimeout(() => {
+                        const position = homeRefreshTimers.indexOf(refreshHandle);
+                        if (position >= 0) homeRefreshTimers.splice(position, 1);
+                        homeFlushRefresh();
+                    }, 500);
+                    homeRefreshTimer = refreshHandle;
+                    // 与首开延迟刷新共用统一的待取消句柄；面板重绘或销毁时，
+                    // releasePanel 必须让这条事件防抖回调一起失效，避免迟到回调
+                    // 触碰已经 dispose 的 controller。
+                    homeRefreshTimers.push(refreshHandle);
                 };
                 this.eventBus.on(event as TEventBus, handler);
                 homeRefreshCleanupFns.push(() => this.eventBus.off(event as TEventBus, handler));
@@ -1248,6 +1377,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     }
                 },
             });
+            mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
             const listRoot = dialog.element.querySelector<HTMLElement>(".sw-home-health");
             if (!listRoot) return;
             const collectRows = () => homeControllers.map((entry) => {
@@ -1256,7 +1386,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     instanceId: entry.instanceId || entry.cell.dataset.swObjectId || "",
                     moduleId: entry.moduleId,
                     title: (def as any)?.title || entry.moduleId,
-                    health: (entry.cell.dataset.swHealth || "loading") as "ok" | "failed" | "loading",
+                    health: (entry.cell.dataset.swHealth || "loading") as "ok" | "failed" | "stale" | "loading",
                     cached: this.homePanelSnapshots.has(entry.instanceId || ""),
                     reason: entry.health?.lastFailReason || "",
                     lastAttemptAt: entry.health?.lastAttemptAt,
@@ -1282,10 +1412,11 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 listRoot.textContent = "";
                 const groupLabels: Record<string, string> = {
                     failed: this.i18n.homeHealthGroupFailed,
+                    stale: this.i18n.homeHealthStale,
                     loading: this.i18n.homeHealthGroupLoading,
                     ok: this.i18n.homeHealthGroupOk,
                 };
-                (["failed", "loading", "ok"] as const).forEach((group) => {
+                (["failed", "stale", "loading", "ok"] as const).forEach((group) => {
                     const rows = report[group];
                     if (rows.length === 0) return;
                     const groupTitle = document.createElement("h4");

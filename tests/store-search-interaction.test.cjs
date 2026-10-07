@@ -33,7 +33,7 @@ test('clear search button reapplies filter', () => assert.ok(handler.includes('a
 test('clear search button restores focus', () => { const f=handler.indexOf('applyFilter();'); const focus=handler.indexOf('searchInput.focus();'); assert.ok(f>=0 && focus>f, '清空后先应用筛选再恢复焦点'); });
 test('input updates clear button visibility', () => assert.match(storeUiSource, /clearSearchButton\.hidden = !normalizeHomeStoreQuery\(storeQuery\)/));
 test('search input handles keydown', () => assert.match(storeUiSource,/searchInput\.addEventListener\("keydown"/));
-test('Escape key is recognized', () => assert.match(mobileSwitcherSource, /event\.key !== "Escape"/));
+test('Escape key is recognized by the owned mobile overlay listener', () => assert.match(mobileSwitcherSource, /const onDocumentKeyDown = \(event: KeyboardEvent\)[\s\S]*?event\.key === "Escape"/));
 test('Escape prevents browser default', () => assert.match(storeUiSource, /event\.preventDefault\(\)/));
 test('Escape triggers clear action', () => assert.match(storeUiSource, /clearSearchButton\.click\(\)/));
 test('empty search Escape is ignored', () => assert.match(storeUiSource, /!searchInput\.value/));

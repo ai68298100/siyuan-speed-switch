@@ -5,6 +5,7 @@
 // 分节内的相互调用改为同模块直接调用（.call(this)），不再绕道宿主。
 // ISwSettings/IFavoriteItem 等类型经 import type 引用（编译期擦除，无运行时循环依赖）。
 import {Dialog, getAllTabs, openTab, showMessage} from "siyuan";
+import {mountPlatformDialogCloseHint} from "./platform-dom";
 import {logger} from "./logger";
 import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_THUMB_HEIGHT_MIN_PX, MOBILE_THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY, RELATED_SWR_KEY, RSS_READ_KEY, SCHEMA_VERSION_KEY, SNIPPET_RECYCLE_KEY, SNIPPET_GROUPS_KEY, DEFAULT_HOTKEY, SECOND_PANEL_HOTKEY} from "./constants";
 import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
@@ -62,6 +63,7 @@ export interface SettingsSectionsHost {
     // 宿主字段
     i18n: Record<string, string>;
     updateFloatingBallVisibility?: () => void; // T-7026：悬浮球模块开关变化后重算挂载（宿主可选能力）
+    settingsSceneReloader?: () => void; // T-7175：设置内切换后局部刷新当前面板，保持状态诚实
     isMobile: boolean;
     isUnloading: boolean;
     favCollapsed: Set<string>;
@@ -81,6 +83,8 @@ export interface SettingsSectionsHost {
     settingSegmented(title: string, description: string | undefined, items: Array<{value: string, label: string}>, current: string, onChange: (value: string) => void): HTMLElement;
     // T-6999：面板窗口预览入口——从设置页打开对应面板查看当前尺寸效果
     openPanelPreview(surface: "switcher" | "workbench" | "studio"): void;
+    getAvailablePlatformSurfaces?: () => Array<"switcher" | "workbench" | "studio">;
+    getPlatformShortcutBindings?: () => {switcher?: string; workbench?: string};
     // 行为与数据访问（宿主方法）
     clampNum(value: any, min: number, max: number, fallback: number): number;
     updateSettings(patch: Partial<ISwSettings>): void;
@@ -261,11 +265,20 @@ export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings
                 this.settingItem(this.i18n.shortcutBindingsLabel, this.i18n.shortcutBindingsTip, (() => {
                     const list = document.createElement("dl");
                     list.className = "sw-settings__shortcut-list";
-                    [[this.i18n.shortcutSwitcher, DEFAULT_HOTKEY], [this.i18n.shortcutWorkbench, SECOND_PANEL_HOTKEY]].forEach(([label, hotkey]) => {
+                    const current = this.getPlatformShortcutBindings?.() || {};
+                    [[this.i18n.shortcutSwitcher, current.switcher || DEFAULT_HOTKEY, DEFAULT_HOTKEY], [this.i18n.shortcutWorkbench, current.workbench || SECOND_PANEL_HOTKEY, SECOND_PANEL_HOTKEY]].forEach(([label, hotkey, fallback]) => {
                         const term = document.createElement("dt");
                         term.textContent = label;
                         const value = document.createElement("dd");
-                        value.textContent = hotkey;
+                        const kbd = document.createElement("kbd");
+                        kbd.textContent = hotkey;
+                        value.appendChild(kbd);
+                        if (hotkey !== fallback) {
+                            const defaultHint = document.createElement("span");
+                            defaultHint.className = "sw-settings__shortcut-default";
+                            defaultHint.textContent = `${this.i18n.shortcutDefaultPrefix || "默认"} ${fallback}`;
+                            value.appendChild(defaultHint);
+                        }
                         list.append(term, value);
                     });
                     return list;
@@ -289,10 +302,14 @@ function buildPanelPreviewButton(this: SettingsSectionsHost, surface: "switcher"
         const button = document.createElement("button");
         button.type = "button";
         button.className = "b3-button b3-button--text sw-settings__panel-preview";
-        button.textContent = this.i18n.panelSizePreview;
+        const available = this.getAvailablePlatformSurfaces?.() || ["switcher", "workbench", "studio"];
+        const enabled = available.includes(surface);
+        button.textContent = enabled ? this.i18n.panelSizePreview : `${this.i18n.panelSizePreview} · ${this.i18n.moduleDisabled || "已停用"}`;
         button.setAttribute("aria-label", `${this.i18n.panelSizePreview} · ${surfaceLabel}`);
-        button.title = this.i18n.panelSizePreviewTip;
-        button.addEventListener("click", () => this.openPanelPreview(surface));
+        button.title = enabled ? this.i18n.panelSizePreviewTip : (this.i18n.moduleVisibilityHint || "模块已停用");
+        button.disabled = !enabled;
+        button.setAttribute("aria-disabled", String(!enabled));
+        if (enabled) button.addEventListener("click", () => this.openPanelPreview(surface));
         return button;
     }
 
@@ -405,6 +422,7 @@ export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings):
                 const current = this.getSettings().moduleVisibility || {workbench: true, studio: true, floatingBall: true};
                 const next = {...current, [key]: checkbox.checked};
                 this.updateSettings({moduleVisibility: next});
+                this.settingsSceneReloader?.();
                 if (key === "floatingBall") this.updateFloatingBallVisibility?.();
             });
             const knob = document.createElement("span");
@@ -419,7 +437,7 @@ export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings):
         wrapper.append(
             this.settingGroupTitle(this.i18n.settingsGroupModules),
             this.settingGroupCard(
-                this.settingItem(this.i18n.settingsGroupModules, this.i18n.moduleVisibilityHint, moduleToggles, true),
+                this.settingItem(this.i18n.moduleVisibilityLabel || this.i18n.settingsGroupModules, this.i18n.moduleVisibilityHint, moduleToggles, true),
             ),
         );
         return wrapper;
@@ -2905,6 +2923,7 @@ function openDocumentSetDiffDialog(this: SettingsSectionsHost, item: any, versio
         content: '<div class="sw-doc-set-diff"></div>',
         width: this.isMobile ? "min(560px, 94vw)" : "520px",
     });
+    mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
     const root = dialog.element.querySelector<HTMLElement>(".sw-doc-set-diff");
     if (!root) return;
     const meta = document.createElement("p");
@@ -3000,6 +3019,7 @@ function openConfigPackDiffDialog(this: SettingsSectionsHost, parsed: unknown, g
         content: '<div class="sw-config-pack-diff"></div>',
         width: this.isMobile ? "min(560px, 94vw)" : "520px",
     });
+    mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
     const root = dialog.element.querySelector<HTMLElement>(".sw-config-pack-diff");
     if (!root) return;
     const selected = new Set<string>();

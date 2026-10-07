@@ -22,6 +22,7 @@
   "setThumbHeight": "Thumbnail height",
   "setThumbHeightTip": "Height of each tab thumbnail in pixels (72–360)",
   "setSortBy": "Tab sort order",
+  "mobileSortAndGroupTitle": "Sort and group",
   "setSortByTip": "Default card order when opening the switcher; pinned tabs always come first",
   "enterFullscreen": "Fullscreen",
   "exitFullscreen": "Exit fullscreen",
@@ -72,6 +73,11 @@
   "homeCollapse": "Collapse",
   "homeExpand": "Expand",
   "homeCached": "Cached",
+  "homeStaleRefreshFailed": "Stale content · refresh failed",
+  "homeReasonTimeout": "Request timed out",
+  "homeReasonUnsupported": "Host unsupported",
+  "homeReasonUnregistered": "Provider unavailable",
+  "homeReasonBackoff": "Retry deferred",
   "homeUpdated": "Updated",
   "homeSourceFresh": "Live source",
   "homeSourceCached": "Source cache",
@@ -260,6 +266,7 @@
   "homeStoreRemoveUnavailable": "Remove unavailable widget",
   "homeStoreAvailabilityConditional": "Conditional",
   "homeStoreAvailabilityExternal": "Online data",
+  "homeStoreAvailabilityReady": "Local",
   "homeStoreSource": "Source: {source}",
   "homeStoreNetworkOnline": "Internet required",
   "homeStoreNetworkOffline": "Fully offline",
@@ -682,7 +689,8 @@
   "groupTabsInProgress": "A group tab operation is already in progress",
   "rename": "Rename",
   "docSearchResults": "Workspace documents",
-  "docSearchSourceGlobal": "Workspace",
+  "docSearchSourceTitle": "Title/path",
+  "docSearchSourceFullText": "Full-text hit",
   "docSearchSourceOpened": "Opened content",
   "docSearchLoading": "Searching workspace documents…",
   "docSearchLoadingHint": "Reading workspace results; opened tabs remain available",
@@ -691,10 +699,12 @@
   "docSearchErrorHint": "Opened-tab results are preserved; retry or continue in SiYuan Search",
   "docSearchRetry": "Retry workspace search",
   "docSearchHealthUnavailable": "Workspace layer unavailable",
+  "docSearchHealthFallback": "Fell back to full text",
+  "docSearchScopeFullText": "Full-text scope",
   "docSearchLoadMore": "Load more results",
   "docSearchViewAll": "View all in SiYuan Search",
   "noDocResults": "No matching documents found",
-  "docSearchEmptyHint": "Try another keyword, or broaden the search in SiYuan Search",
+  "docSearchEmptyHint": "No match in the current scope; this does not show whether content is indexed. Try another keyword or continue in SiYuan Search",
   "backTop": "Back to top",
   "setHomeSizeMode": "Size mode",
   "setHomeSizeModeTip": "Follow the first panel's setting, or give the widget panel its own adaptive, fixed, or fullscreen size",
@@ -922,8 +932,11 @@
   ,"reuseTabsTip": "When a search result is already open, focus the existing tab instead of opening a duplicate."
   ,"rememberScrollPositionLabel": "Remember document scroll position"
   ,"rememberScrollPositionTip": "During this SiYuan session, try to return to the last position when reopening or restoring a document."
-  ,"shortcutBindingsLabel": "Default bindings"
-  ,"shortcutBindingsTip": "These are the plugin's registered defaults; change them in SiYuan Settings → Shortcuts."
+  ,"settingsControlSlider": "Slider"
+  ,"settingsControlNumber": "Number"
+  ,"shortcutBindingsLabel": "Shortcut bindings"
+  ,"shortcutBindingsTip": "Shows the active shortcut; the plugin default is used until you customize it in SiYuan Settings → Shortcuts."
+  ,"shortcutDefaultPrefix": "Default"
   ,"shortcutSwitcher": "Open switcher"
   ,"shortcutWorkbench": "Open workbench"
   ,"breadcrumbEntry": "Open switcher"
@@ -940,6 +953,7 @@
   ,"documentSetEssentialsClear": "Clear all"
   ,"documentSetEssentialsEmpty": "No essentials yet"
   ,"quickIconSearchEmpty": "No matching icons"
+  ,"quickIconCategory": "Icon category"
   ,"quickIconCategoryAll": "All"
   ,"workbenchLabel": "Workbench"
   ,"workbenchPresets": "Scenes"
@@ -1059,6 +1073,7 @@
   ,"floatingBallFlickMore": "More panel"
   ,"homeReceiptSummary": "{ok}/{total} widgets healthy"
   ,"homeReceiptFailed": "{x} failed"
+  ,"homeReceiptUnavailable": "{x} unavailable"
   ,"homeReceiptDetails": "Details"
   ,"homeHealthDetailsTitle": "Widget health details"
   ,"homeHealthGroupFailed": "Failed"
@@ -1066,6 +1081,8 @@
   ,"homeHealthGroupOk": "Healthy"
   ,"homeHealthCached": "Cached"
   ,"homeHealthCachedShown": "Stale content shown"
+  ,"homeHealthStale": "Refresh failed; stale content shown"
+  ,"homeReceiptStale": "{x} stale"
   ,"homeHealthLastAttempt": "Last attempt"
   ,"homeHealthLastOk": "Last success"
   ,"homeHealthUnknown": "Unknown"
@@ -1209,6 +1226,7 @@
   ,"documentSetRestoreFailed": "failed"
   ,"documentSetRestoreSkipped": "skipped"
   ,"documentSetRestoreMissing": "missing"
+  ,"documentSetRestoreUnknown": "unverified"
   ,"documentSetRestoreCancelled": "Restore cancelled"
   ,"documentSetRestoreReport": "Export restore report"
   ,"documentSetRestoreReportNone": "No restore report yet — run a restore first"
@@ -1241,11 +1259,15 @@
   ,"platformSwitcherHint": "Find, preview and open content"
   ,"platformWorkbenchHint": "Arrange widgets and the current workspace"
   ,"platformStudioHint": "Edit, preview and manage snippets safely"
+  ,"platformConnected": "Kernel connected"
+  ,"platformCloseHint": "to close"
   ,"settingsGroupTheme": "Theme & skin"
   ,"moduleDisabledReceipt": "{x} is disabled: open windows stay until closed; new invocations are declined"
+  ,"moduleDisabled": "Disabled"
   ,"moduleFloatingBall": "Floating ball"
   ,"moduleStudio": "Snippet studio (panel 3)"
   ,"moduleVisibilityHint": "Disabled modules hide their entries and decline route calls with an honest receipt; open windows stay until closed. The switcher is the platform root and cannot be disabled."
+  ,"moduleVisibilityLabel": "Enabled modules"
   ,"moduleWorkbench": "Workbench (panel 2)"
   ,"settingsGroupModules": "Modules"
   ,"settingsGroupWindow": "Switcher window"
@@ -1291,12 +1313,16 @@
   ,"snippetDiffDegraded": "Snippet too long for a line diff; applying replaces the whole block."
   ,"snippetPaneDraft": "Draft"
   ,"homeCellUnavailable": "Module uninstalled; layout kept and restored in place after reinstall."
+  ,"homeCellUnavailableTitle": "Module unavailable"
   ,"homeConfigSaveFailed": "Saving the config failed: kept locally — retry or cancel."
   ,"homeConfigSaveMissed": "This module was removed from another entry; the edit was not saved — cancel or reopen."
   ,"homeEmptyNoSource": "No widget sources available: install widgets or enable providers to compose here."
   ,"homeEmptyRecommended": "Recommended widgets"
   ,"homeEmptyRestoreDefault": "Restore default layout"
   ,"homeEmptyTierHint": "Default material and size per widget come from its catalog declaration; adjust size and position in edit mode."
+  ,"homeEmptyRecommendedConfirm": "Add “{x}” ({availability}) to the end of this workbench while keeping the existing layout?"
+  ,"homeEmptyRestoreConfirm": "Add {count} selected default widgets while keeping the current {existing} layout items?"
+  ,"homeEmptyRestoreNothing": "The selected default widgets are already in this workbench."
   ,"homeCalendarJumpNext": "Next month with journals"
   ,"homeCalendarJumpNone": "No month with journals found within ±24 months."
   ,"homeCalendarJumpPrev": "Previous month with journals"

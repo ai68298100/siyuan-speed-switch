@@ -50,7 +50,9 @@ test("home controller falls back to a stale snapshot instead of an error page", 
     // 失败但有过期好数据：展示旧数据 + 缓存标记，而非错误页
     assert.equal(container.querySelector("[data-status='error']") === null, true);
     assert.equal(container.querySelector(".sw__home-module-item-action").textContent, "stale-item");
-    assert.equal(container.textContent.includes("缓存"), true);
+    assert.equal(container.textContent.includes("旧内容（缓存）· 刷新失败"), true);
+    assert.equal(result.view.stale, true);
+    assert.equal(container.textContent.includes("刷新失败"), true);
     controller.dispose();
 });
 test("home controller keeps ready content during a refresh", async () => {
@@ -355,7 +357,7 @@ test("home controller exposes a bounded error state for panel-level failures", (
     const view = controller.showError("bad config");
     assert.equal(view.status, "error");
     assert.equal(container.querySelector("[data-status='error']") !== null, true);
-    assert.equal(container.querySelector('[role="alert"]').textContent, "暂时无法加载 · bad config");
+    assert.equal(container.querySelector('[role="alert"]').textContent, "暂时无法加载");
     controller.dispose();
 });
 

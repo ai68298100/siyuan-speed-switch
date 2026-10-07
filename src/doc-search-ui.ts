@@ -12,6 +12,7 @@ import {openDocumentOnDesktop} from "./document-actions";
 import {applyPreviewFind, clampScrollTop, clearPreviewFind, HIT_CLASS, nextHitIndex} from "./doc-preview-find";
 import {logger} from "./logger";
 import {createPlatformStatus} from "./platform-dom";
+import {mountPlatformDialogCloseHint} from "./platform-dom";
 import type {DocSearchState} from "./doc-search-state";
 import type {IDocSearchFilters, IDocSearchResult, ISearchSession, DocSearchRenderState, IOverlayClose} from "./index";
 
@@ -476,6 +477,7 @@ export function openSavedSearchEditor(this: DocSearchUiHost, id: string): void {
             content: '<div class="sw-saved-search-editor"></div>',
             width: this.isMobile ? "min(480px, 92vw)" : "420px",
         });
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const root = dialog.element.querySelector<HTMLElement>(".sw-saved-search-editor");
         if (!root) return;
         const buildField = (label: string, value: string) => {
@@ -937,7 +939,7 @@ export async function runFullTextSearchFallback(this: DocSearchUiHost,
                 notebookId: card.notebookId,
                 blockIds: card.blockIds,
                 snippets: card.snippets,
-                source: "global",
+                source: "fulltext",
             }));
             const scoped = filterDocSearchResults.call(this, mapped, filters);
             return scoped.slice(0, documentLimit);
@@ -1028,6 +1030,7 @@ export function renderDocResults(this: DocSearchUiHost,
         const label = box.querySelector<HTMLElement>(".sw__window-label");
         if (label) {
             label.textContent = `${this.i18n.docSearchResults} · ${grid.childElementCount}`;
+            appendDocSearchHealthBadge.call(this, label, scrollElement);
         }
         box.appendChild(grid);
         // T-6839：常驻预览窗格随结果区重挂（桌面且容器足够宽时）
@@ -1130,7 +1133,7 @@ const docPreviewPinnedCurrent = new WeakMap<HTMLElement, {rootId: string; title:
 const docPreviewLastItems = new WeakMap<HTMLElement, HTMLElement>();
 // T-6950：窗格内查找状态（键=pane，与窗格同生命周期）；open/query 跨内容轮换保留，
 // total/current 随每次渲染或查询重算。
-const docPreviewFindStates = new WeakMap<HTMLElement, {open: boolean; query: string; total: number; current: number}>();
+const docPreviewFindStates = new WeakMap<HTMLElement, {open: boolean; query: string; total: number; current: number; composing?: boolean}>();
 
 function createDocPreviewBody(): HTMLElement {
         const body = document.createElement("div");
@@ -1172,8 +1175,32 @@ function buildDocPreviewFindBar(this: DocSearchUiHost, pane: HTMLElement): HTMLE
         close.textContent = "✕";
         close.setAttribute("aria-label", this.i18n.docSearchPreviewFindClose);
         close.addEventListener("click", () => setDocPreviewFindOpen.call(this, pane, false));
-        input.addEventListener("input", () => runDocPreviewFind.call(this, pane));
+        let composing = false;
+        let committedValue: string | null = null;
+        input.addEventListener("compositionstart", () => {
+            composing = true;
+            committedValue = null;
+            const state = docPreviewFindStates.get(pane);
+            if (state) state.composing = true;
+        });
+        input.addEventListener("compositionend", () => {
+            composing = false;
+            const state = docPreviewFindStates.get(pane);
+            if (state) state.composing = false;
+            committedValue = input.value;
+            runDocPreviewFind.call(this, pane);
+        });
+        input.addEventListener("input", (event) => {
+            if (composing || (event as InputEvent).isComposing) return;
+            const alreadyCommitted = committedValue !== null && committedValue === input.value;
+            committedValue = null;
+            if (!alreadyCommitted) runDocPreviewFind.call(this, pane);
+        });
         input.addEventListener("keydown", (event) => {
+            if (composing || event.isComposing || event.keyCode === 229) {
+                event.stopPropagation();
+                return;
+            }
             if (event.key === "Enter") {
                 event.preventDefault();
                 moveDocPreviewHit.call(this, pane, event.shiftKey ? -1 : 1);
@@ -1184,6 +1211,7 @@ function buildDocPreviewFindBar(this: DocSearchUiHost, pane: HTMLElement): HTMLE
         });
         bar.append(input, count, prev, next, close);
         pane.addEventListener("keydown", (event) => {
+            if (composing || event.isComposing || event.keyCode === 229) return;
             if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === "f") {
                 event.preventDefault();
                 setDocPreviewFindOpen.call(this, pane, true);
@@ -1230,7 +1258,7 @@ function setDocPreviewFindOpen(this: DocSearchUiHost, pane: HTMLElement, open: b
 function runDocPreviewFind(this: DocSearchUiHost, pane: HTMLElement): void {
         const state = docPreviewFindStates.get(pane);
         const input = pane.querySelector<HTMLInputElement>(".sw__doc-preview-find-input");
-        if (!state || !input) return;
+        if (!state || !input || state.composing) return;
         state.query = input.value;
         state.total = applyPreviewFind(previewBodyOf(pane), state.query);
         state.current = 0;
@@ -1623,15 +1651,49 @@ function appendDocSearchHealthBadge(this: DocSearchUiHost, label: HTMLElement, s
         const health = this.docSearchState.health.get(scrollElement);
         const state = !health?.remote ? ""
             : health.state === "error" ? "error" : health.state === "loading" ? "loading" : "";
+        const fallbackUsed = Boolean(health?.fallbackUsed || health?.fallbackReason);
+        const statusState = state || (fallbackUsed ? "stale" : "");
         const existing = label.querySelector<HTMLElement>(".sw__doc-health-status");
-        if (state && existing?.dataset.state === state) return;
-        existing?.remove();
-        if (!state) return;
-        const text = state === "error" ? this.i18n.docSearchHealthUnavailable : this.i18n.docSearchHealthLoading;
-        const badge = createPlatformStatus(label.ownerDocument || document, state, text);
-        badge.classList.add("sw__doc-health-status");
-        badge.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
-        label.appendChild(badge);
+        if (statusState) {
+            if (existing?.dataset.state !== statusState) {
+                existing?.remove();
+                const text = state === "error"
+                    ? this.i18n.docSearchHealthUnavailable
+                    : state === "loading"
+                        ? this.i18n.docSearchHealthLoading
+                        : this.i18n.docSearchHealthFallback;
+                const badge = createPlatformStatus(label.ownerDocument || document, statusState, text);
+                badge.classList.add("sw__doc-health-status");
+                badge.setAttribute("aria-live", statusState === "error" ? "assertive" : "polite");
+                label.appendChild(badge);
+            }
+        } else {
+            existing?.remove();
+        }
+        label.querySelector(".sw__doc-scope-summary")?.remove();
+        const filters = this.docSearchState.filters?.get(scrollElement) || {};
+        const scopeParts: string[] = [];
+        if (filters.notebook) {
+            const name = this.docSearchState.notebookNames?.get(scrollElement)?.get(filters.notebook);
+            scopeParts.push(`${this.i18n.searchFilterNotebook}: ${(name || filters.notebook).slice(0, 32)}`);
+        }
+        if (Array.isArray(filters.paths) && filters.paths.length > 0) {
+            const titles = this.docSearchState.pathTitles?.get(scrollElement);
+            const paths = filters.paths.slice(0, 2).map((path: string) => titles?.get(path) || path.split("/").pop() || path);
+            const suffix = filters.paths.length > 2 ? ` +${filters.paths.length - 2}` : "";
+            scopeParts.push(`${this.i18n.searchFilterPath}: ${paths.join(", ")}${suffix}`);
+        }
+        // Title/path is already shown on each result card. Keep the header
+        // quiet for the default scope; only the meaningful degraded method
+        // change needs a persistent summary here.
+        const methodLabel = fallbackUsed ? this.i18n.docSearchScopeFullText : "";
+        if (methodLabel) scopeParts.push(methodLabel);
+        if (scopeParts.length > 0) {
+            const scope = (label.ownerDocument || document).createElement("span");
+            scope.className = "sw__doc-scope-summary";
+            scope.textContent = ` · ${scopeParts.join(" · ")}`;
+            label.appendChild(scope);
+        }
     }
 
     // 空态：无可显示的搜索结果；保留原生搜索出口，避免死路。
@@ -1788,7 +1850,9 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         source.className = "sw__doc-source";
         source.textContent = doc.source === "opened"
             ? this.i18n.docSearchSourceOpened
-            : this.i18n.docSearchSourceGlobal;
+            : doc.source === "title"
+                ? this.i18n.docSearchSourceTitle
+                : this.i18n.docSearchSourceFullText;
         let snippetElement: HTMLSpanElement | null = null;
         const snippets = Array.isArray(doc.snippets)
             ? doc.snippets.map((snippet) => String(snippet?.text || "").trim()).filter(Boolean).join(" · ")

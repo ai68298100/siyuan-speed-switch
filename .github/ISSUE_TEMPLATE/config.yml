@@ -6,3 +6,12 @@ contact_links:
   - name: 功能需求 / Feature request
     url: https://github.com/ai68298100/siyuan-speed-switch/issues/new?template=feature_request.yml
     about: 想要新功能或改进时点这里
+  - name: 发布与版本 / Releases
+    url: https://github.com/ai68298100/siyuan-speed-switch/releases
+    about: 先确认当前稳定版、下载包和版本变更
+  - name: 支持范围 / Support matrix
+    url: https://github.com/ai68298100/siyuan-speed-switch/blob/dev/thispc-1002/README.md#环境要求与兼容边界
+    about: 先查看当前公开 README 中的桌面、侧栏、移动端和宿主版本边界；完整矩阵同步后再切换到矩阵文件
+  - name: 安全问题 / Security
+    url: https://github.com/ai68298100/siyuan-speed-switch/security
+    about: 查看私密漏洞报告能力；不要在公开 issue 中粘贴 Token、正文或敏感路径

@@ -472,6 +472,12 @@ function createSnippetPreview(container, {title, labels, onError = () => {}, onR
             frame.srcdoc = buildSnippetPreviewDocument({...options, scene: options.scene, labels, token});
             container.replaceChildren(frame);
         },
+        clear() {
+            if (disposed) return;
+            frame?.remove();
+            frame = null;
+            token = "";
+        },
         dispose() { disposed = true; frame?.remove(); frame = null; win.removeEventListener("message", handleMessage); },
     };
 }

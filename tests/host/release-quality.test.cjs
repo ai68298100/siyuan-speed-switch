@@ -271,7 +271,10 @@ test('release readiness matrix matches generated artifact sizes', () => {
     assert.match(readiness, /51 个组件完成完整评分卡/);
     assert.match(readiness, /T-6476~T-6663/);
     assert.doesNotMatch(readiness, /前 43 个组件/);
-    const releaseOrder = readiness.slice(readiness.indexOf('## 建议发布顺序'));
+    const releaseOrderHeading = readiness.includes('## 历史建议发布顺序')
+        ? '## 历史建议发布顺序'
+        : '## 建议发布顺序';
+    const releaseOrder = readiness.slice(readiness.indexOf(releaseOrderHeading));
     assert.match(releaseOrder, /`v0\.33\.0` 已完成发布/);
     assert.doesNotMatch(releaseOrder, /v0\.22\.0|作为 v0\.23 准入/);
 });

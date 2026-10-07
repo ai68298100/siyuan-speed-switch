@@ -239,7 +239,7 @@ function createHomeModuleController(options = {}) {
                 && result?.snapshot && Array.isArray(result.snapshot.items) && result.snapshot.items.length > 0;
             const view = buildHomeModuleView(
                 module,
-                stale ? {ok: true, cached: true, snapshot: result.snapshot} : result,
+                stale ? {ok: true, cached: true, stale: true, reason: result?.reason || "failed", snapshot: result.snapshot} : result,
                 {collapsed: currentView?.collapsed === true},
             );
             render(view);
@@ -349,11 +349,11 @@ function classifyHomeHealthReason(reason) {
 
 // 输入为纯数据行（由调用方从控制器与单元 DOM 归一），按 失败/加载中/正常 分组。
 function buildHomeHealthReport(entries) {
-    const report = {failed: [], loading: [], ok: []};
+    const report = {failed: [], stale: [], loading: [], ok: []};
     if (!Array.isArray(entries)) return report;
     entries.forEach((entry) => {
         if (!entry || !entry.instanceId) return;
-        const health = entry.health === "ok" || entry.health === "failed" || entry.health === "loading" ? entry.health : "loading";
+        const health = entry.health === "ok" || entry.health === "failed" || entry.health === "stale" || entry.health === "loading" ? entry.health : "loading";
         const row = {
             instanceId: String(entry.instanceId),
             moduleId: String(entry.moduleId || ""),

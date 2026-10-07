@@ -158,7 +158,8 @@
     max-width: none;
     max-height: none;
     width: 100vw;
-    height: 100vh;
+    height: 100vh !important;
+    height: 100dvh !important;
     border-radius: 0;
     border: none;
     box-shadow: none;
@@ -198,6 +199,8 @@
     width: 100%;
     max-width: 520px;
     max-height: min(70vh, 520px);
+    // 动态视口跟随 Android 软键盘和浏览器工具栏收放；保留上一行作为旧 WebView 回退。
+    max-height: min(70dvh, 520px);
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 8px 0 calc(10px + env(safe-area-inset-bottom, 0px));
@@ -222,11 +225,48 @@
 }
 
 .sw__mobile-sort-sheet .sw__mobile-sheet-title {
-    padding: 8px 16px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 72px 10px;
     color: var(--b3-theme-on-background);
     font-size: 15px;
     font-weight: 600;
     text-align: center;
+}
+
+// Keep the keyboard hint visually aligned with the heading without making it
+// part of the heading's accessible text/name.
+.sw__mobile-sort-sheet > .sw__mobile-sheet-close-hint {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+}
+
+.sw__mobile-sheet-close-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+
+    kbd {
+        display: inline-flex;
+        align-items: center;
+        min-height: 20px;
+        padding: 2px 5px;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 78%, transparent);
+        border-bottom-width: 2px;
+        border-radius: 5px;
+        background: var(--b3-theme-surface-lighter);
+        color: var(--b3-theme-on-background);
+        font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
+        font-size: 10px;
+        line-height: 1;
+    }
 }
 
 .sw__mobile-sort-list {
@@ -262,6 +302,8 @@
     width: 100%;
     max-width: 100%;
     max-height: 65vh;
+    // 动态视口跟随 Android 软键盘和浏览器工具栏收放；保留上一行作为旧 WebView 回退。
+    max-height: min(65dvh, 520px);
     background: var(--b3-theme-surface);
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
@@ -286,12 +328,32 @@
     }
 
     .sw__mobile-sheet-title {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
         flex: none;
         padding: 8px 16px 6px;
         font-size: 15px;
         font-weight: 600;
         color: var(--b3-theme-on-background);
         text-align: center;
+    }
+
+    .sw__mobile-sheet-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        margin: -10px -8px -10px 0;
+        padding: 0;
+        border-radius: 10px;
+        color: var(--b3-theme-on-surface-light);
+
+        svg { width: 17px; height: 17px; }
+        &:hover, &:focus-visible { color: var(--b3-theme-primary); background: var(--b3-list-hover); }
+        &:active { transform: translateY(1px); }
     }
 
     .sw__mobile-sheet-body {
@@ -576,6 +638,7 @@
 .b3-dialog__container.sw-platform-dialog--workbench.sw-dialog--fullscreen {
     width: 100vw !important;
     height: 100vh !important;
+    height: 100dvh !important;
 }
 
 .sw-home__bar {
@@ -594,6 +657,15 @@
         gap: 4px;
 
         svg { width: 14px; height: 14px; }
+    }
+
+    // 查看态布局动作与编辑横幅保持同一视觉重量，并在窄面板中可换行。
+    .sw-home__history--view {
+        margin-inline-end: auto;
+        padding-inline: 8px;
+        color: var(--b3-theme-on-surface-light);
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+        border-radius: 6px;
     }
 }
 
@@ -630,6 +702,7 @@
     > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
     &[data-state="error"] > span { color: var(--b3-theme-error); }
     &[data-state="loading"] > span { color: var(--b3-theme-on-surface); }
+    &[data-state="blocked"] > span { color: var(--b3-theme-warning, var(--b3-theme-on-surface)); }
 }
 
 // 失败单元：错误色描边一眼可辨（内容区错误态仍由模块自身渲染）。
@@ -649,6 +722,29 @@
         border-radius: 6px;
         background: var(--b3-theme-surface);
         color: var(--b3-theme-error, #d23f31);
+        font-size: 10px;
+        font-weight: 600;
+        pointer-events: none;
+    }
+}
+
+// 旧内容仍可见但本次刷新失败：保留内容可用性，用警示色表达需要重试，
+// 不复用失败红框，避免把可读的缓存误判成空白错误。
+.sw-home__cell[data-sw-health="stale"] {
+    position: relative;
+    border-color: color-mix(in srgb, var(--b3-theme-warning, #d98b16) 48%, transparent);
+
+    &::after {
+        content: attr(data-sw-health-text);
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        z-index: 1;
+        padding: 2px 7px;
+        border: 1px solid color-mix(in srgb, var(--b3-theme-warning, #d98b16) 42%, transparent);
+        border-radius: 6px;
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-warning, #d98b16);
         font-size: 10px;
         font-weight: 600;
         pointer-events: none;
@@ -1253,6 +1349,7 @@
 .sw-home__cell:hover .sw__home-module-status,
 .sw-home__cell:focus-within .sw__home-module-status,
 .sw-home__cell[data-sw-health="failed"] .sw__home-module-status,
+.sw-home__cell[data-sw-health="stale"] .sw__home-module-status,
 .sw-home__cell[data-sw-health="loading"] .sw__home-module-status {
     opacity: 1;
 }
@@ -1332,6 +1429,25 @@
     overflow-wrap: anywhere;
 }
 
+.sw-home .sw-home__unavailable-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--b3-theme-on-background);
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.sw-home .sw-home__unavailable-title::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--b3-theme-on-surface-light);
+    opacity: .72;
+}
+
 // T-7033：空态引导——推荐行与恢复默认按钮（分层文案见 second-panel-ui 空态块）。
 .sw-home .sw-home__empty-recs {
     display: flex;
@@ -1346,6 +1462,38 @@
     margin: 0;
     font-size: 12px;
     color: var(--b3-theme-on-surface);
+}
+
+.sw-home .sw-home__empty-rec {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sw-home .sw-home__empty-rec-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sw-home .sw-home__empty-rec-state {
+    flex: 0 0 auto;
+    padding: 2px 5px;
+    border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+    border-radius: 999px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.sw-home .sw-home__empty-rec-state--conditional {
+    color: var(--b3-theme-warning);
+}
+
+.sw-home .sw-home__empty-rec-state--external {
+    color: var(--b3-theme-primary);
 }
 
 // ==================== T-7054 A 批次：时钟/时间家族视觉增强 ====================

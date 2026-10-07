@@ -34,3 +34,52 @@ test('lifecycle: uninstalled providers render an honest unavailable cell', () =>
         assert.ok(zh[key] && en[key], `i18n 键 ${key} 必须双语齐备`);
     }
 });
+
+test('lifecycle: refreshOn debounce is cancelled with deferred refresh handles', () => {
+    // 事件刷新与首开延迟刷新共享清理集合；否则重绘/销毁后迟到回调会触碰已释放 controller。
+    assert.match(panelSource,
+        /const refreshHandle = window\.setTimeout\(\(\) => \{\s*const position = homeRefreshTimers\.indexOf\(refreshHandle\);\s*if \(position >= 0\) homeRefreshTimers\.splice\(position, 1\);\s*homeFlushRefresh\(\);\s*\}, 500\);\s*homeRefreshTimer = refreshHandle;\s*homeRefreshTimers\.push\(refreshHandle\);/,
+        'refreshOn 防抖句柄必须登记到统一清理集合');
+    assert.match(panelSource,
+        /const clearDeferredRefreshes = \(\) => \{\s*homeRefreshTimers\.splice\(0\)\.forEach\(\(handle\) => \{\s*const cancelIdle = \(window as any\)\.cancelIdleCallback;\s*if \(typeof cancelIdle === "function"\) cancelIdle\(handle\);\s*window\.clearTimeout\(handle\);/,
+        '统一清理必须取消已登记的 refreshOn 句柄');
+});
+
+test('lifecycle: home config form disposes search timers and ignores late option responses', () => {
+    assert.match(formSource,
+        /const configFormCleanups: Array<\(\) => void> = \[\];\s*let configFormDisposed = false;\s*const registerConfigFormCleanup = \(cleanup: \(\) => void\) => \{\s*configFormCleanups\.push\(cleanup\);\s*\};\s*let releaseConfigForm: \(\) => void = \(\) => \{\s*configFormDisposed = true;/,
+        '配置表单销毁必须标记 disposed 并运行统一清理集合');
+    assert.match(formSource,
+        /registerConfigFormCleanup\(\(\) => \{\s*requestGeneration \+= 1;\s*if \(queryTimer !== null\) \{\s*window\.clearTimeout\(queryTimer\);\s*queryTimer = null;\s*\}\s*\}\);/,
+        '文档搜索防抖必须登记并在销毁时清理，同时作废迟到请求');
+    assert.match(formSource,
+        /let allItems: Array<\{id: string; title: string\}> = \[\];\s*registerConfigFormCleanup\(\(\) => \{\s*if \(queryTimer !== null\) \{\s*window\.clearTimeout\(queryTimer\);\s*queryTimer = null;\s*\}\s*\}\);/,
+        '数据库搜索防抖必须登记到配置表单清理集合');
+    assert.match(formSource,
+        /if \(configFormDisposed \|\| generation !== requestGeneration\) return;/,
+        '文档搜索迟到响应必须在销毁后丢弃');
+    assert.match(formSource,
+        /input\.addEventListener\("sw-config-reset", \(\) => \{\s*requestGeneration \+= 1;\s*if \(queryTimer !== null\) \{\s*window\.clearTimeout\(queryTimer\);/,
+        '文档搜索重置必须取消已经排队的旧查询');
+    assert.match(formSource,
+        /loadHomeDatabaseOptions\(\)\.then\(\(items\) => \{\s*if \(configFormDisposed\) return;/,
+        '数据库选项迟到响应必须在销毁后丢弃');
+    assert.match(formSource,
+        /loadNotebooks\(\)\.then\(\(notebooks\) => \{\s*if \(configFormDisposed\) return;/,
+        '笔记本选项迟到响应必须在销毁后丢弃');
+    assert.match(formSource,
+        /if \(!configFormDisposed && generation === loadGeneration && blockId === String\(draft\.blockId \|\| ""\)\) render\(items\);/,
+        '数据库列迟到响应必须在销毁后丢弃');
+    assert.match(formSource,
+        /loadMinifluxCategoryOptions\(String\(draft\.endpoint \|\| ""\), String\(draft\.token \|\| ""\)\)\.then\(\(categories\) => \{\s*if \(configFormDisposed\) return;/,
+        'Miniflux 分类迟到响应必须在销毁后丢弃');
+    assert.match(formSource,
+        /loadActivityWatchBuckets\(String\(draft\.endpoint \|\| ""\)\)\s*:\s*Promise\.resolve\(\[\]\)\)\.then\(\(buckets\) => \{\s*if \(configFormDisposed\) return;/,
+        'ActivityWatch 桶迟到响应必须在销毁后丢弃');
+    assert.match(formSource,
+        /input\.addEventListener\("sw-config-reset", \(\) => \{\s*if \(queryTimer !== null\) \{\s*window\.clearTimeout\(queryTimer\);/,
+        '数据库搜索重置必须取消已经排队的旧过滤');
+    assert.match(formSource,
+        /let initialFocusTimer: number \| null = window\.setTimeout\(\(\) => \{\s*initialFocusTimer = null;\s*const first = controls\.values\(\)\.next\(\)\.value;\s*if \(root\.isConnected\) first\?\.focus\(\);\s*\}, 0\);\s*registerConfigFormCleanup\(\(\) => \{\s*if \(initialFocusTimer !== null\) \{\s*window\.clearTimeout\(initialFocusTimer\);/,
+        '首焦点 timer 必须随配置表单销毁清理');
+});

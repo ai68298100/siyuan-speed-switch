@@ -46,6 +46,7 @@ function createHarness(t) {
         list: async () => ({snippets: [], css: [], js: []}),
         get: async () => null,
         mutate: async () => ({}),
+        dispose: () => {},
     };
     return {dom, document: dom.window.document, mountSnippetStudio, i18n, fakeStore};
 }
@@ -139,6 +140,30 @@ test('studio mount: editing drives the diagnostics panel with verdicts and error
     });
 });
 
+test('studio mount: oversized draft clears stale preview and diagnostics (AB-1302)', (t) => {
+    const {dom, document, mountSnippetStudio, i18n, fakeStore} = createHarness(t);
+    const controller = mountSnippetStudio(document.getElementById('root'), {
+        i18n, getConfig: () => ({}), store: fakeStore, platform: null, onBack: () => {},
+    });
+    const editor = document.querySelector('.sw-studio__editor');
+    editor.value = '.b3-callout { color: red; }';
+    editor.dispatchEvent(new dom.window.Event('input', {bubbles: true}));
+    return new Promise((resolve) => setTimeout(resolve, 320)).then(() => {
+        assert.ok(document.querySelector('.sw-studio__preview-pane--draft iframe'), '有效草稿应先渲染预览');
+        assert.equal(document.querySelector('.sw-studio__diagnostics').hidden, false, '有效 CSS 应显示诊断');
+        editor.value = 'x'.repeat(65537);
+        editor.dispatchEvent(new dom.window.Event('input', {bubbles: true}));
+        return new Promise((resolve) => setTimeout(resolve, 320));
+    }).then(() => {
+        assert.equal(document.querySelector('.sw-studio__preview-pane--draft iframe'), null, '超限草稿不得保留旧 iframe');
+        assert.equal(document.querySelector('.sw-studio__diagnostics').hidden, true, '超限草稿不得保留旧诊断');
+        assert.equal(document.querySelector('.sw-studio__preview').dataset.state, 'error', '超限草稿必须进入错误态');
+        assert.equal(document.querySelector('.sw-studio__status').dataset.state, 'error', '超限草稿必须给出错误回执');
+        assert.ok(document.querySelector('.sw-studio__preview-receipt').textContent.includes(i18n.snippetTooLarge), '预览回执必须说明大小限制');
+        controller.dispose();
+    });
+});
+
 // T-7064：复制草稿全文——按钮真实点击，验证空草稿警示与 Clipboard/回退双通路。
 test('studio mount: copy button reports empty draft and copies content via execCommand fallback (T-7064)', (t) => {
     const {dom, document, mountSnippetStudio, i18n, fakeStore} = createHarness(t);
@@ -219,4 +244,165 @@ test('studio mount: preserves publish-disable metadata and controls native maste
     assert.equal(flags.enabledCSS, false, 'CSS 总开关应调用原生设置写入');
     assert.equal(cssMaster.getAttribute('aria-pressed'), 'false', '总开关按钮应回显关闭状态');
     controller.dispose();
+});
+
+test('studio find keeps focus while typing and commits IME queries once (T-7127)', async (t) => {
+    const {dom, document, mountSnippetStudio, i18n} = createHarness(t);
+    const controller = mountSnippetStudio(document.getElementById('root'), {
+        i18n, store: {read: async () => [], dispose: () => {}},
+        session: {draft: {name: '', type: 'css', content: '中文x 中文x', enabled: false}},
+    });
+    t.after(() => controller.dispose());
+    await controller.ready;
+    Array.from(document.querySelectorAll('.sw-studio__button')).find((button) => button.textContent === i18n.snippetFindBar).click();
+    const editor = document.querySelector('.sw-studio__editor');
+    const bar = document.querySelector('.sw-studio__find');
+    const query = bar.querySelector('.sw-studio__find-query');
+    const count = bar.querySelector('.sw-studio__find-count');
+    let selections = 0;
+    const setSelectionRange = editor.setSelectionRange.bind(editor);
+    editor.setSelectionRange = (...args) => {selections++; setSelectionRange(...args);};
+    query.value = '中';
+    query.dispatchEvent(new dom.window.InputEvent('input', {bubbles: true}));
+    assert.equal(document.activeElement, query, '普通查找输入也不能把焦点抢到编辑器');
+    assert.equal(count.textContent, '1/2');
+    const beforeComposition = selections;
+    let hostKeys = 0;
+    bar.parentElement.addEventListener('keydown', () => {hostKeys++;});
+    query.dispatchEvent(new dom.window.CompositionEvent('compositionstart', {bubbles: true}));
+    query.value = 'zhongw';
+    query.dispatchEvent(new dom.window.InputEvent('input', {bubbles: true, isComposing: true}));
+    assert.equal(selections, beforeComposition, '预编辑不重设编辑器选区');
+    assert.equal(count.textContent, '1/2', '预编辑不改变命中');
+    for (const key of ['Enter', 'Escape', 'ArrowDown', 'ArrowUp']) {
+        const event = new dom.window.KeyboardEvent('keydown', {key, bubbles: true, cancelable: true});
+        query.dispatchEvent(event);
+        assert.equal(event.defaultPrevented, false, `${key} 不拦截输入法`);
+        assert.equal(bar.hidden, false);
+        assert.equal(count.textContent, '1/2');
+        assert.equal(document.activeElement, query);
+        assert.equal(selections, beforeComposition);
+    }
+    assert.equal(hostKeys, 0, '组合按键不冒泡到宿主导航或关闭');
+    query.value = '中文';
+    query.dispatchEvent(new dom.window.CompositionEvent('compositionend', {bubbles: true}));
+    assert.equal(selections, beforeComposition + 1, '提交后定位最终查询一次');
+    assert.equal(editor.selectionEnd - editor.selectionStart, 2);
+    assert.equal(document.activeElement, query, '提交查询保留查找框焦点');
+    query.dispatchEvent(new dom.window.InputEvent('input', {bubbles: true}));
+    assert.equal(selections, beforeComposition + 1, '最终 input 不重复定位');
+    for (const properties of [{isComposing: true}, {keyCode: 229}]) {
+        query.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true, ...properties}));
+        assert.equal(bar.hidden, false);
+    }
+    query.value = '中文x';
+    query.dispatchEvent(new dom.window.InputEvent('input', {bubbles: true}));
+    assert.equal(document.activeElement, query, '提交后连续普通字符仍留在查找框');
+    assert.equal(editor.selectionEnd - editor.selectionStart, 3);
+    query.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
+    assert.equal(count.textContent, '2/2');
+    assert.equal(document.activeElement, editor, '显式导航才聚焦编辑器');
+    query.focus();
+    query.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+    assert.equal(bar.hidden, true, '非组合 Esc 正常关闭查找');
+});
+
+test('studio replace waits for IME commit before its two-step transaction (T-7127)', async (t) => {
+    const {dom, document, mountSnippetStudio, i18n} = createHarness(t);
+    const controller = mountSnippetStudio(document.getElementById('root'), {
+        i18n, store: {read: async () => [], dispose: () => {}},
+        session: {draft: {name: '', type: 'css', content: '中文 中文', enabled: false}},
+    });
+    t.after(() => controller.dispose());
+    await controller.ready;
+    const button = (label) => Array.from(document.querySelectorAll('.sw-studio__button')).find((element) => element.textContent === label);
+    button(i18n.snippetFindBar).click();
+    const editor = document.querySelector('.sw-studio__editor');
+    const bar = document.querySelector('.sw-studio__find');
+    const query = bar.querySelector('.sw-studio__find-query');
+    const replacement = bar.querySelector('.sw-studio__find-replace');
+    const replaceAll = Array.from(bar.querySelectorAll('button')).find((element) => element.textContent === i18n.snippetFindReplaceAll);
+    query.value = '中文';
+    query.dispatchEvent(new dom.window.InputEvent('input', {bubbles: true}));
+    replaceAll.click();
+    assert.notEqual(replaceAll.textContent, i18n.snippetFindReplaceAll, '先建立替换确认');
+    replacement.focus();
+    let hostKeys = 0;
+    bar.parentElement.addEventListener('keydown', () => {hostKeys++;});
+    replacement.dispatchEvent(new dom.window.CompositionEvent('compositionstart', {bubbles: true}));
+    replacement.value = '替换';
+    replacement.dispatchEvent(new dom.window.InputEvent('input', {bubbles: true, isComposing: true}));
+    replaceAll.click();
+    replaceAll.click();
+    assert.equal(editor.value, '中文 中文', '已确认的替换也不得使用组合中的替换词');
+    replacement.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true, isComposing: true}));
+    assert.equal(bar.hidden, false);
+    assert.equal(hostKeys, 0, '替换词的组合按键也不冒泡到宿主关闭');
+    replacement.dispatchEvent(new dom.window.CompositionEvent('compositionend', {bubbles: true}));
+    replacement.dispatchEvent(new dom.window.InputEvent('input', {bubbles: true}));
+    assert.equal(replaceAll.textContent, i18n.snippetFindReplaceAll, '提交替换词后重新要求确认');
+    replaceAll.click();
+    assert.equal(editor.value, '中文 中文', '第一步仍只确认');
+    replaceAll.click();
+    assert.equal(editor.value, '替换 替换', '提交后正常完成字面替换');
+    button(i18n.snippetUndo).click();
+    assert.equal(editor.value, '中文 中文', '替换仍是单次可撤销事务');
+});
+
+test('studio picker filters committed IME queries once and keeps normal navigation (T-7127)', async (t) => {
+    const {dom, document, mountSnippetStudio, i18n} = createHarness(t);
+    const snippets = [
+        {id: '20261006000000-aaaaaaa', name: '中文一', type: 'css', content: '.one{}', enabled: false},
+        {id: '20261006000000-bbbbbbb', name: '中文二', type: 'css', content: '.two{}', enabled: false},
+    ];
+    const controller = mountSnippetStudio(document.getElementById('root'), {
+        i18n, store: {read: async () => snippets, dispose: () => {}},
+    });
+    t.after(() => controller.dispose());
+    await controller.ready;
+    Array.from(document.querySelectorAll('.sw-studio__button')).find((button) => button.textContent === i18n.snippetChoose).click();
+    const picker = document.querySelector('.sw-studio__picker');
+    const query = picker.querySelector('.sw-studio__filters input');
+    const list = picker.querySelector('.sw-studio__catalog');
+    const originalFirst = list.querySelector('.sw-studio__catalog-item');
+    assert.ok(originalFirst, '测试须从非空生产目录开始');
+    let hostEscapes = 0;
+    document.addEventListener('keydown', (event) => {if (event.key === 'Escape') hostEscapes++;});
+    query.dispatchEvent(new dom.window.CompositionEvent('compositionstart', {bubbles: true}));
+    query.value = 'zhongw';
+    query.dispatchEvent(new dom.window.InputEvent('input', {bubbles: true, isComposing: true}));
+    assert.equal(list.querySelector('.sw-studio__catalog-item'), originalFirst, '预编辑不重绘目录');
+    for (const key of ['Enter', 'Escape', 'ArrowDown', 'ArrowUp']) {
+        const event = new dom.window.KeyboardEvent('keydown', {key, bubbles: true, cancelable: true});
+        query.dispatchEvent(event);
+        assert.equal(event.defaultPrevented, false, `${key} 不拦截输入法`);
+        assert.equal(picker.isConnected, true, `${key} 不关闭目录`);
+        assert.equal(document.activeElement, query);
+    }
+    assert.equal(hostEscapes, 0, '本地组合态不能把 Esc 冒泡给宿主关闭');
+    const source = picker.querySelector(`[aria-label="${i18n.snippetSource}"]`);
+    source.value = 'native';
+    source.dispatchEvent(new dom.window.Event('input', {bubbles: true}));
+    assert.equal(list.querySelectorAll('.sw-studio__catalog-item').length, 2, '其他筛选即时更新但只使用已提交查询');
+    query.value = '中文';
+    query.dispatchEvent(new dom.window.CompositionEvent('compositionend', {bubbles: true}));
+    const committedFirst = list.querySelector('.sw-studio__catalog-item');
+    assert.ok(committedFirst?.textContent.includes('中文'));
+    query.dispatchEvent(new dom.window.InputEvent('input', {bubbles: true}));
+    assert.equal(list.querySelector('.sw-studio__catalog-item'), committedFirst, '最终 input 不重复重绘目录');
+    for (const properties of [{isComposing: true}, {keyCode: 229}]) {
+        query.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true, ...properties}));
+        assert.equal(picker.isConnected, true);
+        committedFirst.focus();
+        committedFirst.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'ArrowDown', bubbles: true, ...properties}));
+        assert.equal(document.activeElement, committedFirst, '事件组合标志及 229 不触发目录导航');
+    }
+    committedFirst.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'ArrowDown', bubbles: true, cancelable: true}));
+    assert.notEqual(document.activeElement, committedFirst, '非组合方向仍导航目录');
+    query.focus();
+    query.value = '中文一';
+    query.dispatchEvent(new dom.window.InputEvent('input', {bubbles: true}));
+    assert.equal(list.querySelectorAll('.sw-studio__catalog-item').length, 1, '后续普通输入立即筛选');
+    query.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true}));
+    assert.equal(picker.isConnected, false, '非组合 Esc 仍关闭当前目录');
 });

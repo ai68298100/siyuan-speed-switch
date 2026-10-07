@@ -23,3 +23,6 @@
 @use "styles/snippet-studio" as *;
 // T-6866 平台公共原语放在现有表面之后，允许后续表面逐步迁移到同一合同。
 @use "styles/platform-shell" as *;
+// T-7139：基于真实桌面截图与 R4 原型的层级/密度收口。保持在末位，
+// 仅覆盖视觉属性，不改变任何生产 DOM、动作或状态逻辑。
+@use "styles/11-ui-polish" as *;

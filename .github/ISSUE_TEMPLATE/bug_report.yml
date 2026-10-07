@@ -7,6 +7,8 @@ body:
       value: |
         感谢反馈！请尽量填写以下信息——**思源版本、插件版本和复现步骤**直接决定排查速度。
         Thanks! The SiYuan/plugin versions and repro steps below directly affect triage speed.
+        请勿粘贴 Token、笔记正文、完整本地路径或私密工作区截图；需要安全报告时请使用仓库的 Security 入口。
+        Do not paste tokens, note content, full local paths, or private workspace screenshots.
 
   - type: input
     id: siyuan-version
@@ -22,7 +24,7 @@ body:
     attributes:
       label: 插件版本 / Plugin version
       description: 设置 → 插件 → 小驴雷切，或 Releases 页面
-      placeholder: "例 / e.g. v0.28.3"
+      placeholder: "例 / e.g. v0.x.y"
     validations:
       required: true
 
@@ -37,6 +39,42 @@ body:
         - 其他 / Other
     validations:
       required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: 出问题的入口 / Surface
+      options:
+        - 切换器 / Switcher
+        - 工作台 / Workbench
+        - 片段实验室 / Snippet Lab
+        - 悬浮球 / Floating ball
+        - 设置页 / Settings
+        - 多个入口 / Multiple surfaces
+        - 其他 / Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: theme
+    attributes:
+      label: 主题 / Theme
+      options:
+        - 浅色 / Light
+        - 深色 / Dark
+        - 自定义主题 / Custom theme
+        - 不确定 / Unknown
+
+  - type: dropdown
+    id: install-source
+    attributes:
+      label: 安装来源 / Install source
+      options:
+        - GitHub Release
+        - 思源社区集市 / Marketplace
+        - 手动解压 / Manual package
+        - 本地构建 / Local build
+        - 不确定 / Unknown
 
   - type: textarea
     id: what-happened
@@ -62,6 +100,15 @@ body:
       label: 控制台报错 / Console errors (if any)
       description: 桌面端 Ctrl+Shift+I 打开开发者工具，Console 标签页的红色报错截图或文本
       placeholder: "可粘贴文本或截图 / paste text or screenshots"
+
+  - type: checkboxes
+    id: privacy-check
+    attributes:
+      label: 脱敏确认 / Redaction check
+      options:
+        - label: 我已移除 Token、笔记正文、完整本地路径和其他敏感信息 / I removed tokens, note content, full local paths, and other sensitive data
+    validations:
+      required: true
 
   - type: checkboxes
     id: checks

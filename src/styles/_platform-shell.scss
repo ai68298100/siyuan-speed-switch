@@ -172,9 +172,115 @@
         border-color: var(--sw-platform-accent, var(--b3-theme-primary));
         background: color-mix(in srgb, var(--sw-platform-accent, var(--b3-theme-primary)) 12%, transparent);
     }
+
+    &:active {
+        transform: translateY(1px);
+        border-color: var(--sw-platform-accent, var(--b3-theme-primary));
+        background: color-mix(in srgb, var(--sw-platform-accent, var(--b3-theme-primary)) 18%, transparent);
+    }
 }
 
 .sw-platform-header__close svg { width: 18px; height: 18px; }
+
+.sw-platform-header__icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--b3-border-radius);
+    color: var(--sw-platform-text-muted);
+    background: transparent;
+    transition: color $sw-dur-base $sw-ease, border-color $sw-dur-base $sw-ease, background $sw-dur-base $sw-ease;
+}
+
+.sw-platform-header__icon-action:hover,
+.sw-platform-header__icon-action:focus-visible {
+    border-color: var(--sw-platform-accent);
+    color: var(--sw-platform-accent);
+    background: var(--sw-platform-accent-soft);
+}
+
+.sw-platform-header__icon-action:active { transform: translateY(1px); }
+.sw-platform-header__icon-action svg { width: 16px; height: 16px; }
+
+.sw-platform-header__close-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--sw-platform-text-muted);
+    font-size: 11px;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.sw-platform-header__close-hint .sw-platform-kbd {
+    min-width: 28px;
+    height: 20px;
+    padding-inline: 5px;
+    border-radius: 5px;
+    font-size: 10px;
+}
+
+.sw-platform-header__close-hint-label { line-height: 1; }
+
+// Native SiYuan Dialogs keep their own close behavior; this hint only makes
+// the existing Escape shortcut discoverable beside the top-right close icon.
+.b3-dialog__header.sw-platform-dialog__header {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: var(--sw-platform-space-2, 8px);
+}
+
+.sw-platform-dialog__header .b3-dialog__title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sw-platform-dialog__close-hint {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    color: var(--sw-platform-text-muted);
+    font-size: 11px;
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.sw-platform-dialog__close-hint .sw-platform-kbd {
+    min-width: 28px;
+    height: 20px;
+    padding-inline: 5px;
+    border-radius: 5px;
+    font-size: 10px;
+}
+
+.sw-platform-dialog__close-button {
+    flex: 0 0 auto;
+    min-width: 36px;
+    min-height: 36px;
+}
+
+@media (pointer: coarse) {
+    .sw-platform-dialog__close-button {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 560px) {
+    .sw-platform-dialog__close-hint-label { display: none; }
+    .sw-platform-dialog__close-hint .sw-platform-kbd { min-width: 26px; }
+}
 
 .sw-platform-surface-nav {
     display: flex;
@@ -486,6 +592,13 @@
 @media (pointer: coarse) {
     .sw-platform-surface-nav__item,
     .sw-platform-action { min-height: 44px; }
+    // 关闭/设置属于移动端高频动作，触控命中区与导航按钮保持同一 44px 基线。
+    .sw-platform-header__close,
+    .sw-platform-header__icon-action {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
     // 分段项本体 38px + 容器上下 padding 3px = 44px 命中区（触控不降级）。
     .sw-platform-seg__item { min-height: 38px; }
 }
@@ -502,11 +615,41 @@
     .sw-platform-seg { flex-wrap: wrap; row-gap: 2px; }
 }
 
+@media (max-width: 560px) {
+    // 移动端保留 Esc 键帽作为退出提示，隐藏重复文字，给状态/设置/X 留出稳定空间。
+    .sw__mobile > .sw-platform-chrome .sw-platform-header {
+        gap: 6px;
+        padding-inline: 8px;
+    }
+
+    // 品牌、表面导航和操作区保持在同一行；导航自身横向滚动，避免在窄屏
+    // 被 flex-wrap 推到第二行后把头部高度撑大一倍。
+    .sw__mobile > .sw-platform-chrome .sw-platform-surface-nav {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
+    }
+
+    .sw__mobile > .sw-platform-chrome .sw-platform-header__actions {
+        gap: 2px;
+    }
+
+    .sw__mobile > .sw-platform-chrome .sw-platform-header__close-hint {
+        gap: 0;
+    }
+
+    .sw__mobile > .sw-platform-chrome .sw-platform-header__close-hint-label {
+        display: none;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .sw-platform-shell *,
     .sw-platform-shell *::before,
     .sw-platform-shell *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
-    .sw-platform-surface-nav__item:active { transform: none; }
+    .sw-platform-surface-nav__item:active,
+    .sw-platform-header__close:active,
+    .sw-platform-header__icon-action:active { transform: none; }
 }
 
 @media (prefers-contrast: more) {

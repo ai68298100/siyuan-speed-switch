@@ -31,6 +31,18 @@ test("desktop switcher and workbench close through their owning dialogs", () => 
     mustInclude(secondPanelSource, "onClose: () => dialog.destroy(),", "工作台关闭按钮必须销毁自身 Dialog");
 });
 
+test("plugin unload destroys and clears every top-level surface dialog", () => {
+    const unloadStart = indexSource.indexOf("async onunload() {");
+    assert.ok(unloadStart >= 0, "插件必须实现 onunload 生命周期入口");
+    const unloadSource = indexSource.slice(unloadStart, unloadStart + 2200);
+    for (const name of ["platformSwitcherDialog", "mobileSwitcherDialog", "workbenchDialog"]) {
+        assert.match(unloadSource, new RegExp(`this\\.${name}\\?\\.destroy\\(\\);`),
+            `onunload 必须销毁 ${name}`);
+        assert.match(unloadSource, new RegExp(`this\\.${name} = null;`),
+            `onunload 必须清空 ${name} 引用`);
+    }
+});
+
 test("snippet studio protects host initiated close with the dirty draft guard", () => {
     mustInclude(indexSource,
         "onClose: (guarded = false) => {\n                        if (!guarded && holder.controller && !holder.controller.canClose()) return;\n                        dialog.destroy();\n                    },",
@@ -54,13 +66,46 @@ test("settings and store dialogs release resources and restore the opener", () =
 
 test("nested mobile and studio overlays close locally before their owner", () => {
     mustInclude(mobileSource,
-        "const closeSortOverlay = () => {\n            activeSortOverlay?.remove();\n            activeSortOverlay = null;\n        };",
+        "const closeSortOverlay = (restoreFocus = true) => {\n            if (!activeSortOverlay) return;\n            activeSortOverlay?.remove();\n            activeSortOverlay = null;",
         "移动排序 sheet 必须先局部关闭");
     mustInclude(mobileSource,
-        "if (event.key !== \"Escape\" || !activeSortOverlay) return;",
-        "移动排序 sheet 必须监听 Escape");
-    mustInclude(mobileSource, "closeSortOverlay();", "移动排序 sheet 的 Escape 不得直接关闭宿主");
+        "const onDocumentKeyDown = (event: KeyboardEvent) => {\n            if (!ownsSortLayer()) return;\n            if (event.key === \"Escape\") {\n                event.preventDefault();\n                event.stopImmediatePropagation();\n                closeSortOverlay();",
+        "移动排序 sheet 必须在拥有层上监听 Escape 并停止冒泡");
+    mustInclude(mobileSource, "overlay.addEventListener(\"keydown\", (event) => {\n                event.stopPropagation();", "移动排序 sheet 的局部键盘层必须阻止宿主继续处理");
     mustInclude(studioSource,
         "function closePicker() {\n        pickerRelease();\n        pickerRelease = () => {};\n        pickerRefresh = null;\n        picker?.remove();",
         "片段目录浮层必须释放自身捕获监听再移除");
+});
+
+test("mobile favorite and group sheets expose local close and Escape handling", () => {
+    mustInclude(indexSource,
+        "sw__mobile-sheet-close",
+        "移动收藏 sheet 必须提供显式关闭按钮");
+    mustInclude(indexSource,
+        "sw__mobile-sheet-close-hint",
+        "移动收藏 sheet 关闭按钮旁必须提示 Esc");
+    mustInclude(indexSource,
+        "if (event.key !== \"Escape\") return;\n            event.preventDefault();\n            event.stopPropagation();\n            closeSheet();",
+        "移动收藏 sheet 必须支持 Escape 局部关闭");
+    mustInclude(indexSource,
+        "overlay.querySelector<HTMLButtonElement>(\".sw__mobile-sheet-close\")?.focus({preventScroll: true});",
+        "移动收藏 sheet 打开后必须把键盘焦点移入 sheet，确保 Escape 可用");
+    mustInclude(mobileSource,
+        "sw__mobile-sheet-close",
+        "移动分组 sheet 必须提供显式关闭按钮");
+    mustInclude(mobileSource,
+        "sw__mobile-sheet-close-hint",
+        "移动分组与排序 sheet 关闭入口旁必须提示 Esc");
+    mustInclude(mobileSource,
+        "if (event.key !== \"Escape\") return;\n            event.preventDefault();\n            event.stopPropagation();\n            closeSelf();",
+        "移动分组 sheet 必须支持 Escape 局部关闭");
+    mustInclude(mobileSource,
+        "overlay.querySelector<HTMLButtonElement>(\".sw__mobile-sheet-close\")?.focus({preventScroll: true});",
+        "移动分组 sheet 打开后必须把键盘焦点移入 sheet，确保 Escape 可用");
+    mustInclude(indexSource,
+        "closeSheet?.();\n                this.jumpToFavorite(fav, closeOverlay);",
+        "收藏条目关闭 sheet 后再跳转，不能直接移除遮罩丢失焦点");
+    mustInclude(indexSource,
+        "closeSheet();\n                onTabsChanged?.();",
+        "分组批量操作关闭父 sheet 必须复用统一焦点收尾");
 });

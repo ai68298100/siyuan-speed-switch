@@ -2,7 +2,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const indexPath = path.join(root, "docs", "current-status-index.json");
+// Tests may point the audit at an isolated temporary index. Production keeps
+// the repository index as the default source of truth.
+const indexPath = process.env.SWSS_STATUS_INDEX_PATH
+    ? path.resolve(process.env.SWSS_STATUS_INDEX_PATH)
+    : path.join(root, "docs", "current-status-index.json");
 const statuses = new Set(["completed", "in_progress", "planned", "blocked", "deferred"]);
 const priorities = new Set(["P0", "P1", "P2"]);
 const taskId = /^T-\d+$/;

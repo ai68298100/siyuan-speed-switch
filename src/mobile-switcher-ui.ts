@@ -45,8 +45,9 @@ export interface MobileSwitcherUiHost {
     openGroupTabs(items: IFavoriteItem[]): Promise<number>;
     openJournal(preferredNotebook?: string): Promise<void>;
     openPlatformSurface?(surface: PlatformSurface, returnTo?: PlatformSurface, context?: PlatformSurfaceContext | null): void;
-    openSetting(initialPanel?: string, returnTo?: PlatformSurface | null): void;
+    openSetting(initialPanel?: string, returnTo?: PlatformSurface | null, returnContext?: PlatformSurfaceContext | null): void;
     getPlatformSurfaceLabels?(): PlatformSurfaceLabels;
+    getAvailablePlatformSurfaces?(): PlatformSurface[];
     mountPlatformChrome?(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement;
     pinKeyOf(tab: Tab): string;
     pruneThumbCache(tabs: Tab[]): void;
@@ -59,7 +60,7 @@ export interface MobileSwitcherUiHost {
     renderThumbnails(list: IGroupedTab[], scrollElement: HTMLElement, batch: number): void;
     scheduleAnimationFrame(callback: FrameRequestCallback): number;
     setupOpenHistoryDropdown(container: HTMLElement | null, onClose: IOverlayClose): () => void;
-    showMobileFavSheet(dialog: Dialog, closeOverlay: IOverlayClose, onTabsChanged?: () => void): void;
+    showMobileFavSheet(dialog: Dialog, closeOverlay: IOverlayClose, onTabsChanged?: () => void, returnFocus?: HTMLElement | null): void;
     sortGroupItems(group: IGroupedTab[], sortBy: SortBy, mru: string[],
         pinned: Set<string>, updatedMap: {[rootId: string]: string}): IGroupedTab[];
     suspendFABForDialog(onDestroy?: () => void): () => void;
@@ -103,11 +104,13 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
             this.mountPlatformChrome(mobileBody, {
                 surface: "switcher",
                 labels: this.getPlatformSurfaceLabels(),
-                available: ["switcher", "workbench"],
+                available: this.getAvailablePlatformSurfaces?.() || ["switcher", "workbench"],
                 context: context || null,
+                status: {state: "ready", label: this.i18n.platformConnected || "Kernel connected"},
                 onNavigate: navigatePlatformSurface,
                 onClose: () => dialog.destroy(),
                 closeLabel: this.i18n.close,
+                closeHint: this.i18n.platformCloseHint || "退出",
             });
         }
         let readyFrame: number | null = null;
@@ -220,7 +223,6 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
             // Sorting is rendered in a body-level portal so it can escape the
             // host Dialog's clipping/stacking context.  Always tear that
             // portal down with its owner, including Escape and route changes.
-            document.querySelectorAll<HTMLElement>(".sw__mobile-sort-overlay").forEach((overlay) => overlay.remove());
             disposeMobileToolbar();
             disposeHistoryDropdown();
             unregisterRefresh();
@@ -249,7 +251,7 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
             this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
         };
         unregisterRefresh = this.registerSwitcherRefresh(refreshMobileSurface);
-        disposeMobileToolbar = bindMobileSwitcherToolbarActions.call(this, dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList);
+        disposeMobileToolbar = bindMobileSwitcherToolbarActions.call(this, dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList, context);
         disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector<HTMLElement>(".sw__history-dd"), closeOverlay);
         this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
         rendered = true;
@@ -262,8 +264,8 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
         }
 
         // 把 FAB 关闭时的 FAB 恢复优先级插在 destroy 之后；保证打开收藏弹窗关闭后会回到列表
-        dialog.element.querySelector(".sw__mobile-fav-btn")?.addEventListener("click", () => {
-            this.showMobileFavSheet(dialog, closeOverlay, () => renderMobileList());
+        dialog.element.querySelector(".sw__mobile-fav-btn")?.addEventListener("click", (event) => {
+            this.showMobileFavSheet(dialog, closeOverlay, () => renderMobileList(), event.currentTarget as HTMLElement);
         });
         // 手机端不自动聚焦搜索框：避免一打开就弹出输入法，需要搜索时点击输入框
     }
@@ -277,25 +279,72 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
         scrollElement: HTMLDivElement,
         closeOverlay: () => void,
         renderMobileList: () => void,
+        context?: PlatformSurfaceContext | null,
     ): () => void {
         const disposeSearchFilter = bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay);
         let activeSortOverlay: HTMLElement | null = null;
-        const closeSortOverlay = () => {
+        const backgroundState = new Map<HTMLElement, {inert: string | null; hidden: string | null}>();
+        const sortButton = dialog.element.querySelector<HTMLButtonElement>(".sw__sort-btn");
+        const closeSortOverlay = (restoreFocus = true) => {
+            if (!activeSortOverlay) return;
             activeSortOverlay?.remove();
             activeSortOverlay = null;
+            backgroundState.forEach(({inert, hidden}, element) => {
+                if (inert === null) element.removeAttribute("inert"); else element.setAttribute("inert", inert);
+                if (hidden === null) element.removeAttribute("aria-hidden"); else element.setAttribute("aria-hidden", hidden);
+            });
+            backgroundState.clear();
+            sortButton?.setAttribute("aria-expanded", "false");
+            if (restoreFocus && sortButton?.isConnected) sortButton.focus({preventScroll: true});
         };
+        const sortFocusStops = () => activeSortOverlay
+            ? Array.from(activeSortOverlay.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")).filter((button) => button.tabIndex >= 0)
+            : [];
+        const ownsSortLayer = () => !!activeSortOverlay?.isConnected && !activeSortOverlay.closest("[inert]");
         const onDocumentKeyDown = (event: KeyboardEvent) => {
-            if (event.key !== "Escape" || !activeSortOverlay) return;
+            if (!ownsSortLayer()) return;
+            if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                closeSortOverlay();
+            } else if (event.key === "Tab") {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                const stops = sortFocusStops();
+                const index = stops.indexOf(document.activeElement as HTMLButtonElement);
+                const nextIndex = index < 0 ? (event.shiftKey ? stops.length - 1 : 0)
+                    : (index + (event.shiftKey ? -1 : 1) + stops.length) % stops.length;
+                stops[nextIndex]?.focus({preventScroll: true});
+            } else if (!activeSortOverlay?.contains(event.target as Node)) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        };
+        const onDocumentFocus = (event: FocusEvent) => {
+            if (ownsSortLayer() && !activeSortOverlay?.contains(event.target as Node)) {
+                sortFocusStops()[0]?.focus({preventScroll: true});
+            }
+        };
+        const onDocumentPointer = (event: Event) => {
+            if (!ownsSortLayer() || activeSortOverlay?.contains(event.target as Node)) return;
             event.preventDefault();
-            event.stopPropagation();
-            closeSortOverlay();
+            event.stopImmediatePropagation();
         };
         document.addEventListener("keydown", onDocumentKeyDown, true);
+        document.addEventListener("focusin", onDocumentFocus, true);
+        document.addEventListener("pointerdown", onDocumentPointer, true);
+        document.addEventListener("click", onDocumentPointer, true);
         // 隐藏 FAB 推迟到按钮 click 处是因为 openSetting 可能也关闭原 dialog
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
+            const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
+            const query = searchInput.value.trim() || context?.query || "";
             dialog.destroy();
             // T-7012：设置从移动切换器打开，关闭后恢复切换器。
-            this.openSetting(undefined, "switcher");
+            this.openSetting(undefined, "switcher", {
+                entry: "back", ...(context?.objectKind ? {objectKind: context.objectKind} : {}),
+                ...(context?.objectId ? {objectId: context.objectId} : {}), ...(query ? {query} : {}),
+                ...(focusSource ? {focusSource} : {}),
+            });
         });
         dialog.element.querySelector(".sw__mobile-close-btn")?.addEventListener("click", () => dialog.destroy());
         // 顶栏日记按钮：打开/新建当日日记（关闭弹窗并恢复 FAB，未设默认日记本时首次点击弹出选择）
@@ -304,7 +353,6 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
             this.fabElement?.classList.remove("sw__fab--hidden");
             this.openJournal();
         });
-        const sortButton = dialog.element.querySelector<HTMLButtonElement>(".sw__sort-btn");
         const sortLabels: Record<string, string> = {
             mru: this.i18n.sortMru,
             layout: this.i18n.sortLayout,
@@ -322,8 +370,10 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
             sortButton.setAttribute("aria-label", `${this.i18n.setSortBy}: ${label}`);
         };
         updateSortButton();
+        sortButton?.setAttribute("aria-haspopup", "dialog");
+        sortButton?.setAttribute("aria-expanded", "false");
         sortButton?.addEventListener("click", () => {
-            closeSortOverlay();
+            closeSortOverlay(false);
             const overlay = document.createElement("div");
             overlay.className = "sw__mobile-sort-overlay";
             // WebView 里的思源 Dialog 可能建立新的 stacking context，内联层级作为最后一道兜底。
@@ -334,7 +384,17 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
             sheet.className = "sw__mobile-sort-sheet";
             sheet.setAttribute("role", "dialog");
             sheet.setAttribute("aria-modal", "true");
-            sheet.innerHTML = `<div class="sw__mobile-sheet-handle"></div><div class="sw__mobile-sheet-title">${this.i18n.setSortBy}</div>`;
+            const sheetLabel = this.i18n.mobileSortAndGroupTitle || `${this.i18n.setSortBy} / ${this.i18n.groupModeTitle}`;
+            sheet.setAttribute("aria-label", sheetLabel);
+            // Keep the close hint beside the heading instead of inside it.  A
+            // heading's textContent is consumed by screen readers and tests as
+            // the dialog name; including the visual "Esc 退出" hint there
+            // makes the accessible name noisy and duplicates the hint.
+            sheet.innerHTML = '<div class="sw__mobile-sheet-handle" aria-hidden="true"></div><div class="sw__mobile-sheet-title"><span class="sw__mobile-sheet-title-text"></span></div><span class="sw__mobile-sheet-close-hint" aria-label="Esc"></span>';
+            sheet.querySelector<HTMLElement>(".sw__mobile-sheet-title-text")!.textContent = sheetLabel;
+            const sortHint = sheet.querySelector<HTMLElement>(".sw__mobile-sheet-close-hint")!;
+            sortHint.innerHTML = `<kbd>Esc</kbd><span>${this.i18n.platformCloseHint || "退出"}</span>`;
+            sortHint.setAttribute("aria-label", `Esc ${this.i18n.platformCloseHint || "退出"}`);
             const list = document.createElement("div");
             list.className = "sw__mobile-sort-list";
             list.setAttribute("role", "menu");
@@ -360,6 +420,7 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
                 item.type = "button";
                 item.className = "sw__mobile-sort-option";
                 item.setAttribute("role", "menuitemradio");
+                item.tabIndex = value === currentGroup ? 0 : -1;
                 item.setAttribute("aria-checked", String(value === currentGroup));
                 item.innerHTML = '<span>' + label + '</span>' + (value === currentGroup ? '<svg><use xlink:href="#iconCheck"></use></svg>' : '');
                 item.addEventListener("click", () => {
@@ -392,34 +453,60 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
                     closeSortOverlay();
                     sortSelect.dispatchEvent(new Event("change"));
                 });
-                item.addEventListener("keydown", (event) => {
-                    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-                    event.preventDefault();
-                    const options = Array.from(list.querySelectorAll<HTMLButtonElement>(".sw__mobile-sort-option"));
-                    const index = options.indexOf(item);
-                    const next = options[(index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length];
-                    options.forEach((option) => option.tabIndex = option === next ? 0 : -1);
-                    next.focus();
-                });
                 list.appendChild(item);
             });
+            [groupList, list].forEach((menu) => {
+                const options = Array.from(menu.querySelectorAll<HTMLButtonElement>(".sw__mobile-sort-option"));
+                if (!options.some((option) => option.tabIndex === 0)) options[0].tabIndex = 0;
+                menu.addEventListener("keydown", (event) => {
+                    const item = (event.target as HTMLElement).closest<HTMLButtonElement>(".sw__mobile-sort-option");
+                    const index = item ? options.indexOf(item) : -1;
+                    if (index < 0 || !["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? options.length - 1
+                        : (index + (["ArrowDown", "ArrowRight"].includes(event.key) ? 1 : -1) + options.length) % options.length;
+                    const next = options[nextIndex];
+                    options.forEach((option) => option.tabIndex = option === next ? 0 : -1);
+                    next.focus({preventScroll: true});
+                });
+            });
             sheet.appendChild(list);
+            const closeButton = document.createElement("button");
+            closeButton.type = "button";
+            closeButton.className = "sw__mobile-sort-option sw__mobile-sort-close";
+            closeButton.textContent = this.i18n.close;
+            closeButton.addEventListener("click", () => closeSortOverlay());
+            sheet.appendChild(closeButton);
             overlay.appendChild(sheet);
             document.body.appendChild(overlay);
             activeSortOverlay = overlay;
+            sortButton?.setAttribute("aria-expanded", "true");
+            const focusSelection = () => sortFocusStops()[0]?.focus({preventScroll: true});
+            focusSelection();
+            Array.from(document.body.children).forEach((element) => {
+                if (element === overlay || !(element instanceof HTMLElement)) return;
+                backgroundState.set(element, {inert: element.getAttribute("inert"), hidden: element.getAttribute("aria-hidden")});
+                element.setAttribute("inert", "");
+                element.setAttribute("aria-hidden", "true");
+            });
             overlay.addEventListener("click", (event) => {
+                event.stopPropagation();
                 if (event.target === overlay) closeSortOverlay();
             });
             // Android back/Escape should close only the transient sort sheet;
             // do not leave a body-level portal intercepting later taps.
             overlay.addEventListener("keydown", (event) => {
-                if (event.key !== "Escape") return;
-                event.preventDefault();
                 event.stopPropagation();
-                closeSortOverlay();
+                const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button");
+                if (button && (event.key === "Enter" || event.key === " ")) {
+                    event.preventDefault();
+                    button.click();
+                }
             });
-            overlay.tabIndex = -1;
-            this.scheduleAnimationFrame(() => { if (overlay.isConnected) overlay.focus({preventScroll: true}); });
+            this.scheduleAnimationFrame(() => {
+                if (overlay.isConnected && !sheet.contains(document.activeElement)) focusSelection();
+            });
             this.scheduleAnimationFrame(() => { if (sheet.isConnected) sheet.classList.add("sw__mobile-sort-sheet--open"); });
         });
         sortSelect.addEventListener("change", () => {
@@ -442,7 +529,10 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
         return () => {
             disposeSearchFilter();
             document.removeEventListener("keydown", onDocumentKeyDown, true);
-            closeSortOverlay();
+            document.removeEventListener("focusin", onDocumentFocus, true);
+            document.removeEventListener("pointerdown", onDocumentPointer, true);
+            document.removeEventListener("click", onDocumentPointer, true);
+            closeSortOverlay(false);
         };
     }
 
@@ -577,12 +667,18 @@ export function renderMobileList(this: MobileSwitcherUiHost, scrollElement: HTML
 
     // 构造手机端分组卡片网格：根据 settings.mobileColumns 决定单列/双列/自适应
 
-export function openMobileGroupActions(this: MobileSwitcherUiHost, groupName: string, items: IFavoriteItem[], onChanged: () => void) {
+export function openMobileGroupActions(this: MobileSwitcherUiHost, groupName: string, items: IFavoriteItem[], onChanged: () => void, returnFocus?: HTMLElement | null) {
         const overlay = document.createElement("div");
         overlay.className = "sw__mobile-sheet-overlay sw__mobile-sheet-overlay--nested";
         overlay.innerHTML = `<div class="sw__mobile-sheet" role="dialog" aria-modal="true" aria-label="${this.escapeAttr(groupName)}">
     <div class="sw__mobile-sheet-handle"></div>
-    <div class="sw__mobile-sheet-title">${this.escapeAttr(groupName)}</div>
+    <div class="sw__mobile-sheet-title">
+        <span>${this.escapeAttr(groupName)}</span>
+        <span class="sw__mobile-sheet-close-hint" aria-label="Esc ${this.escapeAttr(this.i18n.platformCloseHint || "退出")}"><kbd>Esc</kbd><span>${this.escapeAttr(this.i18n.platformCloseHint || "退出")}</span></span>
+        <button type="button" class="b3-button b3-button--text sw__mobile-sheet-close" aria-label="${this.escapeAttr(this.i18n.close)}" title="${this.escapeAttr(this.i18n.close)}">
+            <svg><use xlink:href="#iconClose"></use></svg>
+        </button>
+    </div>
     <div class="sw__mobile-sheet-body"></div>
 </div>`;
         document.body.appendChild(overlay);
@@ -593,12 +689,18 @@ export function openMobileGroupActions(this: MobileSwitcherUiHost, groupName: st
             overlay.remove();
             return;
         }
+        overlay.tabIndex = -1;
 
         // 与收藏弹窗一致的下滑收起动画
         const closeSelf = () => {
+            if (!overlay.isConnected || overlay.dataset.closing === "true") return;
+            overlay.dataset.closing = "true";
             sheet.classList.remove("sw__mobile-sheet--open");
             overlay.style.opacity = "0";
-            setTimeout(() => overlay.remove(), FAB_HIDE_DELAY_MS);
+            setTimeout(() => {
+                overlay.remove();
+                if (returnFocus?.isConnected) returnFocus.focus({preventScroll: true});
+            }, FAB_HIDE_DELAY_MS);
         };
 
         const appendAction = (label: string, action: () => Promise<number>) => {
@@ -642,6 +744,13 @@ if (count > 0) {
         cancel.textContent = this.i18n.cancel;
         cancel.addEventListener("click", closeSelf);
         body.appendChild(cancel);
+        overlay.querySelector<HTMLButtonElement>(".sw__mobile-sheet-close")?.addEventListener("click", closeSelf);
+        overlay.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            event.stopPropagation();
+            closeSelf();
+        });
 
         // 动画：下一帧滑入
         this.scheduleAnimationFrame(() => {
@@ -652,6 +761,7 @@ if (count > 0) {
                 closeSelf();
             }
         });
+        overlay.querySelector<HTMLButtonElement>(".sw__mobile-sheet-close")?.focus({preventScroll: true});
     }
 
     // ==================== 手机端悬浮按钮（FAB）与顶栏入口 ====================

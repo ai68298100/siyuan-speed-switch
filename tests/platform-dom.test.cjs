@@ -10,6 +10,7 @@ const {
     createPlatformKbd,
     createPlatformSegmented,
     createPlatformPillAction,
+    mountPlatformDialogCloseHint,
 } = require("../src/platform-dom.js");
 
 function withDom(fn) {
@@ -99,5 +100,20 @@ test("platform pill action: soft modifier, type=button, onClick wiring", () => {
         assert.equal(soft.classList.contains("sw-platform-action--soft"), true);
         const passive = createPlatformPillAction(doc, {label: "稍后"});
         assert.equal(passive.type, "button", "缺省 onClick 仍产出类型安全的按钮");
+    });
+});
+
+test("native dialog close hint: mounts beside host close button and stays idempotent", () => {
+    withDom((doc) => {
+        const dialog = doc.createElement("div");
+        dialog.innerHTML = '<div class="b3-dialog__header"><span class="b3-dialog__title">商店</span><button class="b3-dialog__close" type="button"></button></div>';
+        const first = mountPlatformDialogCloseHint(dialog, "退出", doc);
+        assert.ok(first);
+        assert.equal(first.className, "sw-platform-dialog__close-hint");
+        assert.equal(first.getAttribute("aria-label"), "Esc 退出");
+        assert.equal(first.querySelector(".sw-platform-kbd").textContent, "Esc");
+        assert.equal(dialog.querySelectorAll(".sw-platform-dialog__close-hint").length, 1);
+        assert.equal(mountPlatformDialogCloseHint(dialog, "退出", doc), first, "重复挂载不得复制提示");
+        assert.equal(dialog.querySelector(".b3-dialog__close").classList.contains("sw-platform-dialog__close-button"), true);
     });
 });

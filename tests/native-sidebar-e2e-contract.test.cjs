@@ -18,7 +18,10 @@ test("T-7115 native sidebar E2E measures the host divider and rejects viewport-o
     assert.match(source, /layout__resize\.layout__resize--lr/);
     assert.match(source, /rect\.height > 500/);
     assert.match(source, /拖动真实宿主分隔条后侧栏必须变窄/);
+    assert.match(source, /expect\(narrowWidth\)\.toBeLessThanOrEqual\(260\)/);
     assert.match(source, /scrollWidth\)\.toBeLessThanOrEqual\(controls\.(root|toolbar)\.clientWidth \+ 1\)/);
+    assert.match(source, /control\.label\.trim\(\)\.length, `\$\{control\.selector\} must expose an accessible name`/);
+    assert.match(source, /accessibleNamePresent: label\.trim\(\)\.length > 0/);
     assert.match(source, /toHaveAttribute\("data-filter-count", "2"\)/);
     assert.match(source, /await reset\.click\(\)/);
     assert.match(source, /toHaveAttribute\("data-filter-count", ""\)/);
@@ -44,7 +47,15 @@ test("T-7115 contract rejects removing the opt-in guard, host marker or width as
         assert.match(mutated, /拖动真实宿主分隔条后侧栏必须变窄/);
     }, /拖动真实宿主分隔条后侧栏必须变窄/);
     assert.throws(() => {
+        const mutated = source.replace('expect(narrowWidth).toBeLessThanOrEqual(260);', "");
+        assert.match(mutated, /expect\(narrowWidth\)\.toBeLessThanOrEqual\(260\)/);
+    }, /toBeLessThanOrEqual/);
+    assert.throws(() => {
         const mutated = source.replace('await page.screenshot({path: artifactPath("native-sidebar-narrow.png"), clip: sidebarBox});', "");
         assert.match(mutated, /await page\.screenshot\(\{path: artifactPath\("native-sidebar-narrow\.png"\), clip: sidebarBox\}\);/);
     }, /page\\.screenshot/);
+    assert.throws(() => {
+        const mutated = source.replace('expect(control.label.trim().length, `${control.selector} must expose an accessible name`).toBeGreaterThan(0);', "");
+        assert.match(mutated, /must expose an accessible name/);
+    }, /accessible name/);
 });

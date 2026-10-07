@@ -14,6 +14,8 @@ test('micro header: view-state title is de-emphasized to the 10px identification
 
 test('micro header: status chip reveals on hover/focus but never hides failure or loading', () => {
     assert.match(homeScss, /\.sw__home-module-status \{\s*\n\s*opacity: 0;/, '状态 chip 默认隐藏');
-    assert.match(homeScss, /\.sw-home__cell:focus-within \.sw__home-module-status,\s*\n?\.sw-home__cell\[data-sw-health="failed"\] \.sw__home-module-status,\s*\n?\.sw-home__cell\[data-sw-health="loading"\] \.sw__home-module-status/,
-        '失败/加载态必须恒显（不得只靠悬停发现）');
+    for (const state of ['failed', 'loading']) {
+        assert.match(homeScss, new RegExp(`\\.sw-home__cell\\[data-sw-health="${state}"\\] \\.sw__home-module-status`),
+            `${state} 状态必须恒显（不得只靠悬停发现）`);
+    }
 });

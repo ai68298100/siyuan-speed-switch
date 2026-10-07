@@ -43,6 +43,8 @@ test("真实思源 Gist 预览、禁用导入、新建发布和受控更新", as
         await page.locator(".sw__snippet-studio-btn").click();
         const root = page.locator(".sw-snippet-studio-host.sw-studio");
         await expect(root.locator(".sw-studio__layout")).toHaveAttribute("aria-busy", "false");
+        await expect(root.locator(".sw-studio__library")).toBeVisible();
+        await expect(root.locator(".sw-studio__library-filter[data-library-filter=\"css\"]")).toBeVisible();
         await root.getByRole("button", {name: "Choose snippet", exact: true}).click();
         const picker = page.locator(".sw-studio__picker");
         await picker.getByRole("textbox", {name: "Search snippets", exact: true}).fill(seeded.name);

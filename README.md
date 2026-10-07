@@ -1,8 +1,10 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.44.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.44.1-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=dev%2Fthispc-1002)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?label=latest%20release)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
+
+> **当前稳定版**：`v0.44.1`（2026-09-30）。可从 [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) 下载 `package.zip`；工作树中的后续改动尚未进入稳定版。支持范围和仍待验收的端侧边界见 [`docs/support-matrix-2026-10-06.md`](docs/support-matrix-2026-10-06.md)。
 
 <p align="center"><img src="preview.png" width="720" alt="小驴雷切预览"/></p>
 
@@ -26,7 +28,7 @@
 - [小驴插件与交流](#小驴插件与交流)
 - [核心能力](#核心能力)
 - [工作上下文、命令与动作](#工作上下文命令与动作)
-- [组件面板：58 个开箱即用的组件](#组件面板58-个开箱即用的组件)
+- [组件面板：58 个可组合组件目录](#组件面板58-个可组合组件目录)
 - [思源智能体（Agent）能力](#思源智能体agent能力)
 - [快速上手](#快速上手)
 - [快捷键](#快捷键)
@@ -59,7 +61,7 @@
 
 - **实时缩略图**：每个页签以卡片展示当前文档内容；后台未渲染文档按需通过内核 API 补齐，视口外内容延迟渲染。
 - **分栏原生支持**：按思源窗口/分栏分组，切换时激活正确分栏；页签打开、关闭或批量变化会通知所有已打开的插件视图立即刷新。
-- **键盘与鼠标**：方向键和 `Tab` 按真实网格移动，`Enter` 打开，`Esc` 关闭；卡片支持置顶、收藏、关闭和右键菜单。
+- **键盘与鼠标**：方向键在真实网格中移动，`Tab` / `Shift+Tab` 按原生焦点顺序穿过搜索、卡片和动作，`Enter` 打开，`Esc` 关闭；卡片支持置顶、收藏、关闭和右键菜单。
 - **六种排序**：最近使用、打开顺序、打开倒序、最近编辑、标题升序、标题降序，修改后持久化。
 - **统一历史入口**：桌面弹窗、侧栏和手机工具栏共享时钟入口；最近打开与最近关闭分区展示，已关闭文档可点击重新打开，失效记录可单项清理。
 - **桌面全屏**：仅桌面弹窗提供全屏切换；侧栏和手机端不显示无效的全屏操作。
@@ -82,7 +84,7 @@
 
 **页签过滤查询语法**（本地层）：空格分隔多个词 = 全部命中（AND）；`-词` = 排除含该词的页签；`"多词短语"` = 整体匹配。例：`项目 -周报 "会议记录"`。
 
-搜索请求使用 180ms 防抖、容量受限的内存缓存、请求版本校验和取消机制。桌面弹窗、右侧栏和手机端各自持有独立搜索会话，互不取消或覆盖。当前工作树支持笔记本、内容类型、子类型、搜索方式和结果排序筛选；仅笔记本/路径筛选保留标题快路径，其他筛选会直接使用受限的原生块级全文请求。全库结果一次最多拉取 33 条，首屏渲染 12 条，超出时通过面板内「加载更多」按钮纯客户端增量展开（不换缓存 key、不发新请求），全部展开后才回落到思源原生搜索出口。路径树选择仍未开放 UI，且本功能不替代思源原生搜索页。后续计划见 [ROADMAP.md](./ROADMAP.md)。
+搜索请求使用 180ms 防抖、容量受限的内存缓存、请求版本校验和取消机制。桌面弹窗、右侧栏和手机端各自持有独立搜索会话，互不取消或覆盖。当前工作树支持笔记本、路径、内容类型、子类型、搜索方式和结果排序筛选；仅笔记本/路径筛选保留标题快路径，其他筛选会直接使用受限的原生块级全文请求。桌面端提供逐级路径树，右侧栏按宿主能力显示受限筛选，移动端不声明路径树；宿主端点不可用时显式降级。全库结果一次最多拉取 33 条，首屏渲染 12 条，超出时通过面板内「加载更多」按钮纯客户端增量展开（不换缓存 key、不发新请求），全部展开后才回落到思源原生搜索出口。本功能不替代思源原生搜索页。后续计划见 [ROADMAP.md](./ROADMAP.md)。
 
 ### 工作上下文、命令与动作
 
@@ -126,9 +128,9 @@
 
 手机端首次打开时会等待 WebView 得到稳定尺寸后再显示卡片，并在缩略图容器获得真实宽度后计算缩放，减少首次进入的瞬时错位。手机设置页采用顶部横向标签和单列控件，收藏与快捷入口使用按钮排序，避免拖拽和页面滚动争抢手势。
 
-## 组件面板：58 个开箱即用的组件
+## 组件面板：58 个可组合组件目录
 
-工作台（顶栏入口或 `Alt+Shift+P`）是组件面板：58 个只读组件自由组合、摆放到 12 列网格，桌面 / 右侧栏 / 手机端各自独立布局。组件卡显示来源、能力、更新时间和健康状态，失败时保留卡片并给出可见与读屏回执。全部组件按「设置可发现性、数据正确性、信息层级、尺寸适配、交互反馈、状态恢复、性能生命周期、三端/无障碍/隐私」八维评分卡逐项深度优化过一轮。
+工作台（顶栏入口或 `Alt+Shift+P`）是组件面板：当前目录包含 58 个只读组件，可自由组合并摆放到 12 列网格，桌面 / 右侧栏 / 手机端各自独立布局。58 是目录总数，不代表每项都无需配置或联网即可使用；组件商店会标出内置、条件可用和外部服务/插件依赖。组件卡显示来源、能力、更新时间和健康状态，失败时保留卡片并给出可见与读屏回执。全部组件按「设置可发现性、数据正确性、信息层级、尺寸适配、交互反馈、状态恢复、性能生命周期、三端/无障碍/隐私」八维评分卡逐项深度优化过一轮。
 
 | 分组 | 组件 |
 | --- | --- |
@@ -173,7 +175,7 @@
 6. **工作台**：顶栏工作台入口或 `Alt+Shift+P` 打开组件工作台；组件卡会显示来源、能力和健康状态。
 7. **片段实验室**：在切换器平台头部选择「实验室」，或从片段对象的“在实验室打开”动作进入；桌面端可用，移动端保留能力提示。支持导入 Stylus usercss（自动按默认值解析变量），导出自带元数据头可直接装回 Stylus；AI 候选以"摘要 + 差异 + 逐条接受"呈现，接受前有确定性规则审查。
 
-开发版新增折叠的 Gist 发布与导入区：读取公开链接无需 Token，导入为新的禁用草稿；发布需具有 gist 权限的 GitHub Token。Token 明文存于插件设置，界面打码；新建 Gist 为 unlisted，知道链接即可访问。
+开发版新增折叠的 Gist 发布与导入区：读取公开链接无需 Token，导入为新的禁用草稿；发布需具有 gist 权限的 GitHub Token。Token 只应由用户在本机配置，明文存于插件设置、界面仅打码；不要把它提交到仓库、粘贴到 issue 或放入共享配置。新建 Gist 为 unlisted，知道链接即可访问。
 
 8. **悬浮球**：轻触恢复上次表面；单击、双击、长按可分别绑定动作，向上、下、左、右快滑和更多面板动作以及 1–9 固定槽可在设置中绑定。
 9. **自定义**：点击底部或右侧入口栏中的 `+`，选择 Dock、其他插件命令或调整三端可见性。
@@ -210,7 +212,7 @@
 | 日记 | 默认日记笔记本（下拉选择，首次点击日记按钮也会弹出选择） |
 | 手机端 | 卡片布局（单列 / 双列 / 自动）、缩略图高度；旧悬浮按钮开关自动迁移到悬浮球页 |
 
-悬浮球轻触打开切换器，拖动选取日记、搜索、组件面板等动作，空白处松手保存位置。右键或 `Shift+F10` 打开可搜索的更多动作；滚动隐藏后可点击边缘把手恢复。位置、开关和动作按端侧保存，外观与行为设置共用；侧栏保持 44 px 紧凑尺寸。缺失的插件动作保留配置并显示原因，提供方恢复后自动可用。真实思源宿主与 Android 验收状态见 [BLOCKERS.md](BLOCKERS.md)。
+悬浮球轻触打开切换器，拖动选取日记、搜索、组件面板等动作，空白处松手保存位置。右键或 `Shift+F10` 打开可搜索的更多动作；滚动隐藏后可点击边缘把手恢复。位置、开关和动作按端侧保存，外观与行为设置共用；当前仅挂载在桌面主窗口和手机端，旧的侧栏设置字段只用于兼容迁移。缺失的插件动作保留配置并显示原因，提供方恢复后自动可用。真实思源宿主与 Android 验收状态见 [BLOCKERS.md](BLOCKERS.md)。
 
 ## 安装与升级
 
@@ -296,7 +298,7 @@ pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:layout  # 手机顶栏/组件面板布局门禁，含裸 svg 对照（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
 pnpm test:smoke:floating-ball # 三端悬浮球 Chromium 交互/几何验收（可用 BROWSER_PATH 指定浏览器）
-pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、全量测试、发布/质量/集成审计和四套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、全量测试、发布/质量/集成审计和五套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
@@ -343,11 +345,13 @@ this.unregisterSpeedSwitchAction?.();
 | 用户验收与真实宿主边界 | [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)、[`BLOCKERS.md`](BLOCKERS.md) |
 | 组件接入与商店协议 | [`docs/widget-protocol.md`](docs/widget-protocol.md)、[`docs/component-store-guide.md`](docs/component-store-guide.md) |
 | Agent 能力与数据边界 | [`docs/agent-document-context-m2.md`](docs/agent-document-context-m2.md)、[ROADMAP.md](ROADMAP.md) 的 Agent 专项 |
+| 数据流、隐私与安全报告 | [`docs/data-flow-inventory-2026-10-06.md`](docs/data-flow-inventory-2026-10-06.md)、[`docs/data-scope-2026-10-06.md`](docs/data-scope-2026-10-06.md)、[`.github/SECURITY.md`](.github/SECURITY.md) |
+| 贡献、发布与排障 | [`CONTRIBUTING.md`](CONTRIBUTING.md)、[`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) |
 | 当前路线与取舍 | [`ROADMAP.md`](ROADMAP.md)、[`docs/release-readiness.md`](docs/release-readiness.md)、[`docs/adr/`](docs/adr/) |
 
 - [ADR-0057 组件来源一等公民](docs/adr/0057-widget-source-and-store-grouping.md) — 组件协议 v2.4 与商店来源分组
 - [ADR-0058 数据库表格投影](docs/adr/0058-av-widget-bounded-list-projection.md) — 数据库组件为什么是只读的有界列表投影
-- [ADR-0059/0062/0065/0067 资源自律线](docs/adr/0067-raw-bundle-line-recalibration.md) — 体积只防失控增长：raw 896 KiB、zip 单条目 256 KiB、512 KiB 归档硬上限
+- [ADR-0059/0062/0065/0067 资源自律线](docs/adr/0067-raw-bundle-line-recalibration.md) — 体积只防失控增长：raw 1160 KiB、zip 单条目 320 KiB、576 KiB 归档硬上限
 - [ADR-0063/0064 执行链与版本下限](docs/adr/0063-execution-chain-host-action-effects.md) — 执行链走宿主确认卡、minAppVersion 抬到 3.8.0
 
 ## 发布前检查
@@ -358,9 +362,11 @@ this.unregisterSpeedSwitchAction?.();
 pnpm verify:release
 ```
 
-它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
+它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和五套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 576 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
 当前版本为 `v0.44.1`（2026-09-30 正式发布；组件面板 58 组件视觉重构、片段实验室内置片段扩至 26 个并支持一键复制、移动端长按拖拽重排、第三方组件生态链（Calendar 首个外部接入：添加即丢/预览尺寸双缺陷修复 + 失效组件可清理 + 装机前曝光）；Release 资产由 workflow 自动构建）。
+
+> 当前工作树仍包含未发布的本地增量（状态核对日期：2026-10-07）；本地 `dist/` 与 `package.zip` 仅用于验证，不代表 GitHub Release 资产。候选发布状态和个人安装状态以 [`docs/current-status-index.json`](docs/current-status-index.json) 为准，目前分别为 `not_started` 和 `not_updated`。
 
 ## 更新日志
 

@@ -1,6 +1,6 @@
 const {Dialog} = require("siyuan");
 const {buildEditorLineNumbers, analyzeEditorBrackets} = require("./snippet-editor-model.js");
-const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, SNIPPET_BACKUP_MAX_BYTES, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader, createLeaveIntentCoordinator, createDraftHistory, pushDraftHistory, undoDraftHistory, redoDraftHistory, canUndoDraftHistory, canRedoDraftHistory, nextConflictCopyName, buildConflictCopyEntry, rememberRecentSnippet, buildSnippetBackup, normalizeSnippetBackup, diffSnippetBackup, buildSnippetRestorePlan, snippetSnapshotSignature} = require("./snippet-studio-model.js");
+const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, SNIPPET_BACKUP_MAX_BYTES, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader, createLeaveIntentCoordinator, createDraftHistory, pushDraftHistory, undoDraftHistory, redoDraftHistory, canUndoDraftHistory, canRedoDraftHistory, findDraftMatches, replaceDraftMatches, nextConflictCopyName, buildConflictCopyEntry, rememberRecentSnippet, buildSnippetBackup, normalizeSnippetBackup, diffSnippetBackup, buildSnippetRestorePlan, snippetSnapshotSignature} = require("./snippet-studio-model.js");
 const {buildSnippetDiff, summarizeDiff, applyDiffHunks} = require("./snippet-diff.js");
 const {lintSnippet} = require("./snippet-lint.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
@@ -471,6 +471,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let activeHunkAccepted = [];
     let picker = null;
     let pickerRelease = () => {};
+    let libraryFilter = "all";
     // T-7044：目录重绘钩子——冲突副本保存成功后按现状刷新已打开的目录；
     // openPicker 注册、closePicker 摘除，picker 关闭时无渲染面可刷新
     let pickerRefresh = null;
@@ -525,13 +526,48 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     headerState.setAttribute("aria-atomic", "true");
     heading.append(titleLine, headerContext);
     const headerActions = node("div", "sw-studio__header-actions");
+    // R4 的头部只突出当前状态、返回和主动作。备份/恢复属于片段数据治理，
+    // 是新增的低频动作，收进二级菜单，避免与返回和保存争夺首屏权重。
+    const dataMenu = node("details", "sw-studio__data-menu");
+    const dataMenuSummary = node("summary", "sw-studio__data-menu-summary", t("snippetMore"));
+    const dataMenuActions = node("div", "sw-studio__data-menu-actions");
+    const closeDataMenu = () => { dataMenu.open = false; };
     const backButton = action("snippetBack", () => guardLeave(() => onBack(true)));
-    const backupButton = action("snippetBackup", () => { void exportBackup(); }, "is-quiet");
-    const restoreButton = action("snippetRestore", () => restoreInput.click(), "is-quiet");
-    const restoreUndoButton = action("snippetRestoreUndo", () => { void undoRestore(); }, "is-quiet");
-    headerActions.append(headerState, backupButton, restoreButton, restoreUndoButton, backButton);
+    const backupButton = action("snippetBackup", () => { closeDataMenu(); void exportBackup(); }, "is-quiet");
+    const restoreButton = action("snippetRestore", () => { closeDataMenu(); restoreInput.click(); }, "is-quiet");
+    const restoreUndoButton = action("snippetRestoreUndo", () => { closeDataMenu(); void undoRestore(); }, "is-quiet");
+    dataMenuActions.append(backupButton, restoreButton, restoreUndoButton);
+    dataMenu.append(dataMenuSummary, dataMenuActions);
+    headerActions.append(headerState, dataMenu, backButton);
     header.append(heading, headerActions);
     const layout = node("div", "sw-studio__layout");
+    // R4 桌面原型保留片段目录；窄容器继续使用 picker，避免挤压编辑器和 AI rail。
+    const library = node("aside", "sw-studio__library");
+    library.setAttribute("aria-label", t("snippetChoose"));
+    const libraryHeader = node("div", "sw-studio__library-header");
+    const libraryTitle = node("strong", "sw-studio__library-title", t("snippetChoose"));
+    const libraryCount = node("span", "sw-studio__library-count");
+    libraryHeader.append(libraryTitle, libraryCount);
+    const librarySearch = node("input", "sw-studio__input sw-studio__library-search");
+    librarySearch.placeholder = t("snippetSearch");
+    librarySearch.setAttribute("aria-label", t("snippetSearch"));
+    const libraryFilters = node("div", "sw-studio__library-filters");
+    const libraryFilterButtons = new Map();
+    for (const [value, labelKey] of [["all", "snippetAllTypes"], ["css", "snippetCSS"], ["js", "snippetJS"]]) {
+        const filter = node("button", "sw-studio__library-filter", t(labelKey));
+        filter.type = "button";
+        filter.dataset.libraryFilter = value;
+        filter.setAttribute("aria-pressed", String(value === libraryFilter));
+        filter.addEventListener("click", () => {
+            libraryFilter = value;
+            renderLibrary();
+        });
+        libraryFilterButtons.set(value, filter);
+        libraryFilters.appendChild(filter);
+    }
+    const libraryList = node("div", "sw-studio__library-list");
+    librarySearch.addEventListener("input", () => renderLibrary());
+    library.append(libraryHeader, librarySearch, libraryFilters, libraryList);
     const main = node("main", "sw-studio__main");
     const previewSection = node("section", "sw-studio__preview-section");
     const previewToolbar = node("div", "sw-studio__section-bar");
@@ -790,6 +826,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let findCountLabel = null;
     let findMatches = [];
     let findCursor = -1;
+    const composingFindInputs = new Set();
     let replaceArmed = false;
     const editorBar = node("div", "sw-studio__section-bar");
     const editorLead = node("div", "sw-studio__section-lead");
@@ -871,16 +908,39 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         findCountLabel.textContent = "";
         try { editor.focus({preventScroll: true}); } catch (_) { editor.focus(); }
     });
-    findQueryInput.addEventListener("input", () => {
+    // 查找输入保持焦点与未提交文本；compositionend 和尾随同值 input 只结算一次。
+    function bindFindInput(field, onCommit) {
+        let committedValue = null;
+        field.addEventListener("compositionstart", () => {
+            composingFindInputs.add(field);
+            committedValue = null;
+        });
+        field.addEventListener("compositionend", () => {
+            composingFindInputs.delete(field);
+            committedValue = field.value;
+            onCommit();
+        });
+        field.addEventListener("input", (event) => {
+            if (composingFindInputs.has(field) || event.isComposing) return;
+            const alreadyCommitted = committedValue !== null && committedValue === field.value;
+            committedValue = null;
+            if (!alreadyCommitted) onCommit();
+        });
+        field.addEventListener("keydown", (event) => {
+            if (composingFindInputs.has(field) || event.isComposing || event.keyCode === 229) event.stopPropagation();
+        });
+    }
+    bindFindInput(findQueryInput, () => {
         replaceArmed = false;
         replaceAllButton.textContent = t("snippetFindReplaceAll");
         refreshFindMatches();
     });
-    findReplaceInput.addEventListener("input", () => {
+    bindFindInput(findReplaceInput, () => {
         replaceArmed = false;
         replaceAllButton.textContent = t("snippetFindReplaceAll");
     });
     findQueryInput.addEventListener("keydown", (event) => {
+        if (composingFindInputs.has(findQueryInput) || event.isComposing || event.keyCode === 229) return;
         if (event.key === "Enter") {
             event.preventDefault();
             moveFindCursor(event.shiftKey ? -1 : 1);
@@ -1126,7 +1186,6 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     aiConsentInput.addEventListener("change", updateAIActions);
     prompt.addEventListener("input", updateAIActions);
     aside.append(aiHeader, aiNote, aiProviderInfo, modeField, modeHint, contextOptions, contextSummary, prompt, aiConsent, aiActions, aiStatus, aiResultPanel, candidateStale, candidateActions, acceptButton);
-    layout.append(main, aside);
     const status = node("footer", "sw-studio__status", t("snippetLoading"));
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
@@ -1139,6 +1198,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const refresh = action("snippetRefresh", () => { guardLeave(() => void load(true)); });
     const footer = node("div", "sw-studio__footer");
     footer.append(status, saveButton, refresh);
+    layout.append(library, main, aside);
     root.replaceChildren(header, layout, footer);
     const preview = createSnippetPreview(previewContainer, {
         title: t("snippetPreview"),
@@ -1478,6 +1538,32 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         layout.setAttribute("aria-busy", String(loading || busy || gistBusy));
         updateAIActions();
         updateAIMode();
+        renderLibrary();
+    }
+    function renderLibrary() {
+        if (!libraryList) return;
+        const query = librarySearch.value.trim().toLowerCase();
+        const entries = snippets.filter((item) => {
+            if (libraryFilter !== "all" && item.type !== libraryFilter) return false;
+            return !query || `${item.name} ${item.type}`.toLowerCase().includes(query);
+        });
+        libraryCount.textContent = String(entries.length);
+        libraryFilterButtons.forEach((button, value) => button.setAttribute("aria-pressed", String(value === libraryFilter)));
+        libraryList.replaceChildren();
+        if (!entries.length) {
+            libraryList.appendChild(node("p", "sw-studio__library-empty", t("snippetNoResults")));
+            return;
+        }
+        for (const item of entries) {
+            const button = node("button", "sw-studio__library-item");
+            button.type = "button";
+            button.dataset.librarySnippetId = item.id;
+            button.classList.toggle("is-active", item.id === baseline?.id);
+            button.setAttribute("aria-pressed", String(item.id === baseline?.id));
+            button.append(node("span", "sw-studio__catalog-kind", item.type.toUpperCase()), node("span", "sw-studio__library-item-copy", item.name), node("span", "sw-studio__library-item-state", item.enabled ? t("snippetEnabled") : t("snippetDisabled")));
+            button.addEventListener("click", () => guardLeave(() => choose(item, item)));
+            libraryList.appendChild(button);
+        }
     }
     function syncEditorChrome() {
         const lineState = buildEditorLineNumbers(editor.value);
@@ -1502,7 +1588,21 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const savedView = !dual && showOriginal && !!baseline;
         previewDual.dataset.view = dual ? "dual" : (savedView ? "saved" : "draft");
         compareButton.hidden = dual;
-        if (byteLength(content) > SNIPPET_CODE_MAX) { setStatus(t("snippetTooLarge"), "error"); return; }
+        if (byteLength(content) > SNIPPET_CODE_MAX) {
+            // 拒绝超限草稿时清掉旧 iframe/诊断，避免上一份可渲染内容继续冒充当前草稿。
+            // 保存栏仍保留已保存版本；当前草稿栏必须明确进入错误态并等待用户缩减内容。
+            preview.clear();
+            previewContainer.replaceChildren();
+            previewShell.dataset.state = "error";
+            previewLoading.hidden = true;
+            previewState.textContent = t("snippetTooLarge");
+            previewState.className = "sw-studio__state-badge is-error";
+            previewReceipt.textContent = t("snippetTooLarge");
+            previewReceipt.dataset.theme = "error";
+            diagnosticsDetails.hidden = true;
+            setStatus(t("snippetTooLarge"), "error");
+            return;
+        }
         previewShell.dataset.state = "loading";
         previewLoading.hidden = false;
         previewState.textContent = t("snippetPreviewLoading");
@@ -1714,12 +1814,13 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 ? `${findCursor + 1}/${findMatches.length}`
                 : (findQueryInput && findQueryInput.value ? t("snippetFindNone") : "");
         }
-        if (findMatches.length > 0) selectFindMatch(findMatches[0]);
+        // 更新查询只同步选区；用户显式跳转命中时才聚焦编辑区。
+        if (findMatches.length > 0) selectFindMatch(findMatches[0], false);
     }
-    function selectFindMatch(match) {
+    function selectFindMatch(match, focus = true) {
         if (!match) return;
         try {
-            editor.focus({preventScroll: true});
+            if (focus) editor.focus({preventScroll: true});
             editor.setSelectionRange(match.start, match.end);
         } catch (_) { /* 极端宿主无选区能力时静默 */ }
     }
@@ -1730,6 +1831,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         selectFindMatch(findMatches[findCursor]);
     }
     function applyReplaceAll(replaceAllButton) {
+        if (composingFindInputs.size || composing) return;
         const query = findQueryInput ? findQueryInput.value : "";
         const matches = findDraftMatches(editor.value, query);
         if (matches.length === 0) return;
@@ -2534,6 +2636,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const query = node("input", "sw-studio__input");
         query.placeholder = t("snippetSearch");
         query.setAttribute("aria-label", t("snippetSearch"));
+        let queryComposing = false;
+        let committedQuery = "";
+        let justCommittedQuery = null;
         const source = select("snippetSource", [["", "snippetAllSources"], ["builtin", "snippetBuiltins"], ["native", "snippetMine"]]);
         const language = select("snippetType", [["", "snippetAllTypes"], ["css", "snippetCSS"], ["js", "snippetJS"]]);
         const category = select("snippetCategory", [["", "snippetAllCategories"], ["typography", "snippetCategoryTypography"], ["table", "snippetCategoryTable"], ["focus", "snippetCategoryFocus"], ["code", "snippetCategoryCode"], ["font", "snippetCategoryFont"], ["quote", "snippetCategoryQuote"], ["image", "snippetCategoryImage"], ["heading", "snippetCategoryHeading"], ["list", "snippetCategoryList"], ["divider", "snippetCategoryDivider"], ["tag", "snippetCategoryTag"], ["theme", "snippetCategoryTheme"], ["layout", "snippetCategoryLayout"], ["custom", "snippetCategoryCustom"]]);
@@ -2651,7 +2756,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const render = () => {
             const builtin = BUILTIN_SNIPPETS.map((item) => ({...item, name: t(item.nameKey), description: t(item.descriptionKey)}));
             const native = projectSnippetMetadata(snippetGroups, snippets).map((item) => ({...item, source: "native", category: "custom"}));
-            const found = filterSnippetCatalog([...builtin, ...native], {query: query.value, type: language.value, category: category.value, source: source.value, sort: catalogSort.value});
+            const found = filterSnippetCatalog([...builtin, ...native], {query: committedQuery, type: language.value, category: category.value, source: source.value, sort: catalogSort.value});
             list.replaceChildren();
             if (!found.length) list.append(node("p", "sw-studio__hint", t("snippetNoResults")));
             else {
@@ -2685,12 +2790,36 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             saveSnippetGroupStore(result.store);
             render();
         });
-        [query, source, language, category, catalogSort].forEach((input) => input.addEventListener("input", () => { limit = 40; render(); }));
+        query.addEventListener("compositionstart", () => {
+            queryComposing = true;
+            justCommittedQuery = null;
+        });
+        query.addEventListener("keydown", (event) => {
+            if (queryComposing || event.isComposing || event.keyCode === 229) event.stopPropagation();
+        });
+        query.addEventListener("compositionend", () => {
+            queryComposing = false;
+            committedQuery = query.value;
+            justCommittedQuery = query.value;
+            limit = 40;
+            render();
+        });
+        query.addEventListener("input", (event) => {
+            if (queryComposing || event.isComposing) return;
+            const alreadyCommitted = justCommittedQuery !== null && justCommittedQuery === query.value;
+            justCommittedQuery = null;
+            if (alreadyCommitted) return;
+            committedQuery = query.value;
+            limit = 40;
+            render();
+        });
+        [source, language, category, catalogSort].forEach((input) => input.addEventListener("input", () => { limit = 40; render(); }));
         sheet.append(head, recent, groupToolbar, filters, list, more);
         if (browse) sheet.appendChild(storePane);
         picker.appendChild(sheet);
         root.appendChild(picker);
         const keydown = (event) => {
+            if (queryComposing || event.isComposing || event.keyCode === 229) return;
             if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closePicker(); }
             if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) && doc.activeElement?.classList.contains("sw-studio__catalog-item")) {
                 const controls = Array.from(list.querySelectorAll(".sw-studio__catalog-item"));
@@ -2741,6 +2870,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             labels: platform.labels,
             available: platform.available,
             context: platform.context || null,
+            status: {state: "ready", label: locale.i18n.platformConnected || "Kernel connected"},
+            onSettings: platform.onSettings,
+            settingsLabel: platform.settingsLabel || locale.i18n.settings || "Settings",
+            closeHint: platform.closeHint || locale.i18n.platformCloseHint || "to close",
             onNavigate: (surface) => {
                 guardLeave(() => platform.onNavigate?.(surface));
             },
@@ -2750,6 +2883,17 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             closeLabel: locale.i18n.close || "Close",
         });
     }
+    // 主工作室 Dialog 禁用了宿主默认关闭按钮，平台头部因此必须承担完整的
+    // Escape 退出语义。选择器/回收站各自拦截更深层的 Escape；事件能到达这里时，
+    // 只处理主表面，并继续经过脏稿守卫。
+    const onStudioKeydown = (event) => {
+        if (event.key !== "Escape" || event.defaultPrevented) return;
+        if (root.querySelector(".sw-studio__picker, .sw-studio__recycle")) return;
+        event.preventDefault();
+        event.stopPropagation();
+        guardLeave(() => platform?.onClose?.(true));
+    };
+    root.addEventListener("keydown", onStudioKeydown);
     // 首焦点落到平台关闭按钮；独立装配或旧宿主没有平台头部时回退到返回按钮。
     // 这样全屏工作室打开后，键盘用户立即知道如何退出，且不会把焦点送入编辑器造成误输入。
     const initialFocus = root.querySelector(".sw-platform-header__close") || backButton;
@@ -2777,6 +2921,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             session.baseline = baseline ? {...baseline} : null;
             clearTimeout(previewTimer);
             pickerRelease();
+            root.removeEventListener("keydown", onStudioKeydown);
             preview.dispose();
             previewSaved.dispose();
             dualPaneObserver?.disconnect();

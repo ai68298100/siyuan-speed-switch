@@ -75,13 +75,16 @@ import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, s
 import {millisecondsToNextMinute, buildYearProgressSnapshot, buildCountdownSnapshot} from "./local-time-model";
 import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from "./life-widget-model";
 import {collectSettingsSearchEntries, collectEntryGroups, searchSettingsIndex} from "./settings-search-model";
+import {bindSettingControlSemantics} from "./settings-control-dom";
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
-import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet, orderDocumentSetRestoreEntries} from "./document-sets";
+import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport, pickNextDocumentSet, orderDocumentSetRestoreEntries} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore, mergeRelatedSwrEntry, beginRelatedContentRequest, isRelatedContentRequestCurrent, finishRelatedContentRequest} from "./related-content-model";
 import {normalizeRecycleStore} from "./snippet-recycle";
 import {normalizeSnippetGroupStore} from "./snippet-groups";
 import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, encodeSurfaceFocusSource, resolveSurfaceFocusRestoreTarget, buildSurfaceContextCaption, projectSnippetObjects, filterSnippetObjects, normalizeModuleVisibility, isSurfaceModuleEnabled, filterSurfacesByVisibility, createPlatformSurfaceAdapter} from "./platform-surface-model";
 import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
+import {createPlatformStatus} from "./platform-dom";
+import {mountPlatformDialogCloseHint} from "./platform-dom";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction, findTodayJournal as findTodayJournalAction} from "./journal-actions";
@@ -599,8 +602,12 @@ export interface PlatformSurfaceChromeOptions {
     context?: PlatformSurfaceContext | null;
     // T-6871（RZ-1）：键位提示芯片组（如 Tab/1-9/Enter），渲染在上下文栏尾部。
     kbdHints?: readonly string[];
+    status?: {state?: string; label: string};
     onNavigate?: (surface: PlatformSurface) => void;
+    onSettings?: () => void;
     onClose?: () => void;
+    settingsLabel?: string;
+    closeHint?: string;
     closeLabel?: string;
 }
 
@@ -677,7 +684,29 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
     });
     const actions = doc.createElement("div");
     actions.className = "sw-platform-header__actions";
+    if (options.status?.label) {
+        actions.appendChild(createPlatformStatus(doc, options.status.state || "ready", options.status.label));
+    }
+    if (options.onSettings) {
+        const settings = doc.createElement("button");
+        settings.type = "button";
+        settings.className = "b3-button b3-button--text sw-platform-header__icon-action sw-platform-header__settings";
+        settings.setAttribute("aria-label", options.settingsLabel || "Settings");
+        settings.title = options.settingsLabel || "Settings";
+        settings.innerHTML = '<svg><use xlink:href="#iconSettings"></use></svg>';
+        settings.addEventListener("click", () => options.onSettings?.());
+        actions.appendChild(settings);
+    }
     if (options.onClose) {
+        const closeHint = doc.createElement("span");
+        closeHint.className = "sw-platform-header__close-hint";
+        closeHint.setAttribute("aria-label", options.closeHint || "Escape to close");
+        closeHint.appendChild(createPlatformKbd(doc, "Esc"));
+        const closeHintLabel = doc.createElement("span");
+        closeHintLabel.className = "sw-platform-header__close-hint-label";
+        closeHintLabel.textContent = options.closeHint || "to close";
+        closeHint.appendChild(closeHintLabel);
+        actions.appendChild(closeHint);
         const close = doc.createElement("button");
         close.type = "button";
         close.className = "b3-button b3-button--text sw-platform-header__close";
@@ -739,16 +768,24 @@ declare module "./snippet-studio-ui" {
             labels: PlatformSurfaceLabels;
             available?: readonly PlatformSurface[];
             context?: PlatformSurfaceContext | null;
+            status?: {state?: string; label: string};
             mount: (root: HTMLElement, options: {
                 surface: PlatformSurface;
                 labels: PlatformSurfaceLabels;
                 available?: readonly PlatformSurface[];
                 context?: PlatformSurfaceContext | null;
+                status?: {state?: string; label: string};
                 onNavigate?: (surface: PlatformSurface) => void;
+                onSettings?: () => void;
                 onClose?: (guarded?: boolean) => void;
+                settingsLabel?: string;
+                closeHint?: string;
                 closeLabel?: string;
             }) => HTMLElement;
             onNavigate?: (surface: PlatformSurface) => void;
+            onSettings?: () => void;
+            settingsLabel?: string;
+            closeHint?: string;
             onClose?: (guarded?: boolean) => void;
         };
     }): {ready: Promise<unknown>; canClose: () => boolean; dispose: () => void};
@@ -1175,12 +1212,12 @@ export default class SpeedSwitchPlugin extends Plugin {
             langKey: "secondPanel",
             hotkey: SECOND_PANEL_HOTKEY,
             callback: () => {
-                openSecondPanel.call(this);
+                this.openPlatformSurface("workbench", "switcher", {entry: "command"});
             },
         };
         if (isGlobalShortcutHostReady((window as {siyuan?: {languages?: unknown}}).siyuan)) {
             secondPanelCommand.globalCallback = () => {
-                openSecondPanel.call(this);
+                this.openPlatformSurface("workbench", "switcher", {entry: "command"});
             };
         }
         safeRegisterPluginCommand(this, secondPanelCommand, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
@@ -1891,6 +1928,14 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.lifecycleGeneration += 1;
         this.snippetStudioDialog?.destroy();
         this.snippetStudioDialog = null;
+        // 卸载必须主动销毁所有仍打开的表面 Dialog；宿主移除 DOM 不保证触发
+        // destroyCallback，而这些回调负责释放面板控制器、FAB 挂起和监听器。
+        this.platformSwitcherDialog?.destroy();
+        this.platformSwitcherDialog = null;
+        this.mobileSwitcherDialog?.destroy();
+        this.mobileSwitcherDialog = null;
+        this.workbenchDialog?.destroy();
+        this.workbenchDialog = null;
         // T-6831：面包屑入口随生命周期拆除
         this.teardownBreadcrumbEntry();
         // T-6823：密度档位标记随生命周期移除
@@ -2381,7 +2426,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         range.max = String(max);
         range.step = String(step);
         range.value = String(value);
-        if (label) range.setAttribute("aria-label", label);
+        if (label) range.setAttribute("aria-label", `${label} · ${this.i18n.settingsControlSlider || "Slider"}`);
         const numeric = document.createElement("input");
         numeric.className = "b3-text-field fn__flex-center sw-settings__range-value";
         numeric.type = "number";
@@ -2390,7 +2435,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         numeric.max = String(max);
         numeric.step = String(step);
         numeric.value = String(value);
-        if (label) numeric.setAttribute("aria-label", label);
+        if (label) numeric.setAttribute("aria-label", `${label} · ${this.i18n.settingsControlNumber || "Number"}`);
         const unitEl = document.createElement("span");
         unitEl.className = "sw-settings__num-unit";
         unitEl.textContent = unit;
@@ -2467,21 +2512,27 @@ export default class SpeedSwitchPlugin extends Plugin {
         item.className = column ? "sw-settings__item sw-settings__item--column" : "sw-settings__item";
         const main = document.createElement("div");
         main.className = "sw-settings__item-main";
-        const titleEl = document.createElement("div");
+        const titleEl = document.createElement("label");
         titleEl.className = "sw-settings__item-title";
         titleEl.textContent = title;
         main.appendChild(titleEl);
+        let descriptionEl: HTMLElement | null = null;
         if (description) {
             const desc = document.createElement("div");
             desc.className = "sw-settings__item-desc";
             desc.textContent = description;
             main.appendChild(desc);
+            descriptionEl = desc;
         }
         const actionEl = document.createElement("div");
         actionEl.className = "sw-settings__item-action";
         actionEl.appendChild(action);
         item.appendChild(main);
         item.appendChild(actionEl);
+        bindSettingControlSemantics(item, titleEl, descriptionEl, action, {
+            slider: this.i18n.settingsControlSlider || "Slider",
+            number: this.i18n.settingsControlNumber || "Number",
+        });
         return item;
     }
 
@@ -2554,6 +2605,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             width: this.isMobile ? "min(520px, 94vw)" : "min(720px, 76vw)",
             height: this.isMobile ? "min(640px, 82vh)" : "min(620px, 78vh)",
         });
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const root = dialog.element.querySelector<HTMLElement>(".sw-home-store-guide");
         if (!root) return;
         const hint = document.createElement("p");
@@ -2628,12 +2680,43 @@ export default class SpeedSwitchPlugin extends Plugin {
             title: this.i18n.quickCaptureTitle,
             content: '<div class="speed-switch sw-quick-capture"></div>',
             width: this.isMobile ? "min(420px, 92vw)" : "380px",
-            height: this.isMobile ? "min(280px, 60vh)" : "260px",
+            // 快速记录内容包含目标、输入、预览和操作行；给底部动作保留完整
+            // 呼吸空间，避免宿主 Dialog 在固定高度下裁切主按钮。
+            height: this.isMobile ? "min(320px, 68vh)" : "288px",
         });
         const root = dialog.element.querySelector<HTMLElement>(".sw-quick-capture");
         if (!root) return;
         type CaptureTarget = "journal" | "current";
         let target: CaptureTarget = "journal";
+
+        // 快速记录是独立操作弹窗，宿主标题栏在窄端可能被隐藏；在内容层补一组
+        // 明确的退出动作，保持与平台面板相同的 Esc 可发现性。
+        const header = document.createElement("div");
+        header.className = "sw-quick-capture__header";
+        const headerTitle = document.createElement("strong");
+        headerTitle.className = "sw-quick-capture__header-title";
+        headerTitle.textContent = this.i18n.quickCaptureTitle;
+        const headerActions = document.createElement("div");
+        headerActions.className = "sw-quick-capture__header-actions";
+        const escapeHint = document.createElement("span");
+        escapeHint.className = "sw-quick-capture__close-hint";
+        escapeHint.setAttribute("aria-label", this.i18n.platformCloseHint || "Escape to close");
+        escapeHint.appendChild(createPlatformKbd(document, "Esc"));
+        const closeButton = document.createElement("button");
+        closeButton.type = "button";
+        closeButton.className = "b3-button b3-button--text sw-quick-capture__close";
+        closeButton.setAttribute("aria-label", this.i18n.close);
+        closeButton.title = this.i18n.close;
+        closeButton.innerHTML = '<svg><use xlink:href="#iconClose"></use></svg>';
+        closeButton.addEventListener("click", () => dialog.destroy());
+        headerActions.append(escapeHint, closeButton);
+        header.append(headerTitle, headerActions);
+        root.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            event.stopPropagation();
+            dialog.destroy();
+        });
 
         const input = document.createElement("textarea");
         input.className = "b3-text-field fn__block sw-quick-capture__input";
@@ -2644,6 +2727,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         // T-6815/T-6818 目的地预览：写到哪里、写什么副作用，提交前可见
         const previewLine = document.createElement("p");
         previewLine.className = "sw-quick-capture__preview";
+        previewLine.setAttribute("role", "status");
         previewLine.setAttribute("aria-live", "polite");
 
         const actions = document.createElement("div");
@@ -2666,14 +2750,16 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         const targets = document.createElement("div");
         targets.className = "sw-quick-capture__targets";
-        targets.setAttribute("role", "tablist");
+        // Destination choices are a pressed-button group; they do not switch
+        // tabpanels, so do not expose an incomplete tablist interaction model.
+        targets.setAttribute("role", "group");
+        targets.setAttribute("aria-label", this.i18n.quickCaptureTitle);
         const targetButtons: Array<{key: CaptureTarget; el: HTMLButtonElement}> = [];
         const makeTargetButton = (key: CaptureTarget, label: string) => {
             const button = document.createElement("button");
             button.type = "button";
             button.className = "b3-button b3-button--small";
             button.textContent = label;
-            button.setAttribute("role", "tab");
             button.addEventListener("click", () => setActiveTarget(key));
             targetButtons.push({key, el: button});
             targets.appendChild(button);
@@ -2789,7 +2875,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             }
         });
         actions.append(kbdHints, cancel, save);
-        root.append(targets, input, previewLine, actions);
+        root.append(header, targets, input, previewLine, actions);
         setActiveTarget("journal");
         window.setTimeout(() => {
             input.focus();
@@ -2856,6 +2942,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 width: "min(460px, 90vw)",
                 destroyCallback: () => releaseJournalDialog(),
             });
+            mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
             releaseJournalDialog = this.suspendFABForDialog(() => finish(""));
             const sel = dialog.element.querySelector<HTMLSelectElement>(".sw-journal-prompt__sel > select")
                 ?? this.createJournalSelect(dialog);
@@ -2944,8 +3031,9 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 布局：左侧标签栏（外观/行为/面板/收藏/手机端）+ 右侧分组面板，点击标签切换
     // T-7012：returnTo 是打开设置时的平台表面；设置关闭后恢复该表面
     // （不固定回切换器）。无面板来源的入口（顶栏/悬浮球/侧栏）不传，行为不变。
-    openSetting(initialPanel?: string, returnTo?: PlatformSurface | null) {
+    openSetting(initialPanel?: string, returnTo?: PlatformSurface | null, returnContext?: PlatformSurfaceContext | null) {
         const restoreSurface = normalizeSurfaceId(returnTo || "", "");
+        const restoreContext = normalizeSurfaceContext(returnContext);
         const panelKeys = ["appearance", "behavior", "panels", "favorites", "quickActions", "floatingBall", "documentSets", "journal", "mobile", "storage"] as const;
         const panelLabels: Record<string, string> = {
             appearance: this.i18n.secAppearance,
@@ -2978,7 +3066,13 @@ export default class SpeedSwitchPlugin extends Plugin {
                 // T-7012：设置互返——从平台表面打开时，关闭后恢复该表面；
                 // 面板重开走 openPlatformSurface 的单例守卫与 FAB 串行释放。
                 if (restoreSurface && !this.isUnloading) {
-                    this.openPlatformSurface(restoreSurface, "switcher", {entry: "back"});
+                    this.openPlatformSurface(restoreSurface, "switcher", {
+                        entry: "back",
+                        ...(restoreContext?.objectKind ? {objectKind: restoreContext.objectKind} : {}),
+                        ...(restoreContext?.objectId ? {objectId: restoreContext.objectId} : {}),
+                        ...(restoreContext?.query ? {query: restoreContext.query} : {}),
+                        ...(restoreContext?.focusSource ? {focusSource: restoreContext.focusSource} : {}),
+                    });
                 }
             },
             // 桌面端独立采用 70% 视口自适应（不与第一面板的 panelScale 联动）；手机端按视口收缩，避免溢出屏幕
@@ -2992,6 +3086,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
 
         const tabs = document.createElement("div");
         tabs.className = "sw-settings__tabs";
@@ -3328,7 +3423,23 @@ export default class SpeedSwitchPlugin extends Plugin {
             searchInput.setAttribute("aria-expanded", "false");
             searchInput.removeAttribute("aria-activedescendant");
         };
-        searchInput.addEventListener("input", renderSettingsSearchResults);
+        let settingsSearchComposing = false;
+        let settingsSearchCommittedValue: string | null = null;
+        searchInput.addEventListener("compositionstart", () => { settingsSearchComposing = true; });
+        searchInput.addEventListener("compositionend", () => {
+            settingsSearchComposing = false;
+            settingsSearchCommittedValue = searchInput.value;
+            renderSettingsSearchResults();
+        });
+        searchInput.addEventListener("input", (event) => {
+            if (settingsSearchComposing || (event as InputEvent).isComposing) return;
+            if (settingsSearchCommittedValue === searchInput.value) {
+                settingsSearchCommittedValue = null;
+                return;
+            }
+            settingsSearchCommittedValue = null;
+            renderSettingsSearchResults();
+        });
         // T-7002：清空按钮——清查询、收起结果、回焦搜索框（清空是显式动作，可键盘触达）。
         searchClear.addEventListener("click", () => {
             searchInput.value = "";
@@ -3340,6 +3451,10 @@ export default class SpeedSwitchPlugin extends Plugin {
             ? searchMatches.filter((entry) => entry.group === searchGroupFilter)
             : searchMatches;
         searchInput.addEventListener("keydown", (event) => {
+            if (settingsSearchComposing || event.isComposing || event.keyCode === 229) {
+                event.stopPropagation();
+                return;
+            }
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
                 event.preventDefault();
                 const visible = visibleSearchMatches();
@@ -3390,6 +3505,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         panels.insertBefore(statusbar, searchWrap);
         const syncSaveState = () => {
             const outcome = this.lastSaveOutcome[SETTINGS_KEY] || "idle";
+            statusbar.hidden = outcome === "idle";
+            statusbar.dataset.state = outcome;
             saveState.textContent = outcome === "pending" ? this.i18n.settingsSavePending
                 : outcome === "failed" ? this.i18n.settingsSaveFailed
                     : outcome === "ok" ? this.i18n.settingsSaveOk : "";
@@ -3476,6 +3593,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         // T-7002：`/` 与 Ctrl/Cmd+K 直达搜索——只在设置页根容器内监听（不注册全局
         // 命令、不抢宿主快捷键）；焦点已在输入框/其他可编辑控件内时不接管。
         root.addEventListener("keydown", (event) => {
+            if (settingsSearchComposing || event.isComposing || event.keyCode === 229) {
+                event.stopPropagation();
+                return;
+            }
             const target = event.target as HTMLElement | null;
             const editable = target instanceof HTMLElement
                 && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
@@ -3725,6 +3846,20 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
     }
 
+    // 快捷键设置只读取思源当前 keymap，不写回宿主配置；未自定义时回退到
+    // 插件注册的默认值，让设置页明确展示“当前生效值”而不是静态猜测。
+    public getPlatformShortcutBindings(): {switcher: string; workbench: string} {
+        const pluginKeymap = getSiyuan()?.config?.keymap?.plugin?.[this.name] || {};
+        const resolve = (id: string, fallback: string) => {
+            const custom = pluginKeymap[id]?.custom;
+            return typeof custom === "string" && custom.trim() ? custom.trim() : fallback;
+        };
+        return {
+            switcher: resolve("switchTabs", DEFAULT_HOTKEY),
+            workbench: resolve("secondPanel", SECOND_PANEL_HOTKEY),
+        };
+    }
+
     public mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement {
         return mountPlatformChrome(root, options);
     }
@@ -3789,8 +3924,23 @@ export default class SpeedSwitchPlugin extends Plugin {
             mountPlatformChrome(surfaceRoot, {
                 surface: "switcher",
                 labels: this.getPlatformSurfaceLabels(),
+                available: this.getAvailablePlatformSurfaces(),
                 context,
                 kbdHints: ["Tab", "1-9", "Enter", this.i18n.platformKbdPreview],
+                status: {state: "ready", label: this.i18n.platformConnected},
+                onSettings: () => {
+                    if (!dialog.element.isConnected) return;
+                    const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
+                    const query = dialog.element.querySelector<HTMLInputElement>("input.sw__search")?.value.trim() || context?.query || "";
+                    dialog.destroy();
+                    this.openSetting(undefined, "switcher", {
+                        entry: "back", ...(context?.objectKind ? {objectKind: context.objectKind} : {}),
+                        ...(context?.objectId ? {objectId: context.objectId} : {}), ...(query ? {query} : {}),
+                        ...(focusSource ? {focusSource} : {}),
+                    });
+                },
+                settingsLabel: this.i18n.settings,
+                closeHint: this.i18n.platformCloseHint,
                 onClose: () => dialog.destroy(),
                 closeLabel: this.i18n.close,
                 onNavigate: (surface) => {
@@ -3813,6 +3963,10 @@ export default class SpeedSwitchPlugin extends Plugin {
     // a mobile surface before the wide layout has real device evidence.
     private openSnippetStudio(returnTo: PlatformSurface = "switcher", context?: PlatformSurfaceContext | null) {
         if (this.isMobile) return;
+        if (!this.getAvailablePlatformSurfaces().includes("studio")) {
+            showMessage(this.i18n.moduleDisabledReceipt.replace("{x}", this.i18n.moduleStudio));
+            return;
+        }
         if (this.snippetStudioDialog?.element.isConnected) return;
         this.notePlatformSurface("studio", context);
         const holder: {dialog: Dialog | null; controller: SnippetStudioController | null} = {dialog: null, controller: null};
@@ -3857,7 +4011,38 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.destroy();
             return;
         }
+        // Lazy Studio chunk 尚未到达时，Dialog 默认关闭被禁用，原本会出现一段
+        // 没有任何退出入口的空白等待态。先挂一层可销毁的临时平台头部；正式
+        // Studio mount 时会由 mountPlatformChrome 幂等移除并替换，不触碰脏稿守卫。
+        const loading = document.createElement("div");
+        loading.className = "sw-studio-loading";
+        loading.setAttribute("role", "status");
+        loading.setAttribute("aria-live", "polite");
+        const loadingSpinner = document.createElement("span");
+        loadingSpinner.className = "sw-studio-loading__spinner";
+        loadingSpinner.setAttribute("aria-hidden", "true");
+        const loadingLabel = document.createElement("span");
+        loadingLabel.textContent = this.i18n.snippetLoading;
+        loading.append(loadingSpinner, loadingLabel);
+        root.appendChild(loading);
+        mountPlatformChrome(root, {
+            surface: "studio",
+            labels: this.getPlatformSurfaceLabels(),
+            available: this.getAvailablePlatformSurfaces(),
+            status: {state: "loading", label: this.i18n.snippetLoading},
+            closeHint: this.i18n.platformCloseHint,
+            closeLabel: this.i18n.close,
+            onClose: () => dialog.destroy(),
+        });
+        const loadingKeydown = (event: KeyboardEvent) => {
+            if (event.key !== "Escape" || event.defaultPrevented) return;
+            event.preventDefault();
+            event.stopPropagation();
+            dialog.destroy();
+        };
+        root.addEventListener("keydown", loadingKeydown);
         void import(/* webpackChunkName: "snippet-studio" */ "./snippet-studio-ui").then(({mountSnippetStudio}) => {
+            root.removeEventListener("keydown", loadingKeydown);
             if (!dialog.element.isConnected || this.snippetStudioDialog !== dialog) return;
             holder.controller = mountSnippetStudio(root, {
                 i18n: this.i18n as unknown as Record<string, string>,
@@ -3889,7 +4074,20 @@ export default class SpeedSwitchPlugin extends Plugin {
                 objectId: !context?.objectKind || context.objectKind === "snippet" ? context.objectId || "" : "",
                 platform: {
                     labels: this.getPlatformSurfaceLabels(),
-                    available: ["switcher", "workbench", "studio"],
+                    status: {state: "ready", label: this.i18n.platformConnected},
+                    onSettings: () => {
+                        if (!dialog.element.isConnected) return;
+                        const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
+                        dialog.destroy();
+                        this.openSetting(undefined, "studio", {
+                            entry: "back", ...(context?.objectKind ? {objectKind: context.objectKind} : {}),
+                            ...(context?.objectId ? {objectId: context.objectId} : {}), ...(context?.query ? {query: context.query} : {}),
+                            ...(focusSource ? {focusSource} : {}),
+                        });
+                    },
+                    settingsLabel: this.i18n.settings,
+                    closeHint: this.i18n.platformCloseHint,
+                    available: this.getAvailablePlatformSurfaces(),
                     context: context || null,
                     mount: mountPlatformChrome,
                     onNavigate: (surface) => {
@@ -3921,6 +4119,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             });
             void holder.controller.ready.catch((error) => logger.warn("snippet studio load failed", error));
         }).catch((error) => {
+            root.removeEventListener("keydown", loadingKeydown);
             logger.warn("snippet studio import failed", error);
             // The Dialog is intentionally non-dismissible while the studio is
             // mounted so its own Back action can protect unsaved drafts. If
@@ -4228,7 +4427,10 @@ const updatedMap: {[rootId: string]: string} = {};
             isFullscreen = toFullscreen;
             if (toFullscreen) {
                 container.style.width = "100vw";
-                container.style.height = "100vh";
+                // Dynamic viewport units keep the fullscreen surface inside the
+                // currently visible area when mobile browser chrome/IME changes.
+                // Older WebViews ignore the value and retain the CSS 100vh fallback.
+                container.style.height = "100dvh";
                 container.classList.add("sw-dialog--fullscreen");
                 swBody?.classList.add("sw--fullscreen");
                 fsBtn?.setAttribute("aria-label", this.i18n.exitFullscreen);
@@ -4256,16 +4458,27 @@ const updatedMap: {[rootId: string]: string} = {};
         context?: PlatformSurfaceContext | null,
     ): () => void {
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
+            const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
+            const query = searchInput?.value.trim() || context?.query || "";
             dialog.destroy();
             // T-7012：设置从切换器打开，关闭后恢复切换器。
-            this.openSetting(undefined, "switcher");
-        });
-        dialog.element.querySelector(".sw__snippet-studio-btn")?.addEventListener("click", () => {
-            dialog.destroy();
-            this.openSnippetStudio(returnTo, {
-                entry: "toolbar", objectKind: context?.objectKind, objectId: context?.objectId, query: context?.query,
+            this.openSetting(undefined, "switcher", {
+                entry: "back", ...(context?.objectKind ? {objectKind: context.objectKind} : {}),
+                ...(context?.objectId ? {objectId: context.objectId} : {}), ...(query ? {query} : {}),
+                ...(focusSource ? {focusSource} : {}),
             });
         });
+        const studioToolbarButton = dialog.element.querySelector<HTMLElement>(".sw__snippet-studio-btn");
+        if (!this.getAvailablePlatformSurfaces().includes("studio")) {
+            studioToolbarButton?.remove();
+        } else {
+            studioToolbarButton?.addEventListener("click", () => {
+                dialog.destroy();
+                this.openPlatformSurface("studio", returnTo, {
+                    entry: "toolbar", objectKind: context?.objectKind, objectId: context?.objectId, query: context?.query,
+                });
+            });
+        }
         // 顶栏日记按钮：打开/新建当日日记（未设默认日记本时首次点击弹出选择）
         dialog.element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {
             dialog.destroy();
@@ -4450,6 +4663,7 @@ const updatedMap: {[rootId: string]: string} = {};
     private applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, onClose: IOverlayClose) {
         const keyword = searchInput.value.trim();
         scrollElement.dataset.swDocSearchQuery = keyword;
+        searchInput.dataset.swMode = keyword.startsWith(">") ? "command" : "search";
         const session = getDocSearchSession.call(this, scrollElement);
         // 所有输入分支（含命令模式）均立即取消旧定时器/请求并使旧结果失效。
         const version = beginSearch(session);
@@ -5090,6 +5304,7 @@ const updatedMap: {[rootId: string]: string} = {};
             width: this.isMobile ? "min(440px, 92vw)" : "400px",
             height: this.isMobile ? "min(420px, 68vh)" : "360px",
         });
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const root = dialog.element.querySelector<HTMLElement>(".sw-template-picker");
         if (!root) return;
         const list = document.createElement("div");
@@ -5258,7 +5473,7 @@ const updatedMap: {[rootId: string]: string} = {};
             host.appendChild(button);
         });
         // 组件面板入口：桌面与手机底栏都常驻（手机端此前只能绕道"更多"菜单）
-        if (surface === "desktop" || surface === "mobile") {
+        if ((surface === "desktop" || surface === "mobile") && this.getAvailablePlatformSurfaces().includes("workbench")) {
             const homeButton = document.createElement("button");
             homeButton.type = "button";
             homeButton.className = "sw__quick-action sw__quick-action--home b3-tooltips b3-tooltips__n";
@@ -5267,7 +5482,7 @@ const updatedMap: {[rootId: string]: string} = {};
             homeButton.innerHTML = `<span class="sw__quick-action-icon"><svg><use xlink:href="#iconLayoutHome"></use></svg></span><span class="sw__quick-action-label">${this.i18n.secondPanel}</span>`;
             homeButton.addEventListener("click", () => {
                 close();
-                openSecondPanel.call(this);
+                this.openPlatformSurface("workbench", "switcher", {entry: "quick-action"});
             });
             host.appendChild(homeButton);
         }
@@ -5336,7 +5551,7 @@ const updatedMap: {[rootId: string]: string} = {};
             },
             onJournal: () => this.openJournal(),
             onSettings: () => this.openSetting(),
-            onHome: () => openSecondPanel.call(this),
+            onHome: () => this.openPlatformSurface("workbench", "switcher", {entry: "quick-action"}),
             onSnippetStudio: () => this.openPlatformSurface("studio", "switcher", {entry: "quick-action"}),
             onQuickCapture: () => this.openQuickCapture(),
             onPreviousTab: () => this.cycleFloatingBallTab(-1),
@@ -5418,7 +5633,7 @@ const updatedMap: {[rootId: string]: string} = {};
         title.textContent = this.i18n.workbenchLabel;
         box.appendChild(title);
 
-        const addRow = (label: string, items: Array<{label: string; onClick: () => void; onRemove?: () => void}>) => {
+        const addRow = (label: string, items: Array<{label: string; onClick: () => void; onRemove?: () => void}>, kind = "default") => {
             if (!items.length) return;
             const rowTitle = document.createElement("div");
             rowTitle.className = "sw__workbench-row-label";
@@ -5430,6 +5645,7 @@ const updatedMap: {[rootId: string]: string} = {};
                 const chip = document.createElement("button");
                 chip.type = "button";
                 chip.className = "sw__workbench-chip";
+                chip.dataset.swWorkbenchKind = kind;
                 chip.textContent = item.label;
                 chip.addEventListener("click", () => {
                     chip.disabled = true;
@@ -5455,18 +5671,18 @@ const updatedMap: {[rootId: string]: string} = {};
                 this.updateSettings({floatingBall: applied.config});
                 showMessage(this.i18n.floatingBallPresetApplied.replace("{x}", applied.preset.name), MESSAGE_DEFAULT_MS);
             },
-        })));
+        })), "preset");
         addRow(this.i18n.workbenchDocSets, docSets.map((set: any) => ({
             label: set.name,
             onClick: () => {
                 onClose();
                 void this.restoreDocumentSetFromHome(set.setId);
             },
-        })));
+        })), "document-set");
         addRow(this.i18n.workbenchSmart, smartGroups.map((group) => ({
             label: `#${group.tag}`,
             onClick: () => this.openTagSmartGroupEntries(group),
-        })));
+        })), "smart-group");
         // T-6827 保存的搜索：单击应用（查询+笔记本筛选回放），右键删除
         addRow(this.i18n.workbenchSaved, savedSearches.map((saved: any) => ({
             label: saved.name,
@@ -5479,7 +5695,7 @@ const updatedMap: {[rootId: string]: string} = {};
                 scrollElement.querySelector(".sw__workbench")?.remove();
                 this.renderWorkbench(scrollElement, "", onClose);
             },
-        })));
+        })), "saved-search");
 
         // T-6814 关联内容：活动文档的反链/提及（官方 getBacklink2 单次往返，
         // 有界投影 + 60s 会话缓存 + 竞态丢弃）。无活动文档或加载失败时整行不出现。
@@ -5985,6 +6201,7 @@ const updatedMap: {[rootId: string]: string} = {};
             width: this.isMobile ? "min(440px, 92vw)" : "400px",
             height: this.isMobile ? "min(420px, 68vh)" : "360px",
         });
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const root = dialog.element.querySelector<HTMLElement>(".sw__host-list");
         if (!root) return;
         root.appendChild(content);
@@ -7123,7 +7340,17 @@ const updatedMap: {[rootId: string]: string} = {};
             // T-6815 Essentials 常驻层：带回执打开（opened/failed/skipped），并入统一摘要
             essentialsOutcome = await this.openDocumentSetEssentials();
         }
-        let message = `${this.i18n.documentSetRestore}: ${summary.succeeded}/${summary.attempted}`;
+        const report = buildDocumentSetRestoreReport(plan, probe, {...execution, cancelled: execution.cancelled}, {
+            now: Date.now(),
+            essentials: essentialsOutcome ?? undefined,
+        });
+        const counts = report.counts as typeof summary;
+        let message = `${this.i18n.documentSetRestoreDone}: ${counts.succeeded}/${counts.attempted}`;
+        if (counts.failed > 0) message += ` · ${this.i18n.documentSetRestoreFailed}: ${counts.failed}`;
+        if (counts.skipped > 0) message += ` · ${this.i18n.documentSetRestoreSkipped}: ${counts.skipped}`;
+        if (counts.missing > 0) message += ` · ${this.i18n.documentSetRestoreMissing}: ${counts.missing}`;
+        if (counts.unknown > 0) message += ` · ${this.i18n.documentSetRestoreUnknown}: ${counts.unknown}`;
+        if (counts.cancelled) message = `${this.i18n.documentSetRestoreCancelled}: ${message}`;
         if (essentialsOutcome && essentialsOutcome.opened + essentialsOutcome.failed > 0) {
             message += ` · ${this.i18n.documentSetEssentialsApplied}: +${essentialsOutcome.opened}`;
             if (essentialsOutcome.failed > 0) message += ` / ${this.i18n.documentSetRestoreFailed}: ${essentialsOutcome.failed}`;
@@ -7693,7 +7920,11 @@ const updatedMap: {[rootId: string]: string} = {};
 
         const cats = document.createElement("div");
         cats.className = "sw-quick-icon-picker__cats";
-        cats.setAttribute("role", "tablist");
+        // Categories filter the same icon grid; they do not switch tabpanels.
+        // Use a labelled pressed-button group so screen readers do not enter a
+        // tab interaction model without matching panels/roving focus.
+        cats.setAttribute("role", "group");
+        cats.setAttribute("aria-label", this.i18n.quickIconCategory || this.i18n.quickIconCategoryAll || "Category");
         const renderCats = () => {
             cats.textContent = "";
             for (const category of [this.i18n.quickIconCategoryAll || "全部", ...presentCategories]) {
@@ -7701,8 +7932,7 @@ const updatedMap: {[rootId: string]: string} = {};
                 chip.type = "button";
                 chip.className = "sw-quick-icon-picker__cat" + (category === activeCategory ? " is-active" : "");
                 chip.textContent = category;
-                chip.setAttribute("role", "tab");
-                chip.setAttribute("aria-selected", String(category === activeCategory));
+                chip.setAttribute("aria-pressed", String(category === activeCategory));
                 chip.addEventListener("click", () => {
                     activeCategory = category;
                     renderCats();
@@ -8459,6 +8689,7 @@ const updatedMap: {[rootId: string]: string} = {};
         let visible = 0;
         scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
             const title = (card.dataset.title || "").toLowerCase();
+            const path = (card.dataset.searchPath || "").toLowerCase();
             const rootId = card.dataset.rootId || "";
             const matchesScopeCard = matchesScope({
                 path: card.dataset.searchPath || "",
@@ -8471,9 +8702,23 @@ const updatedMap: {[rootId: string]: string} = {};
                 ? matchesParsedQuery(title, parsed)
                     || (pinyinOn && (parsed.terms.concat(parsed.phrases)).some((needle) => pinyinTitleHit(title, needle)))
                 : (!kw || title.includes(kw));
+            const pathMatch = parsedPositive > 0 || parsed.excludes.length > 0
+                ? matchesParsedQuery(path, parsed)
+                : (!kw || path.includes(kw));
             const match = matchesScopeCard
                 && (!kw || (allowLocalTitleMatch && titleMatch) || contentRoots.has(rootId));
             card.classList.toggle("fn__none", !match);
+            const contentHit = match && contentRoots.has(rootId) && !(allowLocalTitleMatch && (titleMatch || pathMatch));
+            card.dataset.swSearchMatch = contentHit ? "opened-content" : (match ? "title" : "");
+            const meta = card.querySelector<HTMLElement>(".sw__meta");
+            meta?.querySelector(".sw__search-match-source")?.remove();
+            if (contentHit && meta) {
+                const source = document.createElement("span");
+                source.className = "sw__search-match-source";
+                source.textContent = this.i18n.docSearchSourceOpened;
+                source.setAttribute("aria-label", this.i18n.docSearchSourceOpened);
+                meta.appendChild(source);
+            }
             if (match) {
                 visible++;
             }
@@ -8765,15 +9010,26 @@ private rootIdOf(tab: Tab): string | null {
         const trigger = container.querySelector<HTMLElement>(".sw__history-trigger");
         const panel = container.querySelector<HTMLElement>(".sw__history-panel");
         if (!trigger || !panel) return () => undefined;
+        trigger.setAttribute("aria-haspopup", "menu");
+        trigger.setAttribute("aria-expanded", "false");
         let outsideHandler: ((event: PointerEvent) => void) | null = null;
         let resizeHandler: (() => void) | null = null;
         const close = () => {
+            const focusInside = panel.contains(document.activeElement);
             panel.classList.add("fn__none");
+            trigger.setAttribute("aria-expanded", "false");
             if (outsideHandler) document.removeEventListener("pointerdown", outsideHandler, true);
             if (resizeHandler) window.removeEventListener("resize", resizeHandler);
             outsideHandler = null;
             resizeHandler = null;
+            if (focusInside && trigger.isConnected) trigger.focus({preventScroll: true});
         };
+        panel.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape" || panel.classList.contains("fn__none")) return;
+            event.preventDefault();
+            event.stopPropagation();
+            close();
+        });
         let disposed = false;
         const dispose = () => {
             if (disposed) return;
@@ -8828,6 +9084,7 @@ private rootIdOf(tab: Tab): string | null {
         });
         renderPanel();
             panel.classList.remove("fn__none");
+            trigger.setAttribute("aria-expanded", "true");
             this.positionOpenHistoryPanel(trigger, panel);
             outsideHandler = (event) => { if (!container.contains(event.target as Node)) close(); };
             document.addEventListener("pointerdown", outsideHandler, true);
@@ -9186,6 +9443,8 @@ private rootIdOf(tab: Tab): string | null {
 
         const trigger = container.querySelector<HTMLElement>(".sw__fav-trigger");
         const panel = container.querySelector<HTMLElement>(".sw__fav-panel");
+        trigger?.setAttribute("aria-haspopup", "menu");
+        trigger?.setAttribute("aria-expanded", "false");
 
         // 面板打开期间才监听 DOM 变化：容器被移除（弹窗销毁/侧边栏重渲染）时解绑全局监听；
         // 面板关闭即 disconnect，避免 body 级 MutationObserver 随编辑操作全局常驻
@@ -9202,9 +9461,19 @@ private rootIdOf(tab: Tab): string | null {
         };
         // 收起面板并停止 DOM 观察（三条收起路径共用：再次点击触发器 / 点击外部 / 选中收藏项）
         const closePanel = () => {
+            const focusInside = panel?.contains(document.activeElement) ?? false;
             panel.classList.add("fn__none");
+            trigger?.setAttribute("aria-expanded", "false");
             // 全局监听仅在面板展开期间存在，关闭后立即释放。
+            unbindGlobal();
+            if (focusInside && trigger?.isConnected) trigger.focus({preventScroll: true});
         };
+        panel?.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape" || panel.classList.contains("fn__none")) return;
+            event.preventDefault();
+            event.stopPropagation();
+            closePanel();
+        });
         // 点击外部收起面板；面板关闭期间 MutationObserver 已停止，
         // 宿主容器被移除后由这次全局点击兜底解绑全部监听
         const onDocPointerDown = (event: PointerEvent) => {
@@ -9230,6 +9499,7 @@ private rootIdOf(tab: Tab): string | null {
                     onClose();
                 }, onChanged);
                 panel.classList.remove("fn__none");
+                trigger.setAttribute("aria-expanded", "true");
                 this.positionFavPanel(trigger, panel);
                 document.addEventListener("pointerdown", onDocPointerDown, true);
                 window.addEventListener("resize", onReposition);
@@ -9934,6 +10204,7 @@ private rootIdOf(tab: Tab): string | null {
 </div>`,
             width: "420px",
         });
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const input = dialog.element.querySelector<HTMLInputElement>(".sw__group-input");
         const confirm = () => {
             // 未收藏时一并收藏；已收藏时仅调整分组（留空移出分组）
@@ -9974,6 +10245,7 @@ private rootIdOf(tab: Tab): string | null {
 </div>`,
             width: "420px",
         });
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const input = dialog.element.querySelector<HTMLInputElement>(".sw__group-input");
         const confirm = () => {
             this.applyFavItemChange(() => this.setFavoriteGroup(fav.key, input.value), panel, onPick, onChanged);
@@ -11447,11 +11719,25 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         return null;
     }
 
-    // 键盘导航：方向键 / Tab 移动，Enter 切换，Esc 关闭（仅弹窗模式使用）
+    // 方向键移动卡片，Tab 保留原生控件顺序，Enter 切换，Esc 关闭。
     private bindKeydown(scrollElement: HTMLElement, closeOverlay: IOverlayClose) {
         scrollElement.addEventListener("keydown", (event) => {
             const target = event.target as HTMLElement;
             const key = event.key;
+            if (event.isComposing || event.keyCode === 229) {
+                event.stopPropagation();
+                return;
+            }
+            if (target.closest("input, select, textarea, [contenteditable]:not([contenteditable='false']), .sw__doc-preview-body")) return;
+            // 修饰键路径先于普通方向和空卡片分支；输入控件保留原生光标移动。
+            if ((key === "ArrowLeft" || key === "ArrowRight") && event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+                if (scrollElement.querySelector(".sw__search-chips")) {
+                    event.preventDefault();
+                    this.cycleSearchChip(scrollElement, key === "ArrowRight" ? 1 : -1);
+                }
+                return;
+            }
+            if (key === "Tab") return;
             if (target.closest("button, input, select, textarea, .sw__doc-preview-body")) {
                 // T-6837/T-6838：焦点经 Tab 落在文档结果行（button）时数字直达与
                 // ↑/↓ 行导航仍须可用；其余控件（输入框/下拉等）照旧让路，不劫持按键
@@ -11492,7 +11778,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 }
             }
 
-            // 流式分组下组块宽度不等，方向键按屏幕坐标就近移动；Tab 保持顺序移动
+            // 流式分组下组块宽度不等，方向键按屏幕坐标就近移动。
             const flowNav = scrollElement.classList.contains("sw--grouped-flow");
             const flowNeighbor = (dir: string): number => {
                 const neighbor = this.pickCardByPosition(cards, cards[focusIndex], dir);
@@ -11500,23 +11786,24 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             };
 
             let next = -1;
-            if (key === "ArrowRight" || (key === "Tab" && !event.shiftKey)) {
+            const plain = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
+            if (key === "ArrowRight" && plain) {
                 event.preventDefault();
                 next = key === "ArrowRight" && flowNav && flowNeighbor(key) >= 0
                     ? flowNeighbor(key)
                     : (focusIndex + 1) % cards.length;
-            } else if (key === "ArrowLeft" || (key === "Tab" && event.shiftKey)) {
+            } else if (key === "ArrowLeft" && plain) {
                 event.preventDefault();
                 next = key === "ArrowLeft" && flowNav && flowNeighbor(key) >= 0
                     ? flowNeighbor(key)
                     : (focusIndex - 1 + cards.length) % cards.length;
-            } else if (key === "ArrowDown") {
+            } else if (key === "ArrowDown" && plain) {
                 event.preventDefault();
                 next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.min(focusIndex + colCount, cards.length - 1);
-            } else if (key === "ArrowUp") {
+            } else if (key === "ArrowUp" && plain) {
                 event.preventDefault();
                 next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.max(focusIndex - colCount, 0);
-            } else if (key === "Enter") {
+            } else if (key === "Enter" && plain) {
                 event.preventDefault();
                 this.activateCardByElement(cards[focusIndex], closeOverlay);
                 return;
@@ -11541,11 +11828,6 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                     const rect = target.getBoundingClientRect();
                     this.openCardMenu(tab, target, menuHandlers, rect.left + 16, rect.top + 16);
                 }
-                return;
-            } else if ((key === "ArrowLeft" || key === "ArrowRight") && event.ctrlKey && !event.altKey && !event.metaKey) {
-                // T-6820 结果类型快捷键：Ctrl+←/→ 循环过滤条（all→tabs→unified→docs）
-                event.preventDefault();
-                this.cycleSearchChip(scrollElement, key === "ArrowRight" ? 1 : -1);
                 return;
             } else if (key === "Escape") {
                 event.stopPropagation();
@@ -11930,7 +12212,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     // 手机端收藏底部弹窗；onTabsChanged：组内页签批量开/关后刷新背后的切换器列表
-    private showMobileFavSheet(dialog: Dialog, closeOverlay: IOverlayClose, onTabsChanged?: () => void) {
+    private showMobileFavSheet(dialog: Dialog, closeOverlay: IOverlayClose, onTabsChanged?: () => void, returnFocus?: HTMLElement | null) {
         const favorites = this.getFavorites();
         const groupNames = this.getFavoriteGroupNames();
 
@@ -11953,21 +12235,37 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             overlay.remove();
             return;
         }
+        overlay.tabIndex = -1;
 
+        const closeSheet = () => this.closeMobileFavSheetOverlay(overlay, sheet, returnFocus);
         // 渲染分组/单列列表 空态
-        this.renderMobileFavSheetBody(body, favorites, groupNames, closeOverlay, onTabsChanged, overlay);
+        this.renderMobileFavSheetBody(body, favorites, groupNames, closeOverlay, onTabsChanged, overlay, closeSheet);
 
         // 动画：下一帧滑入
         this.scheduleAnimationFrame(() => { if (sheet.isConnected) sheet.classList.add("sw__mobile-sheet--open"); });
         // 点击背景关闭
-        this.bindMobileFavSheetBackdropClose(overlay, sheet);
+        overlay.querySelector<HTMLButtonElement>(".sw__mobile-sheet-close")?.addEventListener("click", closeSheet);
+        overlay.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            event.stopPropagation();
+            closeSheet();
+        });
+        this.bindMobileFavSheetBackdropClose(overlay, sheet, returnFocus);
+        overlay.querySelector<HTMLButtonElement>(".sw__mobile-sheet-close")?.focus({preventScroll: true});
     }
 
     // 收藏底部弹窗 DOM 骨架：抽屉 + 拖把柄 + 标题 + 内容容器
     private buildMobileFavSheetHtml(): string {
         return `<div class="sw__mobile-sheet" role="dialog" aria-modal="true" aria-label="${this.escapeAttr(this.i18n.mobileFavTitle)}">
     <div class="sw__mobile-sheet-handle"></div>
-    <div class="sw__mobile-sheet-title">${this.i18n.mobileFavTitle}</div>
+    <div class="sw__mobile-sheet-title">
+        <span>${this.i18n.mobileFavTitle}</span>
+        <span class="sw__mobile-sheet-close-hint" aria-label="Esc ${this.i18n.platformCloseHint || "退出"}"><kbd>Esc</kbd><span>${this.i18n.platformCloseHint || "退出"}</span></span>
+        <button type="button" class="b3-button b3-button--text sw__mobile-sheet-close" aria-label="${this.i18n.close}" title="${this.i18n.close}">
+            <svg><use xlink:href="#iconClose"></use></svg>
+        </button>
+    </div>
     <div class="sw__mobile-sheet-body"></div>
 </div>`;
     }
@@ -11980,21 +12278,22 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         closeOverlay: IOverlayClose,
         onTabsChanged: (() => void) | undefined,
         overlay: HTMLElement,
+        closeSheet: () => void,
     ) {
         const groups = groupFavoritesByGroup(favorites, groupNames);
         const groupedNames = Array.from(groups.keys()).filter((name) => name !== "");
         const ungrouped = groups.get("") || [];
 
         if (groupedNames.length === 0) {
-            body.appendChild(this.buildMobileFavSheetList(ungrouped, overlay, closeOverlay));
+            body.appendChild(this.buildMobileFavSheetList(ungrouped, overlay, closeOverlay, closeSheet));
         } else {
             groupedNames.forEach((name) => {
                 this.appendMobileFavSheetSection(body, name, groups.get(name) || [], false,
-                    overlay, closeOverlay, onTabsChanged);
+                    overlay, closeOverlay, onTabsChanged, closeSheet);
             });
             if (ungrouped.length > 0) {
                 this.appendMobileFavSheetSection(body, this.i18n.ungrouped, ungrouped, true,
-                    overlay, closeOverlay, onTabsChanged);
+                    overlay, closeOverlay, onTabsChanged, closeSheet);
             }
         }
 
@@ -12017,6 +12316,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         overlay: HTMLElement,
         closeOverlay: IOverlayClose,
         onTabsChanged: (() => void) | undefined,
+        closeSheet: () => void,
     ) {
         const section = document.createElement("div");
         section.className = "sw__mobile-sheet-section";
@@ -12034,13 +12334,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             // 批量操作完成后：关闭嵌套弹窗 → 关闭收藏弹窗 → 刷新背后切换器列表
             const onNestedClosed = () => {
                 document.querySelectorAll(".sw__mobile-sheet-overlay--nested").forEach((el) => el.remove());
-                overlay.remove();
+                closeSheet();
                 onTabsChanged?.();
             };
-            openMobileGroupActions.call(this, name, items, onNestedClosed);
+            openMobileGroupActions.call(this, name, items, onNestedClosed, moreBtn);
         });
         section.appendChild(header);
-        section.appendChild(this.buildMobileFavSheetList(items, overlay, closeOverlay));
+        section.appendChild(this.buildMobileFavSheetList(items, overlay, closeOverlay, closeSheet));
         body.appendChild(section);
     }
 
@@ -12049,6 +12349,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         favorites: IFavoriteItem[],
         overlay: HTMLElement,
         closeOverlay: IOverlayClose,
+        closeSheet?: () => void,
     ): HTMLElement {
         const list = document.createElement("div");
         list.className = "sw__mobile-sheet-list";
@@ -12058,7 +12359,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             item.className = "sw__mobile-sheet-item";
             item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span>${this.escapeAttr(fav.title)}</span>`;
             item.addEventListener("click", () => {
-                overlay.remove();
+                closeSheet?.();
                 this.jumpToFavorite(fav, closeOverlay);
             });
             list.appendChild(item);
@@ -12067,12 +12368,21 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     // 点击背景关闭：抽屉下滑 + 遮罩淡出，250ms 后移除
-    private bindMobileFavSheetBackdropClose(overlay: HTMLElement, sheet: HTMLElement) {
+    private closeMobileFavSheetOverlay(overlay: HTMLElement, sheet: HTMLElement, returnFocus?: HTMLElement | null) {
+        if (!overlay.isConnected || overlay.dataset.closing === "true") return;
+        overlay.dataset.closing = "true";
+        sheet.classList.remove("sw__mobile-sheet--open");
+        overlay.style.opacity = "0";
+        setTimeout(() => {
+            overlay.remove();
+            if (returnFocus?.isConnected) returnFocus.focus({preventScroll: true});
+        }, FAB_HIDE_DELAY_MS);
+    }
+
+    private bindMobileFavSheetBackdropClose(overlay: HTMLElement, sheet: HTMLElement, returnFocus?: HTMLElement | null) {
         overlay.addEventListener("click", (e) => {
             if (e.target === overlay) {
-                sheet.classList.remove("sw__mobile-sheet--open");
-                overlay.style.opacity = "0";
-                setTimeout(() => overlay.remove(), FAB_HIDE_DELAY_MS);
+                this.closeMobileFavSheetOverlay(overlay, sheet, returnFocus);
             }
         });
     }
@@ -12194,7 +12504,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             },
             onJournal: () => this.openJournal(),
             onSettings: () => this.openSetting(),
-            onHome: () => openSecondPanel.call(this),
+            onHome: () => this.openPlatformSurface("workbench", "switcher", {entry: "floating-ball"}),
             onSnippetStudio: () => this.openPlatformSurface("studio", "switcher", {entry: "floating-ball"}),
             onQuickCapture: () => this.openQuickCapture(),
             onPreviousTab: () => this.cycleFloatingBallTab(-1),
@@ -12635,12 +12945,46 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         mountPlatformChrome(element, {
             surface: "switcher",
             labels: this.getPlatformSurfaceLabels(),
-            available: this.isMobile ? ["switcher", "workbench"] : ["switcher", "workbench", "studio"],
+            // Keep the sidebar surface navigation in lockstep with the
+            // persisted module switches.  A hard-coded list here made the
+            // Studio/Workbench entry remain visible after being disabled in
+            // settings (the route guard rejected it only after a click).
+            available: this.getAvailablePlatformSurfaces(),
             onNavigate: (surface) => {
                 if (this.isUnloading || !element.isConnected) return;
                 this.openPlatformSurface(surface, "switcher", {entry: "surface-nav"});
             },
+            // 侧栏没有可依赖的 Dialog 外壳；把平台头部的关闭动作接回
+            // SiYuan dock 模型，保证与弹窗/移动面板使用同一退出语义。
+            onClose: () => {
+                if (!element.isConnected) return;
+                const type = this.name + SIDEBAR_DOCK_TYPE;
+                try {
+                    this.getDockByType(type)?.toggleModel?.(type, false);
+                } catch (error) {
+                    logger.warn("close sidebar fail", error);
+                }
+            },
+            closeHint: this.i18n.platformCloseHint,
+            closeLabel: this.i18n.close,
         });
+        // 侧栏没有 Dialog 的宿主 Escape 处理，平台头部仍提示 Esc 退出，
+        // 因此在 dock 根节点补同一条关闭语义。监听采用冒泡阶段，
+        // 让排序浮层、拖拽取消等内部 Escape 处理优先完成。
+        if (element.dataset.swSidebarEscapeBound !== "true") {
+            element.dataset.swSidebarEscapeBound = "true";
+            element.addEventListener("keydown", (event) => {
+                if (event.key !== "Escape" || event.defaultPrevented) return;
+                event.preventDefault();
+                event.stopPropagation();
+                const type = this.name + SIDEBAR_DOCK_TYPE;
+                try {
+                    this.getDockByType(type)?.toggleModel?.(type, false);
+                } catch (error) {
+                    logger.warn("escape close sidebar fail", error);
+                }
+            });
+        }
         // T-6758: the sidebar host is created/replaced by SiYuan lazily.  Run
         // reconciliation after the host's own markup is ready so mounting the
         // portal cannot be lost to this render's innerHTML replacement.

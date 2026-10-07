@@ -1,19 +1,19 @@
 {
  "version": 1,
  "entries": {
+  "dist/snippet-studio.js": 43521,
   "docs/agent-document-context-m2.md": 1109,
   "docs/architecture.svg": 1897,
   "docs/component-store-guide.md": 3250,
-  "docs/interface-map.svg": 1805,
-  "dist/snippet-studio.js": 18670,
-  "i18n/en.json": 19597,
-  "i18n/zh-CN.json": 21436,
+  "docs/interface-map.svg": 1787,
+  "i18n/en.json": 27357,
+  "i18n/zh-CN.json": 29593,
   "icon.png": 18386,
-  "index.css": 34758,
-  "index.js": 295198,
-  "plugin.json": 786,
-  "preview.png": 50389,
-  "README.en-US.md": 20266,
-  "README.md": 21659
+  "index.css": 46099,
+  "index.js": 293903,
+  "plugin.json": 725,
+  "preview.png": 50382,
+  "README.en-US.md": 24324,
+  "README.md": 26097
  }
 }

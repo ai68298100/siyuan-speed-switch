@@ -82,3 +82,20 @@ test('mount: dispose removes the frame and renders become no-ops (T-6995)', () =
     preview.render({type: "css", content: "", dark: false, scene: "reading", width: "auto"});
     assert.equal(container.querySelector("iframe"), null, "dispose 后渲染必须是 no-op");
 });
+
+test('mount: clear invalidates a detached frame before its late load (AB-1302)', () => {
+    const dom = new JSDOM('<!doctype html><body></body>');
+    const container = mount(dom.window.document, 1200);
+    let ready = 0;
+    const preview = createSnippetPreview(container, {onReady: () => { ready += 1; }});
+    preview.render({type: "css", content: ".h3 { color: red; }", dark: false, scene: "reading", width: "auto"});
+    const stale = container.querySelector("iframe");
+    assert.ok(stale);
+    preview.clear();
+    assert.equal(container.querySelector("iframe"), null, "clear 必须移除当前帧");
+    stale.dispatchEvent(new dom.window.Event("load"));
+    assert.equal(ready, 0, "迟到 load 不得把已清空的预览改回 ready");
+    preview.render({type: "css", content: "", dark: false, scene: "reading", width: "auto"});
+    assert.ok(container.querySelector("iframe"), "clear 后仍可继续渲染新帧");
+    preview.dispose();
+});

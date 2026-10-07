@@ -292,3 +292,56 @@ test('preview find counts and navigates matches, restores structure on close, re
         assert.equal(count.textContent, '1/2', '重开后对新内容重新计数');
     } finally {f.dom.window.close();}
 });
+
+test('preview find preserves IME input and applies the committed query once (T-7127)', async () => {
+    const f = fixture(url => Promise.resolve(url.includes('Outline')
+        ? {code: 0, data: []} : docResponse('alpha 中文x alpha 中文')));
+    try {
+        f.schedule(); await f.flush();
+        const pane = f.box.querySelector('.sw__doc-preview');
+        pane.querySelector('.sw__doc-preview-find-toggle').click();
+        const bar = pane.querySelector('.sw__doc-preview-find');
+        const input = bar.querySelector('input');
+        const count = bar.querySelector('.sw__doc-preview-find-count');
+        input.value = 'alpha';
+        input.dispatchEvent(new f.dom.window.InputEvent('input', {bubbles: true}));
+        const originalMark = pane.querySelector('mark');
+        let hostKeys = 0;
+        f.scroll.addEventListener('keydown', () => {hostKeys++;});
+        input.dispatchEvent(new f.dom.window.CompositionEvent('compositionstart', {bubbles: true}));
+        input.value = 'zhongw';
+        input.dispatchEvent(new f.dom.window.InputEvent('input', {bubbles: true, isComposing: true}));
+        assert.equal(count.textContent, '1/2', '预编辑不得更改查找结果');
+        assert.equal(pane.querySelector('mark'), originalMark, '预编辑不得重复重建高亮');
+        for (const key of ['Enter', 'Escape', 'ArrowDown', 'ArrowUp']) {
+            const event = new f.dom.window.KeyboardEvent('keydown', {key, bubbles: true, cancelable: true});
+            input.dispatchEvent(event);
+            assert.equal(event.defaultPrevented, false, `${key} 保留输入法默认处理`);
+            assert.equal(bar.hidden, false, `${key} 不关闭查找`);
+            assert.equal(count.textContent, '1/2', `${key} 不移动命中`);
+            assert.equal(f.dom.window.document.activeElement, input, `${key} 不改变焦点`);
+        }
+        assert.equal(hostKeys, 0, '组合按键不冒泡到宿主导航或关闭');
+        input.value = '中文';
+        input.dispatchEvent(new f.dom.window.CompositionEvent('compositionend', {bubbles: true}));
+        assert.equal(count.textContent, '1/2');
+        const committedMark = pane.querySelector('mark');
+        assert.equal(committedMark.textContent, '中文', '最终查询来自真实控件');
+        input.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
+        assert.equal(count.textContent, '2/2', '提交后正常 Enter 继续导航');
+        input.dispatchEvent(new f.dom.window.InputEvent('input', {bubbles: true}));
+        assert.equal(pane.querySelector('mark'), committedMark, 'compositionend 后同值 input 不再重建高亮');
+        assert.equal(count.textContent, '2/2', '同值 input 不重置当前命中');
+        for (const properties of [{isComposing: true}, {keyCode: 229}]) {
+            const event = new f.dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true, ...properties});
+            input.dispatchEvent(event);
+            assert.equal(event.defaultPrevented, false);
+            assert.equal(bar.hidden, false, '事件组合标志及 229 兼容输入法');
+        }
+        input.value = '中文x';
+        input.dispatchEvent(new f.dom.window.InputEvent('input', {bubbles: true}));
+        assert.equal(count.textContent, '1/1', '后续普通输入立即生效');
+        input.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+        assert.equal(bar.hidden, true, '非组合 Esc 仍关闭查找');
+    } finally {f.dom.window.close();}
+});

@@ -126,6 +126,10 @@ test('mobile store clear filters restores all tab', () => assert.match(storeSour
 test('mobile store clear filters restores search focus', () => assert.match(storeSource,/applyFilter\(\);\s*searchInput\.focus\(\)/));
 test('mobile store add action remains independent from size selection', () => assert.match(storeSource,/dataset\.action = added \? "apply-size" : "add"/));
 test('mobile store detail preview remains an inline region', () => assert.match(storeSource,/container\.setAttribute\("role", "region"\)/));
+test('mobile store detail back restores focus to the catalog card', () => {
+    assert.match(storeSource,/delete root\.dataset\.detailOpen;[\s\S]{0,700}target\.focus\(\{preventScroll: true\}\)/,
+        '移动端详情返回列表后必须把焦点还给原组件行');
+});
 test('mobile store configure action remains a button', () => assert.match(storeSource,/configButton\.type = "button"/));
 test('mobile store remove action remains a button', () => assert.match(storeSource,/removeButton\.type = "button"/));
 test('mobile store does not install document-level card key handlers', () => assert.doesNotMatch(storeSource, /document\.addEventListener\("keydown"/));
@@ -412,7 +416,7 @@ test('config stale notebook option uses current id', () => assert.match(configFo
 test('config stale notebook option is labelled unavailable', () => assert.match(configFormSource, /stale\.textContent = `\$\{current\} · \$\{this\.i18n\.homeConfigUnavailableValue\}`/));
 test('config notebook selects restored value after fill', () => assert.match(configFormSource, /select\.value = resetKeys\.has\(field\.key\) \? "" : current/));
 test('config notebook change listener is installed', () => assert.match(configFormSource, /select\.addEventListener\("change", \(\) => \{ draft\[field\.key\] = select\.value; \}\)/));
-test('config notebook promise checks field options', () => assert.match(configFormSource, /void this\.loadNotebooks\(\)\.then\(\(notebooks\) => \{\s*fill\(notebooks\)/));
+test('config notebook promise checks field options and ignores late disposal', () => assert.match(configFormSource, /void this\.loadNotebooks\(\)\.then\(\(notebooks\) => \{\s*if \(configFormDisposed\) return;\s*fill\(notebooks\)/));
 test('config document input has placeholder', () => assert.match(configFormSource, /input\.placeholder = placeholderText\(resolveHomeConfigPlaceholder\(inst\.moduleId, field\.key\)\) \|| this\.i18n\.homeConfigDocumentPlaceholder/));
 test('config document input starts from draft', () => assert.match(configFormSource, /input\.value = typeof draft\[field\.key\] === "string"/));
 test('config document input records initial draft', () => assert.match(configFormSource, /draft\[field\.key\] = input\.value/));

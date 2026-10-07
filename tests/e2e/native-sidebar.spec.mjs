@@ -128,10 +128,15 @@ test("T-7115 opt-in real host dock: narrow layout keeps filters, focus and contr
     expect(widened.divider, "真实宿主右侧分隔条必须可定位").not.toBeNull();
     const wideAfterSetup = widened.root?.width || 0;
     await dragDivider(page, 190);
-    const narrow = await hostSnapshot(page);
+    let narrow = await hostSnapshot(page);
+    for (let attempt = 0; attempt < 3 && (narrow.root?.width || 0) > 260; attempt += 1) {
+        await dragDivider(page, 190);
+        narrow = await hostSnapshot(page);
+    }
     const narrowWidth = narrow.root?.width || 0;
     expect(narrowWidth, "拖动真实宿主分隔条后侧栏必须变窄").toBeLessThan(wideAfterSetup);
     expect(narrowWidth).toBeGreaterThanOrEqual(100);
+    expect(narrowWidth).toBeLessThanOrEqual(260);
 
     const controls = await measureControls(page);
     expect(controls.root).not.toBeNull();
@@ -143,6 +148,7 @@ test("T-7115 opt-in real host dock: narrow layout keeps filters, focus and contr
         expect(control.width, `${control.selector} must retain a hit box`).toBeGreaterThan(0);
         expect(control.height, `${control.selector} must retain a hit box`).toBeGreaterThan(0);
         expect(control.tabIndex, `${control.selector} must remain keyboard reachable`).toBeGreaterThanOrEqual(0);
+        expect(control.label.trim().length, `${control.selector} must expose an accessible name`).toBeGreaterThan(0);
     }
     expect(controls.sortLabel?.overflow).toBe("hidden");
     expect(controls.sortLabel?.whiteSpace).toBe("nowrap");
@@ -186,7 +192,7 @@ test("T-7115 opt-in real host dock: narrow layout keeps filters, focus and contr
             dockItem: host.dockType,
             wideWidth: wideAfterSetup,
             narrowWidth,
-            controls: controls.controls.map(({selector, width, height, tabIndex}) => ({selector, width, height, tabIndex})),
+            controls: controls.controls.map(({selector, width, height, tabIndex, label}) => ({selector, width, height, tabIndex, accessibleNamePresent: label.trim().length > 0})),
             noHorizontalOverflow: controls.root.scrollWidth <= controls.root.clientWidth + 1 && controls.toolbar.scrollWidth <= controls.toolbar.clientWidth + 1,
             visualEvidence: {artifact: "native-sidebar-narrow.png", scope: SIDEBAR_SELECTOR, width: sidebarBox.width, height: sidebarBox.height},
         },

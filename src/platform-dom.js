@@ -82,6 +82,33 @@ function createPlatformPillAction(doc, options = {}) {
     return button;
 }
 
+/**
+ * 给思源原生 Dialog 标题栏补一枚轻量 Esc 提示。
+ * Dialog 自带关闭按钮与 Escape 行为，这个助手只补可发现性，不接管销毁流程。
+ * 重复调用保持幂等，便于不同宿主在 Dialog 初始化后统一挂载。
+ */
+function mountPlatformDialogCloseHint(dialogElement, label = "to close", doc) {
+    const root = dialogElement && typeof dialogElement.querySelector === "function" ? dialogElement : null;
+    if (!root) return null;
+    const header = root.querySelector(".b3-dialog__header");
+    const close = header && header.querySelector(".b3-dialog__close");
+    if (!header || !close) return null;
+    const existing = header.querySelector(".sw-platform-dialog__close-hint");
+    if (existing) return existing;
+    header.classList.add("sw-platform-dialog__header");
+    close.classList.add("sw-platform-dialog__close-button");
+    const hint = createPlatformElement(doc || root.ownerDocument || document, "span", "sw-platform-dialog__close-hint");
+    const normalizedLabel = label === undefined || label === null || String(label).trim() === ""
+        ? "to close"
+        : String(label).trim();
+    hint.setAttribute("aria-label", `Esc ${normalizedLabel}`);
+    hint.appendChild(createPlatformKbd(doc || root.ownerDocument || document, "Esc"));
+    const text = createPlatformElement(doc || root.ownerDocument || document, "span", "sw-platform-dialog__close-hint-label", normalizedLabel);
+    hint.appendChild(text);
+    header.insertBefore(hint, close);
+    return hint;
+}
+
 module.exports = {
     PLATFORM_STATUS_STATES,
     normalizePlatformStatusState,
@@ -89,4 +116,5 @@ module.exports = {
     createPlatformKbd,
     createPlatformSegmented,
     createPlatformPillAction,
+    mountPlatformDialogCloseHint,
 };

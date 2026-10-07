@@ -148,6 +148,7 @@ function normalizeHomeViewResult(value, options = {}) {
     return {
         status,
         cached: source.cached === true,
+        ...(source.stale === true ? {stale: true} : {}),
         reason: text(source.reason, 32),
         title: text(rawSnapshot.title, 64),
         calendarWeekdays: text(rawSnapshot.calendarWeekdays, 7),
@@ -209,6 +210,7 @@ function buildHomeModuleView(module, result, options = {}) {
         status: normalized.status,
         stat: normalized.stat,
         cached: normalized.cached,
+        ...(normalized.stale === true ? {stale: true} : {}),
         reason: normalized.reason,
         updatedAt: normalized.updatedAt,
         sourceHealth: normalized.sourceHealth,
@@ -242,6 +244,11 @@ function renderHomeModuleView(doc, view, options = {}) {
         sourceFresh: "实时",
         sourceCached: "缓存源",
         sourceStale: "过期缓存",
+        staleRefreshFailed: "旧内容（缓存）· 刷新失败",
+        timeout: "请求超时",
+        unsupported: "宿主不支持",
+        unregistered: "提供方未注册",
+        backoff: "暂缓重试",
         previousMonth: "上月",
         nextMonth: "下月",
         today: "今天",
@@ -284,7 +291,7 @@ function renderHomeModuleView(doc, view, options = {}) {
         meta.className = "sw__home-module-meta";
         // T-6473 头部瘦身：首行只显示时间本身（"更新"前缀移入 tooltip），
         // 收窄后标题不再被挤成省略号
-        const metaText = [view.cached ? (labels.cached || "Cached") : "", updatedAt].filter(Boolean).join(" · ");
+        const metaText = [view.stale ? (labels.staleRefreshFailed || "Stale · refresh failed") : view.cached ? (labels.cached || "Cached") : "", updatedAt].filter(Boolean).join(" · ");
         meta.textContent = metaText;
         meta.setAttribute("title", `${labels.updated || "Updated"} ${metaText}`);
         heading.appendChild(meta);
@@ -856,9 +863,8 @@ function renderHomeModuleView(doc, view, options = {}) {
         // Keep a generic fallback for older hosts, while allowing the host
         // adapter to surface a stable reason such as timeout/unsupported in a
         // localized way without exposing raw exception text.
-        const reasonCode = view.status === "error" && view.reason && !labels[view.reason] ? ` · ${view.reason}` : "";
         const hint = (view.status === "empty" || view.status === "blocked") && view.emptyHint ? view.emptyHint : "";
-        status.textContent = (hint || labels[view.reason] || labels[view.status] || labels.empty) + reasonCode;
+        status.textContent = hint || labels[view.reason] || labels[view.status] || labels.empty;
         body.appendChild(status);
         if (view.status === "error" && options.onRetry) {
             const retry = doc.createElement("button");

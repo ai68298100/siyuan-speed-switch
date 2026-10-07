@@ -1,0 +1,121 @@
+[
+  {
+    "target": "src/doc-search-ui.ts",
+    "find": "if (composing || event.isComposing || event.keyCode === 229) {",
+    "replace": "if (false) {",
+    "test": "tests/doc-preview-behavior.test.cjs",
+    "expected": "preview find preserves IME input and applies the committed query once (T-7127)"
+  },
+  {
+    "target": "src/doc-search-ui.ts",
+    "find": "if (!alreadyCommitted) runDocPreviewFind.call(this, pane);",
+    "replace": "runDocPreviewFind.call(this, pane);",
+    "test": "tests/doc-preview-behavior.test.cjs",
+    "expected": "preview find preserves IME input and applies the committed query once (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (composingFindInputs.has(field) || event.isComposing) return;",
+    "replace": "if (false) return;",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio find keeps focus while typing and commits IME queries once (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (composingFindInputs.has(findQueryInput) || event.isComposing || event.keyCode === 229) return;",
+    "replace": "if (false) return;",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio find keeps focus while typing and commits IME queries once (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (!alreadyCommitted) onCommit();",
+    "replace": "onCommit();",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio find keeps focus while typing and commits IME queries once (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (focus) editor.focus({preventScroll: true});",
+    "replace": "editor.focus({preventScroll: true});",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio find keeps focus while typing and commits IME queries once (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "canRedoDraftHistory, findDraftMatches, replaceDraftMatches, nextConflictCopyName",
+    "replace": "canRedoDraftHistory, replaceDraftMatches, nextConflictCopyName",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio find keeps focus while typing and commits IME queries once (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "canRedoDraftHistory, findDraftMatches, replaceDraftMatches, nextConflictCopyName",
+    "replace": "canRedoDraftHistory, findDraftMatches, nextConflictCopyName",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio replace waits for IME commit before its two-step transaction (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (composingFindInputs.size || composing) return;",
+    "replace": "if (false) return;",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio replace waits for IME commit before its two-step transaction (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (queryComposing || event.isComposing || event.keyCode === 229) return;",
+    "replace": "if (false) return;",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio picker filters committed IME queries once and keeps normal navigation (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (queryComposing || event.isComposing || event.keyCode === 229) event.stopPropagation();",
+    "replace": "if (false) event.stopPropagation();",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio picker filters committed IME queries once and keeps normal navigation (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "query: committedQuery, type: language.value",
+    "replace": "query: query.value, type: language.value",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio picker filters committed IME queries once and keeps normal navigation (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (queryComposing || event.isComposing) return;",
+    "replace": "if (false) return;",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio picker filters committed IME queries once and keeps normal navigation (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (alreadyCommitted) return;",
+    "replace": "if (false) return;",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio picker filters committed IME queries once and keeps normal navigation (T-7127)"
+  },
+  {
+    "target": "src/doc-search-ui.ts",
+    "find": "                event.stopPropagation();",
+    "replace": "                void event;",
+    "test": "tests/doc-preview-behavior.test.cjs",
+    "expected": "preview find preserves IME input and applies the committed query once (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (composingFindInputs.has(field) || event.isComposing || event.keyCode === 229) event.stopPropagation();",
+    "replace": "if (false) event.stopPropagation();",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio find keeps focus while typing and commits IME queries once (T-7127)"
+  },
+  {
+    "target": "src/snippet-studio-ui.js",
+    "find": "if (composingFindInputs.has(field) || event.isComposing || event.keyCode === 229) event.stopPropagation();",
+    "replace": "if (false) event.stopPropagation();",
+    "test": "tests/snippet-studio-mount.test.cjs",
+    "expected": "studio replace waits for IME commit before its two-step transaction (T-7127)"
+  }
+]
