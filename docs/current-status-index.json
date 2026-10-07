@@ -5,7 +5,7 @@
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7151",
+  "nextLocalTask": "T-7152",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -79,7 +79,8 @@
     "T-7195",
     "T-7196",
     "T-7197",
-    "T-7198"
+    "T-7198",
+    "T-7199"
   ],
   "tasks": [
     {
@@ -898,7 +899,7 @@
     {
       "id": "T-7151",
       "title": "扩展已有真实端到端性能基准，修正 interactive/p95 命名",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "deliverable",
@@ -911,11 +912,12 @@
         "tests/e2e/first-open.spec.mjs",
         "scripts/release-readiness-metrics.cjs",
         "docs/t7151-performance-evidence-2026-10-07.md",
-      ".artifacts/t7151-pass/target.json",
-      "tests/e2e/t7151-scale.spec.mjs",
-      ".artifacts/e2e-background/20261007112850-7332-4e7505/artifacts/t7151-scale-32/results.json"
+        ".artifacts/t7151-pass/target.json",
+        "tests/e2e/t7151-scale.spec.mjs",
+        ".artifacts/e2e-background/20261007112850-7332-4e7505/artifacts/t7151-scale-32/results.json",
+        ".artifacts/e2e-background/20261007120330-19600-562033/artifacts/t7151-scale-32/results.json"
       ],
-      "next": "T-7140"
+      "next": "T-7152"
     },
     {
       "id": "T-7152",
@@ -1924,6 +1926,23 @@
         ".artifacts/e2e-background/20261007112850-7332-4e7505/artifacts/t7151-scale-32/results.json"
       ],
       "next": "T-7151"
+    },
+    {
+      "id": "T-7199",
+      "title": "补齐隔离 32 页签过滤与激活 p95 样本",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "performance",
+      "dependsOn": [
+        "T-7198"
+      ],
+      "evidence": [
+        "tests/e2e/t7151-scale.spec.mjs",
+        "docs/t7151-performance-evidence-2026-10-07.md",
+        ".artifacts/e2e-background/20261007120330-19600-562033/artifacts/t7151-scale-32/results.json"
+      ],
+      "next": "T-7152"
     }
   ],
   "global": {

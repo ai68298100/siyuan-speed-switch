@@ -6,6 +6,8 @@
  *
  * 每个文档都经真实切换器完成「打开→搜索→点击→编辑器出现」，随后打开
  * 切换器空查询读取 .sw__card[data-tab-id]，并同时记录 .protyle-title。
+ * 同一轮还分别记录「输入→结果可见」过滤耗时与「点击→编辑器标题出现」
+ * 激活耗时；32 篇文档保证两条路径各有至少 20 个有效样本。
  * 宿主页签上限先经 /api/setting/setFiletree 设置为 32，测试结束恢复原值，
  * 再删除本轮临时笔记本。100/500 不在这里伪装成页签规模。
  */
@@ -16,6 +18,7 @@ import {openApp, openSwitcher, createClient, target} from "./helpers/app.mjs";
 
 const ENABLED = process.env.SWSS_E2E_SCALE === "1";
 const MAX_OPEN_TABS = 32;
+const MIN_PATH_SAMPLES = 20;
 const PERSONAL_PORT = 6806;
 const MARKER_FILE = "swss-e2e.json";
 const RUN = String(Date.now()).slice(-8);
@@ -186,14 +189,18 @@ test.describe("T-7151 隔离桌面 32 页签真实规模", () => {
                 const started = await page.evaluate(() => performance.now());
                 await openSwitcher(page);
                 const result = page.locator(".sw__doc-item", {hasText: doc.title}).first();
+                const filterStarted = await page.evaluate(() => performance.now());
                 await page.locator("input.sw__search").fill(doc.title);
                 await result.waitFor({state: "visible", timeout: 30000});
+                const filterMs = Math.round((await page.evaluate(() => performance.now())) - filterStarted);
+                const activationStarted = await page.evaluate(() => performance.now());
                 await result.click();
                 await page.waitForFunction((title) => Array.from(document.querySelectorAll(".protyle-title"))
                     .some((element) => (element.textContent || "").includes(title)), doc.title, {timeout: 30000});
+                const activationMs = Math.round((await page.evaluate(() => performance.now())) - activationStarted);
                 await waitForSwitcherClosed(page);
                 const snapshot = await inspectVisibleTabs(page, fixtureIds, fixtureTitles);
-                samples.push({index: index + 1, title: doc.title, openMs: Math.round((await page.evaluate(() => performance.now())) - started), ...snapshot});
+                samples.push({index: index + 1, title: doc.title, openMs: Math.round((await page.evaluate(() => performance.now())) - started), filterMs, activationMs, ...snapshot});
                 expect(snapshot.fixtureCards, `第 ${index + 1} 个文档点击后必须有真实页签卡片`).toBeGreaterThanOrEqual(1);
                 expect(snapshot.fixtureProtyleTitles, `第 ${index + 1} 个文档点击后必须有真实编辑器标题`).toBeGreaterThanOrEqual(1);
                 expect(snapshot.cards, `宿主页签数不能超过配置上限（第 ${index + 1} 次）`).toBeLessThanOrEqual(MAX_OPEN_TABS);
@@ -206,6 +213,8 @@ test.describe("T-7151 隔离桌面 32 页签真实规模", () => {
                 baseline,
                 final: last,
                 open: summarizeSamples(samples.map((sample) => sample.openMs)),
+                filter: summarizeSamples(samples.map((sample) => sample.filterMs)),
+                activation: summarizeSamples(samples.map((sample) => sample.activationMs)),
                 expectedFixtureMinimum,
                 samples,
                 fixture: {notebook: seeded.notebook, documentCount: seeded.docs.length, fixtureIds: [...fixtureIds]},
@@ -213,6 +222,10 @@ test.describe("T-7151 隔离桌面 32 页签真实规模", () => {
             console.log("[T-7151] isolated 32-tab UI scale:", JSON.stringify(report));
             expect(last.cards).toBeLessThanOrEqual(MAX_OPEN_TABS);
             expect(last.fixtureCards).toBeGreaterThanOrEqual(expectedFixtureMinimum);
+            expect(report.filter.sampleCount, "过滤路径必须至少有 20 个有效样本").toBeGreaterThanOrEqual(MIN_PATH_SAMPLES);
+            expect(report.filter.p95, "过滤路径至少 20 个样本后必须计算 p95").toBeGreaterThanOrEqual(0);
+            expect(report.activation.sampleCount, "激活路径必须至少有 20 个有效样本").toBeGreaterThanOrEqual(MIN_PATH_SAMPLES);
+            expect(report.activation.p95, "激活路径至少 20 个样本后必须计算 p95").toBeGreaterThanOrEqual(0);
             expect(pageErrors, `32 页签规模测试出现未捕获异常：${pageErrors.join(" | ")}`).toEqual([]);
         } finally {
             // 恢复宿主配置，即使 UI 断言失败也不把 32 写入后续测试工作区。
