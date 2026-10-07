@@ -5,7 +5,7 @@
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7152",
+  "nextLocalTask": "T-7153",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -922,7 +922,7 @@
     {
       "id": "T-7152",
       "title": "只优化测量成立的主流程瓶颈",
-      "status": "planned",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "conditional",
@@ -931,9 +931,13 @@
       ],
       "evidence": [
         "docs/dev-plan-2026-10-06.md",
-        "docs/product-review-2026-10-06.md",
-        "tests/e2e/first-open.spec.mjs",
-        "scripts/release-readiness-metrics.cjs"
+        "docs/t7151-performance-evidence-2026-10-07.md",
+        "ROADMAP.md",
+        "tests/search-filter-perf.test.cjs",
+        "tests/search-orchestration-perf.test.cjs",
+        "tests/perf-complexity-gate.test.cjs",
+        "tests/tab-pipeline-perf.test.cjs",
+        ".artifacts/e2e-background/20261007120330-19600-562033/artifacts/t7151-scale-32/results.json"
       ],
       "next": "T-7153"
     },
