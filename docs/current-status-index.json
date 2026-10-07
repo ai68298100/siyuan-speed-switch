@@ -2005,6 +2005,25 @@
         ".artifacts/e2e-background/20261007181410-29436-80d19c/artifacts/t7153-cache-trend/results.json"
       ],
       "next": "T-7153"
+    },
+    {
+      "id": "T-7202",
+      "title": "为 T-7153 长会话增加有界检查点诊断",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "performance",
+      "dependsOn": [
+        "T-7201"
+      ],
+      "evidence": [
+        "tests/e2e/resource-trend.spec.mjs",
+        "playwright.e2e.resource-trend.config.mjs",
+        "docs/adr/0152-t7153-long-run-checkpoints.md",
+        ".artifacts/e2e-background/20261007191232-34884-acdb6c/artifacts/t7153-checkpoint-30/results.json",
+        ".artifacts/e2e-background/20261007194651-20824-97bd67/artifacts/t7153-detached-60-v3/results.json"
+      ],
+      "next": "T-7153"
     }
   ],
   "global": {

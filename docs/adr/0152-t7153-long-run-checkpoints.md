@@ -1,0 +1,35 @@
+# ADR 0152：T-7153 长会话诊断使用有界检查点
+
+- 状态：已接受，已实施
+- 日期：2026-10-08
+- 任务：T-7202
+
+## 决策
+
+显式设置 `SWSS_E2E_RESOURCE_TREND_LONG=1` 时，资源趋势 E2E 按
+`SWSS_E2E_RESOURCE_TREND_CHECKPOINT`（默认 300 轮）保留稳定样本，并把每个检查点
+追加到 `resource-trend-checkpoints.ndjson`。长跑只保留基线、检查点和最终样本；短跑维持
+逐轮报告。长跑配置关闭 Playwright trace 和失败截图，避免诊断产物在测试进程内累积到
+遮蔽被测页面的资源趋势。
+
+## 原因
+
+原始 3720 轮运行把每轮页面样本和持续 trace 留在单个测试结果中，约 35 分钟时测试进程
+工作集超过 800 MiB，未生成最终报告。该退出发生在诊断记录层，不能作为插件通过或失败的
+证据。检查点文件仍逐项保存稳定轮次的 listener、timer、frame、fetch、DOM、memory 和
+provider 缓存计数，保留前后可比的长期趋势，同时将诊断自身的内存增长限制在有界样本内。
+
+## 边界
+
+检查点不会清空浏览器中的监听器计数或 provider 状态，也不会删除 detached listener 观测；
+因此不会用“重置探针”掩盖增长。`activeConnectedRegistrations`、商店渲染监听活动数、
+请求 in-flight 和 home provider 计数仍按完整会话累计，`performance.memory` 不可用或固定
+时只如实记录。长会话的真实宿主、隔离工作区、端口和 dist 快照边界保持不变。
+
+## 验证
+
+- 30 轮、每 10 轮检查点：通过，报告约 100 KiB，检查点文件生成。
+- 60 轮、每 60 轮检查点：通过；`pageErrors=[]`、最终 fetch in-flight 为 0、商店渲染
+  监听活动为 0、缓存和 generation 计数为 3 且单个检查点范围为 0。
+- 原始 3720 轮运行因无界 trace/样本累积中止，作为诊断边界记录，不作为 T-7153 长会话
+  证据。

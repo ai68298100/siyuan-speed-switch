@@ -3,6 +3,7 @@ import {defineConfig} from "@playwright/test";
 import path from "node:path";
 
 const artifactDir = path.resolve(process.env.SWSS_E2E_ARTIFACT_DIR || ".artifacts/e2e-resource-trend");
+const longRun = process.env.SWSS_E2E_RESOURCE_TREND_LONG === "1";
 
 export default defineConfig({
     testDir: "./tests/e2e",
@@ -17,7 +18,10 @@ export default defineConfig({
     use: {
         headless: true,
         viewport: {width: 1440, height: 900},
-        trace: "retain-on-failure",
-        screenshot: "only-on-failure",
+        // A multi-hour run already writes checkpoint NDJSON. Keeping a full
+        // Playwright trace for every long-run failure can exceed the browser
+        // process memory before the resource report is flushed.
+        trace: longRun ? "off" : "retain-on-failure",
+        screenshot: longRun ? "off" : "only-on-failure",
     },
 });

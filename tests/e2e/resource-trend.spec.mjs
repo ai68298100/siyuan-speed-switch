@@ -11,6 +11,12 @@ import {openApp, openSwitcher} from "./helpers/app.mjs";
 
 const ENABLED = process.env.SWSS_E2E_RESOURCE_TREND === "1";
 const CYCLES = Math.max(1, Number.parseInt(process.env.SWSS_E2E_RESOURCE_TREND_CYCLES || "12", 10) || 12);
+const LONG_RUN = process.env.SWSS_E2E_RESOURCE_TREND_LONG === "1";
+const CHECKPOINT_INTERVAL = Math.max(1, Number.parseInt(process.env.SWSS_E2E_RESOURCE_TREND_CHECKPOINT || "300", 10) || 300);
+
+function isCheckpoint(cycleNumber) {
+    return !LONG_RUN || cycleNumber === CYCLES || cycleNumber % CHECKPOINT_INTERVAL === 0;
+}
 
 function delta(before, after) {
     if (!before || !after) return null;
@@ -151,13 +157,19 @@ test.describe("T-7153 真实宿主资源趋势", () => {
         const renderListenerRerenders = [];
         let workbenchOpened = 0;
         let storeOpened = 0;
+        const checkpointPath = testInfo.outputPath("resource-trend-checkpoints.ndjson");
+        await fs.writeFile(checkpointPath, "", "utf8");
+        let checkpointCount = 0;
 
         for (let index = 0; index < CYCLES; index += 1) {
+            const cycleNumber = index + 1;
+            const checkpoint = isCheckpoint(cycleNumber);
             await openSwitcher(page);
             const search = page.locator("input.sw__search");
             await search.fill(index % 2 === 0 ? "" : "T-7153");
             await page.waitForTimeout(100);
-            samples.push(await sampleResourceTrend(page, `switcher-${index + 1}`));
+            const switcherSample = await sampleResourceTrend(page, `switcher-${cycleNumber}`);
+            if (checkpoint) samples.push(switcherSample);
             await page.keyboard.press("Escape");
             await page.locator("input.sw__search").waitFor({state: "detached", timeout: 10000}).catch(() => undefined);
 
@@ -168,7 +180,8 @@ test.describe("T-7153 真实宿主资源趋势", () => {
             const workbench = page.locator('.sw-home[data-sw-surface="workbench"]:visible').first();
             await workbench.waitFor({state: "visible", timeout: 15000});
             workbenchOpened += 1;
-            samples.push(await sampleResourceTrend(page, `workbench-${index + 1}`));
+            const workbenchSample = await sampleResourceTrend(page, `workbench-${cycleNumber}`);
+            if (checkpoint) samples.push(workbenchSample);
 
             const add = workbench.locator(".sw-home__add").first();
             if (await add.count() && await add.isVisible().catch(() => false)) {
@@ -176,16 +189,17 @@ test.describe("T-7153 真实宿主资源趋势", () => {
                 const store = page.locator(".sw-home-store:visible").first();
                 await store.waitFor({state: "visible", timeout: 15000});
                 storeOpened += 1;
-                await sampleResourceTrend(page, `store-${index + 1}`).then((sample) => samples.push(sample));
-                const beforeRerender = await sampleResourceTrend(page, `store-before-rerender-${index + 1}`);
-                samples.push(beforeRerender);
+                const storeSample = await sampleResourceTrend(page, `store-${cycleNumber}`);
+                if (checkpoint) samples.push(storeSample);
+                const beforeRerender = await sampleResourceTrend(page, `store-before-rerender-${cycleNumber}`);
+                if (checkpoint) samples.push(beforeRerender);
                 const catalogCards = store.locator(".sw-home-store__catalog .sw-home-store__card");
                 expect(await catalogCards.count(), "商店目录必须有卡片用于触发真实重绘").toBeGreaterThan(0);
                 await catalogCards.first().click();
                 await page.waitForTimeout(80);
-                const afterRerender = await sampleResourceTrend(page, `store-after-rerender-${index + 1}`);
-                samples.push(afterRerender);
-                renderListenerRerenders.push({
+                const afterRerender = await sampleResourceTrend(page, `store-after-rerender-${cycleNumber}`);
+                if (checkpoint) samples.push(afterRerender);
+                if (checkpoint) renderListenerRerenders.push({
                     label: afterRerender.label,
                     removedBefore: beforeRerender.storeRenderListenerActivity.removed,
                     removedAfter: afterRerender.storeRenderListenerActivity.removed,
@@ -199,8 +213,16 @@ test.describe("T-7153 真实宿主资源趋势", () => {
             }
             await page.keyboard.press("Escape");
             await settle(page);
-            samples.push(await sampleResourceTrend(page, `settled-${index + 1}`));
-            homeResourceSamples.push({label: `settled-${index + 1}`, stats: await sampleHomeResourceStats(page)});
+            const settledSample = await sampleResourceTrend(page, `settled-${cycleNumber}`, {
+                includeListenerBreakdown: checkpoint,
+            });
+            const settledHomeStats = await sampleHomeResourceStats(page);
+            if (checkpoint) {
+                samples.push(settledSample);
+                homeResourceSamples.push({label: `settled-${cycleNumber}`, stats: settledHomeStats});
+                checkpointCount += 1;
+                await fs.appendFile(checkpointPath, `${JSON.stringify({cycle: cycleNumber, sample: settledSample, homeStats: settledHomeStats})}\n`, "utf8");
+            }
         }
 
         await settle(page);
@@ -213,6 +235,9 @@ test.describe("T-7153 真实宿主资源趋势", () => {
         const report = {
             isolation,
             cycles: CYCLES,
+            checkpointInterval: LONG_RUN ? CHECKPOINT_INTERVAL : null,
+            checkpointCount,
+            checkpointFile: LONG_RUN ? "resource-trend-checkpoints.ndjson" : null,
             optionalActions: {workbenchOpened, storeOpened},
             baseline,
             settled,
@@ -240,10 +265,14 @@ test.describe("T-7153 真实宿主资源趋势", () => {
         expect(Number.isFinite(settled.timers.pendingObserved)).toBe(true);
         expect(Number.isFinite(settled.animationFrames.pendingObserved)).toBe(true);
         expect(settled.fetch.inFlightObserved, "最终样本不应残留已观察到的 fetch 请求").toBe(0);
-        expect(settledHomeResourceSamples.length).toBeGreaterThan(2);
+        expect(settledHomeResourceSamples.length).toBeGreaterThan(LONG_RUN ? 0 : 2);
         expect(settledHomeResourceSamples.every((item) => item.stats.inFlightReads === 0), "面板稳定后不应残留 provider 读取").toBe(true);
-        expect(settledCacheCounts.at(-1), "缓存计数不应在重复稳定轮次中持续增长").toBeLessThanOrEqual(Math.max(...settledCacheCounts.slice(0, -1)) + 4);
-        expect(settledGenerationCounts.at(-1), "provider generation 计数不应在重复稳定轮次中持续增长").toBeLessThanOrEqual(Math.max(...settledGenerationCounts.slice(0, -1)) + 4);
+        if (settledCacheCounts.length > 1) {
+            expect(settledCacheCounts.at(-1), "缓存计数不应在重复稳定轮次中持续增长").toBeLessThanOrEqual(Math.max(...settledCacheCounts.slice(0, -1)) + 4);
+        }
+        if (settledGenerationCounts.length > 1) {
+            expect(settledGenerationCounts.at(-1), "provider generation 计数不应在重复稳定轮次中持续增长").toBeLessThanOrEqual(Math.max(...settledGenerationCounts.slice(0, -1)) + 4);
+        }
         expect(settled.storeRenderListenerActivity.added, "真实商店循环应经过被观测的渲染节点监听").toBeGreaterThan(0);
         expect(settled.storeRenderListenerActivity.active, "商店关闭后显式登记的渲染节点监听必须全部移除").toBe(0);
         expect(await disposeResourceTrendProbe(page)).toBe(true);
