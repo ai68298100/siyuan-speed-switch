@@ -10,7 +10,7 @@
 | 默认分支 | `dev/thispc-1002` | 这是开发分支，不应在分支策略未确认前直接改成 `main` |
 | 分支关系 | 远端 `dev/thispc-1002` 比 `main` 多 7 个提交；本轮已将本地开发分支推送至 `a07b014`，本地与远端同名分支现已一致 | 开发分支已同步；仍不能把它写成稳定 Release，也不能直接删除 feature 分支 |
 | 最新 Release | `v0.44.1`，2026-09-30，目标发布线为 `main`，`package.zip` 568,951 bytes | 这是当前稳定安装包；后续工作树改动尚未进入 Release |
-| Actions | CI workflow 已随 `a07b014` 同步并覆盖当前开发分支与 `dev/**`；本次推送触发 run `37599763303`，核查时仍在进行。Dependabot 两条更新 run 也已启动 | 等待云端结果；云端通过前仍以本地门禁为依据 |
+| Actions | CI workflow 已随 `a07b014` 同步并覆盖当前开发分支与 `dev/**`；修复后的同步推送触发 run `37601574326`，已完成并通过；此前 run `37599763303` 在桌面本机证据缺失处失败，已由 T-7191 修复。Dependabot 两条更新 run 也已启动 | 等待云端结果；云端通过前仍以本地门禁为依据 |
 | 分支保护 | `main` 和 `dev/thispc-1002` 均未启用保护规则 | 允许直接 push、force-push 或删除，发布线风险高 |
 | 安全设置 | secret scanning 和 push protection 已开；Dependabot vulnerability alerts 与自动安全修复已开启（本轮应用） | 每月依赖 PR 配置已写入工作树，待同步后观察噪声 |
 | 合并设置 | merge、rebase、squash 均开启；合并后自动删除分支已开启（本轮应用） | 不改变现有合并方式，只清理已经合并的分支 |
