@@ -27,7 +27,7 @@ test("inline preview uses the stored size or shared default", () => {
 });
 
 test("directory rerenders dispose the previous inline controller", () => {
-    assert.match(source, /const renderStore = \(\) => \{\s*disposeInlinePreview\(\);/);
+    assert.match(source, /const renderStore = \(\) => \{\s*disposeRenderListeners\(\);\s*disposeInlinePreview\(\);/);
     assert.match(source, /disposeStore = \(\) => \{[\s\S]*?disposeInlinePreview\(\);/);
 });
 

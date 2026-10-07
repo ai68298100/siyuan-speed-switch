@@ -324,7 +324,25 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
 
 
 
+        // renderStore repeatedly rebuilds catalog/detail nodes. Track every
+        // render-scoped listener so a rerender or dialog disposal explicitly
+        // detaches callbacks from nodes that are about to leave the DOM.
+        const renderListenerDisposers: Array<() => void> = [];
+        const bindRenderListener = <K extends keyof HTMLElementEventMap>(
+            target: HTMLElement,
+            type: K,
+            listener: (this: HTMLElement, event: HTMLElementEventMap[K]) => unknown,
+            options?: boolean | AddEventListenerOptions,
+        ) => {
+            target.addEventListener(type, listener as EventListener, options);
+            renderListenerDisposers.push(() => target.removeEventListener(type, listener as EventListener, options));
+        };
+        const disposeRenderListeners = () => {
+            while (renderListenerDisposers.length > 0) renderListenerDisposers.pop()?.();
+        };
+
         const renderStore = () => {
+            disposeRenderListeners();
             disposeInlinePreview();
             disposeInlinePreview = () => undefined;
             root.setAttribute("aria-busy", "true");
@@ -404,7 +422,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             clearSearchButton.setAttribute("aria-label", this.i18n.homeStoreClearSearch);
             clearSearchButton.title = this.i18n.homeStoreClearSearch;
             clearSearchButton.hidden = !storeQuery;
-            clearSearchButton.addEventListener("click", () => {
+            bindRenderListener(clearSearchButton, "click", () => {
                 storeQuery = "";
                 searchInput.value = "";
                 clearSearchButton.hidden = true;
@@ -426,7 +444,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             sortSelect.value = normalizeHomeStoreSort(storeSort);
             sortSelect.dataset.sort = storeSort;
             sortSelect.setAttribute("aria-controls", "sw-home-store-result-summary");
-            sortSelect.addEventListener("change", () => { storeSort = normalizeHomeStoreSort(sortSelect.value); persistStoreState(); renderStore(); });
+            bindRenderListener(sortSelect, "change", () => { storeSort = normalizeHomeStoreSort(sortSelect.value); persistStoreState(); renderStore(); });
             // T-6967 S2：排序菜单收进筛选 chips 行尾（定稿原型「筛选一条化」）——
             // 搜索行只留输入与说明入口；排序挂在 tabBar 同一视觉行，不再单独占一行。
             // 原生 select 保留（键盘/读屏语义与 aria-controls 原样），仅换位置与紧凑样式。
@@ -441,7 +459,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             guideButton.setAttribute("aria-label", this.i18n.homeStoreGuideTitle);
             guideButton.setAttribute("aria-haspopup", "dialog");
             guideButton.title = this.i18n.homeStoreGuideTitle;
-            guideButton.addEventListener("click", () => this.openHomeWidgetGuide());
+            bindRenderListener(guideButton, "click", () => this.openHomeWidgetGuide());
             searchBar.appendChild(guideButton);
             storeFragment.appendChild(searchBar);
             let filterEmptyState: HTMLElement | null = null;
@@ -520,13 +538,13 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                     button.setAttribute("aria-label", `${button.dataset.tabLabel || ""} · ${count}`);
                 });
             };
-            searchInput.addEventListener("input", () => {
+            bindRenderListener(searchInput, "input", () => {
                 storeQuery = searchInput.value;
                 root.dataset.query = normalizeHomeStoreQuery(storeQuery);
                 clearSearchButton.hidden = !normalizeHomeStoreQuery(storeQuery);
                 applyFilter();
             });
-            searchInput.addEventListener("keydown", (event) => {
+            bindRenderListener(searchInput, "keydown", (event) => {
                 if (event.key !== "Escape" || !searchInput.value) return;
                 event.preventDefault();
                 clearSearchButton.click();
@@ -614,8 +632,8 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 if (tab.integration) btn.dataset.tabIntegration = tab.integration;
                 if (tab.addedOnly) btn.dataset.tabAdded = "true";
                 if (tab.dependency) btn.dataset.tabDependency = tab.dependency;
-                btn.addEventListener("click", () => activateStoreTab(btn));
-                btn.addEventListener("keydown", (event) => {
+                bindRenderListener(btn, "click", () => activateStoreTab(btn));
+                bindRenderListener(btn, "keydown", (event) => {
                     const buttons = Array.from(tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab"));
                     const index = buttons.indexOf(btn);
                     if (index < 0) return;
@@ -696,7 +714,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
             const bindStoreCardKeyboard = (card: HTMLElement) => {
                 card.tabIndex = -1;
                 card.setAttribute("role", "group");
-                card.addEventListener("keydown", (event) => {
+                bindRenderListener(card, "keydown", (event) => {
                     const cards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card:not(.fn__none)"));
                     const index = cards.indexOf(card);
                     if (index < 0) return;
@@ -737,7 +755,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 selectButton.setAttribute("aria-pressed", String(selected));
                 selectButton.textContent = selected ? "已选" : "选择";
                 selectButton.title = `${selectButton.textContent} ${def.title || moduleId}`;
-                selectButton.addEventListener("click", () => {
+                bindRenderListener(selectButton, "click", () => {
                     selectedStoreModules = toggleHomeStoreSelection(selectedStoreModules, moduleId);
                     renderStore();
                 });
@@ -975,7 +993,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                         addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId} · ${tile.textContent || sizeKey}`);
                         onSizeChange(sizeKey);
                     };
-                    tile.addEventListener("keydown", (event) => {
+                    bindRenderListener(tile, "keydown", (event) => {
                         const tilesForCard = Array.from(tiles.querySelectorAll<HTMLButtonElement>(".sw-home-store__size"));
                         const index = tilesForCard.indexOf(tile);
                         if (index < 0 || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -1071,7 +1089,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 // T-6967 S1：目录行点击 = 选中进入详情窗格；批量模式下行点击 = 选中/取消。
                 // 隐藏控件（visibility:hidden）不接收指针事件，行内零按钮语义不破。
                 if (variant === "catalog") {
-                    card.addEventListener("click", (event) => {
+                    bindRenderListener(card, "click", (event) => {
                         if (event.target instanceof HTMLElement && event.target.closest("button, a, input, select")) return;
                         if (storeBatchMode) {
                             selectedStoreModules = toggleHomeStoreSelection(selectedStoreModules, moduleId);
@@ -1084,7 +1102,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                         if (device === "mobile") root.dataset.detailOpen = "true";
                         renderStore();
                     });
-                    card.addEventListener("keydown", (event) => {
+                    bindRenderListener(card, "keydown", (event) => {
                         if (event.key !== "Enter" && event.key !== " ") return;
                         if (event.target !== card) return;
                         event.preventDefault();
@@ -1346,7 +1364,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                         removeButton.textContent = this.i18n.homeStoreRemoveUnavailable;
                         removeButton.setAttribute("aria-label", `${this.i18n.homeStoreRemoveUnavailable} · ${entry.title}`);
                         removeButton.title = removeButton.getAttribute("aria-label") || "";
-                        removeButton.addEventListener("click", () => {
+                        bindRenderListener(removeButton, "click", () => {
                             const instance = instanceStateByModule.get(entry.moduleId);
                             if (!instance) return;
                             this.removeHomeInstance(instance.instanceId);
@@ -1385,7 +1403,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 failRetry.textContent = this.i18n.homeRetry;
                 failRetry.setAttribute("aria-label", `${this.i18n.homeRetry} · ${this.i18n.homeStoreTitle}`);
                 failRetry.title = failRetry.getAttribute("aria-label") || "";
-                failRetry.addEventListener("click", () => {
+                bindRenderListener(failRetry, "click", () => {
                     delete root.dataset.catalogEmpty;
                     renderStore();
                 });
@@ -1415,7 +1433,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
             clearFilters.textContent = this.i18n.homeStoreClearFilters;
             clearFilters.setAttribute("aria-label", this.i18n.homeStoreClearFilters);
             clearFilters.title = this.i18n.homeStoreClearFilters;
-            clearFilters.addEventListener("click", () => {
+            bindRenderListener(clearFilters, "click", () => {
                 storeQuery = "";
                 storeTab = "all";
                 root.dataset.query = "";
@@ -1467,7 +1485,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                         sheetBack.dataset.action = "close-detail";
                         sheetBack.textContent = "← " + this.i18n.homeStoreBackToList;
                         sheetBack.setAttribute("aria-label", this.i18n.homeStoreBackToList);
-                        sheetBack.addEventListener("click", () => {
+                        bindRenderListener(sheetBack, "click", () => {
                             delete root.dataset.detailOpen;
                             const target = mobileDetailReturnFocus?.isConnected
                                 ? mobileDetailReturnFocus
@@ -1516,7 +1534,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 batchCancelButton.className = "b3-button b3-button--text sw-home-store__batch-cancel";
                 batchCancelButton.dataset.action = "batch-cancel";
                 batchCancelButton.textContent = "取消";
-                batchCancelButton.addEventListener("click", () => {
+                bindRenderListener(batchCancelButton, "click", () => {
                     storeBatchMode = false;
                     selectedStoreModules = [];
                     renderStore();
@@ -1527,7 +1545,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 batchAddButton.dataset.action = "batch-add";
                 batchAddButton.textContent = this.i18n.homeStoreBatchAdd;
                 batchAddButton.disabled = selectedStoreModules.length === 0;
-                batchAddButton.addEventListener("click", () => {
+                bindRenderListener(batchAddButton, "click", () => {
                     let addedCount = 0;
                     selectedStoreModules.forEach((moduleId) => {
                         const def = defs.get(moduleId);
@@ -1573,6 +1591,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
             if (storeReleased) return;
             storeReleased = true;
             window.clearTimeout(rescanTimer);
+            disposeRenderListeners();
             disposeInlinePreview();
             disposeInlinePreview = () => undefined;
             root.removeEventListener("keydown", onStoreKeydown);

@@ -55,7 +55,7 @@ test('clear search restores input focus', () => assert.match(storeUiSource, /sea
 test('store sort exposes action metadata', () => assert.match(storeUiSource, /sortSelect\.dataset\.action = "sort"/));
 test('store sort controls result summary', () => assert.match(storeUiSource, /sortSelect\.setAttribute\("aria-controls", "sw-home-store-result-summary"\)/));
 test('guide button exposes dialog semantics', () => assert.match(storeUiSource, /guideButton\.setAttribute\("aria-haspopup", "dialog"\)/));
-test('guide button invokes guide opener', () => assert.match(storeUiSource, /guideButton\.addEventListener\("click", \(\) => this\.openHomeWidgetGuide\(\)\)/));
+test('guide button invokes guide opener', () => assert.match(storeUiSource, /bindRenderListener\(guideButton, "click", \(\) => this\.openHomeWidgetGuide\(\)\)/));
 test('store tabs expose tablist role', () => assert.match(storeUiSource, /tabBar\.setAttribute\("role", "tablist"\)/));
 test('store tab buttons expose tab role', () => assert.match(storeUiSource, /btn\.setAttribute\("role", "tab"\)/));
 test('store tabs expose roving tabindex', () => assert.match(storeUiSource, /btn\.setAttribute\("tabindex", tab\.key === storeTab \? "0" : "-1"\)/));

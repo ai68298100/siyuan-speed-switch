@@ -19,7 +19,7 @@ test('sort menu joins the filter row tail (T-6967 S2)', () => {
     const sortIndex = storeUi.indexOf('filterBar.appendChild(sortSelect);');
     assert.ok(filterIndex >= 0 && sortIndex > filterIndex, '排序必须追加在 chips（tablist）之后');
     // 排序事件链保持：变更 → 归一 → 落设置 → 重绘。
-    assert.match(storeUi, /sortSelect\.addEventListener\("change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); persistStoreState\(\); renderStore\(\); \}\)/);
+    assert.match(storeUi, /bindRenderListener\(sortSelect, "change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); persistStoreState\(\); renderStore\(\); \}\)/);
 });
 
 test('detail pane meta is four plain rows sourced from pure models (T-6967 S2)', () => {

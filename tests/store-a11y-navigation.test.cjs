@@ -14,7 +14,7 @@ const activateBody = storeUiSource.slice(storeUiSource.indexOf('const activateSt
 test('store tablist has activation helper', () => assert.match(storeUiSource, /const activateStoreTab =/));
 test('store tabs use roving tabindex', () => assert.match(storeUiSource, /setAttribute\("tabindex", active \? "0" : "-1"\)/));
 test('initial active tab is focusable', () => assert.match(storeUiSource, /btn\.setAttribute\("tabindex", tab\.key === storeTab \? "0" : "-1"\)/));
-test('store tabs click uses activation helper', () => assert.match(storeUiSource,/btn\.addEventListener\("click", \(\) => activateStoreTab\(btn\)\)/));
+test('store tabs click uses activation helper', () => assert.match(storeUiSource,/bindRenderListener\(btn, "click", \(\) => activateStoreTab\(btn\)\)/));
 test('store tabs handle ArrowRight', () => assert.match(source, /event\.key === "ArrowRight"/));
 test('store tabs handle ArrowLeft', () => assert.match(source, /event\.key === "ArrowLeft"/));
 test('store tabs handle ArrowDown', () => assert.match(source, /event\.key === "ArrowDown"/));

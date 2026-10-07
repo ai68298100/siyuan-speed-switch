@@ -212,7 +212,7 @@ test('store filter empty state uses polite live updates', () => assert.match(sto
 test('store filter empty state is atomic', () => assert.match(storeSource,/filterEmptyState\.setAttribute\("aria-atomic", "true"\)/));
 test('store clear filters is a typed button', () => assert.match(storeSource,/clearFilters\.type = "button"/));
 test('store clear filters exposes an action key', () => assert.match(storeSource,/clearFilters\.dataset\.action = "clear-filters"/));
-test('store clear filters restores active tab selection', () => { const i = storeSource.indexOf('clearFilters.addEventListener("click"'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 2000); assert.ok(w.includes('setAttribute("aria-selected"'), '重置后须恢复 aria-selected'); });
+test('store clear filters restores active tab selection', () => { const i = storeSource.indexOf('bindRenderListener(clearFilters, "click"'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 2000); assert.ok(w.includes('setAttribute("aria-selected"'), '重置后须恢复 aria-selected'); });
 test('store clear filters restores roving tabindex', () => assert.match(storeSource,/button\.setAttribute\("tabindex", active \? "0" : "-1"\)/));
 test('store clear filters returns focus to search', () => assert.match(storeSource,/searchInput\.focus\(\)/));
 test('store group toggle exposes expanded state', () => assert.match(storeSource,/groupToggle\.setAttribute\("aria-expanded", String\(!collapsedGroups\.has\(label\)\)\)/));
@@ -236,7 +236,7 @@ test('store search restores persisted query value', () => assert.match(storeSour
 test('store clear search is a typed button', () => assert.match(storeSource,/clearSearchButton\.type = "button"/));
 test('store clear search exposes an action key', () => assert.match(storeSource,/clearSearchButton\.dataset\.action = "clear-search"/));
 test('store clear search hides when query is empty', () => assert.match(storeSource,/clearSearchButton\.hidden = !storeQuery/));
-test('store clear search returns focus to input', () => assert.match(storeSource,/clearSearchButton\.addEventListener\("click", \(\) => \{[\s\S]*?searchInput\.focus\(\)/));
+test('store clear search returns focus to input', () => assert.match(storeSource,/bindRenderListener\(clearSearchButton, "click", \(\) => \{[\s\S]*?searchInput\.focus\(\)/));
 test('store sort control exposes an action key', () => assert.match(storeSource,/sortSelect\.dataset\.action = "sort"/));
 test('store sort control references result summary', () => assert.match(storeSource,/sortSelect\.setAttribute\("aria-controls", "sw-home-store-result-summary"\)/));
 test('store sort change normalizes selected value', () => assert.match(storeSource,/storeSort = normalizeHomeStoreSort\(sortSelect\.value\)/));
@@ -755,7 +755,7 @@ test('store render admits built-in or registered third-party ids', () => assert.
 test('store render records active ready count', () => assert.match(storeSource,/root\.dataset\.readyCount = String\(activeIds\.size\)/));
 test('store search restores in-memory query', () => assert.match(storeSource,/searchInput\.value = storeQuery/));
 test('store clear-search visibility follows query state', () => assert.match(storeSource,/clearSearchButton\.hidden = !storeQuery/));
-test('store clear-search resets query and input together', () => assert.match(storeSource,/clearSearchButton\.addEventListener\("click", \(\) => \{\s*storeQuery = "";\s*searchInput\.value = ""/));
+test('store clear-search resets query and input together', () => assert.match(storeSource,/bindRenderListener\(clearSearchButton, "click", \(\) => \{\s*storeQuery = "";\s*searchInput\.value = ""/));
 test('store clear-search hides itself', () => assert.match(storeSource,/searchInput\.value = "";\s*clearSearchButton\.hidden = true/));
 test('store clear-search reapplies filter', () => assert.match(storeSource,/clearSearchButton\.hidden = true;\s*applyFilter\(\)/));
 test('store clear-search returns focus', () => assert.match(storeSource,/applyFilter\(\);\s*searchInput\.focus\(\)/));
@@ -766,7 +766,7 @@ test('store sort offers relevance title status and category', () => { const i = 
 test('store sort value is normalized before display', () => assert.match(storeSource,/sortSelect\.value = normalizeHomeStoreSort\(storeSort\)/));
 test('store sort records current mode', () => assert.match(storeSource,/sortSelect\.dataset\.sort = storeSort/));
 test('store sort controls result summary', () => assert.match(storeSource,/sortSelect\.setAttribute\("aria-controls", "sw-home-store-result-summary"\)/));
-test('store sort change normalizes, persists, and rerenders', () => assert.match(storeSource,/sortSelect\.addEventListener\("change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); persistStoreState\(\); renderStore\(\); \}\)/));
+test('store sort change normalizes, persists, and rerenders', () => assert.match(storeSource,/bindRenderListener\(sortSelect, "change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); persistStoreState\(\); renderStore\(\); \}\)/));
 test('store restore clamps scroll to rebuilt height', () => assert.match(storeSource,/root\.scrollTop = Math\.min\(previousScrollTop, root\.scrollHeight\)/));
 test('store restore finds card by module identity', () => assert.match(storeSource,/find\(\(card\) => card\.dataset\.moduleId === focusValue && !card\.classList\.contains\("fn__none"\)\)/));
 test('store restore focuses target without scrolling', () => assert.match(storeSource,/if \(target\) target\.focus\(\{preventScroll: true\}\)/));

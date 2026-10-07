@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-07",
+  "updated": "2026-10-08",
   "currentTask": "T-7115",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
@@ -944,7 +944,7 @@
     {
       "id": "T-7153",
       "title": "真实持续会话与资源趋势",
-      "status": "planned",
+      "status": "in_progress",
       "priority": "P1",
       "owner": "local",
       "workType": "deliverable",
@@ -954,14 +954,21 @@
       "evidence": [
         "docs/dev-plan-2026-10-06.md",
         "docs/product-review-2026-10-06.md",
-        "tests/e2e/first-open.spec.mjs",
-        "scripts/release-readiness-metrics.cjs",
-        "tests/resource-trend-probe.browser.js",
+        "tests/e2e/resource-trend.spec.mjs",
+        "playwright.e2e.resource-trend.config.mjs",
+        "tests/e2e/resource-trend-global-setup.mjs",
         "tests/e2e/resource-trend.cjs",
+        "tests/resource-trend-probe.browser.js",
         "tests/resource-trend-probe.test.cjs",
-        "docs/t7153-resource-trend-probe-2026-10-07.md"
+        "tests/home-store-render-listeners.test.cjs",
+        "src/home-store-ui.ts",
+        "docs/t7153-resource-trend-probe-2026-10-07.md",
+        "docs/adr/0150-t7153-render-listener-lifecycle.md",
+        ".artifacts/e2e-background/20261007132726-21184-5874f0/artifacts/t7153-resource-trend/results.json",
+        ".artifacts/e2e-background/20261007171037-38896-64a829/artifacts/t7153-resource-trend-final/results.json",
+        ".artifacts/e2e-background/20261007162443-39152-aaeb4e/artifacts/t7153-negative/runner.stdout.log"
       ],
-      "next": "T-7144"
+      "next": null
     },
     {
       "id": "T-7154",
@@ -1947,6 +1954,29 @@
         ".artifacts/e2e-background/20261007120330-19600-562033/artifacts/t7151-scale-32/results.json"
       ],
       "next": "T-7152"
+    },
+    {
+      "id": "T-7200",
+      "title": "完成 120 轮隔离资源压力脚手架与商店监听生命周期修复",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "performance",
+      "dependsOn": [
+        "T-7153"
+      ],
+      "evidence": [
+        "src/home-store-ui.ts",
+        "tests/home-store-render-listeners.test.cjs",
+        "tests/resource-trend-probe.browser.js",
+        "tests/e2e/resource-trend.spec.mjs",
+        "docs/t7153-resource-trend-probe-2026-10-07.md",
+        "docs/adr/0150-t7153-render-listener-lifecycle.md",
+        ".artifacts/e2e-background/20261007132726-21184-5874f0/artifacts/t7153-resource-trend/results.json",
+        ".artifacts/e2e-background/20261007171037-38896-64a829/artifacts/t7153-resource-trend-final/results.json",
+        ".artifacts/e2e-background/20261007162443-39152-aaeb4e/artifacts/t7153-negative/runner.stdout.log"
+      ],
+      "next": "T-7153"
     }
   ],
   "global": {

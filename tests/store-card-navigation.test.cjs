@@ -15,7 +15,7 @@ const base={topLevel: true};
 
 test('store cards are programmatically focusable', () => assert.match(storeUiSource, /card\.tabIndex = -1/));
 test('store cards expose group semantics', () => assert.match(storeUiSource, /card\.setAttribute\("role", "group"\)/));
-test('store card keydown handler exists', () => assert.match(storeUiSource, /card\.addEventListener\("keydown"/));
+test('store card keydown handler exists', () => assert.match(storeUiSource, /bindRenderListener\(card, "keydown"/));
 test('card navigation queries visible cards', () => assert.match(storeUiSource,/\.sw-home-store__card:not\(\.fn__none\)/));
 test('card navigation handles ArrowRight', () => assert.match(source, /event\.key === "ArrowRight"/));
 test('card navigation handles ArrowLeft', () => assert.match(source, /event\.key === "ArrowLeft"/));
@@ -42,4 +42,4 @@ test('card navigation preserves focus order after filtering', () => assert.match
 test('card focus ring is keyboard-visible', () => assert.match(css, /&:focus-visible/));
 test('card role is bounded to group', () => assert.match(storeUiSource,/role", "group/));
 test('card tabindex is not positive', () => assert.doesNotMatch(storeUiSource, /card\.tabIndex = [1-9]/));
-test('card navigation uses local card listener', () => assert.match(storeUiSource,/card\.addEventListener\("keydown"/));
+test('card navigation uses local card listener', () => assert.match(storeUiSource,/bindRenderListener\(card, "keydown"/));

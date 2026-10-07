@@ -11,6 +11,8 @@
     const counters = {
         listenersAdded: 0,
         listenersRemoved: 0,
+        storeRenderListenersAdded: 0,
+        storeRenderListenersRemoved: 0,
         timersScheduled: 0,
         timersFired: 0,
         timersCancelled: 0,
@@ -25,7 +27,7 @@
     const pendingFrames = new Set();
     const listenerTargets = new WeakMap();
     const listenerObjects = new WeakMap();
-    const activeListeners = new Set();
+    const activeListeners = new Map();
     let listenerTargetId = 0;
     let listenerObjectId = 0;
     const restores = [];
@@ -45,6 +47,10 @@
     }
 
     const eventTarget = window.EventTarget?.prototype;
+    function isStoreRenderTarget(target) {
+        return typeof target?.className === "string"
+            && target.className.split(/\s+/).some((className) => className.startsWith("sw-home-store__"));
+    }
     function listenerKey(target, type, listener, options) {
         if ((typeof target !== "object" && typeof target !== "function")
             || (typeof listener !== "object" && typeof listener !== "function")) return null;
@@ -57,15 +63,21 @@
         const result = original.apply(this, args);
         const key = listenerKey(this, args[0], args[1], args[2]);
         if (key && !activeListeners.has(key)) {
-            activeListeners.add(key);
+            // WeakRef avoids turning the diagnostic probe into a retention root:
+            // detached DOM nodes may be collected after a render replaces them.
+            activeListeners.set(key, {target: new WeakRef(this), type: String(args[0])});
             counters.listenersAdded += 1;
+            if (isStoreRenderTarget(this)) counters.storeRenderListenersAdded += 1;
         }
         return result;
     });
     wrap(eventTarget, "removeEventListener", (original) => function (...args) {
         const result = original.apply(this, args);
         const key = listenerKey(this, args[0], args[1], args[2]);
-        if (key && activeListeners.delete(key)) counters.listenersRemoved += 1;
+        if (key && activeListeners.delete(key)) {
+            counters.listenersRemoved += 1;
+            if (isStoreRenderTarget(this)) counters.storeRenderListenersRemoved += 1;
+        }
         return result;
     });
 
@@ -127,8 +139,47 @@
     });
 
     let disposed = false;
+    function connectedListenerCount() {
+        let connected = 0;
+        for (const [key, entry] of activeListeners) {
+            const target = entry.target.deref();
+            if (!target) {
+                activeListeners.delete(key);
+                continue;
+            }
+            if (target === window || target === document || target?.isConnected === true) connected += 1;
+        }
+        return connected;
+    }
+    function targetDescriptor(target) {
+        if (target === window) return "window";
+        if (target === document) return "document";
+        if (!target || typeof target !== "object") return "other";
+        const tag = String(target.tagName || "node").toLowerCase();
+        const classes = typeof target.className === "string"
+            ? target.className.trim().split(/\s+/).filter(Boolean).slice(0, 3).join(".")
+            : "";
+        return `${tag}${classes ? `.${classes}` : ""}`;
+    }
+    function listenerBreakdown() {
+        const breakdown = {};
+        for (const [key, entry] of activeListeners) {
+            const target = entry.target.deref();
+            if (!target) {
+                activeListeners.delete(key);
+                continue;
+            }
+            const {type} = entry;
+            const targetKind = target === window ? "window" : target === document ? "document" : target?.isConnected === true ? "connected-node" : "detached-node";
+            const key = `${targetKind}:${targetDescriptor(target)}:${type}`;
+            breakdown[key] = (breakdown[key] || 0) + 1;
+        }
+        return breakdown;
+    }
     const probe = {
-        sample(label = "") {
+        sample(label = "", options = {}) {
+            const activeConnectedRegistrations = connectedListenerCount();
+            const includeListenerBreakdown = options?.includeListenerBreakdown === true;
             const memory = window.performance?.memory;
             const memorySnapshot = memory && Number.isFinite(memory.usedJSHeapSize)
                 ? {
@@ -144,8 +195,17 @@
                     added: counters.listenersAdded,
                     removed: counters.listenersRemoved,
                     activeObservedRegistrations: activeListeners.size,
+                    activeConnectedRegistrations,
+                    detachedObservedRegistrations: Math.max(0, activeListeners.size - activeConnectedRegistrations),
+                    breakdown: includeListenerBreakdown ? listenerBreakdown() : {},
                     netObservedRegistrations: counters.listenersAdded - counters.listenersRemoved,
                     note: "observed registrations only; listeners installed before probe or auto-removed by once/signal are outside this count",
+                },
+                storeRenderListenerActivity: {
+                    added: counters.storeRenderListenersAdded,
+                    removed: counters.storeRenderListenersRemoved,
+                    active: Math.max(0, counters.storeRenderListenersAdded - counters.storeRenderListenersRemoved),
+                    note: "explicit add/remove calls observed on sw-home-store__ render nodes; auto-removal is outside this count",
                 },
                 timers: {
                     scheduled: counters.timersScheduled,

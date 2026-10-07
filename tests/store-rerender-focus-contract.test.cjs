@@ -36,7 +36,7 @@ test('store rerender focuses without jumping scroll', () => assert.match(storeUi
 // T-6967 S2：空目录路径改为横幅 + 保留 chrome + 恢复视图（不再整树 textContent 清空）。
 test('empty store path restores view state', () => assert.match(storeUiSource, /catalogPane\.appendChild\(storeFragment\);[\s\S]{0,400}?restoreStoreView\(\);/));
 test('normal store path restores view state', () => assert.match(storeUiSource, /applyFilter\(\);\s*restoreStoreView\(\);/));
-test('sort changes rerender the store', () => assert.match(storeUiSource, /sortSelect\.addEventListener\("change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); persistStoreState\(\); renderStore\(\); \}\)/));
+test('sort changes rerender the store', () => assert.match(storeUiSource, /bindRenderListener\(sortSelect, "change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); persistStoreState\(\); renderStore\(\); \}\)/));
 test('module changes rerender the store', () => { const i = storeUiSource.indexOf('const handleModuleChange = () => {'); assert.ok(i >= 0, 'missing handleModuleChange'); const body = storeUiSource.slice(i, i + 300); assert.ok(body.includes('renderStore();'), 'rerender on module change'); });
 test('provider rescan rerenders the store', () => { const i = storeUiSource.indexOf('window.setTimeout(() => {'); assert.ok(i >= 0, 'missing rescan timer'); const body = storeUiSource.slice(i, i + 300); assert.ok(body.includes('renderStore();'), 'rerender after rescan'); });
 test('focus descriptor starts in a neutral state', () => assert.match(storeUiSource, /let focusKind = "none"/));
