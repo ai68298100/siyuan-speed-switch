@@ -8,9 +8,9 @@
 | --- | --- | --- |
 | 仓库 | `ai68298100/siyuan-speed-switch`，公开仓库，MIT，2 stars、1 fork | 仓库可见性和许可证清楚；About 已有四入口定位和 9 个 Topics |
 | 默认分支 | `dev/thispc-1002` | 这是开发分支，不应在分支策略未确认前直接改成 `main` |
-| 分支关系 | 远端 `dev/thispc-1002` 比 `main` 多 7 个提交；本轮已将本地开发分支推送至最新提交 `2114b383`，本地与远端同名分支现已一致 | 开发分支已同步；仍不能把它写成稳定 Release，也不能直接删除 feature 分支 |
+| 分支关系 | 远端 dev/thispc-1002 比 main 多 7 个提交；本轮工作树已推送并与远端同名分支保持一致 | 开发分支已同步；仍不能把它写成稳定 Release，也不能直接删除 feature 分支 |
 | 最新 Release | `v0.44.1`，2026-09-30，目标发布线为 `main`，`package.zip` 568,951 bytes | 这是当前稳定安装包；后续工作树改动尚未进入 Release |
-| Actions | CI workflow 已随 `2114b383` 同步并覆盖当前开发分支与 `dev/**`；最新同步触发 run `37602108635`，已完成并通过；此前 run `37599763303` 在桌面本机证据缺失处失败，已由 T-7191 修复。Dependabot 两条更新 run 已完成并通过 | 云端 CI 与本地门禁均已通过 |
+| Actions | CI workflow 已覆盖当前开发分支与 dev/**；本轮同步触发的最新 run 已完成并通过；此前 run `37599763303` 在桌面本机证据缺失处失败，已由 T-7191 修复。Dependabot 两条更新 run 已完成并通过 | 云端 CI 与本地门禁均已通过 |
 | 分支保护 | `main` 和 `dev/thispc-1002` 均未启用保护规则 | 允许直接 push、force-push 或删除，发布线风险高 |
 | 安全设置 | secret scanning 和 push protection 已开；Dependabot vulnerability alerts 与自动安全修复已开启（本轮应用） | 每月依赖 PR 配置已同步，后续观察依赖 PR 噪声 |
 | 合并设置 | merge、rebase、squash 均开启；合并后自动删除分支已开启（本轮应用） | 不改变现有合并方式，只清理已经合并的分支 |
@@ -24,7 +24,7 @@
 - CI push 分支改为 `main`、`master`、当前 `dev/thispc-1002` 和后续 `dev/**`，既满足现有工具链契约，也使新开发分支在同步后得到 push 检查。
 - 新增 `CONTRIBUTING.md`、`.github/PULL_REQUEST_TEMPLATE.md`、`.github/SECURITY.md`、`.github/dependabot.yml`，并扩展 issue config 的 Releases、支持矩阵和安全入口；安全链接指向仓库 Security 页面，不假设私密报告已启用；Bug/Feature 表单补充端侧、入口、主题、安装来源和脱敏确认，且不再写死旧插件版本。
 
-上述仓库内文件已随提交 `2114b383` 推送到 `dev/thispc-1002`；该分支现为本机与 GitHub 的共同最新工作线。`README` 顶部的版本徽章继续使用 `package.json` 版本，避免破坏现有版本一致性门禁；`v0.44.1` 稳定 Release 和集市资产仍未改动。
+上述仓库内文件已推送到 `dev/thispc-1002`；该分支现为本机与 GitHub 的共同最新工作线。`README` 顶部的版本徽章继续使用 `package.json` 版本，避免破坏现有版本一致性门禁；`v0.44.1` 稳定 Release 和集市资产仍未改动。
 
 ## 本轮已应用的远端设置
 
@@ -34,7 +34,7 @@
 - `delete_branch_on_merge = true`；
 - 自动安全修复随后成功启用，复核 API 返回 Dependabot security updates `enabled`、secret scanning `enabled`、push protection `enabled`、合并后删分支 `true`。
 
-默认分支仍为 `dev/thispc-1002`，`main` 与 `dev/thispc-1002` 仍未启用分支保护；本地 workflow、README、贡献指南和安全文件已随 `2114b383` 推送；最新远端 CI run `37602108635` 已通过，Security/协作页面以本次同步内容为准。默认分支切换、保护规则、Actions 权限收紧和 Security policy 发布仍需先确认维护分支策略，本轮未擅自修改。
+默认分支仍为 `dev/thispc-1002`，`main` 与 `dev/thispc-1002` 仍未启用分支保护；本地 workflow、README、贡献指南和安全文件已推送；本轮最新远端 CI 已通过，Security/协作页面以本次同步内容为准。默认分支切换、保护规则、Actions 权限收紧和 Security policy 发布仍需先确认维护分支策略，本轮未擅自修改。
 
 ## 建议的远端设置顺序
 
@@ -56,4 +56,4 @@ gh api repos/ai68298100/siyuan-speed-switch/branches/main/protection
 gh api repos/ai68298100/siyuan-speed-switch/branches/dev/thispc-1002/protection
 ```
 
-保护接口返回 404 表示当前未设置分支保护，不表示网络失败。写入远端设置或推送前，必须先确认分支策略和待发布提交范围。undefined
+保护接口返回 404 表示当前未设置分支保护，不表示网络失败。写入远端设置或推送前，必须先确认分支策略和待发布提交范围。

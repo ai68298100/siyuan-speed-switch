@@ -73,7 +73,8 @@
     "T-7154",
     "T-7190",
     "T-7191",
-    "T-7192"
+    "T-7192",
+    "T-7193"
   ],
   "tasks": [
     {
@@ -1810,6 +1811,23 @@
         "docs/github-repository-audit-2026-10-07.md",
         "docs/dev-plan-2026-10-06.md",
         "CONTRIBUTING.md"
+      ],
+      "next": "T-7151"
+    },
+    {
+      "id": "T-7193",
+      "title": "去除同步状态文档中的动态提交号",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "release",
+      "dependsOn": [
+        "T-7192"
+      ],
+      "evidence": [
+        "ROADMAP.md",
+        "docs/github-repository-audit-2026-10-07.md",
+        "docs/dev-plan-2026-10-06.md"
       ],
       "next": "T-7151"
     }
