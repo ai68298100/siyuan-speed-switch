@@ -78,7 +78,8 @@
     "T-7194",
     "T-7195",
     "T-7196",
-    "T-7197"
+    "T-7197",
+    "T-7198"
   ],
   "tasks": [
     {
@@ -910,7 +911,9 @@
         "tests/e2e/first-open.spec.mjs",
         "scripts/release-readiness-metrics.cjs",
         "docs/t7151-performance-evidence-2026-10-07.md",
-        ".artifacts/t7151-pass/target.json"
+      ".artifacts/t7151-pass/target.json",
+      "tests/e2e/t7151-scale.spec.mjs",
+      ".artifacts/e2e-background/20261007112850-7332-4e7505/artifacts/t7151-scale-32/results.json"
       ],
       "next": "T-7140"
     },
@@ -1901,6 +1904,24 @@
         "scripts/e2e/host-scale-probe.mjs",
         "docs/t7151-performance-evidence-2026-10-07.md",
         "docs/adr/0149-t7151-host-scale-benchmark-boundaries.md"
+      ],
+      "next": "T-7151"
+    },
+    {
+      "id": "T-7198",
+      "title": "完成隔离桌面 32 页签真实 UI 基准",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "performance",
+      "dependsOn": [
+        "T-7197"
+      ],
+      "evidence": [
+        "tests/e2e/t7151-scale.spec.mjs",
+        "docs/t7151-performance-evidence-2026-10-07.md",
+        "docs/adr/0149-t7151-host-scale-benchmark-boundaries.md",
+        ".artifacts/e2e-background/20261007112850-7332-4e7505/artifacts/t7151-scale-32/results.json"
       ],
       "next": "T-7151"
     }
