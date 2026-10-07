@@ -77,7 +77,8 @@
     "T-7193",
     "T-7194",
     "T-7195",
-    "T-7196"
+    "T-7196",
+    "T-7197"
   ],
   "tasks": [
     {
@@ -1883,6 +1884,23 @@
         "scripts/e2e/host-scale-probe.mjs",
         "docs/adr/0149-t7151-host-scale-benchmark-boundaries.md",
         "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7151"
+    },
+    {
+      "id": "T-7197",
+      "title": "完成隔离桌面页签配置上限探针",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "performance",
+      "dependsOn": [
+        "T-7196"
+      ],
+      "evidence": [
+        "scripts/e2e/host-scale-probe.mjs",
+        "docs/t7151-performance-evidence-2026-10-07.md",
+        "docs/adr/0149-t7151-host-scale-benchmark-boundaries.md"
       ],
       "next": "T-7151"
     }

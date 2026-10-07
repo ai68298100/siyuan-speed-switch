@@ -80,8 +80,16 @@ function assertPortOwnedByChild(port, childPid) {
     }
 }
 
+function readFileTree(config) {
+    const fileTree = config?.conf?.fileTree || config?.fileTree;
+    if (!fileTree || typeof fileTree !== "object" || Array.isArray(fileTree)) {
+        throw new Error("/api/system/getConf 未返回可读取的 conf.fileTree 配置");
+    }
+    return fileTree;
+}
+
 function readMaxOpenTabCount(config) {
-    const value = config?.fileTree?.maxOpenTabCount;
+    const value = readFileTree(config)?.maxOpenTabCount;
     if (!Number.isInteger(value)) throw new Error("/api/system/getConf 未返回整数 fileTree.maxOpenTabCount");
     return value;
 }
@@ -123,7 +131,7 @@ async function main() {
         client = new SiyuanClient({baseURL: cfg.baseURL, token});
 
         const initial = await client.postChecked("/api/system/getConf");
-        originalFileTree = cloneFileTree(initial?.fileTree);
+        originalFileTree = cloneFileTree(readFileTree(initial));
         report.initial = readMaxOpenTabCount(initial);
 
         for (const requested of REQUESTED_VALUES) {
@@ -139,7 +147,7 @@ async function main() {
             try {
                 await client.postChecked("/api/setting/setFiletree", originalFileTree);
                 const restoredConfig = await client.postChecked("/api/system/getConf");
-                restored = readMaxOpenTabCount(restoredConfig) === readMaxOpenTabCount({fileTree: originalFileTree});
+            restored = readMaxOpenTabCount(restoredConfig) === originalFileTree.maxOpenTabCount;
             } catch (error) {
                 console.error(`[host-scale-probe] 恢复 fileTree 失败：${error?.message || error}`);
             }
