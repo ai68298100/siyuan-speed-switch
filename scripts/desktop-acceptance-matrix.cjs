@@ -6,6 +6,7 @@ const MATRIX_PATH = path.join(ROOT, "tests", "fixtures", "desktop-acceptance-mat
 const LOCAL_STATUSES = new Set(["verified", "prepared"]);
 const HOST_STATUSES = new Set(["verified", "partial", "pending"]);
 const EVIDENCE_KINDS = new Set(["acceptance-template", "chromium", "contract", "design", "real-host-api", "real-host-e2e"]);
+const LOCAL_ONLY_EVIDENCE_PREFIX = ".artifacts/";
 
 function fail(message) {
     throw new Error(`desktop-acceptance-matrix: ${message}`);
@@ -19,13 +20,18 @@ function readMatrix(filePath = MATRIX_PATH) {
     }
 }
 
-function validateEvidence(entries, label) {
+function validateEvidence(entries, label, summary) {
     if (!Array.isArray(entries) || entries.length === 0) fail(`${label} 必须有 evidence`);
     for (const entry of entries) {
         if (!entry || typeof entry !== "object") fail(`${label} evidence 项必须是对象`);
         if (typeof entry.path !== "string" || !entry.path || path.isAbsolute(entry.path)) fail(`${label} evidence 路径非法`);
         if (!EVIDENCE_KINDS.has(entry.kind)) fail(`${label} evidence kind 非法：${entry.kind}`);
-        if (!fs.existsSync(path.resolve(ROOT, entry.path))) fail(`${label} evidence 不存在：${entry.path}`);
+        const exists = fs.existsSync(path.resolve(ROOT, entry.path));
+        if (!exists && entry.path.startsWith(LOCAL_ONLY_EVIDENCE_PREFIX)) {
+            summary.missingLocalOnlyEvidence++;
+            continue;
+        }
+        if (!exists) fail(`${label} evidence 不存在：${entry.path}`);
     }
 }
 
@@ -41,13 +47,14 @@ function validateMatrix(matrix) {
     let pending = 0;
     let partial = 0;
     let localVerified = 0;
+    const summary = {missingLocalOnlyEvidence: 0};
     for (const item of matrix.cases) {
         if (!item || typeof item !== "object" || !item.id || ids.has(item.id)) fail(`case id 非法或重复：${item?.id}`);
         ids.add(item.id);
         areas.add(item.area);
         if (typeof item.requirement !== "string" || item.requirement.length < 20) fail(`${item.id} requirement 过短`);
         if (!LOCAL_STATUSES.has(item.local?.status)) fail(`${item.id} local status 非法`);
-        validateEvidence(item.local.evidence, `${item.id}.local`);
+        validateEvidence(item.local.evidence, `${item.id}.local`, summary);
         if (!HOST_STATUSES.has(item.host?.status)) fail(`${item.id} host status 非法`);
         if (item.local.status === "verified") localVerified++;
         if (item.host.status === "pending") {
@@ -59,14 +66,14 @@ function validateMatrix(matrix) {
             }
         } else {
             partial += item.host.status === "partial" ? 1 : 0;
-            validateEvidence(item.host.evidence, `${item.id}.host`);
+            validateEvidence(item.host.evidence, `${item.id}.host`, summary);
             if (item.host.status === "verified" && item.host.evidence.every((entry) => entry.kind === "chromium")) fail(`${item.id} 不得用 Chromium 单独宣称 host verified`);
         }
     }
     for (const requiredArea of ["path_filter", "narrow_sidebar", "desktop_visual", "keyboard", "screen_reader", "responsive", "lifecycle", "failure_paths"]) {
         if (!areas.has(requiredArea)) fail(`缺少验收区域：${requiredArea}`);
     }
-    return {cases: matrix.cases.length, areas: areas.size, localVerified, partialHost: partial, pendingHost: pending};
+    return {cases: matrix.cases.length, areas: areas.size, localVerified, partialHost: partial, pendingHost: pending, missingLocalOnlyEvidence: summary.missingLocalOnlyEvidence};
 }
 
 if (require.main === module) {

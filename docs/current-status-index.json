@@ -71,7 +71,8 @@
     "T-7161",
     "T-7165",
     "T-7154",
-    "T-7190"
+    "T-7190",
+    "T-7191"
   ],
   "tasks": [
     {
@@ -1771,6 +1772,24 @@
         "docs/github-repository-audit-2026-10-07.md",
         "CONTRIBUTING.md",
         "README.md"
+      ],
+      "next": "T-7151"
+    },
+    {
+      "id": "T-7191",
+      "title": "桌面验收矩阵区分本机 evidence 与 clean checkout",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "fix",
+      "dependsOn": [
+        "T-7115",
+        "T-7190"
+      ],
+      "evidence": [
+        "scripts/desktop-acceptance-matrix.cjs",
+        "tests/desktop-acceptance-matrix.test.cjs",
+        "docs/desktop-acceptance-matrix.md"
       ],
       "next": "T-7151"
     }

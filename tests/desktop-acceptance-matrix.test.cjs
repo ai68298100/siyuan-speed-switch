@@ -30,3 +30,15 @@ test("T-7115 fixture stays inside the repository and remains parseable", () => {
     assert.equal(path.isAbsolute(path.relative(process.cwd(), MATRIX_PATH)), false);
     assert.doesNotThrow(() => JSON.parse(fs.readFileSync(MATRIX_PATH, "utf8")));
 });
+
+test("T-7115 clean checkout may omit local-only artifact evidence, but not tracked evidence", () => {
+    const matrix = readMatrix();
+    const item = matrix.cases.find((entry) => entry.id === "desktop.surface-navigation-close");
+    const original = item.host.evidence[0].path;
+    item.host.evidence[0].path = ".artifacts/missing-on-clean-checkout/results.json";
+    const summary = validateMatrix(matrix);
+    assert.ok(summary.missingLocalOnlyEvidence >= 1);
+    item.host.evidence[0].path = "docs/missing-on-clean-checkout.json";
+    assert.throws(() => validateMatrix(matrix), /evidence 不存在/);
+    item.host.evidence[0].path = original;
+});
