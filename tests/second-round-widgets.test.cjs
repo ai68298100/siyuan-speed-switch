@@ -452,7 +452,7 @@ test("heatmap legend explains the color scale with swatches and text", () => {
     assert.match(view, /labels\.heatmapLegend/);
     assert.match(view, /aria-hidden", "true"\);\n\s*legend\.appendChild\(swatch\)/, "装饰色块对读屏隐藏");
     const css = readSourceText(path.join(__dirname, "..", "src", "styles", "_08-home-store-cards.scss"));
-    assert.ok(declaresIn(css, ".sw__home-heatmap .sw__home-heatmap-legend", /font-size: 11px/), "图例文字样式必须存在");
+    assert.ok(declaresIn(css, ".sw__home-heatmap .sw__home-heatmap-legend", /font-size:\s*var\(--sw-font-xs,\s*11px\)/), "图例文字样式必须存在");
     assert.ok(declaresIn(css, ".sw__home-heatmap .sw__home-heatmap-legend .sw__home-heatmap-legend-swatch.is-level-4", /background/), "最高档色块样式必须存在");
 });
 

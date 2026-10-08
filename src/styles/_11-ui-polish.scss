@@ -26,7 +26,7 @@
 }
 
 :is(.speed-switch, .sw-home, .sw-studio) {
-    font-size: 12.5px;
+    font-size: 13px;
     line-height: 1.5;
 }
 
@@ -48,11 +48,11 @@
 
 .sw-platform-surface-nav { gap: 4px; }
 .sw-platform-surface-nav__item {
-    min-height: 34px;
+    min-height: var(--sw-control-h);
     padding: 6px 12px;
     border-color: transparent;
     border-radius: var(--sw-platform-radius-sm, 8px);
-    font-size: 12.5px;
+    font-size: 13px;
     // 导航项是平台切换的即时反馈；保持 hover/focus 在一次指针动作内完成，
     // 避免切换表面时出现半帧的旧状态。
     transition: none;
@@ -96,7 +96,7 @@
         border-color: var(--sw-polish-line);
         border-radius: var(--sw-radius-control, 10px);
         background: var(--b3-theme-background);
-        font-size: 12.5px;
+        font-size: 13px;
         transition: border-color $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease;
     }
 
@@ -136,8 +136,8 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 5px;
-        padding-inline: 9px;
+        gap: 6px;
+        padding-inline: 10px;
     }
 
     .sw__sort-trigger:hover,
@@ -230,15 +230,15 @@
     .sw__dock-label,
     .sw__window-label,
     .sw__workbench-row-label {
-        font-size: 10.5px;
+        font-size: 11px;
         font-weight: 650;
         letter-spacing: .07em;
         text-transform: uppercase;
     }
 
     .sw__dock-item {
-        min-height: 34px;
-        padding: 7px 9px;
+        min-height: var(--sw-control-h);
+        padding: 8px 10px;
         border: 1px solid transparent;
         border-radius: var(--sw-platform-radius-sm, 8px);
         color: var(--b3-theme-on-surface);
@@ -273,7 +273,7 @@
     .sw__group-header {
         min-height: 28px;
         margin-bottom: 10px;
-        padding: 4px 0 7px;
+        padding: 4px 0 8px;
         border: 0;
         border-bottom: 1px solid var(--sw-polish-line-soft);
         border-radius: 0;
@@ -330,7 +330,7 @@
     .sw__meta {
         min-height: 42px;
         padding: 8px 12px;
-        font-size: 12.5px;
+        font-size: 13px;
     }
 
     .sw__doc-grid { gap: 10px; }
@@ -362,15 +362,15 @@
     .sw__quick-actions,
     .sw__quick-rail {
         min-height: 50px;
-        padding: 7px 14px;
+        padding: 8px 14px;
         border-color: var(--sw-polish-line);
         background: color-mix(in srgb, var(--b3-theme-surface) 94%, var(--b3-theme-background));
         box-shadow: inset 0 1px 0 var(--sw-polish-line-soft);
     }
 
     .sw__quick-action {
-        min-height: 34px;
-        height: 34px;
+        min-height: var(--sw-control-h);
+        height: var(--sw-control-h);
         border-radius: var(--sw-platform-radius-sm, 8px);
         color: var(--b3-theme-on-surface);
     }
@@ -484,7 +484,7 @@
     .sw__home-module-header { min-height: 32px; }
     .sw-home__grid .sw-home__cell .sw__home-module-header .sw__home-module-title {
         color: color-mix(in srgb, var(--b3-theme-on-surface) 84%, var(--b3-theme-on-surface-light));
-        font-size: 12.5px;
+        font-size: 13px;
         font-weight: 650;
     }
 
@@ -499,7 +499,7 @@
     .sw-studio__ai-header {
         min-height: 42px;
         border-bottom: 1px solid var(--sw-polish-line-soft);
-        padding-bottom: 7px;
+        padding-bottom: 8px;
     }
 
     .sw-studio__preview,
@@ -609,10 +609,10 @@
     .sw-studio__data-menu-summary {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-        min-height: 34px;
+        gap: 6px;
+        min-height: var(--sw-control-h);
         max-width: 10em;
-        padding: 6px 9px;
+        padding: 6px 10px;
         overflow: hidden;
         border: 1px solid var(--sw-polish-line-soft);
         border-radius: var(--sw-platform-radius-sm, 8px);
@@ -649,8 +649,8 @@
         z-index: 8;
         display: grid;
         min-width: 156px;
-        gap: 3px;
-        padding: 5px;
+        gap: 4px;
+        padding: 6px;
         border: 1px solid var(--sw-polish-line);
         border-radius: var(--sw-platform-radius-md, 12px);
         background: var(--b3-theme-surface);
@@ -697,7 +697,7 @@
     }
     .sw-studio__ai-header .sw-studio__state-badge {
         flex: 0 0 auto;
-        padding: 3px 7px;
+        padding: 4px 8px;
         border: 1px solid var(--sw-polish-line-soft);
         border-radius: var(--sw-platform-radius-pill);
         background: var(--sw-polish-surface-raised);
@@ -888,27 +888,27 @@
     }
 
     .sw-platform-header__close { width: 30px; height: 30px; min-width: 30px; }
-    .sw-platform-surface-nav__item { min-height: 32px; padding-block: 5px; }
+    .sw-platform-surface-nav__item { min-height: 32px; padding-block: 6px; }
     .sw-platform-context { min-height: 32px; padding-block: 4px; }
 
     .speed-switch:not(.sw__mobile) {
-        .sw__toolbar { min-height: 50px; padding-block: 7px; }
+        .sw__toolbar { min-height: 50px; padding-block: 8px; }
         .sw__scroll { padding-top: 10px; padding-bottom: 14px; }
         .sw__dock { width: 148px; padding-block: 10px; }
         .sw__quick-actions,
-        .sw__quick-rail { min-height: 44px; padding-block: 5px; }
+        .sw__quick-rail { min-height: 44px; padding-block: 6px; }
     }
 
     .sw-home:not(.sw-home--mobile) {
         .sw-home__body { padding-top: 12px; }
         .sw-home__bar { margin-bottom: 10px; }
         .sw-home__cell-body { padding-block: 10px; }
-        .sw-home__receipt { min-height: 34px; padding-block: 5px; }
+        .sw-home__receipt { min-height: var(--sw-control-h); padding-block: 6px; }
     }
 
     .sw-studio {
         .sw-studio__header { padding-block: 6px; }
-        .sw-studio__footer { min-height: 40px; padding-block: 5px; }
+        .sw-studio__footer { min-height: 40px; padding-block: 6px; }
     }
 }
 
@@ -952,7 +952,7 @@
             min-height: 28px;
             max-height: 28px;
             margin-bottom: 8px;
-            padding: 5px 8px;
+            padding: 6px 8px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -963,7 +963,7 @@
             flex: 0 0 auto;
             min-height: 0;
             margin-bottom: 6px;
-            padding-bottom: 5px;
+            padding-bottom: 6px;
             flex-wrap: nowrap;
             overflow-x: auto;
             overflow-y: hidden;

@@ -5,7 +5,7 @@
 .speed-switch .sw-home svg,
 .speed-switch .sw-home-store__card svg,
 .speed-switch .sw-home-config svg {
-    max-width: 24px;
+    max-width: var(--sw-icon-lg, 24px);
     max-height: 24px;
     flex: 0 0 auto;
 }
@@ -81,7 +81,7 @@
         // 图标不允许被 flex 压缩（否则 16px 星形被挤成 12px 变形）
         > svg {
             flex: none;
-            width: 16px;
+            width: var(--sw-icon-sm, 16px);
             height: 16px;
         }
     }
@@ -159,7 +159,7 @@
     .sw__sort-menu-section {
         margin: 6px 6px 2px;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         letter-spacing: 0.05em;
     }
 
@@ -247,7 +247,7 @@
     padding: 8px 10px;
 
     .sw__home-module-list .sw__home-module-item-action {
-        padding: 3px 6px;
+        padding: 4px 6px;
         font-size: 12px;
     }
 }
@@ -279,24 +279,24 @@
 // 组件配置面板：语义分组、短提示和移动端单列由 DOM class 驱动。
 .sw-home-config { height: 100%; padding: 12px 14px 0; box-sizing: border-box; overflow: auto; background: var(--sw-page-bg, var(--b3-theme-background)); }
 .sw-home-config__intro { display: flex; gap: 10px; padding: 10px; border: 1px solid var(--b3-border-color); border-radius: 10px; background: var(--b3-theme-surface); }
-.sw-home-config__icon { display: grid; flex: none; width: 32px; height: 32px; place-items: center; border-radius: 9px; color: var(--b3-theme-primary); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); }
-.sw-home-config__icon svg { width: 18px; height: 18px; }
+.sw-home-config__icon { display: grid; flex: none; width: 32px; height: 32px; place-items: center; border-radius: var(--sw-radius-control, 10px); color: var(--b3-theme-primary); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); }
+.sw-home-config__icon svg { width: var(--sw-icon-md, 18px); height: 18px; }
 .sw-home-config__intro-copy, .sw-home-config__field { min-width: 0; }
 .sw-home-config__title { margin: 0; font-size: 14px; }
-.sw-home-config__description, .sw-home-config__hint { color: var(--b3-theme-on-surface-light); font-size: 11px; line-height: 1.4; }
-.sw-home-config__description { margin: 3px 0; }
+.sw-home-config__description, .sw-home-config__hint { color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); line-height: 1.4; }
+.sw-home-config__description { margin: 4px 0; }
 .sw-home-config__id { color: var(--b3-theme-on-surface-light); font-size: 10px; }
-.sw-home-config__meta { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px 0 2px; }
+.sw-home-config__meta { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 0 2px; }
 .sw-home-config__chip { padding: 2px 6px; border-radius: 999px; background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: 10px; }
 .sw-home-config__fields { display: grid; gap: 8px; padding: 10px 0 14px; }
-.sw-home-config__section { display: grid; gap: 8px; padding: 9px 10px; border: 1px solid var(--b3-border-color); border-radius: 9px; background: var(--b3-theme-surface); }
-.sw-home-config__section-title { margin: 0; color: var(--b3-theme-primary); font-size: 11px; }
-.sw-home-config__field { display: flex; flex-direction: column; gap: 3px; }
+.sw-home-config__section { display: grid; gap: 8px; padding: 10px 10px; border: 1px solid var(--b3-border-color); border-radius: var(--sw-radius-control, 10px); background: var(--b3-theme-surface); }
+.sw-home-config__section-title { margin: 0; color: var(--b3-theme-primary); font-size: var(--sw-font-xs, 11px); }
+.sw-home-config__field { display: flex; flex-direction: column; gap: 4px; }
 .sw-home-config__database-results { display: grid; gap: 4px; max-height: 180px; overflow: auto; }
-.sw-home-config__database-selection { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; padding: 4px 8px; border-radius: 7px; background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: 11px; overflow-wrap: anywhere; }
+.sw-home-config__database-selection { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; padding: 4px 8px; border-radius: var(--sw-radius-md, 8px); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); overflow-wrap: anywhere; }
 .sw-home-config__database-selection > span { min-width: 0; }
 .sw-home-config__database-clear { flex: none; }
-.sw-home-config__database-option { justify-content: flex-start; text-align: left; min-height: 34px; }
+.sw-home-config__database-option { justify-content: flex-start; text-align: left; min-height: var(--sw-control-h); }
 .sw-home-config__database-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-height: 190px; overflow: auto; padding: 8px; border: 1px solid var(--b3-border-color); border-radius: 8px; }
 .sw-home-config__database-column { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
 .sw__home-module[data-module-id="database-table"] .sw__home-module-item-action { white-space: normal; }
@@ -342,64 +342,17 @@
     }
 }
 
-// T-7024：桌面商店是主工作区，直接占满宿主视口；移动端继续由 sheet 规则接管。
-.b3-dialog__container.sw-home-store-dialog.sw-dialog--fullscreen {
-    width: 100vw !important;
-    height: 100vh !important;
-    height: 100dvh !important;
-}
-
-.b3-dialog__container.sw-home-store-dialog.sw-dialog--fullscreen .b3-dialog__body {
-    min-height: 0;
-    padding: 0;
-}
-
-.sw-home-store__live-preview {
-    display: grid;
-    gap: 6px;
-    margin: 0 0 12px;
-    padding: 10px;
-    border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 24%, var(--b3-border-color));
-    border-radius: var(--sw-radius-card, 14px);
-    background: color-mix(in srgb, var(--b3-theme-primary) 4%, var(--b3-theme-surface));
-}
-
-.sw-home-store__inline-preview {
-    min-height: 220px;
-    overflow: auto;
-}
-
-.sw-home-store__inline-preview > .sw-home__cell {
-    min-height: 190px;
-    overflow: hidden;
-}
-
-.sw-home-store__inline-preview .sw-home__cell-body {
-    min-height: 160px;
-}
-
-.sw-home-store__inline-preview .sw-store-preview__body {
-    min-height: 150px;
-    padding: 0;
-}
-
-@media (max-width: 560px) {
-    .sw-home-store__live-preview { margin-bottom: 10px; padding: 8px; }
-    .sw-home-store__inline-preview { min-height: 180px; }
-    .sw-home-store__inline-preview > .sw-home__cell { min-height: 160px; }
-}
-
 .sw-home-store[data-density="compact"] .sw-home-store__card {
     padding-block: 8px;
-    gap: 7px;
+    gap: 8px;
 }
 .sw-home-store[data-density="compact"] .sw-home-store__preview { min-height: 72px; }
 .sw-home-store[data-density="compact"] .sw-home-store__group-description { display: none; }
-.sw-home-store[data-density="compact"] .sw-home-store__source-chip { padding-inline: 5px; font-size: 10px; }
+.sw-home-store[data-density="compact"] .sw-home-store__source-chip { padding-inline: 6px; font-size: 10px; }
 .sw-home-store__source-chip.is-recommended { color: var(--b3-theme-primary); background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); }
 .sw-home-store__source-chip.is-added { color: var(--b3-theme-success); background: color-mix(in srgb, var(--b3-theme-success) 12%, transparent); }
 .sw-home-store__source-chip.is-dependency { color: var(--b3-theme-warning); background: color-mix(in srgb, var(--b3-theme-warning) 14%, transparent); font-weight: 600; }
-.sw-home-store__dependency-link { color: var(--b3-theme-primary); font-size: 11px; text-decoration: underline; text-underline-offset: 2px; }
+.sw-home-store__dependency-link { color: var(--b3-theme-primary); font-size: var(--sw-font-xs, 11px); text-decoration: underline; text-underline-offset: 2px; }
 .sw-home-store__search { position: sticky; top: 0; z-index: 3; background: var(--b3-theme-background); padding-block: 4px; }
 // （T-6280 第十五批去重）card 的减弱动效覆盖原先在此与下方 4944 分支的分组规则各写一份，
 // 完全被后者包含，已删；现仅保留 card+tab 的分组覆盖。
@@ -589,7 +542,7 @@
     .sw-home-store__availability {
         display: inline-block;
         margin-left: 4px;
-        padding: 1px 5px;
+        padding: 1px 6px;
         border-radius: 999px;
         background: color-mix(in srgb, var(--b3-theme-primary) 14%, transparent);
         color: var(--b3-theme-primary);
@@ -623,9 +576,9 @@
 
     .sw-home-store__support {
         display: block;
-        margin-top: 3px;
+        margin-top: 4px;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         opacity: .86;
     }
 }
@@ -636,7 +589,7 @@
     border: 1px solid color-mix(in srgb, var(--b3-border-color) 78%, transparent);
     border-radius: 999px;
     color: var(--b3-theme-on-surface-light);
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 600;
     line-height: 1.25;
     white-space: nowrap;
@@ -651,9 +604,9 @@
     box-sizing: border-box;
     min-width: 0;
     max-width: 100%;
-    margin-top: 3px;
+    margin-top: 4px;
     color: var(--b3-theme-on-surface-light);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     // 同块内更早还有一条 font-weight: 500，但会被下面的 550（可变字体的细粒度
     // 权重）完全覆盖，从未生效。只保留实际生效的值（D-364）。
     font-variant-numeric: tabular-nums;
@@ -680,11 +633,11 @@
     flex: 1 0 100%;
     margin-bottom: 1px;
     color: var(--b3-theme-on-surface-light);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
 }
 
 .sw-home-store__size {
-    padding: 3px 10px;
+    padding: 4px 10px;
     border: 1px solid var(--b3-border-color);
     border-radius: 8px;
     background: transparent;
@@ -774,6 +727,20 @@
 .sw-home-store__guide,
 .sw-home-store__remove-unavailable {
     touch-action: manipulation;
+}
+
+.b3-dialog__container.sw-home-store-dialog.sw-dialog--fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+}
+
+.sw-home-store__live-preview {
+    border: 1px solid var(--b3-border-color);
+}
+
+.sw-home-store__inline-preview {
+    min-height: 180px;
 }
 
 // ==================== 侧边栏顶栏收口（去裸标签后的对齐） ====================

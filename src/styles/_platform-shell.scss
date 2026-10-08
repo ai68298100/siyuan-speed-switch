@@ -112,7 +112,7 @@
 .sw--sidebar > .sw-platform-chrome .sw-platform-header__brand { display: none; }
 .sw--sidebar > .sw-platform-chrome .sw-platform-context { display: none; }
 .sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav { width: 100%; }
-.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item { flex: 1 1 auto; min-width: 0; padding-inline: 7px; }
+.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item { flex: 1 1 auto; min-width: 0; padding-inline: var(--sw-space-md, 8px); }
 
 .sw__mobile > .sw-platform-chrome .sw-platform-header {
     min-height: 44px;
@@ -175,112 +175,10 @@
 
     &:active {
         transform: translateY(1px);
-        border-color: var(--sw-platform-accent, var(--b3-theme-primary));
-        background: color-mix(in srgb, var(--sw-platform-accent, var(--b3-theme-primary)) 18%, transparent);
     }
 }
 
-.sw-platform-header__close svg { width: 18px; height: 18px; }
-
-.sw-platform-header__icon-action {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    padding: 0;
-    border: 1px solid transparent;
-    border-radius: var(--b3-border-radius);
-    color: var(--sw-platform-text-muted);
-    background: transparent;
-    transition: color $sw-dur-base $sw-ease, border-color $sw-dur-base $sw-ease, background $sw-dur-base $sw-ease;
-}
-
-.sw-platform-header__icon-action:hover,
-.sw-platform-header__icon-action:focus-visible {
-    border-color: var(--sw-platform-accent);
-    color: var(--sw-platform-accent);
-    background: var(--sw-platform-accent-soft);
-}
-
-.sw-platform-header__icon-action:active { transform: translateY(1px); }
-.sw-platform-header__icon-action svg { width: 16px; height: 16px; }
-
-.sw-platform-header__close-hint {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--sw-platform-text-muted);
-    font-size: 11px;
-    white-space: nowrap;
-    user-select: none;
-}
-
-.sw-platform-header__close-hint .sw-platform-kbd {
-    min-width: 28px;
-    height: 20px;
-    padding-inline: 5px;
-    border-radius: 5px;
-    font-size: 10px;
-}
-
-.sw-platform-header__close-hint-label { line-height: 1; }
-
-// Native SiYuan Dialogs keep their own close behavior; this hint only makes
-// the existing Escape shortcut discoverable beside the top-right close icon.
-.b3-dialog__header.sw-platform-dialog__header {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: var(--sw-platform-space-2, 8px);
-}
-
-.sw-platform-dialog__header .b3-dialog__title {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.sw-platform-dialog__close-hint {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 4px;
-    margin-left: auto;
-    color: var(--sw-platform-text-muted);
-    font-size: 11px;
-    line-height: 1;
-    white-space: nowrap;
-    user-select: none;
-}
-
-.sw-platform-dialog__close-hint .sw-platform-kbd {
-    min-width: 28px;
-    height: 20px;
-    padding-inline: 5px;
-    border-radius: 5px;
-    font-size: 10px;
-}
-
-.sw-platform-dialog__close-button {
-    flex: 0 0 auto;
-    min-width: 36px;
-    min-height: 36px;
-}
-
-@media (pointer: coarse) {
-    .sw-platform-dialog__close-button {
-        min-width: 44px;
-        min-height: 44px;
-    }
-}
-
-@media (max-width: 560px) {
-    .sw-platform-dialog__close-hint-label { display: none; }
-    .sw-platform-dialog__close-hint .sw-platform-kbd { min-width: 26px; }
-}
+.sw-platform-header__close svg { width: var(--sw-icon-md, 18px); height: 18px; }
 
 .sw-platform-surface-nav {
     display: flex;
@@ -300,7 +198,7 @@
     justify-content: center;
     flex: 0 0 auto;
     min-height: 36px;
-    padding: 6px 11px;
+    padding: 6px 12px;
     // T-7015c（用户反馈）：非当前项默认给淡边框胶囊——静态观感即可辨认「这是
     // 可点的按钮」，不再依赖 hover 才显形（按钮可发现性）。
     border: 1px solid color-mix(in srgb, var(--sw-platform-line, var(--b3-border-color)) 72%, transparent);
@@ -319,14 +217,6 @@
     background: var(--sw-platform-accent-soft);
 }
 
-.sw-platform-surface-nav__item:active {
-    border-color: var(--sw-platform-accent);
-    color: var(--sw-platform-accent);
-    background: var(--sw-platform-accent-pressed);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--sw-platform-accent) 30%, transparent);
-    transform: translateY(1px);
-}
-
 .sw-platform-surface-nav__item[aria-current="page"],
 .sw-platform-surface-nav__item.is-active {
     border-color: color-mix(in srgb, var(--sw-platform-accent) 24%, var(--sw-platform-line));
@@ -335,10 +225,15 @@
     box-shadow: inset 0 -2px 0 var(--sw-platform-accent);
 }
 
+.sw-platform-surface-nav__item:active {
+    color: var(--sw-platform-text);
+    background: var(--sw-platform-accent-pressed);
+    transform: translateY(1px);
+}
+
 .sw-platform-surface-nav__item:focus-visible {
     outline: 2px solid var(--sw-platform-accent);
     outline-offset: 2px;
-    box-shadow: var(--sw-platform-focus);
 }
 
 // Context and state ----------------------------------------------------------
@@ -352,7 +247,7 @@
     border-bottom: 1px solid color-mix(in srgb, var(--sw-platform-line) 72%, transparent);
     color: var(--sw-platform-text-muted);
     background: color-mix(in srgb, var(--sw-platform-surface) 64%, var(--sw-platform-bg));
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
 }
 
 .sw-platform-context__trail,
@@ -372,16 +267,16 @@
 .sw-platform-status {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     width: fit-content;
     max-width: 100%;
     min-height: 24px;
-    padding: 3px 8px;
+    padding: 4px 8px;
     border: 1px solid transparent;
     border-radius: var(--sw-platform-radius-pill);
     color: var(--sw-platform-text-muted);
     background: var(--sw-platform-surface-muted);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     line-height: 1.25;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -450,7 +345,7 @@
     justify-content: center;
     gap: 6px;
     min-height: 36px;
-    padding: 6px 11px;
+    padding: 6px 12px;
     border: 1px solid var(--sw-platform-line);
     border-radius: var(--sw-platform-radius-sm);
     color: var(--sw-platform-text);
@@ -469,7 +364,7 @@
     background: var(--sw-platform-accent-soft);
 }
 
-.sw-platform-action:active { transform: translateY(1px); }
+.sw-platform-action:active { transform: translateY(1px); background: var(--sw-platform-accent-soft); }
 .sw-platform-action:disabled { opacity: .52; cursor: default; transform: none; }
 .sw-platform-action--primary { border-color: var(--sw-platform-accent); color: var(--sw-platform-text-on-accent); background: var(--sw-platform-accent); }
 .sw-platform-action--primary:hover { border-color: var(--sw-platform-accent); color: var(--sw-platform-text-on-accent); background: color-mix(in srgb, var(--sw-platform-accent) 88%, #000); }
@@ -491,9 +386,9 @@
     flex: 0 0 auto;
     min-width: 18px;
     height: 18px;
-    padding: 0 5px;
+    padding: 0 6px;
     border: 1px solid var(--sw-platform-line);
-    border-radius: 5px;
+    border-radius: var(--sw-radius-sm, 6px);
     color: var(--sw-platform-text-muted);
     background: var(--sw-platform-surface);
     font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
@@ -518,9 +413,9 @@
     align-items: stretch;
     gap: 2px;
     max-width: 100%;
-    padding: 3px;
+    padding: 4px;
     border: 1px solid var(--sw-platform-line);
-    border-radius: 9px;
+    border-radius: var(--sw-radius-control, 10px);
     background: var(--sw-platform-surface-muted);
 }
 
@@ -530,7 +425,7 @@
     justify-content: center;
     flex: 1 1 auto;
     min-width: 0;
-    min-height: 26px;
+    min-height: var(--sw-control-h-md);
     padding: 4px 12px;
     border: 0;
     border-radius: 6px;
@@ -550,7 +445,7 @@
     color: var(--sw-platform-text);
     background: var(--sw-platform-bg);
     font-weight: 600;
-    box-shadow: 0 1px 3px rgb(51 58 83 / 14%);
+    box-shadow: var(--sw-shadow-xs);
 }
 
 .sw-platform-seg__item:disabled { opacity: .52; cursor: default; }
@@ -578,7 +473,7 @@
     padding: 6px var(--sw-platform-space-3);
     border-bottom: 1px solid color-mix(in srgb, var(--sw-platform-line) 72%, transparent);
     color: var(--sw-platform-text-muted);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
 }
 
 .sw-platform-preview__canvas { position: relative; flex: 1; min-width: 0; min-height: 104px; overflow: auto; }
@@ -586,19 +481,12 @@
 .sw-platform-preview__canvas > img,
 .sw-platform-preview__canvas > canvas { display: block; width: 100%; height: 100%; border: 0; object-fit: contain; }
 .sw-platform-preview__loading,
-.sw-platform-preview__empty { display: grid; place-items: center; min-height: 104px; padding: var(--sw-platform-space-4); color: var(--sw-platform-text-muted); font-size: 11px; text-align: center; }
+.sw-platform-preview__empty { display: grid; place-items: center; min-height: 104px; padding: var(--sw-platform-space-4); color: var(--sw-platform-text-muted); font-size: var(--sw-font-xs, 11px); text-align: center; }
 .sw-platform-preview__loading { position: absolute; inset: 0; background: color-mix(in srgb, var(--sw-platform-surface) 84%, transparent); }
 
 @media (pointer: coarse) {
     .sw-platform-surface-nav__item,
     .sw-platform-action { min-height: 44px; }
-    // 关闭/设置属于移动端高频动作，触控命中区与导航按钮保持同一 44px 基线。
-    .sw-platform-header__close,
-    .sw-platform-header__icon-action {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-    }
     // 分段项本体 38px + 容器上下 padding 3px = 44px 命中区（触控不降级）。
     .sw-platform-seg__item { min-height: 38px; }
 }
@@ -615,41 +503,13 @@
     .sw-platform-seg { flex-wrap: wrap; row-gap: 2px; }
 }
 
-@media (max-width: 560px) {
-    // 移动端保留 Esc 键帽作为退出提示，隐藏重复文字，给状态/设置/X 留出稳定空间。
-    .sw__mobile > .sw-platform-chrome .sw-platform-header {
-        gap: 6px;
-        padding-inline: 8px;
-    }
-
-    // 品牌、表面导航和操作区保持在同一行；导航自身横向滚动，避免在窄屏
-    // 被 flex-wrap 推到第二行后把头部高度撑大一倍。
-    .sw__mobile > .sw-platform-chrome .sw-platform-surface-nav {
-        flex: 1 1 0;
-        width: auto;
-        min-width: 0;
-    }
-
-    .sw__mobile > .sw-platform-chrome .sw-platform-header__actions {
-        gap: 2px;
-    }
-
-    .sw__mobile > .sw-platform-chrome .sw-platform-header__close-hint {
-        gap: 0;
-    }
-
-    .sw__mobile > .sw-platform-chrome .sw-platform-header__close-hint-label {
-        display: none;
-    }
-}
-
 @media (prefers-reduced-motion: reduce) {
     .sw-platform-shell *,
     .sw-platform-shell *::before,
     .sw-platform-shell *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
-    .sw-platform-surface-nav__item:active,
-    .sw-platform-header__close:active,
-    .sw-platform-header__icon-action:active { transform: none; }
+
+    .sw-platform-header__close:active { transform: none; }
+    .sw-platform-surface-nav__item:active { transform: none; }
 }
 
 @media (prefers-contrast: more) {

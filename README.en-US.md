@@ -1,10 +1,11 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.44.1-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=dev%2Fthispc-1002)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?label=latest%20release)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.45.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Current stable release**: `v0.44.1` (2026-09-30). Download `package.zip` from [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases/latest); later worktree changes are not part of that stable release. The supported surface and pending acceptance boundaries are listed in [`docs/support-matrix-2026-10-06.md`](docs/support-matrix-2026-10-06.md).
+> **Current stable release: v0.45.0 (2026-10-08)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.45.0) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
 <p align="center"><img src="preview.png" width="720" alt="LvSpeed Switch preview"/></p>
 
@@ -19,16 +20,15 @@ The four plugins currently developed under the Xiaolv series are:
 - **小驴人脉**
 - **小驴拾遗**
 
-QQ community group: **871707735**
+The four plugins remain independently installable and cooperate through the documented [widget protocol](./docs/widget-protocol.md) and quick-action protocol; installing LvSpeed Switch does not install or enable the other plugins.
 
-The four plugins are independent packages; each plugin's own repository defines its version and release cadence. LvSpeed Switch only connects to other plugins through public component contracts and does not bundle their code or configuration. For Workbench integrations, start with [`docs/widget-protocol.md`](docs/widget-protocol.md).
+QQ community group: **871707735**
 
 ## Table of Contents
 
 - [Xiaolv Plugins And Community](#xiaolv-plugins-and-community)
 - [Core Capabilities](#core-capabilities)
-- [Work Context, Commands & Actions](#work-context-commands--actions)
-- [Widget Panel: 58 Composable Widgets](#widget-panel-58-composable-widgets)
+- [Widget Panel: 58 Out-Of-The-Box Widgets](#widget-panel-58-out-of-the-box-widgets)
 - [SiYuan Agent Capabilities](#siyuan-agent-capabilities)
 - [Quick Start](#quick-start)
 - [Shortcuts](#shortcuts)
@@ -61,7 +61,7 @@ The snippet lab needs desktop width for its editor, preview, and properties area
 
 - **Live thumbnails**: every tab renders as a card showing the current document; unrendered background documents are backfilled on demand through the kernel API, and off-screen content renders lazily.
 - **Native split-pane support**: cards group by SiYuan window/split pane and switching activates the correct pane; opening, closing, or batch-changing tabs notifies every open plugin view for an immediate refresh.
-- **Keyboard and mouse**: arrow keys move across the real grid; `Tab` / `Shift+Tab` follow the native focus order through search, cards, and actions; `Enter` opens and `Esc` closes. Cards support pinning, favoriting, closing, and a context menu.
+- **Keyboard and mouse**: arrow keys and `Tab` move across the real grid, `Enter` opens, `Esc` closes; cards support pinning, favoriting, closing, and a context menu.
 - **Six sort modes**: recently used, open order, reverse open order, recently edited, title ascending, title descending — persisted on change.
 - **Unified history entry**: the desktop dialog, sidebar, and mobile toolbar share a clock entry; recently opened and recently closed render in separate sections, closed documents reopen with a click, and stale records can be removed individually.
 - **Desktop fullscreen**: only the desktop dialog offers a fullscreen toggle; the sidebar and mobile never render the inapplicable action.
@@ -84,9 +84,9 @@ Search results keep a fixed priority:
 
 **Tab filter query syntax** (local layer): space-separated terms all match (AND); `-term` excludes tabs containing it; `"quoted phrase"` matches as a whole. Example: `project -weekly "meeting notes"`.
 
-Search requests use a 180 ms debounce, bounded in-memory cache, request-version validation, and cancellation. Desktop dialog, right sidebar, and mobile each own an isolated search session, so one surface cannot cancel or overwrite another. The current worktree supports notebook, path, content-type, subtype, search-method, and result-order filters; notebook/path-only filters keep the title fast path, while other filters use bounded native block-level full-text requests. Desktop exposes a hierarchical path picker, the right sidebar presents the supported subset, and mobile does not claim a path tree; unsupported host endpoints degrade explicitly. Workspace results fetch up to 33 entries at once and render the first 12; a "Load more" button expands the rest purely client-side (no new requests, no cache-key changes) before falling back to SiYuan's native search. This remains an addition rather than a replacement for SiYuan's native search page. See [ROADMAP.md](./ROADMAP.md) for that work.
+Search requests use a 180 ms debounce, bounded in-memory cache, request-version validation, and cancellation. Desktop dialog, right sidebar, and mobile each own an isolated search session, so one surface cannot cancel or overwrite another. The current worktree supports notebook, content-type, subtype, search-method, and result-order filters; notebook/path-only filters keep the title fast path, while other filters use bounded native block-level full-text requests. Workspace results fetch up to 33 entries at once and render the first 12; a "Load more" button expands the rest purely client-side (no new requests, no cache-key changes) before falling back to SiYuan's native search. Path-tree selection is still not exposed in the UI, and this remains an addition rather than a replacement for SiYuan's native search page. See [ROADMAP.md](./ROADMAP.md) for that work.
 
-### Work Context, Commands & Actions
+### Work Context, Commands & Actions (new)
 
 - **Related content**: opening the switcher lists backlinks and mentions of the current document (official kernel endpoint, bounded projection with totals and truncation), click to jump.
 - **Saved searches**: save the current query and filters from the filter menu; replay from the zero-term workbench or filter menu, right-click to remove.
@@ -128,9 +128,9 @@ Search requests use a 180 ms debounce, bounded in-memory cache, request-version 
 
 On mobile, the first frame waits for the WebView to reach a stable size before cards become visible, then scales thumbnails from the container's measured width. Mobile settings use a horizontally scrollable top tab row and single-column controls. Favorite and quick-action ordering use buttons instead of row dragging, avoiding gesture conflicts with page scrolling.
 
-## Widget Panel: 58 Composable Widgets
+## Widget Panel: 58 Out-Of-The-Box Widgets
 
-The Workbench (surface entry or `Alt+Shift+P`) is the widget panel: the current catalog contains 58 read-only widgets that can be composed on a 12-column grid, with independent layouts for desktop / right sidebar / mobile. The count is the catalog size, not a promise that every item works without configuration or network/provider setup; the widget store labels built-in, conditional, and external/plugin dependencies. Cards expose source, capabilities, update time, and health; failures keep the card mounted and provide visible and screen-reader receipts. Every widget has completed a full depth pass against the eight-dimension scorecard: settings discoverability, data correctness, information hierarchy, size fitness, interaction feedback, state recovery, performance lifecycle, and three-surface/a11y/privacy.
+The Workbench (surface entry or `Alt+Shift+P`) is the widget panel: 58 read-only widgets freely composed on a 12-column grid, with independent layouts for desktop / right sidebar / mobile. Cards expose source, capabilities, update time, and health; failures keep the card mounted and provide visible and screen-reader receipts. Every widget has completed a full depth pass against the eight-dimension scorecard: settings discoverability, data correctness, information hierarchy, size fitness, interaction feedback, state recovery, performance lifecycle, and three-surface/a11y/privacy.
 
 | Group | Widgets |
 | --- | --- |
@@ -174,9 +174,6 @@ Read-only capabilities declare `localRead` and never declare write, egress, or e
 5. **Dock it**: hit the "Sidebar mode" toolbar button to pin the switcher to the right dock.
 6. **Workbench**: use the Workbench surface entry or `Alt+Shift+P` to open the widget workbench; cards expose source, capabilities, and health.
 7. **Snippet Lab**: choose “Snippet Lab” in the switcher's platform header, or use a snippet object's “Open in lab” action. It is desktop-only; mobile shows the capability boundary.
-
-The development build adds a collapsed Gist section. Public reads need no token; imports create new disabled drafts. Publishing requires a GitHub token with gist permission. Configure it only on your own machine: it is stored in plugin settings and only masked in the UI, so never commit it, paste it into issues, or include it in shared configuration. New Gists are unlisted and accessible to anyone with the link.
-
 8. **Floating ball**: tap to restore the last surface; bind up/down/left/right flicks and More actions in Settings, with per-device 1–9 slots for actions or saved searches.
 9. **Customize**: use `+` in the bottom/right action area to add Docks, plugin commands, or change per-surface visibility.
 10. **Sizing**: desktop surfaces open fullscreen by default; adaptive and fixed sizes remain selectable in Settings.
@@ -188,11 +185,8 @@ The development build adds a collapsed Gist section. Public reads need no token;
 | `Alt+Shift+S` | Toggle the switcher (global, configurable) |
 | `Alt+Shift+P` | Open the Workbench (default, configurable; bind "global" in Settings → Keymap to trigger while SiYuan is unfocused) |
 | `↑` `↓` `←` `→` | Move selection across the grid |
-| `Tab` / `Shift+Tab` | Next / previous in native focus order (does not cycle within cards) |
+| `Tab` / `Shift+Tab` | Next / previous |
 | `Enter` | Switch to the selected tab |
-| `Ctrl+click` / `Ctrl+Enter` | Open a search result in the right split |
-| `Alt+click` | Peek: open a search result in a read-only preview tab |
-| `>` then type | Command mode: filter and run built-in and SiYuan host commands |
 | `Shift+F10` or `ContextMenu` | Open the focused card's action menu (mouse-free) |
 | `Esc` | Close the switcher |
 
@@ -212,7 +206,7 @@ Open **Settings → Plugins → LvSpeed Switch → Settings**, or use the gear i
 | Journal | Default journal notebook (dropdown; first click of the journal button also prompts a picker) |
 | Mobile | Card layout (single / double / auto) and thumbnail height; the legacy floating button toggle migrates to Floating Ball settings |
 
-Tap the floating ball to open the switcher; drag onto journal, search, widget panel, or another configured action. Dropping on empty space saves its position. Right-click or `Shift+F10` opens searchable actions; an edge handle restores the ball after scroll hiding. Position, actions, and enable state are independent per surface; appearance and behavior are shared. The ball is mounted on the desktop main window and mobile; the legacy sidebar settings fields are retained only for migration compatibility. Missing providers retain their configuration and recover when reloaded. Real SiYuan and Android acceptance remains tracked in [BLOCKERS.md](BLOCKERS.md).
+Tap the floating ball to open the switcher; drag onto journal, search, widget panel, or another configured action. Dropping on empty space saves its position. Right-click or `Shift+F10` opens searchable actions; an edge handle restores the ball after scroll hiding. Position, actions, and enable state are independent per surface; appearance and behavior are shared, with the sidebar fixed at 44 px. Missing providers retain their configuration and recover when reloaded. Real SiYuan and Android acceptance remains tracked in [BLOCKERS.md](BLOCKERS.md).
 
 ## Install And Upgrade
 
@@ -298,7 +292,7 @@ pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:layout  # mobile toolbar/widget-panel layout gate with a bare-svg control (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm test:smoke:floating-ball # three-surface Chromium interaction/geometry checks (BROWSER_PATH supported)
-pnpm verify:release     # local release-candidate gate (typecheck, reproducible two-build audit, all tests, release/quality/integration audits, and all five UI smokes)
+pnpm verify:release     # local release-candidate gate (typecheck, reproducible two-build audit, all tests, release/quality/integration audits, and all four UI smokes)
 ```
 
 Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.
@@ -338,20 +332,9 @@ The entry is persisted in Quick Actions settings and can target surfaces indepen
 
 See [ROADMAP.md](./ROADMAP.md) for the planned feature order, design constraints, and release gates; all architecture decisions live in [`docs/adr/`](docs/adr/). Recent key decisions:
 
-### Documentation Map
-
-| Purpose | Documents |
-| --- | --- |
-| User acceptance and real-host boundaries | [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), [`BLOCKERS.md`](BLOCKERS.md) |
-| Widget integration and store protocol | [`docs/widget-protocol.md`](docs/widget-protocol.md), [`docs/component-store-guide.md`](docs/component-store-guide.md) |
-| Agent capabilities and data boundaries | [`docs/agent-document-context-m2.md`](docs/agent-document-context-m2.md), the Agent section in [ROADMAP.md](ROADMAP.md) |
-| Data flows, privacy, and security reports | [`docs/data-flow-inventory-2026-10-06.md`](docs/data-flow-inventory-2026-10-06.md), [`docs/data-scope-2026-10-06.md`](docs/data-scope-2026-10-06.md), [`.github/SECURITY.md`](.github/SECURITY.md) |
-| Contributing, releases, and troubleshooting | [`CONTRIBUTING.md`](CONTRIBUTING.md), [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) |
-| Current roadmap and decisions | [`ROADMAP.md`](ROADMAP.md), [`docs/release-readiness.md`](docs/release-readiness.md), [`docs/adr/`](docs/adr/) |
-
 - [ADR-0057 widget sources as first-class citizens](docs/adr/0057-widget-source-and-store-grouping.md) — widget protocol v2.4 and store source grouping
 - [ADR-0058 database table projection](docs/adr/0058-av-widget-bounded-list-projection.md) — why the database widget is a read-only bounded list projection
-- [ADR-0059/0062/0065/0067 resource self-discipline lines](docs/adr/0067-raw-bundle-line-recalibration.md) — size gates guard against runaway growth only: raw 1160 KiB, 320 KiB per-entry zip, 576 KiB archive ceiling
+- [ADR-0059/0062/0065/0067 resource self-discipline lines](docs/adr/0067-raw-bundle-line-recalibration.md) — size gates guard against runaway growth only: raw 896 KiB, 256 KiB per-entry zip, 512 KiB archive ceiling
 - [ADR-0063/0064 execution chain and version floor](docs/adr/0063-execution-chain-host-action-effects.md) — the execution chain runs on host confirmation cards; minAppVersion raised to 3.8.0
 
 ## Release Checklist
@@ -362,16 +345,20 @@ One command runs the automated checks:
 pnpm verify:release
 ```
 
-It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the five UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 576 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
+It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.44.1` (released 2026-09-30; a visual overhaul of all 58 workbench widgets, the snippet studio growing to 26 built-in CSS snippets with one-click copy, mobile long-press drag to rearrange, and the third-party widget ecosystem chain — first external integration (Calendar) with both reported defects fixed, retained layouts across disable/reload, cleanable unavailable widgets, and pre-install catalog exposure; Release assets are built automatically by the workflow).
-
-> The current worktree still contains unreleased local changes (status checked 2026-10-07); local `dist/` and `package.zip` files are validation artifacts, not GitHub Release assets. Treat [`docs/current-status-index.json`](docs/current-status-index.json) as the source of truth for candidate and personal-install state; both are currently `not_started` and `not_updated`.
+The current version is `v0.45.0` (released 2026-10-08; the R13–R16 visual and scale campaign completed type, radius, spacing, shadow, motion, status-language, and density-token scales with a four-state consistency matrix; about twenty reliability-pool batches cover cancellation families, session isolation, lifecycle cleanup, and keyboard accessibility; T-7204 closes icon-system tokenization; release assets are available in the GitHub Release).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
 
+### v0.45.0 (2026-10-08)
+
+- **R13–R16 visual and scale campaign**: completed token scales for type, radii, spacing, shadows, motion, status language, and density, with a four-state consistency matrix aligning all surfaces and device modes.
+- **Reliability pool (about twenty batches)**: closed cancellation families, session isolation, lifecycle cleanup, focus and keyboard accessibility, honest failure receipts, overlay disposers, and sanitization boundaries across async and unload paths.
+- **T-7204 icon-system tokenization**: consolidated icon width/height consumption across style slices onto shared icon tokens while preserving existing geometry and behavior.
+- **Verification**: full suite **6738/6738**; `tsc` clean; quality audit **50/50**; integration audit **50/50**; `git diff --check` clean.
 ### v0.44.1 (2026-09-30)
 
 - **Workbench visual overhaul (all 58 widgets)**: iPad-quality material base (glass/depth/hover) plus dedicated styles for nine widget families (clock/calendar/weather/task/writing/reading/stats/nav/utilities); the clock widget gains a day-progress bar, day-night indicator and milestone badge.

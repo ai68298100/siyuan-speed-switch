@@ -28,26 +28,32 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24.15.0"
+          node-version: 24.15.0
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Browser smoke tests need an explicit Linux Chromium executable.
       - name: Install Chromium for browser smoke
         shell: bash
         run: |
           pnpm exec playwright install --with-deps chromium
           browser_path="$(node -e "process.stdout.write(require('@playwright/test').chromium.executablePath())")"
           test -x "$browser_path"
+          wrapper_path="$RUNNER_TEMP/chromium-wrapper"
+          printf '#!/usr/bin/env bash\nexec "%s" --no-sandbox --disable-dev-shm-usage "$@"\n' "$browser_path" > "$wrapper_path"
+          chmod +x "$wrapper_path"
+          # Keep the resolved executable visible for diagnostics, then run smoke
+          # tests through the no-sandbox wrapper in the hosted Linux runner.
           printf 'BROWSER_PATH=%s\n' "$browser_path" >> "$GITHUB_ENV"
+          printf 'BROWSER_PATH=%s\n' "$wrapper_path" >> "$GITHUB_ENV"
 
       - name: Verify tag version
         run: node scripts/release-version-preflight.cjs
 
-      # This is the single local release gate. It includes type checking,
-      # reproducible builds, the complete test suite, status/compatibility/
-      # desktop matrices, audits, and all UI smoke checks.
+      # Release verification is the same complete gate used locally, including
+      # type, reproducibility, contract, compatibility, and smoke checks.
       - name: Complete local release gate
         run: pnpm verify:release
 

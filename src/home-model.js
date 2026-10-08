@@ -437,13 +437,17 @@ function normalizeDevice(value) {
     return DEVICES.includes(value) ? value : "desktop";
 }
 
+// T-7186：布局档位词汇与 HOME_WIDGET_SIZES 七档一致；归一化必须全量接受。
+const LAYOUT_SIZES = Object.freeze(["xs", "small", "medium", "tall", "wide", "large", "full"]);
 function normalizeLayout(value) {
     const source = value && typeof value === "object" ? value : {};
     const number = (key, fallback, max) => {
         const n = Number(source[key]);
         return Number.isFinite(n) ? Math.max(0, Math.min(max, Math.floor(n))) : fallback;
     };
-    const size = ["xs", "small", "medium", "tall", "wide", "large", "full"].includes(source.size) ? source.size : "";
+    // T-7186：档位词汇 = HOME_WIDGET_SIZES 七档（constants.ts 为视觉事实源）。
+    // 历史只留四档导致 xs/tall/full 在落盘回读时被静默清空（T-7186 修复）。
+    const size = LAYOUT_SIZES.includes(source.size) ? source.size : "";
     return {x: number("x", 0, 99), y: number("y", 0, 999), w: Math.max(1, number("w", 1, 12)), h: Math.max(1, number("h", 1, 12)), collapsed: source.collapsed === true, size};
 }
 
@@ -459,11 +463,11 @@ const HOME_TILE_MATERIALS = {
     'checkin-streak': 'accent',
     'checkin-today': 'accent',
     'checkin-weekly': 'accent',
+    'checkin-summary': 'accent',
     // T-6971 批次⑦：今日写作与写作打卡同为强状态数值组件 → accent（本批提议扩展落地）
     'writing-streak': 'accent',
     'today-writing': 'accent',
     countdown: 'accent',
-    'checkin-summary': 'accent',
 };
 
 // T-6969 Slice 2：每模块默认档位——添加组件时商店默认选中的档位（键 = 既有
@@ -624,6 +628,15 @@ function normalizeProtocolVersion(value) {
     return PROTOCOL_VERSIONS.includes(value) ? value : 1;
 }
 
+// T-7161：icon 字段会进入 SVG <use> 引用与商店渲染，第三方来源可写任意文本。
+// 只接受合法 symbol ID（思源约定 iconXxx），其余一律回退，杜绝标记进入 DOM。
+const ICON_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/;
+
+function normalizeIconId(value, fallback) {
+    const raw = typeof value === "string" ? value.trim() : "";
+    return ICON_ID_PATTERN.test(raw) ? raw : (fallback || "");
+}
+
 function normalizeClickCommand(value) {
     const raw = text(value, 128);
     return /^[A-Za-z0-9_-]{1,64}::[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : "";
@@ -662,7 +675,7 @@ function normalizeSource(value) {
     return {
         pluginId: pluginId || name,
         name: name || pluginId,
-        icon: text(value.icon, 64),
+        icon: normalizeIconId(value.icon, ""),
         version: text(value.version, 32),
         homepage: normalizeHomepage(value.homepage),
         collection: text(value.collection, 48),
@@ -718,14 +731,14 @@ function normalizeModuleDefinition(value) {
         ? DEVICES.filter((device) => value.supportedDevices.includes(device))
         : ["desktop"];
     if (supportedDevices.length === 0) return null;
-    const sizeKeys = ["xs", "small", "medium", "tall", "wide", "large", "full"];
+    const sizeKeys = LAYOUT_SIZES; // T-7186：与归一化词汇同源，防双档表漂移
     const sizes = Array.isArray(value.sizes) ? sizeKeys.filter((key) => value.sizes.includes(key)) : [];
     const availability = AVAILABILITY_LEVELS.includes(value.availability)
         ? value.availability
         : value.category !== "siyuan" ? "external" : CONDITIONAL_MODULES.has(moduleId) ? "conditional" : "ready";
     return {
         moduleId, title,
-        icon: text(value.icon, 64) || "iconFile",
+        icon: normalizeIconId(value.icon, "iconFile"),
         category: text(value.category, 32) || "custom",
         supportedDevices,
         readOnly: value.readOnly !== false,
@@ -963,4 +976,5 @@ function isLifeHeartbeatModule(moduleId) {
     return LIFE_HEARTBEAT_MODULE_IDS.includes(typeof moduleId === "string" ? moduleId : "");
 }
 
-module.exports = {LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+module.exports = {
+    LAYOUT_SIZES,LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIconId, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};

@@ -117,3 +117,55 @@ test("native dialog close hint: mounts beside host close button and stays idempo
         assert.equal(dialog.querySelector(".b3-dialog__close").classList.contains("sw-platform-dialog__close-button"), true);
     });
 });
+
+// T-7175：radiogroup 键盘合同——roving tabindex（单 Tab 停靠）+ 方向键循环选择。
+test("platform segmented keyboard: roving tabindex keeps a single Tab stop (T-7175)", () => {
+    withDom((doc) => {
+        const seg = createPlatformSegmented(doc, {
+            items: [{value: "a", label: "A"}, {value: "b", label: "B"}, {value: "c", label: "C"}],
+            active: "b",
+            onChange: () => {},
+        });
+        const tabs = [...seg.querySelectorAll("button")].map((b) => b.tabIndex);
+        assert.deepEqual(tabs, [-1, 0, -1], "选中项单 Tab 停靠，其余 -1");
+    });
+    withDom((doc) => {
+        const seg = createPlatformSegmented(doc, {
+            items: [{value: "a", label: "A"}, {value: "b", label: "B"}],
+            active: "",
+            onChange: () => {},
+        });
+        const tabs = [...seg.querySelectorAll("button")].map((b) => b.tabIndex);
+        assert.deepEqual(tabs, [0, -1], "无选中时首项保留 Tab 序（不猜默认值）");
+    });
+});
+
+test("platform segmented keyboard: arrows move focus and select with wrap-around (T-7175)", () => {
+    withDom((doc, win) => {
+        const changes = [];
+        const seg = createPlatformSegmented(doc, {
+            items: [{value: "a", label: "A"}, {value: "b", label: "B"}, {value: "c", label: "C"}],
+            active: "a",
+            onChange: (value) => changes.push(value),
+        });
+        const buttons = [...seg.querySelectorAll("button")];
+        doc.body.appendChild(seg); // jsdom focus() 要求元素在文档树中
+        const press = (el, key) => {
+            el.focus();
+            el.dispatchEvent(new win.KeyboardEvent("keydown", {key, bubbles: true, cancelable: true}));
+        };
+        press(buttons[0], "ArrowRight");
+        assert.equal(doc.activeElement, buttons[1], "右移焦点到下一项");
+        assert.equal(buttons[1].getAttribute("aria-checked"), "true", "方向键即选中（radio 语义）");
+        assert.equal(buttons[0].getAttribute("aria-checked"), "false");
+        press(buttons[1], "ArrowRight");
+        press(buttons[2], "ArrowRight");
+        assert.equal(doc.activeElement, buttons[0], "末项右移循环回首项");
+        press(buttons[0], "ArrowLeft");
+        assert.equal(doc.activeElement, buttons[2], "首项左移循环回末项");
+        // 循环回首项也触发选择（radio 语义）：a→右→b→右→c→右(循环)→a→左→c
+        assert.deepEqual(changes, ["b", "c", "a", "c"], "每次方向键移动触发一次 onChange（含循环选择）");
+        press(buttons[1], "x");
+        assert.equal(doc.activeElement, buttons[1], "非方向键不移动焦点");
+    });
+});

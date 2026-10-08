@@ -6,9 +6,9 @@ const {readStyleSource} = require('./source-scan.cjs');
 
 const homeScss = readStyleSource('src/styles/_05-settings-widgets.scss');
 
-test('micro header: view-state title is de-emphasized to the 10px identification scale', () => {
-    assert.match(homeScss, /\.sw-home__grid \.sw-home__cell \.sw__home-module-header \{\s*\n\s*margin-bottom: 6px;\s*\n\s*\.sw__home-module-title \{\s*\n\s*font-size: 10\.5px;/,
-        '查看态标题必须弱化为 10.5px 识别行');
+test('micro header: view-state title is de-emphasized to the 11px identification scale', () => {
+    assert.match(homeScss, /\.sw-home__grid \.sw-home__cell \.sw__home-module-header \{\s*\n\s*margin-bottom: 6px;\s*\n\s*\.sw__home-module-title \{\s*\n\s*font-size: var\(--sw-font-xs, 11px\);/,
+        '查看态标题必须弱化为 11px 识别行（T-7206 刻度 token --sw-font-xs）');
     assert.match(homeScss, /text-overflow: ellipsis;/, '长名称必须省略截断');
 });
 

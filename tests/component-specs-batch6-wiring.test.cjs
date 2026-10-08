@@ -114,13 +114,13 @@ test('state: loaders keep stale values on failure — list is never cleared by a
     assert.ok(hits.length >= 2, `feed 与 HN 加载器都必须失败回退陈旧缓存（当前 ${hits.length} 处）`);
 });
 
-test('styles: family row anatomy — hairline separators and right-aligned 10.5px meta', () => {
+test('styles: family row anatomy — hairline separators and right-aligned 11px meta (scale token)', () => {
     assert.match(homeScss, /\.sw-home__cell:is\(\[data-module-id="external-rss-subscription"[^\)]*external-news-hackernews"\]\)/,
         '行解剖必须作用域到五个行流组件，不波及其它模块');
     assert.match(homeScss, /\.sw__home-module-item \+ \.sw__home-module-item \{\s*\n\s*border-top: 1px solid color-mix\(in srgb, var\(--b3-theme-on-surface-light\) 18%, transparent\);/,
         '行 hairline 分隔');
-    assert.match(homeScss, /\.sw__home-module-item-secondary \{[^}]*?flex: 0 0 auto;[^}]*?margin-left: auto;[^}]*?font-size: 10\.5px;/s,
-        '来源·时间 meta 右侧 10.5px muted');
+    assert.match(homeScss, /\.sw__home-module-item-secondary \{[^}]*?flex: 0 0 auto;[^}]*?margin-left: auto;[^}]*?font-size: var\(--sw-font-xs, 11px\);/s,
+        '来源·时间 meta 右侧 11px muted（T-7206 刻度 token）');
     assert.match(homeScss, /\.sw__home-module-item-label \{[^}]*?flex: 1 1 auto;[^}]*?text-overflow: ellipsis;/s,
         '标题单行省略');
 });

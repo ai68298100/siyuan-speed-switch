@@ -47,7 +47,7 @@ test('lifecycle: refreshOn debounce is cancelled with deferred refresh handles',
 
 test('lifecycle: home config form disposes search timers and ignores late option responses', () => {
     assert.match(formSource,
-        /const configFormCleanups: Array<\(\) => void> = \[\];\s*let configFormDisposed = false;\s*const registerConfigFormCleanup = \(cleanup: \(\) => void\) => \{\s*configFormCleanups\.push\(cleanup\);\s*\};\s*let releaseConfigForm: \(\) => void = \(\) => \{\s*configFormDisposed = true;/,
+        /const configFormCleanups: Array<\(\) => void> = \[\];\s*let formDisposed = false;\s*const registerConfigFormCleanup = \(cleanup: \(\) => void\) => \{\s*configFormCleanups\.push\(cleanup\);\s*\};\s*let releaseConfigForm: \(\) => void = \(\) => \{\s*formDisposed = true;/,
         '配置表单销毁必须标记 disposed 并运行统一清理集合');
     assert.match(formSource,
         /registerConfigFormCleanup\(\(\) => \{\s*requestGeneration \+= 1;\s*if \(queryTimer !== null\) \{\s*window\.clearTimeout\(queryTimer\);\s*queryTimer = null;\s*\}\s*\}\);/,
@@ -56,25 +56,25 @@ test('lifecycle: home config form disposes search timers and ignores late option
         /let allItems: Array<\{id: string; title: string\}> = \[\];\s*registerConfigFormCleanup\(\(\) => \{\s*if \(queryTimer !== null\) \{\s*window\.clearTimeout\(queryTimer\);\s*queryTimer = null;\s*\}\s*\}\);/,
         '数据库搜索防抖必须登记到配置表单清理集合');
     assert.match(formSource,
-        /if \(configFormDisposed \|\| generation !== requestGeneration\) return;/,
+        /if \(formDisposed \|\| generation !== requestGeneration\) return;/,
         '文档搜索迟到响应必须在销毁后丢弃');
     assert.match(formSource,
         /input\.addEventListener\("sw-config-reset", \(\) => \{\s*requestGeneration \+= 1;\s*if \(queryTimer !== null\) \{\s*window\.clearTimeout\(queryTimer\);/,
         '文档搜索重置必须取消已经排队的旧查询');
     assert.match(formSource,
-        /loadHomeDatabaseOptions\(\)\.then\(\(items\) => \{\s*if \(configFormDisposed\) return;/,
+        /loadHomeDatabaseOptions\(\)\.then\(\(items\) => \{\s*if \(formDisposed\) return;/,
         '数据库选项迟到响应必须在销毁后丢弃');
     assert.match(formSource,
-        /loadNotebooks\(\)\.then\(\(notebooks\) => \{\s*if \(configFormDisposed\) return;/,
+        /loadNotebooks\(\)\.then\(\(notebooks\) => \{\s*if \(formDisposed\) return;/,
         '笔记本选项迟到响应必须在销毁后丢弃');
     assert.match(formSource,
-        /if \(!configFormDisposed && generation === loadGeneration && blockId === String\(draft\.blockId \|\| ""\)\) render\(items\);/,
+        /if \(!formDisposed && generation === loadGeneration && blockId === String\(draft\.blockId \|\| ""\)\) render\(items\);/,
         '数据库列迟到响应必须在销毁后丢弃');
     assert.match(formSource,
-        /loadMinifluxCategoryOptions\(String\(draft\.endpoint \|\| ""\), String\(draft\.token \|\| ""\)\)\.then\(\(categories\) => \{\s*if \(configFormDisposed\) return;/,
+        /loadMinifluxCategoryOptions\(String\(draft\.endpoint \|\| ""\), String\(draft\.token \|\| ""\)\)\.then\(\(categories\) => \{\s*if \(formDisposed\) return;/,
         'Miniflux 分类迟到响应必须在销毁后丢弃');
     assert.match(formSource,
-        /loadActivityWatchBuckets\(String\(draft\.endpoint \|\| ""\)\)\s*:\s*Promise\.resolve\(\[\]\)\)\.then\(\(buckets\) => \{\s*if \(configFormDisposed\) return;/,
+        /loadActivityWatchBuckets\(String\(draft\.endpoint \|\| ""\)\)\s*:\s*Promise\.resolve\(\[\]\)\)\.then\(\(buckets\) => \{\s*if \(formDisposed\) return;/,
         'ActivityWatch 桶迟到响应必须在销毁后丢弃');
     assert.match(formSource,
         /input\.addEventListener\("sw-config-reset", \(\) => \{\s*if \(queryTimer !== null\) \{\s*window\.clearTimeout\(queryTimer\);/,

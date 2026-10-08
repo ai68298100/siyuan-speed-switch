@@ -37,7 +37,7 @@ const mobileSwitcherSource = readSourceText('src/mobile-switcher-ui.ts');
 test('mobile store media query exists', () => assert.match(css, /@media \(max-width: 560px\)/));
 test('mobile store keeps compact padding', () => assert.ok(declaresIn(css, '.sw-home-store', /padding: 10px 12px 14px/, narrow)));
 test('mobile search wraps controls', () => assert.ok(declaresIn(css, '.sw-home-store__search', /flex-wrap: wrap/, narrow)));
-test('mobile search keeps gap', () => assert.ok(declaresIn(css, '.sw-home-store__search', /gap: 7px/, narrow)));
+test('mobile search keeps gap', () => assert.ok(declaresIn(css, '.sw-home-store__search', /gap: 8px/, narrow)));
 test('mobile search input keeps flexible width', () => assert.ok(declaresIn(css, '.sw-home-store__search input', /flex: 1 1 calc\(100% - 40px\)/, narrow)));
 test('mobile search input has zero minimum', () => assert.ok(declaresIn(css, '.sw-home-store__search input', /min-width: 0/, narrow)));
 // T-6967 S2：排序已收进筛选行尾——窄屏不再并入搜索行半幅，改为行尾定宽；
@@ -58,7 +58,7 @@ test('mobile tabs preserve horizontal padding', () => assert.ok(declaresIn(css, 
 test('mobile summary shares bounded width rule', () => assert.ok(declaresIn(css, '.sw-home-store__summary', /max-width: 100%/, narrow)));
 test('mobile cards fill row width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /width: 100%/, narrow)));
 test('mobile cards cap row width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /max-width: 100%/, narrow)));
-test('mobile cards keep compact padding', () => assert.ok(declaresIn(css, '.sw-home-store__card', /padding: 11px 12px/, narrow)));
+test('mobile cards keep compact padding', () => assert.ok(declaresIn(css, '.sw-home-store__card', /padding: 12px 12px/, narrow)));
 test('mobile card keeps bounded width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /max-width: 100%/, narrow)));
 test('mobile preview caps width', () => assert.ok(declaresIn(css, '.sw-home-store__preview', /max-width: 100%/, narrow)));
 test('mobile preview clips overflow', () => assert.ok(declaresIn(css, '.sw-home-store__preview', /overflow: hidden/, narrow)));
@@ -416,7 +416,7 @@ test('config stale notebook option uses current id', () => assert.match(configFo
 test('config stale notebook option is labelled unavailable', () => assert.match(configFormSource, /stale\.textContent = `\$\{current\} · \$\{this\.i18n\.homeConfigUnavailableValue\}`/));
 test('config notebook selects restored value after fill', () => assert.match(configFormSource, /select\.value = resetKeys\.has\(field\.key\) \? "" : current/));
 test('config notebook change listener is installed', () => assert.match(configFormSource, /select\.addEventListener\("change", \(\) => \{ draft\[field\.key\] = select\.value; \}\)/));
-test('config notebook promise checks field options and ignores late disposal', () => assert.match(configFormSource, /void this\.loadNotebooks\(\)\.then\(\(notebooks\) => \{\s*if \(configFormDisposed\) return;\s*fill\(notebooks\)/));
+test('config notebook promise checks field options and ignores late disposal', () => assert.match(configFormSource, /void this\.loadNotebooks\(\)\.then\(\(notebooks\) => \{\s*if \(formDisposed\) return;\s*fill\(notebooks\)/));
 test('config document input has placeholder', () => assert.match(configFormSource, /input\.placeholder = placeholderText\(resolveHomeConfigPlaceholder\(inst\.moduleId, field\.key\)\) \|| this\.i18n\.homeConfigDocumentPlaceholder/));
 test('config document input starts from draft', () => assert.match(configFormSource, /input\.value = typeof draft\[field\.key\] === "string"/));
 test('config document input records initial draft', () => assert.match(configFormSource, /draft\[field\.key\] = input\.value/));
@@ -461,8 +461,9 @@ test('ready card records added state', () => assert.match(storeSource,/card\.dat
 test('ready card records status tone', () => assert.match(storeSource,/card\.dataset\.statusTone = resolveHomeStoreStatusTone\(card\.dataset\)/));
 test('ready card records integration tone', () => assert.match(storeSource,/card\.dataset\.integrationTone = resolveHomeStoreIntegrationTone\(card\.dataset\)/));
 test('ready card exposes accessible summary label', () => assert.match(storeSource,/card\.setAttribute\("aria-label", resolveHomeStoreCardA11y/));
-test('ready card icon has viewBox', () => assert.match(storeSource,/icon\.setAttribute\("viewBox", "0 0 24 24"\)/));
-test('ready card icon is hidden from assistive tech', () => assert.match(storeSource,/icon\.setAttribute\("aria-hidden", "true"\)/));
+// T-7161 后商店图标由 createIconUseSvg 统一安全构造：viewBox 与 aria-hidden 在 helper 内设置。
+test('ready card icon has viewBox', () => assert.match(storeSource,/svg\.setAttribute\("viewBox", "0 0 24 24"\)/));
+test('ready card icon is hidden from assistive tech', () => assert.match(storeSource,/svg\.setAttribute\("aria-hidden", "true"\)/));
 test('ready card title uses fallback module id', () => assert.match(storeSource,/title\.textContent = def\.title \|\| moduleId/));
 test('ready card title has stable id', () => assert.match(storeSource,/title\.id = `sw-home-store-title-\$\{moduleId\}\$\{idSuffix\}`/));
 test('ready card references title with aria-labelledby', () => assert.match(storeSource,/card\.setAttribute\("aria-labelledby", title\.id\)/));

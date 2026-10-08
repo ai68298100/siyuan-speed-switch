@@ -1,7 +1,7 @@
 {
   "name": "siyuan-speed-switch",
-  "version": "0.44.1",
-  "description": "SiYuan local-first navigation and work-context platform with a switcher, widget workbench, snippet lab, and floating-ball actions.",
+  "version": "0.45.0",
+  "description": "Local-first SiYuan navigation and work-context platform: switcher, workbench, snippet lab, and floating-ball actions.",
   "main": "index.js",
   "scripts": {
     "dev": "webpack --config webpack.config.js --mode development",
@@ -26,13 +26,17 @@
     "test:e2e:background": "node scripts/e2e/background-orchestrator.mjs",
     "test:e2e:readonly": "playwright test --config playwright.e2e.readonly.config.mjs",
     "test:smoke:surface-switch": "node tests/surface-switch-browser-smoke.cjs",
+    "test:smoke:third-party": "node tests/third-party-lifecycle-browser-smoke.cjs",
     "shots:acceptance": "node tests/capture-acceptance-screenshots.cjs"
   },
   "keywords": [
     "siyuan",
+    "plugin",
+    "navigation",
+    "work-context",
+    "tab-switcher",
     "siyuan-note",
     "siyuan-plugin",
-    "tab-switcher",
     "speed-switch",
     "workbench",
     "snippet-studio",

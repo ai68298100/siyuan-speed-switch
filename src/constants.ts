@@ -74,6 +74,8 @@ export const THUMB_BATCH_MOBILE = 2;
 // getDoc 回源并发上限
 export const THUMB_API_MAX = 4;
 export const THUMB_API_MAX_MOBILE = 2;
+// T-7172：缩略图回源超时（慢内核下旧请求不占闸门槽位）
+export const THUMB_API_TIMEOUT_MS = 8000;
 
 // 缩略图克隆块数上限：只取文档首屏内容，避免大文档整篇克隆卡顿
 export const THUMB_CLONE_MAX = 30;

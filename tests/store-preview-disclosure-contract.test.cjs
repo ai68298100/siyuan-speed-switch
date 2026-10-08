@@ -38,7 +38,7 @@ test('preview disclosure adds privacy tone', () => assert.match(storeUiSource, /
 test('preview disclosure is mounted before preview body', () => assert.match(storeUiSource,/container\.appendChild\(meta\);\s*const body = bodyTarget \|\| document\.createElement\("div"\)/));
 test('preview meta uses flex layout', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /display: flex/, base)));
 test('preview meta wraps on narrow surfaces', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /flex-wrap: wrap/, base)));
-test('preview meta keeps bounded gaps', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /gap: 5px/, base)));
+test('preview meta keeps bounded gaps', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /gap: 6px/, base)));
 test('preview chips have visible borders', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /border: 1px solid/, base)));
 test('preview chips allow long source names', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /overflow-wrap: anywhere/, base)));
 test('preview chips keep legacy word-break fallback', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /word-break: break-word/, base)));

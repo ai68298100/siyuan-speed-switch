@@ -1828,7 +1828,18 @@ function updateSavedSearchEntry(list, id, patch) {
     return {ok: true, list: out, entry: next};
 }
 
+// T-7162：保存搜索回放范围——保存项只承诺查询词与笔记本，回放筛选即这两字段，
+// 不继承回放现场的路径/类型/子类型/方法/排序；同一保存项从任何现场回放得到同一条件。
+function buildSavedSearchReplayFilters(saved) {
+    const filters = {};
+    const notebook = saved && typeof saved.notebook === "string" ? saved.notebook.trim() : "";
+    if (notebook) filters.notebook = notebook.slice(0, SAVED_SEARCH_NOTEBOOK_MAX);
+    return filters;
+}
+
+
 module.exports = {
+    buildSavedSearchReplayFilters,
     DEFAULT_SEARCH_LIMITS,
     DEFAULT_SEARCH_PAGE_SIZE,
     DEFAULT_NAVIGATION_LIMITS,

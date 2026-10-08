@@ -39,9 +39,9 @@ test('group line height is defined',()=>assert.ok(declaresIn(css,'.sw-home-store
 test('summary line height is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__summary',/line-height: 1\.45/,base)));
 test('title retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head strong',/font-size: 13px/,base)));
 test('description retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head span',/font-size: 12px/,base)));
-test('status retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__status',/font-size: 11px/,base)));
+test('status retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__status',/font-size:\s*var\(--sw-font-xs,\s*11px\)/,base)));
 test('group retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__group',/font-size: 12px/,base)));
-test('summary retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__summary',/font-size: 11px/,base)));
+test('summary retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__summary',/font-size:\s*var\(--sw-font-xs,\s*11px\)/,base)));
 test('line height uses unitless values',()=>{
     assert.equal(managedRules.length,MANAGED.length,'审计面塌缩：受管块应有 5 条基础规则');
     for(const rule of managedRules){

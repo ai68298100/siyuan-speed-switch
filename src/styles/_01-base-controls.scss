@@ -16,10 +16,10 @@
     .sw-setting__dock-item {
         display: flex;
         align-items: center;
-        gap: 7px;
+        gap: 8px;
         min-width: 0;
-        min-height: 34px;
-        padding: 4px 7px;
+        min-height: var(--sw-control-h);
+        padding: 4px 8px;
         border: 1px solid var(--b3-border-color);
         border-radius: 6px;
         background: var(--b3-theme-surface);
@@ -181,7 +181,7 @@
             height: 16px;
             border-radius: 50%;
             background: var(--b3-theme-on-surface-light);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+            box-shadow: var(--sw-shadow-xs);
             transition: transform $sw-dur-base $sw-ease, background-color $sw-dur-base $sw-ease;
         }
 
@@ -221,7 +221,7 @@
     grid-template-columns: minmax(72px, 1fr) 92px minmax(156px, 1.4fr) 84px 42px;
     gap: 8px;
     align-items: center;
-    min-height: 26px;
+    min-height: var(--sw-control-h-md);
     padding: 0 2px;
     color: var(--b3-theme-on-surface-light);
     font-size: 12px;
@@ -256,7 +256,7 @@
         gap: 6px;
 
         svg {
-            width: 14px;
+            width: var(--sw-icon-xs, 14px);
             height: 14px;
         }
     }
@@ -297,11 +297,11 @@
         display: inline-flex;
         align-items: center;
         justify-content: flex-start;
-        gap: 5px;
+        gap: 6px;
         width: 92px;
         min-width: 72px;
         height: 30px;
-        padding: 0 7px;
+        padding: 0 8px;
         overflow: hidden;
         color: var(--b3-theme-on-background);
 
@@ -315,7 +315,7 @@
 
         .sw-setting__quick-icon-preview,
         .sw-setting__quick-icon-preview svg {
-            width: 16px;
+            width: var(--sw-icon-sm, 16px);
             height: 16px;
         }
 
@@ -325,7 +325,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            font-size: 11px;
+            font-size: var(--sw-font-xs, 11px);
         }
 
         .sw-setting__quick-icon-arrow {
@@ -421,9 +421,9 @@
 }
 
 .sw-setting__quick-picker-heading {
-    margin-bottom: 5px;
+    margin-bottom: 6px;
     color: var(--b3-theme-on-surface-light);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -467,17 +467,17 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: var(--sw-icon-md, 20px);
+    height: var(--sw-icon-md, 20px);
     font-size: 17px;
 
     svg {
-        width: 18px;
+        width: var(--sw-icon-md, 18px);
         height: 18px;
     }
 
     .sw-setting__picker-icon-image {
-        width: 18px;
+        width: var(--sw-icon-md, 18px);
         height: 18px;
         object-fit: contain;
         border-radius: 3px;
@@ -526,7 +526,13 @@
     justify-content: center;
     padding: 12px;
     box-sizing: border-box;
-    background: rgba(0, 0, 0, 0.28);
+    // T-7200：遮罩统一走 --sw-overlay-* token，与其他模态浮层同一材质层级。
+    background: var(--sw-overlay-scrim, rgba(0, 0, 0, 0.28));
+    backdrop-filter: var(--sw-overlay-blur, blur(2px));
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        background: var(--sw-overlay-scrim-strong, rgba(0, 0, 0, 0.42));
+    }
 }
 
 .sw-quick-icon-picker {
@@ -557,7 +563,7 @@
     padding: 0;
 
     svg {
-        width: 16px;
+        width: var(--sw-icon-sm, 16px);
         height: 16px;
     }
 }
@@ -602,8 +608,8 @@
 :is(.sw-quick-icon-picker__item, .sw-setting__quick-icon-preview, .sw-quick-icon-picker__preview) {
     .sw__quick-action-icon-image,
     svg {
-        width: 20px;
-        height: 20px;
+        width: var(--sw-icon-md, 20px);
+        height: var(--sw-icon-md, 20px);
         object-fit: contain;
     }
 }
@@ -633,8 +639,8 @@
     cursor: pointer;
 
     svg {
-        width: 20px;
-        height: 20px;
+        width: var(--sw-icon-md, 20px);
+        height: var(--sw-icon-md, 20px);
     }
 
     &:hover,

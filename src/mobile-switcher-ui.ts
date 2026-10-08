@@ -285,6 +285,8 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
         let activeSortOverlay: HTMLElement | null = null;
         const backgroundState = new Map<HTMLElement, {inert: string | null; hidden: string | null}>();
         const sortButton = dialog.element.querySelector<HTMLButtonElement>(".sw__sort-btn");
+        // T-7176：关闭排序 sheet 后回焦触发按钮。
+        let sortTrigger: HTMLElement | null = null;
         const closeSortOverlay = (restoreFocus = true) => {
             if (!activeSortOverlay) return;
             activeSortOverlay?.remove();
@@ -295,7 +297,9 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
             });
             backgroundState.clear();
             sortButton?.setAttribute("aria-expanded", "false");
-            if (restoreFocus && sortButton?.isConnected) sortButton.focus({preventScroll: true});
+            const focusTarget = sortTrigger || sortButton;
+            if (restoreFocus && focusTarget?.isConnected) focusTarget.focus({preventScroll: true});
+            sortTrigger = null;
         };
         const sortFocusStops = () => activeSortOverlay
             ? Array.from(activeSortOverlay.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")).filter((button) => button.tabIndex >= 0)
@@ -374,6 +378,7 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
         sortButton?.setAttribute("aria-expanded", "false");
         sortButton?.addEventListener("click", () => {
             closeSortOverlay(false);
+            sortTrigger = sortButton;
             const overlay = document.createElement("div");
             overlay.className = "sw__mobile-sort-overlay";
             // WebView 里的思源 Dialog 可能建立新的 stacking context，内联层级作为最后一道兜底。
@@ -433,6 +438,15 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
                         this.applySearch(scrollElement, searchEl, closeOverlay);
                     }
                 });
+                // T-7176：分组选项方向键循环（与排序选项同模式）
+                item.addEventListener("keydown", (event) => {
+                    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                    event.preventDefault();
+                    const options = Array.from(groupList.querySelectorAll<HTMLButtonElement>(".sw__mobile-sort-option"));
+                    const index = options.indexOf(item);
+                    const next = options[(index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length];
+                    next.focus();
+                });
                 groupList.appendChild(item);
             });
             sheet.appendChild(groupList);
@@ -480,6 +494,9 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
             sheet.appendChild(closeButton);
             overlay.appendChild(sheet);
             document.body.appendChild(overlay);
+            // T-7176：打开后入焦首个选项
+            var first = overlay.querySelector("button");
+            if (first) first.focus({preventScroll: true});
             activeSortOverlay = overlay;
             sortButton?.setAttribute("aria-expanded", "true");
             const focusSelection = () => sortFocusStops()[0]?.focus({preventScroll: true});
@@ -502,6 +519,28 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
                 if (button && (event.key === "Enter" || event.key === " ")) {
                     event.preventDefault();
                     button.click();
+                }
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeSortOverlay();
+                    return;
+                }
+                // T-7176：Tab 循环约束——首/末回绕，焦点不逃逸 sheet
+                if (event.key === "Tab") {
+                    const focusables = Array.from(
+                        overlay.querySelectorAll<HTMLElement>("button, input, [tabindex]:not([tabindex=\"-1\"])")
+                    ).filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null);
+                    if (focusables.length === 0) return;
+                    const first = focusables[0];
+                    const last = focusables[focusables.length - 1];
+                    if (event.shiftKey && document.activeElement === first) {
+                        event.preventDefault();
+                        last.focus({preventScroll: true});
+                    } else if (!event.shiftKey && document.activeElement === last) {
+                        event.preventDefault();
+                        first.focus({preventScroll: true});
+                    }
                 }
             });
             this.scheduleAnimationFrame(() => {

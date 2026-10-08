@@ -192,19 +192,23 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
             return {ok: true, cached: true, snapshot: cached.snapshot};
         }
     }
-    if (options.dedupe !== false && inFlightReads.has(cacheKey)) return inFlightReads.get(cacheKey);
+    let signal = options.signal && typeof options.signal === "object" ? options.signal : null;
+    // T-7164：dedupe 只共享相同取消语境的读——不同 signal 的调用者各自开读，
+    // 首调用者的 abort 不再误伤共享等待者。
+    if (options.dedupe !== false) {
+        const inflight = inFlightReads.get(cacheKey);
+        if (inflight && inflight.signal === signal) return inflight.promise;
+    }
     const generation = (readGenerations.get(cacheKey) || 0) + 1;
     readGenerations.set(cacheKey, generation);
     const run = (async () => {
     let timeoutHandle = null;
     let abortHandler = null;
-    let signal = null;
     try {
         const timeout = Number.isFinite(options.timeoutMs) ? Math.max(1, options.timeoutMs) : adapter.timeoutMs;
         const timeoutPromise = new Promise((_, reject) => {
             timeoutHandle = setTimeout(() => reject(new Error("timeout")), timeout);
         });
-        signal = options.signal && typeof options.signal === "object" ? options.signal : null;
         if (signal?.aborted) throw new Error("aborted");
         const abortPromise = signal && typeof signal.addEventListener === "function" ? new Promise((_, reject) => {
             abortHandler = () => reject(new Error("aborted"));
@@ -225,8 +229,11 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         if (invalidatedReadGenerations.get(cacheKey) > generation) {
             return {ok: false, reason: "stale", snapshot: normalizeSnapshot(null)};
         }
-        if (readGenerations.get(cacheKey) === generation) snapshotCache.set(cacheKey, {at: Date.now(), snapshot});
-        failureBackoff.delete(cacheKey);
+        // T-7164：缓存提交与退避清除同守卫——旧代成功不得清除新代的失败退避。
+        if (readGenerations.get(cacheKey) === generation) {
+            snapshotCache.set(cacheKey, {at: Date.now(), snapshot});
+            failureBackoff.delete(cacheKey);
+        }
         if (snapshot.empty) recordDiagnostic("empty", moduleId, device);
         return {ok: true, cached: false, snapshot};
     } catch (error) {
@@ -247,9 +254,10 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         }
     }
     })();
-    inFlightReads.set(cacheKey, run);
+    inFlightReads.set(cacheKey, {promise: run, signal});
     try { return await run; } finally {
-        if (inFlightReads.get(cacheKey) === run) inFlightReads.delete(cacheKey);
+        const inflight = inFlightReads.get(cacheKey);
+        if (inflight && inflight.promise === run) inFlightReads.delete(cacheKey);
         const invalidatedGeneration = invalidatedReadGenerations.get(cacheKey);
         if (!inFlightReads.has(cacheKey)
             && invalidatedGeneration !== undefined

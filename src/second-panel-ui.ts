@@ -45,7 +45,7 @@ export interface SecondPanelUiHost {
     openSetting(initialPanel?: string, returnTo?: PlatformSurface | null, returnContext?: PlatformSurfaceContext | null): void;
     handleHomeItemAction(item: { label?: string; value?: string; href?: string; command?: string }, close: () => void): void;
     migrateHomeLayoutSize(entry: {w?: number; h?: number; size?: string}, sizes: string[]): string;
-    openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void): void;
+    openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void): () => void;
     openPlatformSurface?(surface: PlatformSurface, returnTo?: PlatformSurface, context?: PlatformSurfaceContext | null): void;
     getAvailablePlatformSurfaces?(): PlatformSurface[];
     getPlatformSurfaceLabels?(): PlatformSurfaceLabels;
@@ -122,9 +122,10 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         const fullscreenMode = mode === "fullscreen" || (mode === "follow" && settings.panelSizeMode === "fullscreen");
         // T-6481：面板资源释放挂宿主 destroyCallback（构造与装配同函数，用可变 holder 前置声明）。
         let releasePanel: () => void = () => undefined;
+        let disposeSizeMenu: () => void = () => undefined;
         const dialogHolder: {dialog: Dialog | null} = {dialog: null};
         const dialog = new Dialog({
-            title: "",
+            title: this.i18n.dialogWorkbenchTitle || "工作台",
             content: '<div class="speed-switch sw-home sw-platform-surface sw-platform-surface--workbench" data-sw-surface="workbench"></div>',
             width: `${size.width}px`,
             height: `${size.height}px`,
@@ -148,15 +149,24 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             : (context?.focusSource || "").startsWith("object:")
                 ? context.focusSource.slice("object:".length)
                 : "";
+        // 记录最后实际聚焦的组件实例；离开时焦点通常已转移到 SurfaceNav 按钮。
+        let lastFocusedWidgetId = focusObjectId;
+        root.addEventListener("focusin", (event) => {
+            const target = event.target as HTMLElement | null;
+            const cell = target?.closest<HTMLElement>(".sw__home__cell, .sw-home__cell");
+            if (cell && root.contains(cell)) lastFocusedWidgetId = cell.dataset.swObjectId || "";
+        });
         const platformLabels = this.getPlatformSurfaceLabels?.();
         const navigatePlatformSurface = this.openPlatformSurface
             ? (surface: PlatformSurface) => {
                 if (!dialog.element.isConnected) return;
-                // T-6869 编辑现场：经表面导航离开时记录编辑态，返回工作台时恢复。
-                this.workbenchResumeEditing = editing;
                 const activeElement = dialog.element.ownerDocument?.activeElement as HTMLElement | null;
                 const activeCell = activeElement?.closest<HTMLElement>(".sw__home__cell, .sw-home__cell");
-                const focusedWidgetId = activeCell && root.contains(activeCell) ? activeCell.dataset.swObjectId || "" : "";
+                const focusedWidgetId = activeCell && root.contains(activeCell)
+                    ? activeCell.dataset.swObjectId || ""
+                    : "";
+                // T-6869 编辑现场：经表面导航离开时记录编辑态，返回工作台时恢复。
+                this.workbenchResumeEditing = editing;
                 dialog.destroy();
                 this.openPlatformSurface?.(surface, "workbench", {
                     entry: "surface-nav",
@@ -1059,7 +1069,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         });
                     const sizeButton = tool(this.i18n.homeSize, () => undefined);
                     sizeButton.addEventListener("click", () => {
-                        this.openHomeSizeMenu(sizeButton, supported, sizeKey, (picked) => {
+                        disposeSizeMenu();
+                        disposeSizeMenu = this.openHomeSizeMenu(sizeButton, supported, sizeKey, (picked) => {
                             const preset2 = HOME_WIDGET_SIZES[picked as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
                             layoutOpLabel = this.i18n.homeHistorySize;
                             persistLayout({size: picked, w: preset2.w, h: preset2.h});
@@ -1527,6 +1538,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         releasePanel = () => {
             if (panelReleased) return;
             panelReleased = true;
+            disposeSizeMenu();
             clearDeferredRefreshes();
             iconObserver?.disconnect();
             if (iconClampFrame) cancelAnimationFrame(iconClampFrame);
