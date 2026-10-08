@@ -280,7 +280,7 @@
 .sw-home-config { height: 100%; padding: 12px 14px 0; box-sizing: border-box; overflow: auto; background: var(--sw-page-bg, var(--b3-theme-background)); }
 .sw-home-config__intro { display: flex; gap: 10px; padding: 10px; border: 1px solid var(--b3-border-color); border-radius: 10px; background: var(--b3-theme-surface); }
 .sw-home-config__icon { display: grid; flex: none; width: 32px; height: 32px; place-items: center; border-radius: var(--sw-radius-control, 10px); color: var(--b3-theme-primary); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); }
-.sw-home-config__icon svg { width: 18px; height: 18px; }
+.sw-home-config__icon svg { width: var(--sw-icon-md, 18px); height: 18px; }
 .sw-home-config__intro-copy, .sw-home-config__field { min-width: 0; }
 .sw-home-config__title { margin: 0; font-size: 14px; }
 .sw-home-config__description, .sw-home-config__hint { color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); line-height: 1.4; }
