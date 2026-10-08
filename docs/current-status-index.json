@@ -5,7 +5,7 @@
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7153",
+  "nextLocalTask": "T-7144",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -944,7 +944,7 @@
     {
       "id": "T-7153",
       "title": "真实持续会话与资源趋势",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "deliverable",
@@ -970,11 +970,15 @@
         "docs/t7153-resource-trend-probe-2026-10-07.md",
         "docs/adr/0150-t7153-render-listener-lifecycle.md",
         "docs/adr/0151-t7153-provider-cache-generation.md",
+        "docs/adr/0152-t7153-long-run-checkpoints.md",
         ".artifacts/e2e-background/20261007132726-21184-5874f0/artifacts/t7153-resource-trend/results.json",
         ".artifacts/e2e-background/20261007171037-38896-64a829/artifacts/t7153-resource-trend-final/results.json",
-        ".artifacts/e2e-background/20261007162443-39152-aaeb4e/artifacts/t7153-negative/runner.stdout.log"
+        ".artifacts/e2e-background/20261007162443-39152-aaeb4e/artifacts/t7153-negative/runner.stdout.log",
+        ".artifacts/e2e-background/20261008030619-2464-72e951/artifacts/t7203-resource-trend/test-results/resource-trend-T-7153-真实宿主资源趋势-商店重绘时释放旧渲染监听并在关闭后归零/resource-trend.json",
+        ".artifacts/e2e-background/20261008030619-2464-72e951/artifacts/t7203-resource-trend/test-results/resource-trend-T-7153-真实宿主资源趋势-商店重绘时释放旧渲染监听并在关闭后归零/resource-trend-checkpoints.ndjson",
+        ".artifacts/e2e-background/20261008030619-2464-72e951/summary.json"
       ],
-      "next": null
+      "next": "T-7144"
     },
     {
       "id": "T-7154",
