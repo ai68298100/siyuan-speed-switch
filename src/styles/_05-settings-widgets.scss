@@ -191,7 +191,7 @@
     }
 
     svg {
-        width: 18px;
+        width: var(--sw-icon-md, 18px);
         height: 18px;
         color: var(--b3-theme-primary);
     }
@@ -284,7 +284,7 @@
         -webkit-tap-highlight-color: transparent;
 
         svg {
-            width: 16px;
+            width: var(--sw-icon-sm, 16px);
             height: 16px;
         }
 
@@ -327,7 +327,7 @@
         min-height: 44px;
 
         svg {
-            width: 16px;
+            width: var(--sw-icon-sm, 16px);
             height: 16px;
             flex: none;
             color: var(--b3-theme-on-surface-light);
@@ -431,7 +431,7 @@
     padding: 4px 10px;
     font-size: 13px;
 
-    svg { flex: none; width: 14px; height: 14px; }
+    svg { flex: none; width: var(--sw-icon-xs, 14px); height: 14px; }
     .sw__sort-trigger-label {
         overflow: hidden;
         text-overflow: ellipsis;
@@ -531,7 +531,7 @@
         align-items: center;
         gap: 4px;
 
-        svg { width: 14px; height: 14px; }
+        svg { width: var(--sw-icon-xs, 14px); height: 14px; }
     }
 }
 
@@ -709,7 +709,7 @@
         height: 14px;
         color: var(--b3-theme-primary);
 
-        svg { width: 14px; height: 14px; }
+        svg { width: var(--sw-icon-xs, 14px); height: 14px; }
     }
 
     .sw__home-module-title {
@@ -744,7 +744,7 @@
         padding: 0;
         color: var(--b3-theme-primary);
 
-        svg { width: 14px; height: 14px; }
+        svg { width: var(--sw-icon-xs, 14px); height: 14px; }
 
         &:hover { background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); }
     }
@@ -1374,8 +1374,8 @@
 }
 
 .sw-home__cell .sw__home-calendar-daynight {
-    width: 20px;
-    height: 20px;
+    width: var(--sw-icon-md, 20px);
+    height: var(--sw-icon-md, 20px);
     border-radius: 50%;
     display: inline-flex;
     align-items: center;

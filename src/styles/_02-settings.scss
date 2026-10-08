@@ -64,7 +64,7 @@
             padding: 0;
 
             svg {
-                width: 14px;
+                width: var(--sw-icon-xs, 14px);
                 height: 14px;
                 transition: transform $sw-dur-base $sw-ease;
             }
@@ -196,7 +196,7 @@
             padding: 0;
 
             svg {
-                width: 14px;
+                width: var(--sw-icon-xs, 14px);
                 height: 14px;
             }
         }
@@ -1338,7 +1338,7 @@
         min-height: 44px;
         padding: 4px;
 
-        svg { width: 16px; height: 16px; }
+        svg { width: var(--sw-icon-sm, 16px); height: 16px; }
     }
 
     &__add {

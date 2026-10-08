@@ -19,7 +19,7 @@
     transition: transform $sw-dur-panel $sw-ease, opacity $sw-dur-panel $sw-ease, box-shadow $sw-dur-slow $sw-ease;
 
     svg {
-        width: 18px;
+        width: var(--sw-icon-md, 18px);
         height: 18px;
         color: var(--b3-theme-on-primary);
     }
@@ -95,7 +95,7 @@
         transition: transform $sw-dur-panel $sw-ease, opacity $sw-dur-panel $sw-ease, box-shadow $sw-dur-slow $sw-ease;
 
         svg {
-            width: 18px;
+            width: var(--sw-icon-md, 18px);
             height: 18px;
             color: var(--b3-theme-on-primary);
         }
@@ -272,15 +272,15 @@
 
         svg {
             flex: 0 0 20px;
-            width: 20px;
-            height: 20px;
+            width: var(--sw-icon-md, 20px);
+            height: var(--sw-icon-md, 20px);
             color: var(--b3-theme-primary, var(--b3-theme-on-surface));
         }
 
         .sw__floating-ball-action-image {
             flex: 0 0 20px;
-            width: 20px;
-            height: 20px;
+            width: var(--sw-icon-md, 20px);
+            height: var(--sw-icon-md, 20px);
             object-fit: contain;
             border-radius: 4px;
         }
@@ -587,7 +587,7 @@
         margin: 0 0 8px;
         font-size: 14px;
 
-        svg { width: 16px; height: 16px; }
+        svg { width: var(--sw-icon-sm, 16px); height: 16px; }
     }
 }
 
@@ -666,7 +666,7 @@
             color: var(--b3-theme-on-surface);
             touch-action: manipulation;
 
-            svg { width: 16px; height: 16px; }
+            svg { width: var(--sw-icon-sm, 16px); height: 16px; }
         }
     }
 
@@ -828,7 +828,7 @@
             }
 
             > svg {
-                width: 16px !important;
+                width: var(--sw-icon-sm, 16px) !important;
                 height: 16px !important;
                 max-width: 16px;
                 max-height: 16px;

@@ -174,7 +174,7 @@
     }
 }
 
-.sw-platform-header__close svg { width: 18px; height: 18px; }
+.sw-platform-header__close svg { width: var(--sw-icon-md, 18px); height: 18px; }
 
 .sw-platform-surface-nav {
     display: flex;

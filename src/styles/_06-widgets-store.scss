@@ -5,7 +5,7 @@
 .speed-switch .sw-home svg,
 .speed-switch .sw-home-store__card svg,
 .speed-switch .sw-home-config svg {
-    max-width: 24px;
+    max-width: var(--sw-icon-lg, 24px);
     max-height: 24px;
     flex: 0 0 auto;
 }
@@ -81,7 +81,7 @@
         // 图标不允许被 flex 压缩（否则 16px 星形被挤成 12px 变形）
         > svg {
             flex: none;
-            width: 16px;
+            width: var(--sw-icon-sm, 16px);
             height: 16px;
         }
     }
