@@ -4,6 +4,12 @@
 > releases; new entries are appended here at release time. 中文完整历史见 [`docs/CHANGELOG.md`](./CHANGELOG.md)。
 
 ## Changelog (full history)
+### v0.45.0 (2026-10-08)
+
+- **R13–R16 visual and scale campaign**: completed token scales for type, radii, spacing, shadows, motion, status language, and density, with a four-state consistency matrix aligning all surfaces and device modes.
+- **Reliability pool (about twenty batches)**: closed cancellation families, session isolation, lifecycle cleanup, focus and keyboard accessibility, honest failure receipts, overlay disposers, and sanitization boundaries across async and unload paths.
+- **T-7204 icon-system tokenization**: consolidated icon width/height consumption across style slices onto shared icon tokens while preserving existing geometry and behavior.
+- **Verification**: full suite **6738/6738**; `tsc` clean; quality audit **50/50**; integration audit **50/50**; `git diff --check` clean.
 ### v0.44.1 (2026-09-30)
 
 - **T-7054 workbench visual overhaul (batches A–I, all 58 widgets)**: iPad-quality material base (glass, depth shadows, hover) plus dedicated per-widget styles for nine families (clock, calendar/journal, weather, task/flashcard, writing, reading, stats, navigation, utilities); batch A adds view logic — day-progress bar, day/night indicator, UTC offset, milestone badge.

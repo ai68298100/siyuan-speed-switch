@@ -1,6 +1,6 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.44.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.45.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
@@ -346,12 +346,18 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.44.1`（2026-09-30 正式发布；组件面板 58 组件视觉重构、片段实验室内置片段扩至 26 个并支持一键复制、移动端长按拖拽重排、第三方组件生态链（Calendar 首个外部接入：添加即丢/预览尺寸双缺陷修复 + 失效组件可清理 + 装机前曝光）；Release 资产由 workflow 自动构建）。
+当前版本为 `v0.45.0`（2026-10-08 正式发布；R13~R16 视觉/刻度战役完成字号、圆角、间距、阴影、动效、状态语言与密度档 token 刻度，并交付四态一致性矩阵；可靠性池约二十批覆盖取消族、会话隔离、生命周期回收与键盘可访问性；T-7204 图标系统 token 化收口；Release 资产由 workflow 自动构建）。
 
 ## 更新日志
 
 完整历史见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。最近版本：
 
+### v0.45.0（2026-10-08）
+
+- **R13~R16 视觉/刻度战役**：完成字号、圆角、间距、阴影、动效、状态语言与密度档 token 刻度，交付四态一致性矩阵，统一三面板与多端状态表达。
+- **可靠性池约二十批**：围绕取消族、会话隔离、生命周期回收、焦点与键盘可访问性、失败回执、浮层 disposer、净化边界等收口，补齐异步竞态、卸载代际与操作反馈合同。
+- **T-7204 图标系统 token 化**：收敛跨样式切片的图标宽度/高度消费，接入共享 icon token，保持既有几何与功能行为。
+- **验证**：完整测试 **6738/6738**；`tsc` 通过；quality audit **50/50**；integration audit **50/50**；`git diff --check` 通过。
 ### v0.44.1（2026-09-30）
 
 - **组件面板视觉重构（58 组件全覆盖）**：iPad 质感基座（玻璃态/景深/悬停反馈）+ 九大家族专属样式（时钟/日历/天气/任务/写作/阅读/统计/导航/工具）；时钟组件新增日进度条、昼夜指示与里程碑徽标。
