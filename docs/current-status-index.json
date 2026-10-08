@@ -2079,7 +2079,7 @@
   ],
   "global": {
     "jsRunner": "blocked",
-    "release": "pending",
+    "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action"
   }
