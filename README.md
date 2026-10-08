@@ -1,11 +1,11 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.45.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **当前稳定版：v0.45.0（2026-10-08）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.45.0) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **当前稳定版：v0.46.0（2026-10-09）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.0) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
 <p align="center"><img src="preview.png" width="720" alt="小驴雷切预览"/></p>
 
@@ -351,13 +351,18 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.45.0`（2026-10-08 正式发布；R13~R16 视觉/刻度战役完成字号、圆角、间距、阴影、动效、状态语言与密度档 token 刻度，并交付四态一致性矩阵；可靠性池约二十批覆盖取消族、会话隔离、生命周期回收与键盘可访问性；T-7204 图标系统 token 化收口；Release 资产已随 GitHub Release 提供）。
+当前版本为 `v0.46.0`（2026-10-09 正式发布；本轮合并补齐原生片段管理、片段分组与备份恢复、Gist 分享、编辑器基础能力、兼容性探针、桌面/侧栏验收矩阵及资源趋势长会话证据；同时保留 v0.45.0 的视觉、可靠性与图标 token 收口；Release 资产已随 GitHub Release 提供）。
 
 ## 更新日志
 
 完整历史见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。最近版本：
 
-### v0.45.0（2026-10-08）
+### v0.46.0（2026-10-09）
+
+- **原生片段管理**：补齐片段分组、备份恢复、元数据、编辑基础能力和安全边界，支持在片段实验室内完成可恢复的管理流程。
+- **平台与搜索增强**：接入表面适配路由、标题搜索归一化、组合搜索与工作台缓存/生命周期治理，保留本地优先和失败可解释性。
+- **宿主验收与资源证据**：加入思源 3.8 兼容性探针、桌面/原生侧栏验收矩阵、隔离背景 E2E 与资源趋势长会话检查点。
+- **验证**：完整测试 **8583/8583**；`tsc` 通过；quality audit **50/50**；integration audit **50/50**；视觉矩阵、构建与发布包检查通过。
 
 - **R13~R16 视觉/刻度战役**：完成字号、圆角、间距、阴影、动效、状态语言与密度档 token 刻度，交付四态一致性矩阵，统一三面板与多端状态表达。
 - **可靠性池约二十批**：围绕取消族、会话隔离、生命周期回收、焦点与键盘可访问性、失败回执、浮层 disposer、净化边界等收口，补齐异步竞态、卸载代际与操作反馈合同。
@@ -371,12 +376,18 @@ pnpm verify:release
 - **第三方组件生态（首个外部接入 Calendar）**：修复「添加即被清除」与「预览恒为 medium」两个宿主缺陷；禁用/重载插件不再丢用户布局（ADR 0103）；失效组件在面板与商店可见可清理；Calendar 组件获得装机前曝光；接入文档沉淀「有界重试注册」范式。
 - **安全**：fast-uri 传递依赖漏洞修复（0 vulnerabilities）。
 - **验证边界**：完整测试 **6625/6625**；`tsc` 干净；新增门禁均含负向注入验证。
-### v0.44.0（2026-09-30）
-
-- **模块化可见性开关**：设置 → 面板 → 模块管理可停用 工作台/片段实验室/悬浮球；顶栏收敛为单一统一平台入口（右键菜单动态列出已启用面板+设置）。
-- **片段回收站**：覆盖保存/删除/冲突放弃自动入站；目录浮层可按来源浏览、恢复为禁用新草稿、永久删除/清空（二次确认）；三限自动清理。
-- **双栏预览**：片段实验室预览升级为 左「已保存」右「草稿」对照，环境同步、窄容器降级单栏；JS 预览执行能力在模块层整体封死。
-- **审计修复**：重绘现场保持（侧栏/移动端）、排序浮层生命周期、导入代际保护、冲突副本回执、英雄位同帧生效、侧栏独立日记入口等。
+### v0.44.0（2026-09-30）
+
+
+
+- **模块化可见性开关**：设置 → 面板 → 模块管理可停用 工作台/片段实验室/悬浮球；顶栏收敛为单一统一平台入口（右键菜单动态列出已启用面板+设置）。
+
+- **片段回收站**：覆盖保存/删除/冲突放弃自动入站；目录浮层可按来源浏览、恢复为禁用新草稿、永久删除/清空（二次确认）；三限自动清理。
+
+- **双栏预览**：片段实验室预览升级为 左「已保存」右「草稿」对照，环境同步、窄容器降级单栏；JS 预览执行能力在模块层整体封死。
+
+- **审计修复**：重绘现场保持（侧栏/移动端）、排序浮层生命周期、导入代际保护、冲突副本回执、英雄位同帧生效、侧栏独立日记入口等。
+
 ### v0.43.2（2026-09-29）
 
 - **入口与视觉修正**：SurfaceNav 非当前面板项带淡边框胶囊（可点击性可见）且结构性杜绝灰字假入口；页签卡 1-9 数字角标改为卡内完整显示（不再被裁）；三面板关闭按钮更醒目。面板互切真实点击冒烟进入发版门禁。

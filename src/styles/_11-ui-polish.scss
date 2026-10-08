@@ -434,7 +434,11 @@
         -webkit-backdrop-filter: none;
     }
 
-    .sw-home__cell:not(.mat-accent):not(.mat-dark):not(.mat-vibrant) {
+    // Keep the fallback surface deliberately low-specificity. Widget families
+    // (weather/media/feed) own their gradients in the earlier visual slices;
+    // this fallback must not erase those backgrounds merely because this
+    // polish layer is loaded last.
+    :where(.sw-home__cell:not(.mat-accent):not(.mat-dark):not(.mat-vibrant)) {
         background: var(--b3-theme-surface);
         box-shadow: var(--sw-polish-shadow-card);
     }
