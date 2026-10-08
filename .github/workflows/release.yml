@@ -41,7 +41,10 @@ jobs:
           pnpm exec playwright install --with-deps chromium
           browser_path="$(node -e "process.stdout.write(require('@playwright/test').chromium.executablePath())")"
           test -x "$browser_path"
-          printf 'BROWSER_PATH=%s\n' "$browser_path" >> "$GITHUB_ENV"
+          wrapper_path="$RUNNER_TEMP/chromium-wrapper"
+          printf '#!/usr/bin/env bash\nexec "%s" --no-sandbox --disable-dev-shm-usage "$@"\n' "$browser_path" > "$wrapper_path"
+          chmod +x "$wrapper_path"
+          printf 'BROWSER_PATH=%s\n' "$wrapper_path" >> "$GITHUB_ENV"
 
       - name: Verify tag version
         run: node scripts/release-version-preflight.cjs
