@@ -29,7 +29,7 @@ Current build: `dist/index.js` 1108603 bytes; `dist/index.css` 329427 bytes; `pa
 | 集市同步欠账（D9/T-6306） | 待用户动作 | 思源集市自 **v0.26.0** 起未同步，欠账版本清单：v0.26.0、v0.27.0、v0.27.1、v0.28.0、v0.28.1、v0.28.2、v0.28.3、v0.29.0、v0.29.1、v0.30.0、v0.30.1、v0.31.0、v0.32.0、v0.33.0、v0.34.0、v0.35.0、v0.36.0、v0.37.0、v0.38.0、v0.39.0、v0.40.0、v0.41.0、v0.42.0；处置=随 v0.43.0 发版窗口以最新 Release 资产一次性补同步（集市按最新版覆盖即可，无需逐版提交），此后集市同步进每次发版检查单 |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
 | Android 真机验收 | 后置 | 按 D-042；当前环境无 `adb`、`java` 与设备 |
-| GitHub 上一版发布动作 | 已通过 | `v0.46.0` 标签指向 `5a6ffd0`；Release workflow #107 成功，远端 `package.zip` 570385 bytes，下载地址为 https://github.com/ai68298100/siyuan-speed-switch/releases/download/v0.46.0/package.zip；本轮 `v0.46.1` 待推送；历史 `v0.23.5` 及更早版本发布回执保留在仓库历史中 |
+| GitHub 发布动作 | 已通过 | `v0.46.1` 标签指向 `9eb4ef3`；Release 页面与 `package.zip` 资产已创建，远端资产 570897 bytes，下载地址为 https://github.com/ai68298100/siyuan-speed-switch/releases/download/v0.46.1/package.zip；上一版 v0.46.0 workflow #107 记录保留；历史 `v0.23.5` 及更早版本发布回执保留在仓库历史中 |
 
 ## 建议发布顺序
 
@@ -40,4 +40,4 @@ Current build: `dist/index.js` 1108603 bytes; `dist/index.css` 329427 bytes; `pa
 3. 在真实思源桌面会话中补做 T-107 路径筛选、窄侧栏宽度和最新 UI 生命周期的只读验收。
 4. Android 真机验收按 D-042 后置，不以浏览器 smoke 替代真实设备证据。
 
-本轮补丁发布待执行：`v0.46.1`，包含 T-7217～T-7219；完成本地门禁后推送 main 与标签，Release workflow 自动上传最新 package.zip。
+本轮补丁发布已完成：`v0.46.1`，包含 T-7217～T-7219；main、标签和 GitHub Release 资产均已通过 gh API 上传。

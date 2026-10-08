@@ -365,7 +365,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.46.1`（2026-10-09 正式发布；本轮合并补齐原生片段管理、片段分组与备份恢复、Gist 分享、编辑器基础能力、兼容性探针、桌面/侧栏验收矩阵及资源趋势长会话证据；同时保留 v0.45.0 的视觉、可靠性与图标 token 收口；Release 资产已随 GitHub Release 提供）。
+当前版本为 `v0.46.1`（2026-10-09 正式发布；本版修复 Miniflux 分类发现令牌空白处理、移动端分组操作失败反馈，并优化设置开关的整行点击与可访问名称；Release 资产已随 GitHub Release 提供）。
 
 ## 更新日志
 

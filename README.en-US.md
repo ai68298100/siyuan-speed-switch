@@ -361,7 +361,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.46.1` (released 2026-10-09; this merge adds native snippet management, snippet groups and backup/restore, Gist sharing, editor foundations, SiYuan compatibility probes, desktop/sidebar acceptance matrices, and long-session resource evidence while retaining the v0.45.0 visual, reliability, and icon-token closeout; release assets are available in the GitHub Release).
+The current version is `v0.46.1` (released 2026-10-09; this patch fixes Miniflux token whitespace handling and mobile group-action failure feedback, and improves full-row settings switch clicks and accessible names; release assets are available in the GitHub Release).
 
 ## Changelog
 
