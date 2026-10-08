@@ -8,6 +8,30 @@ const PROBE_SOURCE = fs.readFileSync(
     "utf8",
 );
 
+const RESOURCE_TREND_SHORT_TIMEOUT_FLOOR_MS = 180_000;
+const RESOURCE_TREND_SHORT_TIMEOUT_PER_CYCLE_MS = 12_000;
+const RESOURCE_TREND_SHORT_TIMEOUT_BUFFER_MS = 60_000;
+// 长跑需要覆盖两小时级会话，同时为隔离内核启动、宿主抖动和收尾留出余量。
+// 超过该预算的实验可通过 SWSS_E2E_RESOURCE_TREND_TIMEOUT_MS 显式设置。
+const RESOURCE_TREND_LONG_TIMEOUT_DEFAULT_MS = 150 * 60 * 1000;
+
+function parsePositiveTimeoutMs(value) {
+    if (value === undefined || value === null || value === "") return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getResourceTrendTimeoutMs({cycles = 1, longRun = false, configuredTimeout} = {}) {
+    const configured = parsePositiveTimeoutMs(configuredTimeout);
+    if (configured !== null) return configured;
+    if (longRun) return RESOURCE_TREND_LONG_TIMEOUT_DEFAULT_MS;
+    const safeCycles = Number.isSafeInteger(Number(cycles)) && Number(cycles) > 0 ? Number(cycles) : 1;
+    return Math.max(
+        RESOURCE_TREND_SHORT_TIMEOUT_FLOOR_MS,
+        safeCycles * RESOURCE_TREND_SHORT_TIMEOUT_PER_CYCLE_MS + RESOURCE_TREND_SHORT_TIMEOUT_BUFFER_MS,
+    );
+}
+
 /**
  * Resource trend is a write-capable, long-lived host test.  Keep its safety
  * boundary stricter than the shared E2E defaults: callers must opt in with an
@@ -93,6 +117,8 @@ async function disposeResourceTrendProbe(page) {
 
 module.exports = {
     PROBE_SOURCE,
+    getResourceTrendTimeoutMs,
+    parsePositiveTimeoutMs,
     assertExplicitResourceTrendIsolation,
     installResourceTrendProbe,
     sampleResourceTrend,

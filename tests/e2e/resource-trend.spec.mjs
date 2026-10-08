@@ -4,6 +4,7 @@ import {expect, test} from "@playwright/test";
 import {
     assertExplicitResourceTrendIsolation,
     disposeResourceTrendProbe,
+    getResourceTrendTimeoutMs,
     installResourceTrendProbe,
     sampleResourceTrend,
 } from "./resource-trend.cjs";
@@ -124,7 +125,11 @@ test.describe("T-7153 真实宿主资源趋势", () => {
         test.slow();
         // 商店预览每轮会等待真实宿主异步资源；让压力轮数可扩展而不把
         // 测试超时误报成页面资源问题。
-        test.setTimeout(Math.max(180000, CYCLES * 12000 + 60000));
+        test.setTimeout(getResourceTrendTimeoutMs({
+            cycles: CYCLES,
+            longRun: LONG_RUN,
+            configuredTimeout: process.env.SWSS_E2E_RESOURCE_TREND_TIMEOUT_MS,
+        }));
         const isolation = assertExplicitResourceTrendIsolation();
         const pageErrors = [];
         page.on("pageerror", (error) => pageErrors.push(String(error?.message || error)));

@@ -2023,6 +2023,25 @@
         ".artifacts/e2e-background/20261007191232-34884-acdb6c/artifacts/t7153-checkpoint-30/results.json",
         ".artifacts/e2e-background/20261007194651-20824-97bd67/artifacts/t7153-detached-60-v3/results.json"
       ],
+      "next": "T-7203"
+    },
+    {
+      "id": "T-7203",
+      "title": "修正 T-7153 长跑测试超时预算",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "performance",
+      "dependsOn": [
+        "T-7202"
+      ],
+      "evidence": [
+        "tests/e2e/resource-trend.cjs",
+        "tests/e2e/resource-trend.spec.mjs",
+        "tests/resource-trend-timeout.test.cjs",
+        "docs/adr/0152-t7153-long-run-checkpoints.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
       "next": "T-7153"
     }
   ],
