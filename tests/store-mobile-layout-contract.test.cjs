@@ -723,7 +723,11 @@ test('store captures dialog opener', () => assert.match(storeSource,/const opene
 test('store dialog uses localized title', () => assert.match(storeSource,/title: this\.i18n\.homeStoreTitle/));
 test('store desktop width is viewport bounded', () => assert.match(storeSource,/Math\.min\(1120, Math\.round\(window\.innerWidth \* 0\.86\)\)/));
 test('store desktop height is viewport bounded', () => assert.match(storeSource,/Math\.min\(720, Math\.round\(window\.innerHeight \* 0\.84\)\)/));
-test('store aborts safely when root is missing', () => assert.match(storeSource,/const root = storeDialog\.element\.querySelector<HTMLElement>\("\.sw-home-store"\);\s*if \(!root\) return/));
+test('store aborts safely when root is missing', () => {
+    assert.match(storeSource,/const root = storeDialog\.element\.querySelector<HTMLElement>\("\.sw-home-store"\);\s*if \(!root\) storeDialog\.destroy\(\);\s*if \(!root && opener\?\.isConnected\) opener\.focus\(\);\s*if \(!root\) return/);
+    const injected = storeSource.replace('if (!root) storeDialog.destroy();', '');
+    assert.doesNotMatch(injected, /if \(!root\) storeDialog\.destroy\(\);/, '缺少 malformed root 清理时门禁必须失败');
+});
 test('store root uses region role', () => assert.match(storeSource,/root\.setAttribute\("role", "region"\)/));
 test('store root uses localized accessible label', () => assert.match(storeSource,/root\.setAttribute\("aria-label", this\.i18n\.homeStoreTitle\)/));
 test('store root records target device', () => assert.match(storeSource,/root\.dataset\.device = device/));

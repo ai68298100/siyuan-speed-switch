@@ -251,6 +251,39 @@
 }
 
 // 收藏底部弹窗
+.sw__mobile-sheet-close-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+    line-height: 1.2;
+    user-select: none;
+    white-space: nowrap;
+
+    kbd {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        height: var(--sw-control-h-sm, 20px);
+        padding: 0 6px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 6px;
+        background: var(--b3-theme-background);
+        font-family: var(--b3-font-family-code, ui-monospace, monospace);
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 1;
+    }
+}
+
+.sw__mobile-sort-sheet > .sw__mobile-sheet-close-hint {
+    position: absolute;
+    top: 14px;
+    right: 52px;
+}
+
 .sw__mobile-sheet {
     width: 100%;
     max-width: 100%;
@@ -280,12 +313,50 @@
     }
 
     .sw__mobile-sheet-title {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 52px;
         flex: none;
-        padding: 8px 16px 6px;
+        padding: 8px 56px 6px;
         font-size: 15px;
         font-weight: 600;
         color: var(--b3-theme-on-background);
         text-align: center;
+
+        .sw__mobile-sheet-close-hint {
+            position: absolute;
+            left: 16px;
+        }
+
+        .sw__mobile-sheet-close {
+            position: absolute;
+            top: 50%;
+            right: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            padding: 0;
+            transform: translateY(-50%);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--b3-theme-on-surface-light);
+
+            &:hover,
+            &:focus-visible {
+                border-color: color-mix(in srgb, var(--b3-theme-primary) 40%, transparent);
+                background: color-mix(in srgb, var(--b3-theme-primary) 10%, transparent);
+                color: var(--b3-theme-primary);
+            }
+
+            &:active { transform: translateY(calc(-50% + 1px)); }
+            svg { width: var(--sw-icon-md, 18px); height: 18px; }
+        }
     }
 
     .sw__mobile-sheet-body {
@@ -442,6 +513,8 @@
         transition: none !important;
         animation: none !important;
     }
+
+    .sw__mobile-sheet-close:active { transform: translateY(-50%); }
 }
 
 // Mobile bottom sheets/FAB are portals mounted on body, so they receive a
@@ -461,6 +534,11 @@
 
         &:active { background: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 12%, transparent); }
     }
+}
+
+@media (max-width: 560px) {
+    .sw__mobile-sheet-close-hint span:not(kbd) { display: none; }
+    .sw__mobile-sort-sheet > .sw__mobile-sheet-close-hint { right: 52px; }
 }
 
 // T-7200：旧的后置遮罩覆盖块已并入上方基础定义（token 化），避免同块/跨块重复定义。
@@ -644,6 +722,33 @@
         color: var(--b3-theme-error, #d23f31);
         font-size: 10px;
         font-weight: 600;
+        pointer-events: none;
+    }
+}
+
+// 旧内容（缓存）态：与失败态一样保持常驻可见，但使用 warning 语义，
+// 避免仅在悬停后才知道当前卡片显示的是过期数据。
+.sw-home__cell[data-sw-health="stale"] {
+    position: relative;
+    border-color: color-mix(in srgb, var(--sw-platform-warning, var(--b3-theme-warning, #b7761d)) 45%, transparent);
+
+    &::after {
+        content: attr(data-sw-health-text);
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        z-index: 1;
+        max-width: calc(100% - 20px);
+        padding: 2px 8px;
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--sw-platform-warning, var(--b3-theme-warning, #b7761d)) 40%, transparent);
+        border-radius: 6px;
+        background: var(--b3-theme-surface);
+        color: var(--sw-platform-warning, var(--b3-theme-warning, #b7761d));
+        font-size: 10px;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         pointer-events: none;
     }
 }
@@ -1258,7 +1363,8 @@
 .sw-home__cell:hover .sw__home-module-status,
 .sw-home__cell:focus-within .sw__home-module-status,
 .sw-home__cell[data-sw-health="failed"] .sw__home-module-status,
-.sw-home__cell[data-sw-health="loading"] .sw__home-module-status {
+.sw-home__cell[data-sw-health="loading"] .sw__home-module-status,
+.sw-home__cell[data-sw-health="stale"] .sw__home-module-status {
     opacity: 1;
 }
 

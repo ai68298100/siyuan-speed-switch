@@ -10381,7 +10381,7 @@ private rootIdOf(tab: Tab): string | null {
         const favorite = this.getFavorites().find((item) => item.key === key);
         const groupNames = this.getFavoriteGroupNames();
         const dialog = new Dialog({
-            title: `${this.i18n.setGroup} 路 ${this.escapeAttr(this.titleOf(tab))}`,
+            title: `${this.i18n.setGroup} · ${this.escapeAttr(this.titleOf(tab))}`,
             content: `<div class="b3-dialog__content">
     <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" aria-label="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(favorite?.group || "")}" />
     <datalist id="sw__group-list">${groupNames.map((name) => `<option value="${this.escapeAttr(name)}"></option>`).join("")}</datalist>
@@ -10422,7 +10422,7 @@ private rootIdOf(tab: Tab): string | null {
     private openFavoriteGroupDialog(panel: HTMLElement, fav: IFavoriteItem, onPick: () => void, onChanged: IOverlayClose = () => undefined) {
         const groupNames = this.getFavoriteGroupNames();
         const dialog = new Dialog({
-            title: `${this.i18n.setGroup} 路 ${this.escapeAttr(fav.title)}`,
+            title: `${this.i18n.setGroup} · ${this.escapeAttr(fav.title)}`,
             content: `<div class="b3-dialog__content">
     <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" aria-label="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(fav.group || "")}" />
     <datalist id="sw__group-list">${groupNames.map((name) => `<option value="${this.escapeAttr(name)}"></option>`).join("")}</datalist>
@@ -10745,7 +10745,7 @@ private rootIdOf(tab: Tab): string | null {
         groupEl.className = "sw__group";
         const label = document.createElement("div");
         label.className = "sw__window-label";
-        label.textContent = `${this.i18n.currentWindow} 路 ${ordered.length}`;
+        label.textContent = `${this.i18n.currentWindow} · ${ordered.length}`;
         groupEl.appendChild(label);
 
         const grid = this.buildTabGroupGrid(scrollElement, ordered.length, ctx.settings);
@@ -11264,7 +11264,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             } else {
                 const label = group.querySelector<HTMLElement>(".sw__window-label");
                 if (label) {
-                    label.textContent = `${this.i18n.currentWindow} 路 ${count}`;
+                    label.textContent = `${this.i18n.currentWindow} · ${count}`;
                 }
             }
         }

@@ -812,6 +812,18 @@
         letter-spacing: 0.05em;
         color: var(--b3-theme-on-surface-light);
 
+        .sw__doc-scope-summary {
+            min-width: 0;
+            overflow: hidden;
+            color: var(--b3-theme-on-surface-light);
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: 0;
+            line-height: 1.35;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         .sw__doc-health-status {
             letter-spacing: normal;
             flex-shrink: 0;
@@ -1132,6 +1144,22 @@
                 font-size: var(--sw-font-xs, 11px);
                 line-height: 1.2;
                 opacity: .86;
+            }
+
+            .sw__search-match-source {
+                display: inline-flex;
+                align-items: center;
+                min-height: 18px;
+                max-width: 100%;
+                padding: 0 6px;
+                overflow: hidden;
+                border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 28%, transparent);
+                border-radius: 999px;
+                color: var(--b3-theme-primary);
+                font-size: 10px;
+                line-height: 1.2;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             .sw__doc-path {

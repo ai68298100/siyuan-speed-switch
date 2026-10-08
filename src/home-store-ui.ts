@@ -242,7 +242,14 @@ export function openStoreWidgetPreview(this: HomeStoreUiHost, moduleId: string, 
     });
     mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
     const container = dialog.element.querySelector<HTMLElement>(".sw-store-preview");
-    if (!container) return;
+    if (!container) {
+        // A host theme can reject or rewrite the Dialog content. Do not leave
+        // an empty, non-dismissible shell behind; close it and restore the
+        // control that opened the preview.
+        dialog.destroy();
+        if (opener?.isConnected) opener.focus();
+        return;
+    }
     const mount = mountStoreWidgetPreview(this, moduleId, def, device, container, sizeKey, null, () => dialog.destroy());
     disposePreview = () => {
         mount.dispose();
@@ -274,10 +281,16 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             storeDialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen", "sw-home-store-dialog");
         }
         const root = storeDialog.element.querySelector<HTMLElement>(".sw-home-store");
+        if (!root) storeDialog.destroy();
+        if (!root && opener?.isConnected) opener.focus();
         if (!root) return;
         const catalogPane = root.querySelector<HTMLElement>(".sw-home-store__catalog");
         const detailPane = root.querySelector<HTMLElement>(".sw-home-store__detail");
-        if (!catalogPane || !detailPane) return;
+        if (!catalogPane || !detailPane) {
+            storeDialog.destroy();
+            if (opener?.isConnected) opener.focus();
+            return;
+        }
         // T-7223：部分宿主主题会隐藏或裁掉 Dialog 原生标题栏关闭钮；商店
         // 必须在自己的内容区保留一个可见、可触摸且能恢复焦点的关闭入口。
         const closeBar = document.createElement("div");
@@ -772,7 +785,9 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 const externalInfo = resolveHomeStoreSourceInfo(moduleId);
                 const dependencyInfo = resolveHomeStoreDependencyInfo(moduleId);
                 const dependencySummary = buildHomeStoreDependencySummary(moduleId, {
-                    required: "需前置依赖", optional: "可选数据源", none: "无额外依赖",
+                    required: this.i18n.homeStoreDependencyRequired || "Requires setup",
+                    optional: this.i18n.homeStoreDependencyOptional || "Optional data source",
+                    none: this.i18n.homeStoreDependencyNone || "No additional dependency",
                 });
                 const card = document.createElement("section");
                 card.className = "sw-home-store__card";
@@ -785,7 +800,9 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 selectButton.dataset.moduleId = moduleId;
                 const selected = selectedStoreModules.includes(moduleId);
                 selectButton.setAttribute("aria-pressed", String(selected));
-                selectButton.textContent = selected ? "已选" : "选择";
+                selectButton.textContent = selected
+                    ? (this.i18n.homeStoreSelected || this.i18n.homeStoreStatusAdded || "Selected")
+                    : (this.i18n.homeStoreSelect || "Select");
                 selectButton.title = `${selectButton.textContent} ${def.title || moduleId}`;
                 bindRenderListener(selectButton, "click", () => {
                     selectedStoreModules = toggleHomeStoreSelection(selectedStoreModules, moduleId);
@@ -916,8 +933,8 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                         dependencyLink.href = dependencyInfo.installUrl;
                         dependencyLink.target = "_blank";
                         dependencyLink.rel = "noopener noreferrer";
-                        dependencyLink.textContent = "安装地址";
-                        dependencyLink.title = `${dependencyInfo.name} 安装地址`;
+                        dependencyLink.textContent = this.i18n.homeStoreDependencyInstall || "Install";
+                        dependencyLink.title = (this.i18n.homeStoreDependencyInstallAria || "Install {name}").replace("{name}", dependencyInfo.name);
                         sourceMeta.appendChild(dependencyLink);
                     }
                 }
@@ -1053,7 +1070,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 if (!added && !canHomeStoreInstall(card.dataset, {installability})) {
                     addButton.disabled = true;
                     addButton.title = resolveHomeStoreInstallabilityReason(installability);
-                    addButton.setAttribute("aria-label", `${resolveHomeStoreInstallabilityReason(installability)} 路 ${def.title || moduleId}`);
+                    addButton.setAttribute("aria-label", `${resolveHomeStoreInstallabilityReason(installability)} · ${def.title || moduleId}`);
                 }
                 addButton.style.minHeight = `${resolveHomeStoreTouchTargetSize(device)}px`;
                 addButton.onclick = () => {
@@ -1548,14 +1565,14 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 const batchCount = document.createElement("span");
                 batchCount.className = "sw-home-store__batch-count";
                 batchCount.textContent = selectedStoreModules.length > 0
-                    ? `已选 ${selectedStoreModules.length}`
-                    : "点击组件行选择";
+                    ? (this.i18n.homeStoreBatchSelected || "Selected {count}").replace("{count}", String(selectedStoreModules.length))
+                    : (this.i18n.homeStoreBatchHint || "Select widgets from the list");
                 batchBar.appendChild(batchCount);
                 const batchCancelButton = document.createElement("button");
                 batchCancelButton.type = "button";
                 batchCancelButton.className = "b3-button b3-button--text sw-home-store__batch-cancel";
                 batchCancelButton.dataset.action = "batch-cancel";
-                batchCancelButton.textContent = "取消";
+                batchCancelButton.textContent = this.i18n.cancel || this.i18n.homeStoreCancel || "Cancel";
                 bindRenderListener(batchCancelButton, "click", () => {
                     storeBatchMode = false;
                     selectedStoreModules = [];

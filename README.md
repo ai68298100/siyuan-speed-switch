@@ -1,26 +1,27 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.46.2-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.3-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **当前稳定版：v0.46.2（2026-10-09）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.2) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **当前稳定版：v0.46.3（2026-10-09）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.3) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
-## 本次更新（v0.46.2 · 2026-10-09）
+## 本次更新（v0.46.3 · 2026-10-09）
 
-新增：组件商店独立关闭入口
+新增：全路径交互回归防线
 
-- 商店内容区增加可见、可触摸并支持焦点恢复的关闭按钮，宿主隐藏原生标题栏时仍可退出。
+- 增加平台顶栏、移动 sheet、搜索来源、stale 状态和片段预览的样式/生命周期契约，并对关键声明执行删除注入验证。
 
-优化：第一面板预览布局
+优化：三面板按钮与状态反馈
 
-- 移除重复的原生 Dialog 标题栏，右侧预览扩展为完整高度阅读区域，减少主内容浪费。
+- 恢复设置、关闭、Esc 提示的桌面/触控反馈，移动关闭按钮统一 44px 命中区。
+- 恢复第一面板来源/范围说明、第二面板缓存状态提示、第三面板商店/Gist 预览的滚动和尺寸边界。
 
-修复：三面板布局与预览加载
+修复：商店文案与异常 Dialog
 
-- 修复第三面板库、编辑区和 AI 预览栏错位换行的问题。
-- 修复第一面板把请求选项误当超时参数导致预览内容立即取消的问题。
+- 修复英文界面混入中文、异常分隔符和依赖安装文案未国际化。
+- 修复宿主主题改写商店内容后留下空壳 Dialog，关闭时恢复触发按钮焦点。
 
 ## 上一版本更新（v0.46.1 · 2026-10-09）
 
@@ -380,7 +381,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.46.2`（2026-10-09 正式发布；本版修复三面板布局与第一面板预览加载，优化预览区域并新增组件商店关闭入口；Release 资产已随 GitHub Release 提供）。
+当前版本为 `v0.46.3`（2026-10-09 正式发布；本版完成三面板全路径体验审计，恢复合并后缺失的样式/状态反馈并修复商店异常 Dialog 生命周期；Release 资产已随 GitHub Release 提供）。
 
 ## 更新日志
 

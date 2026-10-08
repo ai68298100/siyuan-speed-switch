@@ -191,6 +191,67 @@
 
 .sw-platform-header__close svg { width: var(--sw-icon-md, 18px); height: 18px; }
 
+// Header affordances -------------------------------------------------------
+// The platform chrome creates the settings/close hint elements in the
+// TypeScript mount path.  Keep their visual contract here instead of relying
+// on SiYuan's generic button skin, which disappears on dark themes and in
+// compact/mobile dialogs.
+.sw-platform-header__icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--sw-platform-radius-sm, 8px);
+    color: var(--sw-platform-text-muted);
+    background: transparent;
+    cursor: pointer;
+    transition: color $sw-dur-base $sw-ease, border-color $sw-dur-base $sw-ease, background $sw-dur-base $sw-ease;
+}
+
+.sw-platform-header__icon-action:hover,
+.sw-platform-header__icon-action:focus-visible {
+    border-color: var(--sw-platform-accent);
+    color: var(--sw-platform-accent);
+    background: var(--sw-platform-accent-soft);
+}
+
+.sw-platform-header__icon-action:active { transform: translateY(1px); }
+.sw-platform-header__icon-action svg { width: 16px; height: 16px; }
+
+.sw-platform-header__close-hint,
+.sw-platform-dialog__close-hint {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+    color: var(--sw-platform-text-muted);
+    font-size: 11px;
+    line-height: 1.2;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.sw-platform-header__close-hint .sw-platform-kbd,
+.sw-platform-dialog__close-hint .sw-platform-kbd {
+    min-width: 28px;
+    height: var(--sw-control-h-sm, 20px);
+    padding-inline: 6px;
+    font-size: 10px;
+}
+
+.sw-platform-header__close-hint-label,
+.sw-platform-dialog__close-hint-label { line-height: 1; }
+
+.sw-platform-dialog__close-button {
+    flex: 0 0 auto;
+    min-width: 36px;
+    min-height: 36px;
+}
+
 .sw-platform-surface-nav {
     display: flex;
     align-items: center;
@@ -500,6 +561,13 @@
     .sw-platform-action { min-height: 44px; }
     // 分段项本体 38px + 容器上下 padding 3px = 44px 命中区（触控不降级）。
     .sw-platform-seg__item { min-height: 38px; }
+    .sw-platform-header__close,
+    .sw-platform-header__icon-action {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
+    .sw-platform-dialog__close-button { min-width: 44px; min-height: 44px; }
 }
 
 @media (max-width: 640px) {
@@ -514,12 +582,25 @@
     .sw-platform-seg { flex-wrap: wrap; row-gap: 2px; }
 }
 
+@media (max-width: 560px) {
+    .sw-platform-dialog__close-hint-label,
+    .sw__mobile > .sw-platform-chrome .sw-platform-header__close-hint-label { display: none; }
+    .sw-platform-dialog__close-hint .sw-platform-kbd { min-width: 26px; }
+    .sw__mobile > .sw-platform-chrome .sw-platform-header {
+        gap: 6px;
+        padding-inline: 8px;
+    }
+    .sw__mobile > .sw-platform-chrome .sw-platform-header__actions { gap: 2px; }
+    .sw__mobile > .sw-platform-chrome .sw-platform-header__close-hint { gap: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .sw-platform-shell *,
     .sw-platform-shell *::before,
     .sw-platform-shell *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 
-    .sw-platform-header__close:active { transform: none; }
+    .sw-platform-header__close:active,
+    .sw-platform-header__icon-action:active { transform: none; }
     .sw-platform-surface-nav__item:active { transform: none; }
 }
 

@@ -4,6 +4,13 @@
 > releases; new entries are appended here at release time. 中文完整历史见 [`docs/CHANGELOG.md`](./CHANGELOG.md)。
 
 ## Changelog (full history)
+### v0.46.3 (2026-10-09)
+
+- **Added full-path interaction regression guards**: added style and lifecycle contracts for platform chrome, mobile sheets, search metadata, stale states, and snippet previews, with deletion-injection checks for critical declarations.
+- **Improved three-panel controls and state feedback**: restored settings, close, and Esc hint feedback across desktop and touch layouts, unified the 44px mobile close hit area, and restored metadata, stale-cache status, and bounded store/Gist preview regions.
+- **Fixed store copy and malformed dialog cleanup**: removed hardcoded Chinese labels from the English store flow, fixed malformed separators and dependency copy, and destroy empty store dialogs after host/theme mutation while restoring trigger focus.
+- **Verification**: full suite **8596/8596**; TypeScript, reproducible builds, release/quality/integration audits, all UI smoke suites, and negative gates passed.
+
 ### v0.46.2 (2026-10-09)
 
 - **Added a widget-store close control**: the store content area now keeps a visible, touch-friendly close action and restores focus after closing.

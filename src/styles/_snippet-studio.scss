@@ -477,3 +477,79 @@
     flex-shrink: 0;
     gap: 6px;
 }
+
+// Gist/store preview cards -------------------------------------------------
+// These nodes are mounted by snippet-studio-ui.js in the picker and Gist
+// details flows.  Keep an explicit canvas height so the preview iframe has a
+// real layout box (height:100% alone collapses when its parent is auto-sized).
+.sw-studio__gist {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--b3-theme-surface) 76%, transparent);
+
+    > summary { cursor: pointer; }
+    > :not(summary) { margin-top: 6px; }
+    [hidden] { display: none; }
+
+    .sw-studio__field { margin: 0; }
+}
+
+.sw-studio__store-preview {
+    display: grid;
+    gap: 8px;
+    border-top: 1px solid var(--b3-border-color);
+    padding-top: 10px;
+}
+
+.sw-studio__store-canvas {
+    height: 220px;
+    min-height: 160px;
+    overflow: hidden;
+    border: 1px solid var(--studio-line);
+    border-radius: var(--studio-radius-sm);
+}
+
+.sw-studio__store-canvas iframe { display: block; width: 100%; height: 100%; border: 0; }
+.sw-studio__store-code { max-height: 160px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.sw-studio__gist-preview {
+    display: grid;
+    gap: 4px;
+    max-height: 180px;
+    overflow: auto;
+}
+
+.sw-studio__gist-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: var(--sw-radius-sm, 6px);
+
+    &.is-ready { border-color: color-mix(in srgb, var(--b3-theme-primary) 42%, var(--b3-border-color)); }
+}
+
+.sw-studio__gist-file {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--b3-font-family-code, monospace);
+    font-size: var(--sw-font-xs, 11px);
+}
+
+.sw-studio__gist-diff { width: 100%; overflow-wrap: anywhere; }
+
+.sw-studio__gist-diff-line {
+    margin: 0;
+    white-space: pre-wrap;
+    font-size: var(--sw-font-xs, 11px);
+
+    &.is-ins { color: var(--b3-theme-success); }
+    &.is-del { color: var(--b3-theme-error); }
+}
