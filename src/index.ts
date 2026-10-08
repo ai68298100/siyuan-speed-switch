@@ -189,6 +189,7 @@ import {
     THUMB_CLONE_MAX,
     THUMB_API_MAX,
     THUMB_API_MAX_MOBILE,
+    THUMB_API_TIMEOUT_MS,
     MRU_MAX,
     HISTORY_MAX,
     FAVORITES_MAX,
@@ -994,6 +995,9 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 新会话回落切换器），三个表面 Dialog 各自单例守卫，防止热键/悬浮球连点叠窗。
     private lastPlatformSurface: PlatformSurface = "switcher";
     private lastPlatformContext: PlatformSurfaceContext | null = null;
+    // T-7163：切换器会话级搜索现场快照（query/筛选/滚动）——跨面板往返恢复，
+    // 新入口（无 context 的热键/悬浮球）重置；仅内存，不持久化。
+    private switcherScene: {query: string; filters: Record<string, unknown>; scrollTop: number} | null = null;
     private platformSwitcherDialog: Dialog | null = null;
     private mobileSwitcherDialog: Dialog | null = null;
     private workbenchDialog: Dialog | null = null;
@@ -1850,16 +1854,20 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         this.dataChangeReloadInFlight = true;
+        // T-7183：await 期间可能发生卸载——代际快照守卫，卸载后不再触碰 FAB/侧栏
+        const generation = this.lifecycleGeneration;
+        const stale = () => this.isUnloading || this.lifecycleGeneration !== generation;
         try {
             do {
                 this.dataChangeReloadQueued = false;
                 await this.loadPersistentKeys();
+                if (stale()) return;
                 this.settingsCache = null;
                 this.updateFloatingBallVisibility();
                 this.captureStorageMigrationSnapshot();
                 this.initFavCollapsed();
                 this.scheduleSidebarRefresh();
-            } while (this.dataChangeReloadQueued);
+            } while (this.dataChangeReloadQueued && !stale());
         } catch (error) {
             logger.warn("data change refresh fail", {reason: reason || "unknown"});
             logger.debug(error);
@@ -1872,8 +1880,15 @@ export default class SpeedSwitchPlugin extends Plugin {
     async onunload() {
         this.isUnloading = true;
         this.lifecycleGeneration += 1;
+        // T-7179：三面板 Dialog 统一回收——不依赖宿主代销毁（真实宿主行为未证明）
         this.snippetStudioDialog?.destroy();
         this.snippetStudioDialog = null;
+        this.platformSwitcherDialog?.destroy();
+        this.platformSwitcherDialog = null;
+        this.workbenchDialog?.destroy();
+        this.workbenchDialog = null;
+        this.mobileSwitcherDialog?.destroy();
+        this.mobileSwitcherDialog = null;
         // T-6831：面包屑入口随生命周期拆除
         this.teardownBreadcrumbEntry();
         // T-6823：密度档位标记随生命周期移除
@@ -2405,31 +2420,51 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 设置条目：左侧标题+可选描述，右侧控件；column 时控件占满整行
+    private settingTitleSeq = 0;
+
+    // T-7166：设置行标题/说明与控件的可访问名称关联——标题 id 由 settingItem 统一
+    // 分发并注入 action 内的表单控件（select/input/label>input），双语标题即控件名称。
     private settingItem(title: string, description: string | undefined, action: HTMLElement, column = false): HTMLElement {
         const item = document.createElement("div");
         item.className = column ? "sw-settings__item sw-settings__item--column" : "sw-settings__item";
         const main = document.createElement("div");
         main.className = "sw-settings__item-main";
+        const seq = ++this.settingTitleSeq;
+        const titleId = `sw-set-title-${seq}`;
         const titleEl = document.createElement("div");
         titleEl.className = "sw-settings__item-title";
+        titleEl.id = titleId;
         titleEl.textContent = title;
         main.appendChild(titleEl);
+        let descId: string | null = null;
         if (description) {
+            descId = `sw-set-desc-${seq}`;
             const desc = document.createElement("div");
             desc.className = "sw-settings__item-desc";
+            desc.id = descId;
             desc.textContent = description;
             main.appendChild(desc);
         }
         const actionEl = document.createElement("div");
         actionEl.className = "sw-settings__item-action";
         actionEl.appendChild(action);
+        // 关联目标：控件本体（select/input）或 label 包裹的输入（switcher）
+        const control = action.tagName === "SELECT" || action.tagName === "INPUT"
+            ? action
+            : action.querySelector<HTMLElement>("select, input");
+        if (control) {
+            control.setAttribute("aria-labelledby", titleId);
+            if (descId) control.setAttribute("aria-describedby", descId);
+        }
         item.appendChild(main);
         item.appendChild(actionEl);
         return item;
     }
 
     // 拉取已打开的笔记本列表（id + name），用于默认日记笔记本下拉
-    private async loadNotebooks(): Promise<Array<{id: string, name: string}>> {
+    // T-7185：失败可区分的笔记本加载——failed=true 时调用方展示失败回执/重试，
+    // 不再与「真空笔记本」同形。
+    private async loadNotebooksDetailed(): Promise<{notebooks: Array<{id: string, name: string}>, failed: boolean}> {
     // 内核无响应时超时中断请求，避免设置页下拉一直停在加载中
         const controller = typeof AbortController === "function" ? new AbortController() : null;
         let timer: number | null = null;
@@ -2452,15 +2487,20 @@ export default class SpeedSwitchPlugin extends Plugin {
             }
             const json = await response.json();
             const notebooks = (json?.data?.notebooks ?? []) as Array<{id: string, name: string, closed?: number}>;
-            return notebooks
+            const result = notebooks
                 .filter((nb) => nb && nb.id && !nb.closed)
                 .map((nb) => ({id: nb.id, name: nb.name}));
+            return {notebooks: result, failed: false};
         } catch (e) {
             logger.warn("load notebooks fail", e);
-            return [];
+            return {notebooks: [], failed: true};
         } finally {
             window.clearTimeout(timer);
         }
+    }
+
+    private async loadNotebooks(): Promise<Array<{id: string, name: string}>> {
+        return (await this.loadNotebooksDetailed()).notebooks;
     }
 
     // 默认日记笔记本下拉（异步填充已打开笔记本，当前值命中时回填选中）
@@ -2472,8 +2512,37 @@ export default class SpeedSwitchPlugin extends Plugin {
         sel.disabled = true; // 加载完成前禁用
         sel.appendChild(new Option(this.i18n.notebookLoading, ""));
         wrap.appendChild(sel);
-        this.loadNotebooks().then((notebooks) => {
+        // T-7185：失败可区分——内核读取失败展示失败回执 + 重试，不再与真空笔记本同形。
+        this.loadNotebooksDetailed().then(({notebooks, failed}) => {
             sel.innerHTML = "";
+            if (failed) {
+                sel.appendChild(new Option(this.i18n.notebookLoadFailed, ""));
+                sel.disabled = true;
+                const retry = document.createElement("button");
+                retry.type = "button";
+                retry.className = "b3-button b3-button--text sw-settings__journal-retry";
+                retry.textContent = this.i18n.homeRetry;
+                retry.setAttribute("aria-label", this.i18n.homeRetry);
+                retry.addEventListener("click", () => {
+                    retry.remove();
+                    sel.disabled = true;
+                    sel.innerHTML = "";
+                    sel.appendChild(new Option(this.i18n.notebookLoading, ""));
+                    this.loadNotebooks().then((retryNotebooks) => {
+                        sel.innerHTML = "";
+                        sel.appendChild(new Option(this.i18n.notebookPlaceholder, ""));
+                        retryNotebooks.forEach((nb) => {
+                            const opt = new Option(nb.name, nb.id);
+                            opt.title = nb.name;
+                            sel.appendChild(opt);
+                        });
+                        sel.value = retryNotebooks.some((nb) => nb.id === current) ? current : "";
+                        sel.disabled = false;
+                    });
+                });
+                wrap.appendChild(retry);
+                return;
+            }
             sel.appendChild(new Option(this.i18n.notebookPlaceholder, ""));
             notebooks.forEach((nb) => {
                 const opt = new Option(nb.name, nb.id);
@@ -2517,16 +2586,16 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         const dependencyTitle = document.createElement("h3");
         dependencyTitle.className = "sw-home-store-guide__dependency-title";
-        dependencyTitle.textContent = "非思源本体依赖";
+        dependencyTitle.textContent = this.i18n.homeStoreDependencyTitle;
         root.appendChild(dependencyTitle);
         const dependencySummary = summarizeHomeStoreDependencies();
         const dependencySummaryText = document.createElement("p");
         dependencySummaryText.className = "sw-home-store-guide__dependency-summary";
-        dependencySummaryText.textContent = `已整理 ${dependencySummary.total} 项：${dependencySummary.required} 项需前置依赖，${dependencySummary.optional} 项为可选数据源。`;
+        dependencySummaryText.textContent = this.i18n.homeStoreDependencySummary.replace("{total}", String(dependencySummary.total)).replace("{required}", String(dependencySummary.required)).replace("{optional}", String(dependencySummary.optional));
         root.appendChild(dependencySummaryText);
         const dependencyList = document.createElement("ul");
         dependencyList.className = "sw-home-store-guide__dependency-list";
-        dependencyList.setAttribute("aria-label", "非思源本体依赖清单");
+        dependencyList.setAttribute("aria-label", this.i18n.homeStoreDependencyListLabel);
         dependencySummary.entries.forEach(({info}) => {
             const item = document.createElement("li");
             item.className = `sw-home-store-guide__dependency-item is-${info.required ? "required" : "optional"}`;
@@ -2535,7 +2604,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             item.appendChild(name);
             const badge = document.createElement("span");
             badge.className = "sw-home-store-guide__dependency-badge";
-            badge.textContent = info.required ? "需前置依赖" : "可选数据源";
+            badge.textContent = info.required ? this.i18n.homeStoreDependencyRequired : this.i18n.homeStoreDependencyOptional;
             item.appendChild(badge);
             const setup = document.createElement("span");
             setup.className = "sw-home-store-guide__dependency-setup";
@@ -2546,8 +2615,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 install.href = info.installUrl;
                 install.target = "_blank";
                 install.rel = "noopener noreferrer";
-                install.textContent = "安装地址";
-                install.setAttribute("aria-label", `${info.name} 安装地址`);
+                install.textContent = this.i18n.homeStoreDependencyInstall;
+                install.setAttribute("aria-label", this.i18n.homeStoreDependencyInstallAria.replace("{name}", info.name));
                 item.appendChild(install);
             }
             dependencyList.appendChild(item);
@@ -2558,7 +2627,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         dependencyLink.href = "https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/external-component-installation.md";
         dependencyLink.target = "_blank";
         dependencyLink.rel = "noopener noreferrer";
-        dependencyLink.textContent = "查看非思源组件安装说明";
+        dependencyLink.textContent = this.i18n.homeStoreDependencyLink;
         root.appendChild(dependencyLink);
     }
 
@@ -3672,6 +3741,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 打开页签切换器
     private showSwitcher(focusSearch = false, returnTo: PlatformSurface = "switcher", context?: PlatformSurfaceContext | null) {
         this.notePlatformSurface("switcher", context);
+        // T-7163：新入口（热键/悬浮球等无 context）重置会话现场；往返（带 context）恢复。
+        if (!context) this.switcherScene = null;
         // 手机端走独立适配
         if (this.isMobile) {
             this.showMobileSwitcher(focusSearch, returnTo, context);
@@ -3712,12 +3783,24 @@ export default class SpeedSwitchPlugin extends Plugin {
         const size = this.resolvePanelDialogSize(settings, fullscreen);
         const holder: {dialog: Dialog | null} = {dialog: null};
         const dialog = new Dialog({
-            title: "",
+            title: this.i18n.dialogSwitcherTitle || "页签切换器",
             content: this.buildSwitcherHtml(fullscreen),
             width: `${size.width}px`,
             height: `${size.height}px`,
             destroyCallback: () => {
                 if (this.platformSwitcherDialog === holder.dialog) this.platformSwitcherDialog = null;
+                // T-7172：切换器关闭时批量取消在途缩略图回源
+                this.cancelThumbFetches();
+                // T-7163：销毁前捕获搜索现场，跨面板往返时恢复
+                const sceneInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
+                const sceneScroll = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
+                if (sceneInput && sceneScroll) {
+                    this.switcherScene = {
+                        query: sceneInput.value,
+                        filters: {...(this.docSearchState.filters.get(sceneScroll) || {})},
+                        scrollTop: sceneScroll.scrollTop,
+                    };
+                }
                 release.fn();
             },
         });
@@ -3771,7 +3854,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 ? resolvePanelSize({...studioSettings, panelSizeMode: "adaptive", panelScale: PANEL_SCALE_DEFAULT}, studioViewport)
                 : resolvePanelSize({...studioSettings, panelSizeMode: "custom", dialogWidth: studioSettings.studioWidth, dialogHeight: studioSettings.studioHeight}, studioViewport);
         const dialog = new Dialog({
-            title: "",
+            title: this.i18n.dialogStudioTitle || "片段工作室",
             content: '<div class="sw-snippet-studio-host"></div>',
             width: `${size.width}px`,
             height: `${size.height}px`,
@@ -3988,6 +4071,22 @@ const updatedMap: {[rootId: string]: string} = {};
             dialog.element.querySelector<HTMLElement>(".sw__quick-actions")?.classList.toggle("fn__none", currentSettings.quickActionsRightRail);
             dialog.element.querySelector<HTMLElement>(".sw__quick-rail")?.classList.toggle("fn__none", !currentSettings.quickActionsRightRail);
         };
+        // T-7163：跨面板往返——恢复会话快照的 query/筛选/滚动（新入口已在 showSwitcher 重置）。
+        const switcherScene = context ? this.switcherScene : null;
+        if (switcherScene && searchInput) {
+            if (Object.keys(switcherScene.filters).length > 0) {
+                this.docSearchState.filters.set(scrollElement, {...switcherScene.filters});
+            }
+            searchInput.value = switcherScene.query;
+        }
+        const restoreSceneScroll = () => {
+            if (!switcherScene || !switcherScene.scrollTop) return;
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    if (dialog.element.isConnected) scrollElement.scrollTop = switcherScene.scrollTop;
+                });
+            });
+        };
         const refreshSurface = () => {
             refreshList();
             refreshQuickActions();
@@ -4042,6 +4141,7 @@ const updatedMap: {[rootId: string]: string} = {};
         // 右侧页签缩略图网格：每次打开都重新克隆渲染，展示各页签的最新状态
         this.bindSwitcherListArea(dialog, scrollElement, tabs, activeTab, listOpts, settings, searchInput, sortSelect, closeOverlay, updatedMap);
         refreshQuickActions();
+        restoreSceneScroll();
 
         // 普通打开仍把焦点交给滚动区，保持键盘卡片导航语义；动作面板
         // 的“搜索”入口显式要求搜索框获得焦点，避免只打开切换器却让
@@ -4082,9 +4182,12 @@ const updatedMap: {[rootId: string]: string} = {};
         closeOverlay: IOverlayClose,
         updatedMap: {[rootId: string]: string},
     ) {
-        this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
-        // T-6807/T-6814：首次打开（空查询且无筛选）即呈现零词条工作台（含关联内容行）
-        if (searchInput && searchInput.value.trim() === "" && !hasDocSearchFilter.call(this, scrollElement)) {
+        // T-7163：初次 paint 与 refreshList 同分支——往返恢复的 query/筛选直接走搜索渲染。
+        if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
+            this.applySearch(scrollElement, searchInput, closeOverlay);
+        } else {
+            this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
+            // T-6807/T-6814：首次打开（空查询且无筛选）即呈现零词条工作台（含关联内容行）
             this.renderWorkbench(scrollElement, "", closeOverlay);
         }
         this.bindKeydown(scrollElement, closeOverlay);
@@ -4356,6 +4459,26 @@ const updatedMap: {[rootId: string]: string} = {};
                 panel.style.right = `${Math.round(Math.max(6, window.innerWidth - rect.right))}px`;
             };
             positionPanel();
+            // T-7192：radiogroup 键盘合同——打开入焦首个 menuitemradio，方向键循环选择。
+            const menuItems = Array.from(panel.querySelectorAll<HTMLButtonElement>(".sw__sort-menu-option"));
+            if (menuItems.length > 0) menuItems[0].focus({preventScroll: true});
+            panel.addEventListener("keydown", (event: KeyboardEvent) => {
+                const items = Array.from(panel.querySelectorAll<HTMLButtonElement>(".sw__sort-menu-option"));
+                if (items.length === 0) return;
+                const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    const dir = event.key === "ArrowDown" ? 1 : -1;
+                    const next = items[(currentIndex + dir + items.length) % items.length];
+                    next.focus({preventScroll: true});
+                } else if (event.key === "Home") {
+                    event.preventDefault();
+                    items[0].focus({preventScroll: true});
+                } else if (event.key === "End") {
+                    event.preventDefault();
+                    items[items.length - 1].focus({preventScroll: true});
+                }
+            });
             outsideHandler = (event) => {
                 if (!panel?.contains(event.target as Node) && event.target !== trigger && !trigger.contains(event.target as Node)) closePanel();
             };
@@ -5964,7 +6087,7 @@ const updatedMap: {[rootId: string]: string} = {};
         }
     }
 
-    private async fetchKernelJson(url: string, body: Record<string, unknown>, timeoutMs = 5000): Promise<any | null> {
+    private async fetchKernelJson(url: string, body: Record<string, unknown>, timeoutMs = 5000, options?: {signal?: AbortSignal}): Promise<any | null> {
         // 安全守卫（纵深防御）：仅允许同源、硬编码的思源内核相对路径。
         // - 必须以 "/" 开头（相对路径 → 同源），拒绝任何绝对 URL 与外部 host；
         // - 必须命中端点白名单，杜绝把请求指向任意地址（SSRF）。
@@ -5973,6 +6096,14 @@ const updatedMap: {[rootId: string]: string} = {};
             return null;
         }
         const controller = typeof AbortController === "function" ? new AbortController() : null;
+        // T-7165/T-7191：外部取消 signal 联动超时 abort（无 AbortController 环境自动降级）。
+        const externalSignal = options?.signal;
+        const externalAbort = externalSignal && typeof externalSignal.addEventListener === "function"
+            ? () => controller?.abort() : null;
+        if (externalSignal && externalAbort) {
+            if (externalSignal.aborted) { controller?.abort(); }
+            else externalSignal.addEventListener("abort", externalAbort, {once: true});
+        }
         const timer = window.setTimeout(() => controller?.abort(), timeoutMs);
         try {
             // 每个端点的 fetch 都使用字面量 URL（安全扫描要求：不存在变量 URL 请求）
@@ -6067,6 +6198,7 @@ const updatedMap: {[rootId: string]: string} = {};
             return null;
         } finally {
             window.clearTimeout(timer);
+            if (externalSignal && externalAbort) externalSignal.removeEventListener("abort", externalAbort);
         }
     }
 
@@ -7270,16 +7402,23 @@ const updatedMap: {[rootId: string]: string} = {};
         return sizes.includes(fallback) ? fallback : (sizes[0] || "medium");
     }
 
-    // 型号选择浮层（与排序浮层同模式：body + fixed + 外点/Esc 关闭），列出该模块支持的全部档位
-    private openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void) {
+    // 型号选择浮层（与排序浮层同模式：body + fixed + 外点/Esc 关闭），列出该模块支持的全部档位。
+    // T-7180：返回 owner disposer（幂等 cleanup + 焦点回归锚）——面板销毁/表面切换时由宿主释放链调用，
+    // 避免幽灵菜单与 document/window 监听残留（T-7040 排序菜单同模式）。
+    private openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void): () => void {
         const panel = document.createElement("div");
         panel.className = "sw__sort-menu sw-home__size-menu";
         panel.setAttribute("role", "menu");
+        let cleaned = false;
         const cleanup = () => {
+            if (cleaned) return;
+            cleaned = true;
             panel.remove();
             document.removeEventListener("pointerdown", outside, true);
             document.removeEventListener("keydown", esc, true);
             window.removeEventListener("resize", reposition);
+            // T-7180 焦点回归锚：菜单关闭后焦点还给触发按钮（排序菜单同模式）。
+            anchor.focus({preventScroll: true});
         };
         const outside = (event: PointerEvent) => {
             if (!panel.contains(event.target as Node) && !anchor.contains(event.target as Node)) cleanup();
@@ -7330,6 +7469,7 @@ const updatedMap: {[rootId: string]: string} = {};
         document.addEventListener("pointerdown", outside, true);
         document.addEventListener("keydown", esc, true);
         window.addEventListener("resize", reposition);
+        return cleanup;
     }
 
     // 协议 v2 声明式配置表单：由 configSchema 渲染，保存写入实例 config 并回调刷新
@@ -7524,6 +7664,9 @@ const updatedMap: {[rootId: string]: string} = {};
     }
 
     private openQuickActionIconPicker(action: IQuickAction, onPick: (icon: string) => void) {
+        // T-7178：捕获触发元素，关闭时回焦
+        const ae = document.activeElement as HTMLElement | null;
+        const iconOpener = ae && typeof ae.focus === 'function' ? ae : null;
         document.querySelector(".sw-quick-icon-picker-overlay")?.remove();
         const overlay = document.createElement("div");
         overlay.className = "sw-quick-icon-picker-overlay";
@@ -7662,11 +7805,16 @@ const updatedMap: {[rootId: string]: string} = {};
             });
         };
         const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") cleanup();
+            if (event.key === "Escape") {
+                cleanup();
+                if (iconOpener) iconOpener.focus({preventScroll: true});
+            }
         };
         const cleanup = () => {
             document.removeEventListener("keydown", onKeyDown);
             overlay.remove();
+            // T-7178：关闭后回焦触发元素
+            if (iconOpener) iconOpener.focus({preventScroll: true});
         };
         closeButton.addEventListener("click", cleanup);
         customApply.addEventListener("click", () => {
@@ -7689,7 +7837,23 @@ const updatedMap: {[rootId: string]: string} = {};
         document.body.appendChild(overlay);
         renderIcons();
         refreshCustomPreview();
-        if (!this.isMobile) search.focus({preventScroll: true});
+        // T-7178：移动端也入焦搜索框（历史仅桌面入焦）
+        search.focus({preventScroll: true});
+        // T-7178：Tab 循环约束——首末回绕，焦点不逃逸 overlay
+        overlay.addEventListener("keydown", (event: KeyboardEvent) => {
+            if (event.key !== "Tab") return;
+            const focusables = Array.from(overlay.querySelectorAll("button, input")).filter((el): el is HTMLButtonElement | HTMLInputElement => !el.hasAttribute("disabled"));
+            if (focusables.length === 0) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus({preventScroll: true});
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus({preventScroll: true});
+            }
+        });
     }
 
     // 设置页“快捷动作”分节的 UI 构建（含导入/导出传输控件）已外迁至 settings-sections.ts（R4 重构 D-376）。
@@ -8642,14 +8806,17 @@ private rootIdOf(tab: Tab): string | null {
     // 从持久化数据初始化 favCollapsed 集合
     private initFavCollapsed() {
         const saved = this.data[FAV_COLLAPSED_KEY];
-        if (!Array.isArray(saved)) {
-            return;
+        // T-7184：以持久化快照重建集合（历史只追加——远端展开/删除分组的折叠项
+        // 残留本地内存，跨设备折叠状态无法收敛）。快照即真相：损坏/缺失 = 全部展开。
+        const next = new Set<string>();
+        if (Array.isArray(saved)) {
+            saved.forEach((name) => {
+                if (typeof name === "string" && name) {
+                    next.add(name);
+                }
+            });
         }
-        saved.forEach((name) => {
-            if (typeof name === "string" && name) {
-                this.favCollapsed.add(name);
-            }
-        });
+        this.favCollapsed = next;
     }
 
     // 鎶樺彔/灞曞紑鐘舵€佸彉鍖栧悗鍘绘姈鍐欏叆鎸佷箙鍖?
@@ -9092,10 +9259,12 @@ private rootIdOf(tab: Tab): string | null {
             document.removeEventListener("scroll", onReposition, true);
             observer?.disconnect();
         };
-        // 收起面板并停止 DOM 观察（三条收起路径共用：再次点击触发器 / 点击外部 / 选中收藏项）
+        // 收起面板并停止 DOM 观察（三条收起路径共用：再次点击触发器 / 点击外部 / 选中收藏项）。
+        // T-7181：关闭即释放——pointerdown/resize/scroll 与 body 观察器同步解绑，
+        // 不再等下一次全局点击兜底。
         const closePanel = () => {
             panel.classList.add("fn__none");
-            // 全局监听仅在面板展开期间存在，关闭后立即释放。
+            unbindGlobal();
         };
         // 点击外部收起面板；面板关闭期间 MutationObserver 已停止，
         // 宿主容器被移除后由这次全局点击兜底解绑全部监听
@@ -9438,12 +9607,19 @@ private rootIdOf(tab: Tab): string | null {
         head.type = "button";
         head.className = "sw__fav-group-head";
         head.title = this.i18n.favGroupTip;
+        // T-7193：读屏合同——aria-expanded 同步折叠状态，aria-controls 指向组体列表
+        const isCollapsed = this.favCollapsed.has(name);
+        head.setAttribute("aria-expanded", String(!isCollapsed));
+        const listId = `sw-fav-group-${name.replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, "-")}`;
+        head.setAttribute("aria-controls", listId);
         head.innerHTML = `<svg class="sw__fav-arrow"><use xlink:href="#iconRight"></use></svg>
 <span class="sw__fav-group-name"></span>
 <span class="sw__fav-count">${items.length}</span>`;
         head.querySelector<HTMLElement>(".sw__fav-group-name")!.textContent = name;
         head.addEventListener("click", () => {
             groupEl.classList.toggle("sw__fav-collapsed");
+            const collapsed = groupEl.classList.contains("sw__fav-collapsed");
+            head.setAttribute("aria-expanded", String(!collapsed));
             if (this.favCollapsed.has(name)) {
                 this.favCollapsed.delete(name);
             } else {
@@ -9461,6 +9637,7 @@ private rootIdOf(tab: Tab): string | null {
 
         const list = document.createElement("div");
         list.className = "sw__fav-items";
+        list.id = listId;
         items.forEach((fav) => {
             list.appendChild(this.makeFavItem(panel, fav, onPick, onChanged));
         });
@@ -11084,7 +11261,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         if (cached) {
             const wrap = document.createElement("div");
             wrap.className = "protyle-wysiwyg";
-            wrap.innerHTML = cached.html;
+            // T-7173：持久化缓存是弱信任存储——读取必经有界净化
+            const fragment = this.sanitizeThumbHtml(cached.html);
+            if (!fragment) return;
+            wrap.appendChild(fragment);
             this.applyThumbContent(thumb, wrap, title);
             return;
         }
@@ -11176,7 +11356,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 if (cached) {
                     const wrap = document.createElement("div");
                     wrap.className = "protyle-wysiwyg";
-                    wrap.innerHTML = cached.html;
+                    // T-7173：持久化缓存是弱信任存储——读取必经有界净化
+                    const fragment = this.sanitizeThumbHtml(cached.html);
+                    if (!fragment) {
+                        this.fillThumbByApi(item.tab, thumb);
+                        continue;
+                    }
+                    wrap.appendChild(fragment);
                     this.applyThumbContent(thumb, wrap, title);
                     continue;
                 }
@@ -11197,6 +11383,44 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
     // 将克隆内容装进缩略图框并按宽度缩放。返回 false 表示内容视觉空白（如整篇空段落），
     // 已就地回退为标题占位——调用方应继续走 API 回源且不得把空白内容写入缓存（T-6970）。
+    // T-7173：缩略图 HTML 有界净化——三来源（实时克隆/持久化缓存/内核 getDoc）中，
+    // 后两者经 innerHTML 解析（历史缺陷：弱信任存储与内核响应未净化即挂载）。
+    // DOMParser 产出 inert 文档（不跑脚本、不加载资源、不触发事件），再按白名单
+    // 搬运节点：剥全部事件属性/style/srcset/javascript: 与 data:text 源，剔除
+    // script/iframe 等活动标签；缩略图只需视觉骨架，交互标签一并剔除。
+    private sanitizeThumbHtml(html: string): DocumentFragment | null {
+        if (typeof DOMParser !== "function") return null; // 极旧 WebView：调用方降级为占位
+        const parsed = new DOMParser().parseFromString(html, "text/html");
+        const fragment = parsed.createDocumentFragment();
+        const stripTags = new Set(["script", "style", "iframe", "object", "embed", "link", "meta", "base", "template", "form", "input", "button", "textarea", "select", "audio", "video", "source", "track"]);
+        const walk = (src: Element, dest: Node): void => {
+            for (const node of Array.from(src.childNodes)) {
+                if (node.nodeType === (parsed.defaultView?.Node?.TEXT_NODE ?? 3)) {
+                    dest.appendChild(parsed.createTextNode(node.textContent || ""));
+                    continue;
+                }
+                if (node.nodeType !== (parsed.defaultView?.Node?.ELEMENT_NODE ?? 1)) continue;
+                const el = node as Element;
+                const tag = el.tagName.toLowerCase();
+                if (stripTags.has(tag)) continue;
+                const clone = parsed.createElement(tag);
+                for (const attr of Array.from(el.attributes)) {
+                    const name = attr.name.toLowerCase();
+                    if (name.startsWith("on") || name === "style" || name === "srcset") continue;
+                    if (name === "src" || name === "href" || name === "xlink:href") {
+                        const value = attr.value.trim().toLowerCase();
+                        if (value.startsWith("javascript:") || value.startsWith("data:text")) continue;
+                    }
+                    clone.setAttribute(attr.name, attr.value);
+                }
+                walk(el, clone);
+                dest.appendChild(clone);
+            }
+        };
+        walk(parsed.body, fragment);
+        return fragment;
+    }
+
     private applyThumbContent(thumb: HTMLElement, source: HTMLElement, title: string): boolean {
         // 真机反馈：日记等文档开头常见空段落，缩放后整框只剩空白；先裁掉前导空白块
         trimLeadingBlankThumbNodes(source);
@@ -11234,6 +11458,16 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     // 限制同时在途请求数，手机端更保守，避免打开瞬间打爆内核/网络
     private thumbApiActive = 0;
     private thumbApiQueue: Array<() => void> = [];
+    // T-7172：在途回源控制器（按缩略图元素登记，关闭切换器时批量取消）
+    private thumbApiControllers = new Map<HTMLElement, AbortController>();
+
+    // 关闭切换器/重渲染时批量取消在途回源：等待项拿到槽位后因失连检查自动离队
+    cancelThumbFetches() {
+        this.thumbApiControllers.forEach((controller) => {
+            try { controller.abort(); } catch { /* 无 AbortController 环境忽略 */ }
+        });
+        this.thumbApiControllers.clear();
+    }
 
     private async acquireThumbApi(): Promise<void> {
         const max = this.isMobile ? THUMB_API_MAX_MOBILE : THUMB_API_MAX;
@@ -11264,13 +11498,25 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             return; // 闈炴枃妗ｉ〉绛撅紝淇濇寔鍗犱綅
         }
         await this.acquireThumbApi();
+        // T-7172：拿到槽位后先验失连——卡片已被重绘移除则立即离队，不发请求
+        if (!thumb.isConnected) {
+            this.releaseThumbApi();
+            return;
+        }
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        if (controller) this.thumbApiControllers.set(thumb, controller);
         try {
             // size=32：缩略图只需首屏内容，减小响应体与解析开销
+            const timer = controller
+                ? window.setTimeout(() => controller.abort(), THUMB_API_TIMEOUT_MS)
+                : null;
             const response = await fetch("/api/filetree/getDoc", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({id: rootId, mode: 0, size: 32}),
+                ...(controller ? {signal: controller.signal} : {}),
             });
+            if (timer !== null) window.clearTimeout(timer);
             if (!response.ok) {
                 throw new Error(`getDoc HTTP ${response.status}`);
             }
@@ -11282,8 +11528,11 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             }
             const wrap = document.createElement("div");
             wrap.className = "protyle-wysiwyg";
-            wrap.innerHTML = html;
+            // T-7173：内核响应可含用户嵌入 HTML 块——挂载前有界净化
+            const fragment = this.sanitizeThumbHtml(html);
+            if (!fragment) return;
             thumb.innerHTML = "";
+            wrap.appendChild(fragment);
             // 空白内容不进缓存（保留占位），下次打开仍会尝试回源（T-6970）
             if (!this.applyThumbContent(thumb, wrap, tab.title || "")) {
                 return;
@@ -11296,6 +11545,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             // 璇诲彇澶辫触淇濇寔鍗犱綅鍗冲彲
             logger.warn("fetch doc content fail", e);
         } finally {
+            if (this.thumbApiControllers.get(thumb) === controller) this.thumbApiControllers.delete(thumb);
             this.releaseThumbApi();
         }
     }
@@ -11692,7 +11942,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     private createMobileSwitcherDialog(release: {fn: () => void}): Dialog {
         const holder: {dialog: Dialog | null} = {dialog: null};
         const dialog = new Dialog({
-            title: "",
+            title: this.i18n.dialogSwitcherTitle || "页签切换器",
             content: this.buildMobileSwitcherHtml(),
             width: "92vw",
             height: "85vh",

@@ -1,23 +1,28 @@
 @use "00-tokens" as *;
 .sw-settings {
     --sw-page-bg: var(--b3-theme-background);
-    --sw-page-bg: color-mix(in srgb, var(--b3-theme-background) 88%, #dfe5f2 12%);
     --sw-accent-soft: var(--b3-theme-primary-lightest, var(--b3-theme-surface-lighter));
-    --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 12%, transparent);
     --sw-settings-hover-bg: var(--sw-accent-soft);
+    // T-7198：同 _03 根块——color-mix 覆盖必须包 @supports，否则回退定义被
+    // 静默覆盖、老 WebView 使用点整体失效。
+    @supports (background: color-mix(in srgb, red, blue)) {
+        --sw-page-bg: color-mix(in srgb, var(--b3-theme-background) 88%, #dfe5f2 12%);
+        --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 12%, transparent);
+    }
     background: var(--sw-page-bg, var(--b3-theme-background));
 
     .sw-settings__tabs {
         width: 148px;
-        padding: 14px 9px;
+        padding: 14px 10px;
         border-right-color: color-mix(in srgb, var(--b3-border-color) 55%, transparent);
         background: color-mix(in srgb, var(--b3-theme-surface) 54%, var(--sw-page-bg));
     }
 
     .sw-settings__tab {
         min-height: 36px;
-        padding: 8px 11px;
-        border-radius: 10px;
+        padding: 8px 12px;
+        // T-7199：设置弹窗不在 .speed-switch 内，圆角走 .sw-settings 局部镜像档。
+        border-radius: var(--sw-radius-control, 10px);
 
         &:hover { background: var(--sw-accent-soft); }
 
@@ -37,13 +42,13 @@
         margin-inline: -10px;
         padding: 14px 10px;
         border-bottom-color: color-mix(in srgb, var(--b3-border-color) 48%, transparent);
-        border-radius: 12px;
+        border-radius: var(--sw-radius-lg, 12px);
     }
 
     .sw-settings__item-action .b3-select,
     .sw-settings__num .b3-text-field,
     .sw-setting__document-set-form .b3-text-field {
-        border-radius: 10px;
+        border-radius: var(--sw-radius-control, 10px);
     }
 }
 
@@ -60,7 +65,7 @@
 
         .sw__mobile-card {
             border-radius: 14px;
-            box-shadow: 0 3px 14px rgba(65, 74, 108, .08);
+            box-shadow: var(--sw-shadow-sm);
 
             .sw__meta {
                 min-height: 36px;
@@ -89,7 +94,7 @@
     box-shadow: none;
 }
 
-// 收藏底部弹窗遮罩：半透明背板给出模态状态感知（黑色遮罩为标准做法，明暗主题均适用）
+// 收藏底部弹窗遮罩（T-7200：遮罩色/模糊统一走 --sw-overlay-* token，蓝灰暗调明暗通用）
 .sw__mobile-sheet-overlay {
     position: fixed;
     inset: 0;
@@ -97,9 +102,14 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.32);
+    background: var(--sw-overlay-scrim, rgba(0, 0, 0, 0.32));
+    backdrop-filter: var(--sw-overlay-blur, blur(2px));
     transition: opacity $sw-dur-panel $sw-ease;
     -webkit-tap-highlight-color: transparent;
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        background: var(--sw-overlay-scrim-strong, rgba(0, 0, 0, 0.42));
+    }
 }
 
 .sw__mobile-sort-overlay {
@@ -112,8 +122,13 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    background: rgba(0, 0, 0, .32);
+    background: var(--sw-overlay-scrim, rgba(0, 0, 0, .32));
+    backdrop-filter: var(--sw-overlay-blur, blur(2px));
     pointer-events: auto;
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        background: var(--sw-overlay-scrim-strong, rgba(0, 0, 0, .42));
+    }
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -176,7 +191,7 @@
     }
 
     svg {
-        width: 18px;
+        width: var(--sw-icon-md, 18px);
         height: 18px;
         color: var(--b3-theme-primary);
     }
@@ -269,7 +284,7 @@
         -webkit-tap-highlight-color: transparent;
 
         svg {
-            width: 16px;
+            width: var(--sw-icon-sm, 16px);
             height: 16px;
         }
 
@@ -312,7 +327,7 @@
         min-height: 44px;
 
         svg {
-            width: 16px;
+            width: var(--sw-icon-sm, 16px);
             height: 16px;
             flex: none;
             color: var(--b3-theme-on-surface-light);
@@ -367,6 +382,8 @@
     .sw__fab *,
     .sw__mobile-sheet-overlay,
     .sw__mobile-sheet-overlay *,
+    .sw__mobile-sort-overlay,
+    .sw__mobile-sort-overlay *,
     #swMobileTopBarBtn {
         transition: none !important;
         animation: none !important;
@@ -392,11 +409,7 @@
     }
 }
 
-.sw__mobile-sheet-overlay,
-.sw__mobile-sort-overlay {
-    background: rgba(43, 48, 70, .28);
-    backdrop-filter: blur(2px);
-}
+// T-7200：旧的后置遮罩覆盖块已并入上方基础定义（token 化），避免同块/跨块重复定义。
 
 .sw__fab {
     box-shadow: 0 8px 22px rgba(76, 68, 150, .22), 0 2px 6px rgba(55, 65, 100, .12);
@@ -406,7 +419,7 @@
 .sw-setting__document-set {
     border-radius: 10px;
     border-color: color-mix(in srgb, var(--b3-border-color) 68%, transparent);
-    box-shadow: 0 2px 8px rgba(70, 78, 110, .05);
+    box-shadow: var(--sw-shadow-xs);
 }
 
 // ==================== 分类分组：排序触发按钮与移动端 sheet 分区 ====================
@@ -418,7 +431,7 @@
     padding: 4px 10px;
     font-size: 13px;
 
-    svg { flex: none; width: 14px; height: 14px; }
+    svg { flex: none; width: var(--sw-icon-xs, 14px); height: 14px; }
     .sw__sort-trigger-label {
         overflow: hidden;
         text-overflow: ellipsis;
@@ -429,7 +442,7 @@
 .sw__mobile-sheet-section {
     margin: 10px 16px 4px;
     color: var(--b3-theme-on-surface-light);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     letter-spacing: 0.05em;
 }
 
@@ -457,7 +470,7 @@
         border-radius: 6px;
         color: var(--b3-theme-on-surface-light);
         background: color-mix(in srgb, var(--b3-theme-surface) 92%, transparent);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         opacity: .82;
         pointer-events: var(--sw-sync-overlay-pointer-events, none);
     }
@@ -518,7 +531,7 @@
         align-items: center;
         gap: 4px;
 
-        svg { width: 14px; height: 14px; }
+        svg { width: var(--sw-icon-xs, 14px); height: 14px; }
     }
 }
 
@@ -548,7 +561,7 @@
         flex: none;
         margin-left: auto;
         padding: 2px 8px;
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
     }
     font-size: 12px;
 
@@ -569,7 +582,7 @@
         top: 8px;
         right: 10px;
         z-index: 1;
-        padding: 2px 7px;
+        padding: 2px 8px;
         border: 1px solid color-mix(in srgb, var(--b3-theme-error, #d23f31) 40%, transparent);
         border-radius: 6px;
         background: var(--b3-theme-surface);
@@ -587,7 +600,7 @@
     align-items: center;
     gap: 10px;
     margin-bottom: 10px;
-    padding: 7px 12px;
+    padding: 8px 12px;
     border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 26%, transparent);
     border-radius: 10px;
     background: color-mix(in srgb, var(--b3-theme-primary) 9%, transparent);
@@ -614,10 +627,10 @@
     border-radius: var(--sw-radius-card, 20px);
     border: 0.5px solid color-mix(in srgb, var(--b3-theme-background) 60%, var(--b3-border-color));
     background: color-mix(in srgb, var(--b3-theme-surface) 88%, transparent);
-    backdrop-filter: blur(20px);
+    backdrop-filter: var(--sw-blur-lg);
     // T-7068：触屏保纵向滚动原生；长按按压态收紧手势尽量让拖位移交（引擎支持度有差异）
     touch-action: pan-y;
-    -webkit-backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: var(--sw-blur-lg);
     box-shadow:
         0 1px 3px color-mix(in srgb, #000 6%, transparent),
         0 4px 16px color-mix(in srgb, #000 5%, transparent);
@@ -692,11 +705,11 @@
     .sw__home-module-icon {
         flex: none;
         display: flex;
-        width: 14px;
+        width: var(--sw-icon-xs, 14px);
         height: 14px;
         color: var(--b3-theme-primary);
 
-        svg { width: 14px; height: 14px; }
+        svg { width: var(--sw-icon-xs, 14px); height: 14px; }
     }
 
     .sw__home-module-title {
@@ -717,7 +730,7 @@
         text-overflow: ellipsis;
         white-space: nowrap;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
     }
 
     // T-6473 头部瘦身：Configure 由文字按钮改为齿轮图标按钮
@@ -731,7 +744,7 @@
         padding: 0;
         color: var(--b3-theme-primary);
 
-        svg { width: 14px; height: 14px; }
+        svg { width: var(--sw-icon-xs, 14px); height: 14px; }
 
         &:hover { background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); }
     }
@@ -755,7 +768,7 @@
     .sw__home-module-item-action {
         display: block;
         width: 100%;
-        padding: 5px 6px;
+        padding: 6px 6px;
         border: none;
         border-radius: 6px;
         background: transparent;
@@ -797,6 +810,16 @@
     -webkit-line-clamp: 2;
 }
 
+// T-7205：工作台状态行接入平台语义色（与 .sw-platform-status 五态同一刻度），
+// 不再只靠灰字表达 error/stale/loading。
+.sw__home-module-status--loading { color: var(--sw-platform-accent, var(--b3-theme-primary)); }
+
+.sw__home-module-status--stale { color: var(--sw-platform-warning, var(--b3-theme-warning)); }
+
+.sw__home-module-status--error {
+    color: var(--sw-platform-error, var(--b3-theme-error));
+}
+
 .sw__home-module-status--empty,
 .sw__home-module-status--error {
     min-height: 54px;
@@ -806,13 +829,13 @@
 .sw__home-module-refreshing {
     margin-left: auto;
     color: var(--b3-theme-on-surface-light);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     white-space: nowrap;
 }
 
 .sw__home-loading-skeleton {
     display: grid;
-    gap: 7px;
+    gap: 8px;
     min-height: 54px;
     padding: 6px 2px;
 }
@@ -820,7 +843,7 @@
 .sw__home-loading-skeleton-line {
     display: block;
     height: 10px;
-    border-radius: 5px;
+    border-radius: var(--sw-radius-sm, 6px);
     background: color-mix(in srgb, var(--b3-theme-on-surface-light) 16%, transparent);
     animation: sw-home-skeleton-pulse 1$sw-dur-slow $sw-ease-sym infinite;
 
@@ -981,7 +1004,7 @@
         grid-template-columns: minmax(110px, auto) auto 1fr auto;
         align-items: center;
         gap: 8px;
-        padding: 7px 9px;
+        padding: 8px 10px;
         border-radius: 8px;
         background: var(--b3-theme-surface-lighter);
         font-size: 12px;
@@ -1000,7 +1023,7 @@
 
 .sw-settings__mobile-home-note {
     margin: 0 0 12px;
-    padding: 9px 11px;
+    padding: 10px 12px;
     border-radius: 10px;
     background: color-mix(in srgb, var(--b3-theme-primary) 8%, transparent);
     color: var(--b3-theme-on-surface-light);
@@ -1026,7 +1049,7 @@
     margin: 6px 2px 6px;
     padding-left: 10px;
     border-left: 3px solid var(--b3-border-color);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     font-weight: 700;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -1041,7 +1064,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 7px 9px;
+    padding: 8px 10px;
     border: 1px solid var(--b3-border-color);
     border-radius: 8px;
     margin-bottom: 6px;
@@ -1049,12 +1072,12 @@
     &--failed { border-color: color-mix(in srgb, var(--b3-theme-error) 34%, transparent); }
 
     .sw-home-health__info { flex: 1; min-width: 0; }
-    .sw-home-health__name { display: block; font-size: 12.5px; font-weight: 600; }
+    .sw-home-health__name { display: block; font-size: var(--sw-font-md, 13px); font-weight: 600; }
     .sw-home-health__meta {
         display: block;
         margin-top: 2px;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         font-variant-numeric: tabular-nums;
     }
     .sw-home-health__actions { display: flex; flex: none; gap: 4px; }
@@ -1081,17 +1104,20 @@
 // 四种材质（plain 常规 / accent 主色渐变 / dark 深色舞台 / vibrant 内容语义渐变），
 // 经皮肤层作用域派生，不改组件选择器。深色/彩色材质上的模块文字色整体继承材质
 // 前景，交互控件（按钮/链接）保持既有主题变量以维持对比度采样覆盖。
-.sw-home__cell.mat-accent,
-.sw-home__cell.mat-dark {
+// T-7155：材质选择器带 .sw-home 前缀（0,3,0），必须压过后置切片 _06/_07 的
+// 通用卡片背景/边框规则（0,2,0）——否则渐变背景被浅底覆盖而材质浅色前景仍在，
+// 形成"白字浅底"不可读；门禁见 tests/home-tile-material-wiring.test.cjs。
+.sw-home .sw-home__cell.mat-accent,
+.sw-home .sw-home__cell.mat-dark {
     --sw-home-cell-fg: var(--b3-theme-on-primary);
     border: none;
 }
 
-.sw-home__cell.mat-accent {
+.sw-home .sw-home__cell.mat-accent {
     background: linear-gradient(135deg, var(--b3-theme-primary), color-mix(in srgb, var(--b3-theme-primary) 58%, #101426));
 }
 
-.sw-home__cell.mat-dark {
+.sw-home .sw-home__cell.mat-dark {
     background: linear-gradient(160deg, #2a303c, #14171f);
     border: 0.5px solid rgb(255 255 255 / 8%);
     box-shadow:
@@ -1099,16 +1125,16 @@
         inset 0 0.5px 0 rgb(255 255 255 / 6%);
 }
 
-.sw-home__cell.mat-vibrant {
+.sw-home .sw-home__cell.mat-vibrant {
     --sw-home-cell-fg: #ffffff;
     background: linear-gradient(165deg, #3f74d4 0%, #5f96e0 55%, #8fc3ee 100%);
     border: none;
 }
 
 // 材质前景：模块头/正文/统计/列表文字整体继承；失败状态仍走主题错误色。
-.sw-home__cell.mat-accent,
-.sw-home__cell.mat-dark,
-.sw-home__cell.mat-vibrant {
+.sw-home .sw-home__cell.mat-accent,
+.sw-home .sw-home__cell.mat-dark,
+.sw-home .sw-home__cell.mat-vibrant {
     color: var(--sw-home-cell-fg, inherit);
 
     .sw__home-module-header,
@@ -1126,10 +1152,10 @@
     }
 }
 
-// 失败单元描边（T-6880 语义）在彩色材质上仍可见
-.sw-home__cell.mat-accent[data-sw-health="failed"],
-.sw-home__cell.mat-dark[data-sw-health="failed"],
-.sw-home__cell.mat-vibrant[data-sw-health="failed"] {
+// 失败单元描边（T-6880 语义）在彩色材质上仍可见；0,4,0 同时压过 _07 的 hover 阴影。
+.sw-home .sw-home__cell.mat-accent[data-sw-health="failed"],
+.sw-home .sw-home__cell.mat-dark[data-sw-health="failed"],
+.sw-home .sw-home__cell.mat-vibrant[data-sw-health="failed"] {
     box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--b3-theme-error) 60%, transparent);
 }
 
@@ -1159,7 +1185,7 @@
     margin-bottom: 6px;
 
     .sw__home-module-title {
-        font-size: 10.5px;
+        font-size: var(--sw-font-xs, 11px);
         font-weight: 600;
         line-height: 1.4;
         color: var(--b3-theme-on-surface-light);
@@ -1217,7 +1243,7 @@
     .sw__home-module-item-secondary {
         flex: 0 0 auto;
         margin-left: auto;
-        font-size: 10.5px;
+        font-size: var(--sw-font-xs, 11px);
         color: var(--b3-theme-on-surface-light);
         white-space: nowrap;
     }
@@ -1348,8 +1374,8 @@
 }
 
 .sw-home__cell .sw__home-calendar-daynight {
-    width: 20px;
-    height: 20px;
+    width: var(--sw-icon-md, 20px);
+    height: var(--sw-icon-md, 20px);
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
@@ -1376,7 +1402,7 @@
     margin-top: 6px;
     padding: 2px 10px;
     border-radius: 12px;
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     font-weight: 600;
 }
 

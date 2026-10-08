@@ -6,7 +6,7 @@ import {Dialog, Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
 import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId, SAVED_SEARCH_NAME_MAX, SAVED_SEARCH_QUERY_MAX} from "./search-model";
+import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId, SAVED_SEARCH_NAME_MAX, SAVED_SEARCH_QUERY_MAX, buildSavedSearchReplayFilters} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {applyPreviewFind, clampScrollTop, clearPreviewFind, HIT_CLASS, nextHitIndex} from "./doc-preview-find";
@@ -26,7 +26,7 @@ export interface DocSearchUiHost {
     i18n: Record<string, string>;
     app: import("siyuan").App;
     isMobile: boolean;
-    fetchKernelJson(url: string, body: Record<string, unknown>): Promise<any | null>;
+    fetchKernelJson(url: string, body: Record<string, unknown>, options?: {signal?: AbortSignal}): Promise<any | null>;
     loadNotebooks(): Promise<Array<{id: string, name: string}>>;
     escapeAttr(text: string): string;
     applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, onClose: IOverlayClose): void;
@@ -57,10 +57,15 @@ export async function loadDocSearchPathChildren(this: DocSearchUiHost, notebook:
         // 侧栏/移动互相对方的在途路径请求作废
         if (generation !== this.docSearchState.pathGenerations.get(scrollElement)) return cancelled();
         let payload: unknown = null;
+        // T-7191：路径筛选请求可被底层取消（换路径/关面板时 abort 旧请求）。
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        if (controller) pathFilterControllers.set(scrollElement, controller);
         try {
-            payload = await this.fetchKernelJson("/api/filetree/listDocsByPath", request.body);
+            payload = await this.fetchKernelJson("/api/filetree/listDocsByPath", request.body, {signal: controller?.signal});
         } catch (_) {
             payload = null;
+        } finally {
+            if (pathFilterControllers.get(scrollElement) === controller) pathFilterControllers.delete(scrollElement);
         }
         if (generation !== this.docSearchState.pathGenerations.get(scrollElement)) return cancelled();
         if (payload === null || payload === undefined) {
@@ -125,6 +130,12 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
             const previousGeneration = this.docSearchState.pathGenerations.get(scrollElement) || 0;
             const generation = previousGeneration + 1;
             this.docSearchState.pathGenerations.set(scrollElement, generation);
+            // T-7191：换路径/换查询时中止旧 listDocsByPath（代际校验仍是最后防线）。
+            const stalePathController = pathFilterControllers.get(scrollElement);
+            if (stalePathController) {
+                pathFilterControllers.delete(scrollElement);
+                try { stalePathController.abort(); } catch { /* 无 AbortController 环境忽略 */ }
+            }
             const rect = button.getBoundingClientRect();
             const position = {x: rect.left, y: rect.bottom};
             const openAsMenu = (items: IMenu[]) => {
@@ -453,9 +464,9 @@ export function applySavedSearchFilters(this: DocSearchUiHost, scrollElement: HT
     ) {
         const query = typeof saved?.query === "string" ? saved.query : "";
         if (!query) return;
-        const filters: IDocSearchFilters = {...(this.docSearchState.filters.get(scrollElement) || {})};
-        if (saved.notebook) filters.notebook = saved.notebook;
-        else delete filters.notebook;
+        // T-7162：保存项只承诺查询词与笔记本——回放即完整回放，未保存字段（路径/类型/
+        // 子类型/方法/排序）不继承当前现场，同一保存项任何现场回放得到同一条件。
+        const filters: IDocSearchFilters = buildSavedSearchReplayFilters(saved);
         this.docSearchState.filters.set(scrollElement, Object.freeze(filters));
         this.docSearchState.filterButtonSync.get(scrollElement)?.();
         searchInput.value = query;
@@ -1122,6 +1133,10 @@ const DOC_PREVIEW_DEBOUNCE_MS = 300;
 const DOC_PREVIEW_MIN_WIDTH = 680;
 const docPreviewPanes = new WeakMap<HTMLElement, HTMLElement>();
 const docPreviewTimers = new WeakMap<HTMLElement, number>();
+// T-7165：预览在途请求控制器——cancelDocPreview 真正 abort，不再只递增代际。
+const docPreviewControllers = new WeakMap<HTMLElement, AbortController>();
+// T-7191：路径筛选在途请求控制器。
+const pathFilterControllers = new WeakMap<HTMLElement, AbortController>();
 const docPreviewGenerations = new WeakMap<HTMLElement, number>();
 // T-6949：会话级固定预览。以 scrollElement 为键——界面会话销毁即随 WeakMap 释放；
 // 窄容器只隐藏窗格不销毁会话，同一会话恢复显示时固定对象仍在。
@@ -1491,6 +1506,12 @@ export function cancelDocPreview(scrollElement: HTMLElement): number {
         const previous = docPreviewTimers.get(scrollElement);
         if (previous !== undefined) window.clearTimeout(previous);
         docPreviewTimers.delete(scrollElement);
+        // T-7165：中止在途的 outline/getDoc 请求（代际校验仍是最后防线）。
+        const inflight = docPreviewControllers.get(scrollElement);
+        if (inflight) {
+            docPreviewControllers.delete(scrollElement);
+            try { inflight.abort(); } catch { /* 无 AbortController 环境忽略 */ }
+        }
         const generation = (docPreviewGenerations.get(scrollElement) || 0) + 1;
         docPreviewGenerations.set(scrollElement, generation);
         return generation;
@@ -1513,12 +1534,21 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
         if (!pane || !pane.isConnected) return;
         setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewLoading);
         setDocPreviewStatus(pane, "loading", this.i18n.docSearchPreviewStatusLoading);
-        // 两个白名单端点并行取数；fetchKernelJson 自带超时与非 2xx → null
-        const [outlinePayload, docPayload] = await Promise.all([
-            // 审查轮 P-D 实证：preview:false 恒返回空，true 才携带嵌套大纲树
-            this.fetchKernelJson("/api/outline/getDocOutline", {id: rootId, preview: true}),
-            this.fetchKernelJson("/api/filetree/getDoc", {id: rootId, mode: 0, size: 12}),
-        ].map((request: Promise<any>): Promise<any> => request.catch((): null => null)));
+        // 两个白名单端点并行取数；fetchKernelJson 自带超时与非 2xx → null。
+        // T-7165：携带取消 signal——换目标/收起/关闭窗格时 abort 在途请求。
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        if (controller) docPreviewControllers.set(scrollElement, controller);
+        let outlinePayload: any = null;
+        let docPayload: any = null;
+        try {
+            [outlinePayload, docPayload] = await Promise.all([
+                // 审查轮 P-D 实证：preview:false 恒返回空，true 才携带嵌套大纲树
+                this.fetchKernelJson("/api/outline/getDocOutline", {id: rootId, preview: true}, {signal: controller?.signal}),
+                this.fetchKernelJson("/api/filetree/getDoc", {id: rootId, mode: 0, size: 12}, {signal: controller?.signal}),
+            ].map((request: Promise<any>): Promise<any> => request.catch((): null => null)));
+        } finally {
+            if (docPreviewControllers.get(scrollElement) === controller) docPreviewControllers.delete(scrollElement);
+        }
         if (!pane.isConnected) return;
         if ((docPreviewGenerations.get(scrollElement) || 0) !== generation) return;
         const failed = !outlinePayload || outlinePayload.code !== 0 || !Array.isArray(outlinePayload.data)

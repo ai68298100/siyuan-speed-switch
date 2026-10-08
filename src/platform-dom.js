@@ -54,6 +54,18 @@ function createPlatformSegmented(doc, options = {}) {
         button.setAttribute("role", "radio");
         button.setAttribute("aria-checked", String(item.value === active));
         if (item.value === active) button.classList.add("is-active");
+        // T-7175：radiogroup 键盘合同——roving tabindex（单 Tab 停靠）+ 方向键循环选择。
+        button.addEventListener("keydown", (event) => {
+            const forward = event.key === "ArrowRight" || event.key === "ArrowDown";
+            const backward = event.key === "ArrowLeft" || event.key === "ArrowUp";
+            if (!forward && !backward) return;
+            event.preventDefault();
+            const currentIndex = buttons.indexOf(event.currentTarget);
+            if (currentIndex < 0 || buttons.length === 0) return;
+            const next = buttons[(currentIndex + (forward ? 1 : -1) + buttons.length) % buttons.length];
+            next.focus();
+            next.click();
+        });
         button.addEventListener("click", () => {
             if (active === item.value) return;
             active = item.value;
@@ -62,11 +74,20 @@ function createPlatformSegmented(doc, options = {}) {
                 candidate.classList.toggle("is-active", on);
                 candidate.setAttribute("aria-checked", String(on));
             });
+            applyRovingTabindex();
             if (typeof options.onChange === "function") options.onChange(item.value);
         });
         buttons.push(button);
         seg.appendChild(button);
     });
+    // T-7175：单 Tab 停靠——选中项（或无选中时首项）保留 Tab 序，其余 -1。
+    const applyRovingTabindex = () => {
+        const hasActive = buttons.some((candidate) => candidate.dataset.value === active);
+        buttons.forEach((candidate, index) => {
+            candidate.tabIndex = (candidate.dataset.value === active || (!hasActive && index === 0)) ? 0 : -1;
+        });
+    };
+    applyRovingTabindex();
     return seg;
 }
 

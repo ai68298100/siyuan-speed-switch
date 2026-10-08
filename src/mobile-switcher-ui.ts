@@ -278,9 +278,12 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
     ): () => void {
         const disposeSearchFilter = bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay);
         let activeSortOverlay: HTMLElement | null = null;
+        // T-7176：关闭排序 sheet 后回焦触发按钮
+        let sortTrigger: HTMLElement | null = null;
         const closeSortOverlay = () => {
             activeSortOverlay?.remove();
             activeSortOverlay = null;
+            if (sortTrigger) { sortTrigger.focus({preventScroll: true}); sortTrigger = null; }
         };
         const onDocumentKeyDown = (event: KeyboardEvent) => {
             if (event.key !== "Escape" || !activeSortOverlay) return;
@@ -321,6 +324,7 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
         };
         updateSortButton();
         sortButton?.addEventListener("click", () => {
+            sortTrigger = sortButton;
             closeSortOverlay();
             const overlay = document.createElement("div");
             overlay.className = "sw__mobile-sort-overlay";
@@ -370,6 +374,15 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
                         this.applySearch(scrollElement, searchEl, closeOverlay);
                     }
                 });
+                // T-7176：分组选项方向键循环（与排序选项同模式）
+                item.addEventListener("keydown", (event) => {
+                    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                    event.preventDefault();
+                    const options = Array.from(groupList.querySelectorAll<HTMLButtonElement>(".sw__mobile-sort-option"));
+                    const index = options.indexOf(item);
+                    const next = options[(index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length];
+                    next.focus();
+                });
                 groupList.appendChild(item);
             });
             sheet.appendChild(groupList);
@@ -404,6 +417,9 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
             sheet.appendChild(list);
             overlay.appendChild(sheet);
             document.body.appendChild(overlay);
+            // T-7176：打开后入焦首个选项
+            var first = overlay.querySelector("button");
+            if (first) first.focus({preventScroll: true});
             activeSortOverlay = overlay;
             overlay.addEventListener("click", (event) => {
                 if (event.target === overlay) closeSortOverlay();
@@ -411,10 +427,28 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
             // Android back/Escape should close only the transient sort sheet;
             // do not leave a body-level portal intercepting later taps.
             overlay.addEventListener("keydown", (event) => {
-                if (event.key !== "Escape") return;
-                event.preventDefault();
-                event.stopPropagation();
-                closeSortOverlay();
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeSortOverlay();
+                    return;
+                }
+                // T-7176：Tab 循环约束——首/末回绕，焦点不逃逸 sheet
+                if (event.key === "Tab") {
+                    const focusables = Array.from(
+                        overlay.querySelectorAll<HTMLElement>("button, input, [tabindex]:not([tabindex=\"-1\"])")
+                    ).filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null);
+                    if (focusables.length === 0) return;
+                    const first = focusables[0];
+                    const last = focusables[focusables.length - 1];
+                    if (event.shiftKey && document.activeElement === first) {
+                        event.preventDefault();
+                        last.focus({preventScroll: true});
+                    } else if (!event.shiftKey && document.activeElement === last) {
+                        event.preventDefault();
+                        first.focus({preventScroll: true});
+                    }
+                }
             });
             overlay.tabIndex = -1;
             this.scheduleAnimationFrame(() => { if (overlay.isConnected) overlay.focus({preventScroll: true}); });

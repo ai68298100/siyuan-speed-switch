@@ -46,12 +46,12 @@ test('preview metadata stays above scrolling content', () => assert.ok(declaresI
 test('preview metadata keeps a top inset', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /top: 0/, base)));
 test('preview metadata has a separating border', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /border-bottom: 1px solid/, base)));
 test('preview metadata uses a translucent surface', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /background: color-mix/, base)));
-test('preview metadata supports backdrop blur', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /backdrop-filter: blur/, base)));
+test('preview metadata supports backdrop blur', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /backdrop-filter:\s*var\(--sw-blur-md\)/, base)));
 test('preview context chips use dashed borders', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip.is-context', /border-style: dashed/, base)));
 test('preview body allows long content to wrap', () => assert.ok(declaresIn(css, '.sw-store-preview__body', /overflow-wrap: anywhere/, base)));
 test('preview body remains shrinkable in flex layouts', () => assert.ok(declaresIn(css, '.sw-store-preview__body', /min-width: 0/, base)));
 // 窄屏分支里的 chip 缩小必须钉在 560px 分支上（T-6283：深度≠身份）。
-test('preview has mobile chip sizing', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /padding:\s*3px 6px/, {atRule: /max-width:\s*560px/})));
+test('preview has mobile chip sizing', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /padding:\s*4px 6px/, {atRule: /max-width:\s*560px/})));
 test('preview has forced-colors fallback', () => assert.ok(css.includes('@media (forced-colors: active)')));
 test('English preview surface label exists', () => assert.match(en, /"homeStorePreviewSurface":/));
 test('English preview size label exists', () => assert.match(en, /"homeStorePreviewSize":/));

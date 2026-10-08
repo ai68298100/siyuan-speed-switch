@@ -672,9 +672,9 @@ test('resident preview pane: focus-synced outline preview with bounded fetch (T-
         '窗格同步钩子必须是结果区 focusin 委托（行重建不丢钩子）');
     assert.match(docSearchUi, /if \(!BLOCK_ID_RE\.test\(rootId\)\) return;/,
         'rootId 必须经锚定正则校验后才可请求内核文档');
-    assert.match(docSearchUi, /this\.fetchKernelJson\("\/api\/outline\/getDocOutline", \{id: rootId, preview: true\}\)/,
+    assert.match(docSearchUi, /this\.fetchKernelJson\("\/api\/outline\/getDocOutline", \{id: rootId, preview: true\}, \{signal: controller\?\.signal\}\)/,
         '大纲必须走白名单端点且 preview:true（审查轮实证：false 恒返回空）');
-    assert.match(docSearchUi, /this\.fetchKernelJson\("\/api\/filetree\/getDoc", \{id: rootId, mode: 0, size: 12\}\)/,
+    assert.match(docSearchUi, /this\.fetchKernelJson\("\/api\/filetree\/getDoc", \{id: rootId, mode: 0, size: 12\}, \{signal: controller\?\.signal\}\)/,
         '正文必须使用文档顺序的宿主块流');
     assert.match(docSearchUi, /\(docPreviewGenerations\.get\(scrollElement\) \|\| 0\) !== generation\) return;/,
         '过期预览回包必须丢弃（代际计数竞态防线）');
@@ -1052,7 +1052,7 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
         'kbd chip must use the host code font');
     assert.ok(declaresIn(shell, '.sw-platform-context__kbd-hints', /margin-left:\s*auto/),
         'kbd hints slot must right-align in the context bar');
-    assert.ok(declaresIn(shell, '.sw-platform-seg', /border-radius:\s*9px/),
+    assert.ok(declaresIn(shell, '.sw-platform-seg', /border-radius:\s*var\(--sw-radius-control, 10px\)/),
         'segmented control container must exist');
     assert.ok(declaresIn(shell, '.sw-platform-seg__item.is-active', /font-weight:\s*600/),
         'segmented active item must be styled');
@@ -1111,7 +1111,7 @@ test('settings group cards and segmented enums (T-6872 RZ-2)', () => {
         'group titles must render as small caps labels');
     assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-title', /color:\s*var\(--b3-theme-on-surface-light\)/),
         'group titles must use the muted text color');
-    assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-card', /border-radius:\s*10px/),
+    assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-card', /border-radius:\s*var\(--sw-radius-control, 10px\)/),
         'group cards must have their own rounded boundary');
     assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-card > .sw-settings__item', /margin-inline:\s*0/),
         'rows inside a group card must drop their negative gutters');
@@ -1209,7 +1209,7 @@ test('quick capture segmented targets, pill save and honest kbd hints (T-6875 RZ
     const captureScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_08-home-store-cards.scss'));
     // 目标段选：sw__target--active 的类切换机制不变（T-6818 契约），但必须有激活样式
     // （修复真实缺陷：该类此前从无任何 CSS 规则，激活目标不可辨识）。
-    assert.ok(declaresIn(captureScss, '.sw-quick-capture__targets', /border-radius:\s*9px/),
+    assert.ok(declaresIn(captureScss, '.sw-quick-capture__targets', /border-radius:\s*var\(--sw-radius-control, 10px\)/),
         'targets container must render as a segmented control');
     assert.ok(declaresIn(captureScss, '.sw-quick-capture__targets .sw__target--active', /font-weight:\s*600/),
         'the active target must be visually distinct');

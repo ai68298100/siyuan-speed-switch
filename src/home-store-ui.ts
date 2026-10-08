@@ -38,6 +38,25 @@ import {
 import {createHomeModuleController} from "./home-controller";
 import {resolveMobileHomeSize, resolveHomeTileDefaultSize, isLifeHeartbeatModule} from "./home-model";
 import {HOME_WIDGET_SIZES, HOME_WIDGET_SIZE_LABELS} from "./constants";
+
+// T-7161：第三方 icon 元数据不可信。icon 只接受合法 symbol ID，<use> 一律用
+// createElementNS 组装，禁止图标字符串进入 innerHTML 解析入口（模型层已归一化，
+// 此处为渲染层纵深防御）。
+const STORE_ICON_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/;
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
+function createIconUseSvg(iconId: string, fallbackId: string, className?: string): SVGSVGElement {
+    const candidate = typeof iconId === "string" ? iconId.trim() : "";
+    const safe = STORE_ICON_ID_PATTERN.test(candidate) ? candidate : fallbackId;
+    const svg = document.createElementNS(SVG_NAMESPACE, "svg");
+    if (className) svg.setAttribute("class", className);
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    const use = document.createElementNS(SVG_NAMESPACE, "use");
+    use.setAttribute("xlink:href", `#${safe}`);
+    svg.appendChild(use);
+    return svg;
+}
 import type {HomeWidgetSize} from "./constants";
 import {openHomeConfigForm} from "./home-config-form";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
@@ -683,10 +702,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 card.setAttribute("aria-label", resolveHomeStoreCardA11y(card.dataset, {title: def.title || moduleId, added: this.i18n.homeStoreStatusAdded, notAdded: this.i18n.homeStoreStatusNotAdded}));
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";
-                const icon = document.createElement("svg");
-                icon.innerHTML = `<use xlink:href="#${def.icon || "iconPlugin"}"></use>`;
-                icon.setAttribute("viewBox", "0 0 24 24");
-                icon.setAttribute("aria-hidden", "true");
+                const icon = createIconUseSvg(def.icon || "", "iconPlugin");
                 const copy = document.createElement("div");
                 const title = document.createElement("strong");
                 title.textContent = def.title || moduleId;
@@ -1136,11 +1152,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                     ? orderedCards
                     : groupEntries.map((item: any) => item.card);
                 if (sourceMeta?.icon) {
-                    const groupIcon = document.createElement("svg");
-                    groupIcon.className = "sw-home-store__group-icon";
-                    groupIcon.innerHTML = `<use xlink:href="#${sourceMeta.icon}"></use>`;
-                    groupIcon.setAttribute("viewBox", "0 0 24 24");
-                    groupIcon.setAttribute("aria-hidden", "true");
+                    const groupIcon = createIconUseSvg(sourceMeta.icon, "iconPlugin", "sw-home-store__group-icon");
                     groupHeading.appendChild(groupIcon);
                 }
                 groupHeading.appendChild(groupLabel);
@@ -1240,10 +1252,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                     card.setAttribute("aria-label", `${entry.title} · ${unavailable ? (entry.orphan ? this.i18n.homeStoreProviderUnknown : this.i18n.homeStoreProviderUnavailable) : this.i18n.homeStoreRequires}`);
                     const head = document.createElement("div");
                     head.className = "sw-home-store__card-head";
-                    const icon = document.createElement("svg");
-                    icon.innerHTML = `<use xlink:href="#${entry.icon || "iconPlugin"}"></use>`;
-                    icon.setAttribute("viewBox", "0 0 24 24");
-                    icon.setAttribute("aria-hidden", "true");
+                    const icon = createIconUseSvg(entry.icon || "", "iconPlugin");
                     const copy = document.createElement("div");
                     const title = document.createElement("strong");
                     title.textContent = entry.title;

@@ -64,7 +64,7 @@
             padding: 0;
 
             svg {
-                width: 14px;
+                width: var(--sw-icon-xs, 14px);
                 height: 14px;
                 transition: transform $sw-dur-base $sw-ease;
             }
@@ -119,11 +119,11 @@
         .sw-setting__group-count {
             flex: none;
             min-width: 18px;
-            padding: 0 5px;
-            border-radius: 9px;
+            padding: 0 6px;
+            border-radius: var(--sw-radius-control, 10px);
             background: var(--b3-theme-primary-lightest);
             color: var(--b3-theme-primary);
-            font-size: 11px;
+            font-size: var(--sw-font-xs, 11px);
             line-height: 18px;
             text-align: center;
         }
@@ -196,7 +196,7 @@
             padding: 0;
 
             svg {
-                width: 14px;
+                width: var(--sw-icon-xs, 14px);
                 height: 14px;
             }
         }
@@ -205,11 +205,11 @@
 
 @media (max-width: 560px) {
     .sw-setting__fav-section-head {
-        gap: 5px;
+        gap: 6px;
         padding: 4px 6px;
 
         .sw-setting__group-actions .sw-setting__group-btn {
-            padding: 0 5px;
+            padding: 0 6px;
         }
     }
 
@@ -236,6 +236,15 @@
 .sw-settings {
     --sw-settings-focus-ring: 0 0 0 2px color-mix(in srgb, var(--b3-theme-primary) 24%, transparent);
     --sw-settings-hover-bg: var(--b3-list-hover, var(--b3-theme-surface-lighter));
+    // T-7199：设置弹窗是独立 Dialog（.sw-settings-dialog），不在 .speed-switch
+    // 根内，token 取不到全局定义——在此局部镜像本页消费的刻度档（值与
+    // _00-tokens 冻结一致；改全局档位时同步此处）。
+    --sw-font-xs: 11px;
+    --sw-font-sm: 12px;
+    --sw-font-md: 13px;
+    --sw-radius-md: 8px;
+    --sw-radius-control: 10px;
+    --sw-radius-lg: 12px;
     display: flex;
     flex-direction: row;
     height: 100%;
@@ -245,15 +254,15 @@
     overflow: hidden;
     box-sizing: border-box;
 
-    // 左侧标签栏：固定宽度、竖排按钮，右侧细分隔线
+    // 左侧标签栏：固定宽度、竖排按钮；分隔线与三面板一致走 border-color 弱化
     .sw-settings__tabs {
         flex: none;
         width: 132px;
         display: flex;
         flex-direction: column;
         gap: 4px;
-        padding: 10px 7px;
-        border-right: 1px solid var(--b3-theme-surface-lighter);
+        padding: 12px 8px;
+        border-right: 1px solid color-mix(in srgb, var(--b3-border-color) 60%, transparent);
         overflow-x: hidden;
         overflow-y: auto;
         scrollbar-width: thin;
@@ -264,10 +273,11 @@
         flex: none;
         padding: 8px 10px;
         border: none;
-        border-radius: 8px;
+        border-radius: var(--sw-radius-md, 8px);
         background: transparent;
         color: var(--b3-theme-on-surface);
-        font-size: 13px;
+        font-size: var(--sw-font-md, 13px);
+        line-height: 1.4;
         text-align: left;
         cursor: pointer;
         white-space: normal;
@@ -276,12 +286,12 @@
 
         &:hover {
             color: var(--b3-theme-primary);
-            background: var(--b3-theme-surface-lighter);
+            background: var(--sw-settings-hover-bg);
         }
 
-        // 激活标签：主色浅底 + 主色文字
+        // 激活标签：主色浅底（accent-soft 与切换器/工作台激活语言一致）+ 主色文字
         &.is-active {
-            background: var(--b3-theme-primary-lightest);
+            background: var(--sw-accent-soft, var(--b3-theme-primary-lightest));
             color: var(--b3-theme-primary);
             font-weight: 600;
         }
@@ -311,7 +321,8 @@
         margin: -14px -18px 12px;
         padding: 10px 18px;
         background: var(--b3-theme-background);
-        border-bottom: 1px solid var(--b3-theme-surface-lighter);
+        // T-7199：分隔线与标签栏同语言（border-color 弱化）。
+        border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 60%, transparent);
     }
 
     .sw-settings__search-input {
@@ -320,10 +331,10 @@
         // T-7002：右侧留出清空按钮位
         padding: 0 30px 0 10px;
         border: 1px solid var(--b3-border-color);
-        border-radius: 8px;
+        border-radius: var(--sw-radius-md, 8px);
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
         color: var(--b3-theme-on-background);
-        font-size: 12.5px;
+        font-size: var(--sw-font-md, 13px);
         box-sizing: border-box;
 
         &:focus-visible {
@@ -377,7 +388,7 @@
         border-radius: 999px;
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         line-height: 1.6;
         cursor: pointer;
 
@@ -401,7 +412,7 @@
         border: 1px solid var(--b3-border-color);
         border-radius: 10px;
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
-        box-shadow: 0 8px 24px rgba(35, 42, 75, .08);
+        box-shadow: var(--sw-shadow-sm);
 
         &[hidden] {
             display: none;
@@ -411,7 +422,7 @@
     .sw-settings__search-option {
         display: block;
         width: 100%;
-        padding: 7px 9px;
+        padding: 8px 10px;
         border: none;
         border-radius: 8px;
         background: transparent;
@@ -428,7 +439,7 @@
         }
 
         .sw-settings__search-option-title {
-            font-size: 12.5px;
+            font-size: var(--sw-font-md, 13px);
             font-weight: 600;
         }
 
@@ -460,23 +471,23 @@
             margin-top: 2px;
             overflow: hidden;
             color: var(--b3-theme-on-surface-light);
-            font-size: 11px;
+            font-size: var(--sw-font-xs, 11px);
             text-overflow: ellipsis;
             white-space: nowrap;
         }
     }
 
     .sw-settings__search-note {
-        padding: 7px 9px;
+        padding: 8px 10px;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11.5px;
+        font-size: var(--sw-font-sm, 12px);
     }
 
     // ===== T-7004 存储页：分组标题、用量进度条、schema 健康与缓存管理 =====
     .sw-settings__storage-group {
         margin: 10px 0 2px;
         color: var(--b3-theme-on-surface-light);
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         letter-spacing: .04em;
         text-transform: uppercase;
     }
@@ -484,7 +495,7 @@
     .sw-settings__storage-cell {
         display: inline-flex;
         flex-direction: column;
-        gap: 3px;
+        gap: 4px;
         min-width: 96px;
     }
 
@@ -532,25 +543,25 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        min-height: 26px;
+        min-height: var(--sw-control-h-md);
         margin-bottom: 6px;
     }
 
     .sw-settings__save-state {
         min-height: 16px;
-        font-size: 11.5px;
+        font-size: var(--sw-font-sm, 12px);
 
         &[data-state="pending"] { color: var(--b3-theme-on-surface-light); }
-        &[data-state="ok"] { color: var(--b3-theme-success, var(--b3-theme-primary)); }
+        &[data-state="ok"] { color: var(--sw-platform-success, var(--b3-theme-success, var(--b3-theme-primary))); }
         // 失败是警示不是成功：配色区分且文字在场（不只靠颜色）
-        &[data-state="failed"] { color: var(--b3-theme-warning, #a76618); font-weight: 600; }
+        &[data-state="failed"] { color: var(--sw-platform-warning, var(--b3-theme-warning, #a76618)); font-weight: 600; }
     }
 
     .sw-settings__save-retry,
     .sw-settings__undo {
         min-height: 22px;
         padding: 0 8px;
-        font-size: 11.5px;
+        font-size: var(--sw-font-sm, 12px);
 
         &:disabled {
             opacity: .45;
@@ -560,14 +571,14 @@
 
     // T-7003：组标题行尾的「恢复默认」小按钮
     .sw-settings__group-reset {
-        min-height: 20px;
+        min-height: var(--sw-control-h-sm);
         margin-left: 8px;
-        padding: 0 7px;
+        padding: 0 8px;
         border: 1px solid var(--b3-border-color);
         border-radius: 999px;
         background: transparent;
         color: var(--b3-theme-on-surface-light);
-        font-size: 10.5px;
+        font-size: var(--sw-font-xs, 11px);
         line-height: 1.4;
         cursor: pointer;
 
@@ -579,7 +590,7 @@
 
     // 搜索定位后的短暂强调（1.8s 后由 JS 移除）
     .sw-settings__item--locate {
-        border-radius: 8px;
+        border-radius: var(--sw-radius-md, 8px);
         outline: 2px solid var(--b3-theme-primary);
         outline-offset: 2px;
         background: color-mix(in srgb, var(--b3-theme-primary) 8%, transparent);
@@ -593,9 +604,9 @@
         // T-6783 卡片语言统一：每个标签页一张卡片（对齐悬浮球标签的层级语言）
         padding: 12px;
         border: 1px solid var(--b3-border-color);
-        border-radius: 12px;
+        border-radius: var(--sw-radius-lg, 12px);
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
-        box-shadow: 0 1px 3px rgba(35, 42, 75, .05);
+        box-shadow: var(--sw-shadow-xs);
 
         &.is-active {
             display: block;
@@ -613,7 +624,7 @@
     // （组内行的 hairline 分隔与 hover 提亮沿用条目自身规则，只收敛内边距到卡片内）。
     .sw-settings__group-title {
         margin: 14px 2px 8px;
-        font-size: 11px;
+        font-size: var(--sw-font-xs, 11px);
         font-weight: 700;
         letter-spacing: .08em;
         text-transform: uppercase;
@@ -626,7 +637,7 @@
 
     .sw-settings__group-card {
         border: 1px solid var(--b3-border-color);
-        border-radius: 10px;
+        border-radius: var(--sw-radius-control, 10px);
 
         > .sw-settings__item {
             margin-inline: 0;
@@ -641,11 +652,11 @@
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        padding: 13px 8px;
+        padding: 12px 8px;
         margin-inline: -8px;
-        border-radius: 8px;
+        border-radius: var(--sw-radius-md, 8px);
         transition: background-color $sw-dur-fast $sw-ease;
-        border-bottom: 1px solid var(--b3-theme-surface-lighter);
+        border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 48%, transparent);
 
         &:last-child {
             border-bottom: none;
@@ -667,7 +678,7 @@
         }
 
         .sw-settings__item-desc {
-            margin-top: 3px;
+            margin-top: 4px;
             font-size: 12px;
             line-height: 1.5;
             color: var(--b3-theme-on-surface-light);
@@ -724,10 +735,10 @@
             width: 100%;
             box-sizing: border-box;
             flex-direction: row;
-            gap: 4px;
+            gap: 6px;
             padding: 6px;
             border-right: none;
-            border-bottom: 1px solid var(--b3-theme-surface-lighter);
+            border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 60%, transparent);
             overflow-x: auto;
             overflow-y: hidden;
             overscroll-behavior-x: contain;
@@ -739,7 +750,7 @@
 
         .sw-settings__tab {
             min-width: max-content;
-            padding: 7px 10px;
+            padding: 8px 12px;
             text-align: center;
             scroll-snap-align: center;
         }
@@ -824,7 +835,7 @@
         border: 1px solid var(--b3-border-color);
         border-radius: 12px;
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
-        box-shadow: 0 1px 3px rgba(35, 42, 75, .05);
+        box-shadow: var(--sw-shadow-xs);
     }
 
     %sw-fb-heading {
@@ -919,7 +930,7 @@
             border: 1px solid color-mix(in srgb, var(--b3-border-color) 64%, transparent);
             border-radius: 12px;
             background: var(--b3-theme-surface, var(--b3-theme-background));
-            box-shadow: 0 5px 16px rgba(35, 42, 75, .16);
+            box-shadow: var(--sw-shadow-sm);
             white-space: normal;
             overflow: hidden;
             overflow-wrap: anywhere;
@@ -930,7 +941,7 @@
             &:hover {
                 border-color: color-mix(in srgb, var(--b3-theme-primary) 44%, var(--b3-border-color));
                 background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
-                box-shadow: 0 7px 20px rgba(35, 42, 75, .2);
+                box-shadow: var(--sw-shadow-md);
             }
 
             &:active { transform: scale(.95); }
@@ -951,12 +962,12 @@
         background: var(--b3-theme-primary);
         color: var(--b3-theme-on-primary);
         // 与真实球体同一套双层阴影，设置页预览即真实观感。
-        box-shadow: 0 3px 12px rgba(0, 0, 0, .2), 0 1px 4px rgba(0, 0, 0, .1);
+        box-shadow: var(--sw-shadow-sm);
         cursor: pointer;
         transition: transform $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease;
 
         &:hover {
-            box-shadow: 0 5px 16px rgba(0, 0, 0, .24), 0 2px 6px rgba(0, 0, 0, .12);
+            box-shadow: var(--sw-shadow-md);
         }
 
         &:active { transform: translate(-50%, -50%) scale(.94); }
@@ -1121,7 +1132,7 @@
             border-radius: 999px;
             background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
             color: var(--b3-theme-primary);
-            font-size: 10.5px;
+            font-size: var(--sw-font-xs, 11px);
             line-height: 1.5;
         }
 
@@ -1149,7 +1160,7 @@
 
             &:hover {
                 border-color: color-mix(in srgb, var(--b3-theme-primary) 24%, var(--b3-border-color));
-                box-shadow: 0 1px 4px rgba(35, 42, 75, .06);
+                box-shadow: var(--sw-shadow-xs);
             }
         }
     }
@@ -1327,7 +1338,7 @@
         min-height: 44px;
         padding: 4px;
 
-        svg { width: 16px; height: 16px; }
+        svg { width: var(--sw-icon-sm, 16px); height: 16px; }
     }
 
     &__add {
@@ -1402,7 +1413,7 @@
 .sw-quick-icon-picker__group-title {
     grid-column: 1 / -1;
     margin: 6px 2px 2px;
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     letter-spacing: 0.05em;
     color: var(--b3-theme-on-surface-light);
 }
@@ -1448,14 +1459,14 @@
 .sw-doc-set-diff__meta {
     margin: 0;
     color: var(--b3-theme-on-surface-light);
-    font-size: 11.5px;
+    font-size: var(--sw-font-sm, 12px);
 }
 
 .sw-doc-set-diff__group {
     margin: 4px 2px 4px;
     padding-left: 10px;
     border-left: 3px solid var(--b3-border-color);
-    font-size: 11px;
+    font-size: var(--sw-font-xs, 11px);
     font-weight: 700;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -1467,7 +1478,7 @@
 }
 
 .sw-doc-set-diff__line {
-    padding: 5px 9px;
+    padding: 6px 10px;
     border: 1px solid var(--b3-border-color);
     border-radius: 8px;
     font-size: 12px;

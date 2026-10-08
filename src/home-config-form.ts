@@ -37,13 +37,31 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
         const integration = resolveHomeConfigIntegration(sourceInfo, def.category);
         // T-6479：图标钳制观察器的释放挂宿主 destroyCallback（不再覆写 dialog.destroy）。
         let releaseConfigForm: () => void = () => undefined;
+        // T-7182：会话隔离——销毁旗标与 timer 登记；异步字段的 then/timer 回调
+        // 先查 disposed，销毁后不再更新草稿或操作脱离 DOM 的控件。
+        let formDisposed = false;
+        const formTimers = new Set<number>();
+        const formGuard = () => formDisposed;
+        const formTimer = (handler: () => void, timeout: number): number => {
+            const handle = window.setTimeout(() => {
+                formTimers.delete(handle);
+                if (!formDisposed) handler();
+            }, timeout);
+            formTimers.add(handle);
+            return handle;
+        };
         const dialog = new Dialog({
             title: `${this.i18n.homeConfig} · ${def.title || inst.moduleId}`,
             // Legacy title contract: title: `${this.i18n.homeConfig} · ${inst.moduleId}`
             content: '<div class="speed-switch sw-home-config"></div>',
             width: this.isMobile ? "min(480px, 92vw)" : "420px",
             height: this.isMobile ? "min(420px, 80vh)" : "360px",
-            destroyCallback: () => releaseConfigForm(),
+            destroyCallback: () => {
+                formDisposed = true;
+                formTimers.forEach((handle) => window.clearTimeout(handle));
+                formTimers.clear();
+                releaseConfigForm();
+            },
         });
         const root = dialog.element.querySelector<HTMLElement>(".sw-home-config");
         if (!root) return;
@@ -309,7 +327,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 const load = (query: string) => {
                     const generation = ++requestGeneration;
                     void this.loadHomeDocumentOptions(query).then((items) => {
-                        if (generation !== requestGeneration) return;
+                        if (formDisposed || generation !== requestGeneration) return;
                         truncatedHint = items.truncated ? (this.i18n.homeConfigOptionsTruncated || "结果较多，仅显示前一部分，请继续输入关键词") : "";
                         const merged = [...openedDocuments.map((entry) => ({id: entry.rootId, title: entry.title})), ...items];
                         const seen = new Set<string>();
@@ -328,7 +346,8 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     const query = Array.from(input.value.trim(), (char) => unsafeQueryChars.has(char) ? " " : char).join("").slice(0, 48);
                     const direct = openedDocuments.find((entry) => entry.rootId === query);
                     if (direct) { choose({id: direct.rootId, title: direct.title}); return; }
-                    queryTimer = window.setTimeout(() => load(query), query ? 180 : 0);
+                    if (queryTimer !== null) formTimers.delete(queryTimer);
+                    queryTimer = formTimer(() => load(query), query ? 180 : 0);
                 };
                 input.addEventListener("input", queueLoad);
                 input.addEventListener("sw-config-reset", () => {
@@ -420,7 +439,8 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     if (queryTimer !== null) window.clearTimeout(queryTimer);
                     const query = input.value.trim().replace(/["'`;\\]/g, " ").slice(0, 48);
                     if (!query) { list.innerHTML = ""; updateSummary(); return; }
-                    queryTimer = window.setTimeout(() => {
+                    if (queryTimer !== null) formTimers.delete(queryTimer);
+                    queryTimer = formTimer(() => {
                         const lower = query.toLocaleLowerCase();
                         const filtered = allItems.filter((item) => `${item.title} ${item.id}`.toLocaleLowerCase().includes(lower));
                         // T-6470：手填/粘贴库 ID（独立库不产生 av 块，SQL 发现不到）直接成为可选条目
@@ -429,6 +449,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     }, 180);
                 };
                 void this.loadHomeDatabaseOptions().then((items) => {
+                    if (formDisposed) return;
                     allItems = items;
                     truncatedHint = items.truncated ? (this.i18n.homeConfigOptionsTruncated || "结果较多，仅显示前一部分，请继续输入关键词") : "";
                     renderSelection();

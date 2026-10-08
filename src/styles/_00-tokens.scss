@@ -28,3 +28,71 @@ $sw-dur-slow: 200ms;
 $sw-dur-panel: 260ms;
 $sw-ease: cubic-bezier(0.32, 0.72, 0, 1);
 $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
+
+// ------------------------------------------------------------
+// 字号刻度（T-7206）。CSS 自定义属性、挂插件根容器——
+// 遵循 ADR 0073 作用域纪律（绝不写 :root/body）。T-7201：FAB 根（sw-fab-root，
+// portal 挂 body）与设置弹窗（sw-settings，独立 Dialog）同样不在 .speed-switch
+// 内，token 取不到——根选择器三容器并列共享一份定义（避免镜像档双源漂移）。
+// 刻度冻结为七档整数 px，半像素值（10.5/11.5/12.5）与 9px 档已退役
+// （门禁见 tests/font-scale-gate.test.cjs，退役值出现即失败）。
+// 侧栏 compact（T-7207）与皮肤密度调整只改这里的档位定义。
+// ------------------------------------------------------------
+.speed-switch,
+.sw-fab-root,
+.sw-settings {
+    --sw-font-2xs: 10px;  // 徽标/角标下限（10px 以下仅限登记豁免）
+    --sw-font-xs: 11px;   // 元信息/时间戳/识别行
+    --sw-font-sm: 12px;   // 辅助说明/状态行
+    --sw-font-md: 13px;   // 正文/列表行/表单
+    --sw-font-lg: 15px;   // 小标题
+    --sw-font-xl: 17px;   // 标题
+    --sw-font-2xl: 20px;  // 大数字/英雄位
+
+    // T-7200：模态浮层遮罩与底部 sheet 材质。遮罩取蓝灰暗调（明暗主题通用），
+    // scrim-strong 供不支持 backdrop-filter 的引擎加深补偿（见各浮层 @supports not 块）。
+    --sw-overlay-scrim: rgba(32, 37, 58, 0.36);
+    --sw-overlay-scrim-strong: rgba(32, 37, 58, 0.46);
+    --sw-overlay-blur: blur(2px);
+    --sw-sheet-radius: 16px;
+    --sw-sheet-shadow: 0 -12px 32px rgb(0 0 0 / 18%);
+
+    // T-7198：圆角刻度补档（与 _03 根块的 --sw-radius-control/card/panel 同一刻度族）。
+    // 碎片档 5/7/9/11px 已退役就近归档（门禁见 tests/radius-scale-gate.test.cjs）；
+    // 2/3/4px 微件档保留（checkbox/kbd 内芯等视觉敏感场景）。
+    --sw-radius-xs: 4px;   // 微件
+    --sw-radius-sm: 6px;   // 小件（chip/行内块）
+    --sw-radius-md: 8px;   // 紧凑控件
+    --sw-radius-lg: 12px;  // 中件/分区
+
+    // T-7198：elevation 阴影三档（蓝灰调，与 --sw-card/float/sheet-shadow 同族分层）。
+    // 语义环/指示条、主题色阴影（color-mix primary）、皮肤专属阴影、FAB 材质阴影
+    // 不入此刻度；门禁退役清单见 tests/shadow-scale-gate.test.cjs。
+    --sw-shadow-xs: 0 1px 3px rgb(35 42 75 / 6%);
+    --sw-shadow-sm: 0 5px 16px rgb(35 42 75 / 16%);
+    --sw-shadow-md: 0 7px 20px rgb(35 42 75 / 20%);
+    // T-7202：控件高度三档（跨表面主输入/次级输入/徽标开关）。
+    --sw-control-h-sm: 20px;  // 徽标级开关/状态 chip
+    --sw-control-h-md: 26px;  // 次级输入/折叠钮/diff 头
+    --sw-control-h: 34px;     // 主输入/标准按钮
+
+    // T-7209：面板玻璃模糊三档（模态遮罩另有 --sw-overlay-blur；皮肤 saturate
+    // 组合为皮肤专属材质不入档）。
+    --sw-blur-sm: blur(4px);   // 小浮件（回顶钮）
+    --sw-blur-md: blur(8px);   // 粘性条/芯片
+    --sw-blur-lg: blur(20px);  // 大玻璃面板（拖拽浮卡）
+
+    // T-7204：图标尺寸三档（24/20/16px——跨表面 icon box 统一档位）。
+    --sw-icon-xs: 14px;  // 紧凑内联图标（搜索框/组头箭头）
+    --sw-icon-sm: 16px;
+    --sw-icon-md: 20px;
+    --sw-icon-lg: 24px;
+
+    // T-7207：间距密度刻度（消费方：侧栏 compact 与密度系统）。值与偶数节奏一致；
+    // 新间距优先消费档位，字面只允许作为回退参数出现。
+    --sw-space-xs: 4px;
+    --sw-space-sm: 6px;
+    --sw-space-md: 8px;
+    --sw-space-lg: 12px;
+    --sw-space-xl: 16px;
+}

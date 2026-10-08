@@ -21,7 +21,7 @@
     }
 
     .sw__floating-ball-more-group-title {
-        margin: 8px 4px 3px;
+        margin: 8px 4px 4px;
         color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
         font-size: 12px;
         font-weight: 600;
@@ -47,13 +47,13 @@
             transform: translateY(-50%);
             min-width: 14px;
             height: 14px;
-            padding: 0 3px;
+            padding: 0 4px;
             border: 1px solid var(--b3-border-color);
             border-radius: 4px;
             background: var(--b3-theme-surface);
             color: var(--b3-theme-on-surface-light);
             font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 600;
             line-height: 12px;
             text-align: center;
@@ -67,7 +67,7 @@
         flex: 1 1 0;
         min-width: 0;
         width: auto;
-        column-gap: 7px;
+        column-gap: 8px;
         row-gap: 2px;
         text-align: start;
 
@@ -87,7 +87,7 @@
         .sw__floating-ball-action-details {
             grid-column: 2;
             color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
-            font-size: 11px;
+            font-size: var(--sw-font-xs, 11px);
             overflow-wrap: anywhere;
         }
 
