@@ -418,6 +418,10 @@ export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings):
             checkbox.type = "checkbox";
             checkbox.checked = moduleVisibility[key] !== false;
             checkbox.dataset.moduleKey = key;
+            // The visible label is a sibling of the switch (the row cannot
+            // contain a nested <label>), so expose an explicit accessible name
+            // and make the whole row behave like the visual target.
+            checkbox.setAttribute("aria-label", label);
             checkbox.addEventListener("change", () => {
                 const current = this.getSettings().moduleVisibility || {workbench: true, studio: true, floatingBall: true};
                 const next = {...current, [key]: checkbox.checked};
@@ -432,6 +436,13 @@ export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings):
             title.textContent = label;
             row.appendChild(toggle);
             row.appendChild(title);
+            row.addEventListener("click", (event) => {
+                const target = event.target as HTMLElement | null;
+                // Let the native label/input path handle clicks on the switch;
+                // clicks elsewhere in the row should activate the same control.
+                if (target?.closest(".sw-switch")) return;
+                checkbox.click();
+            });
             moduleToggles.appendChild(row);
         });
         wrapper.append(
@@ -459,6 +470,9 @@ export function buildSettingsDockToggles(this: SettingsSectionsHost, s: ISwSetti
             checkbox.type = "checkbox";
             checkbox.checked = !excluded.has(panel.type);
             checkbox.dataset.dockType = panel.type;
+            // The title is rendered beside the switch, so the input needs an
+            // explicit name for keyboard and screen-reader users.
+            checkbox.setAttribute("aria-label", panel.title);
             checkbox.addEventListener("change", () => {
                 const next = new Set(this.getSettings().excludedDocks);
                 if (checkbox.checked) {
@@ -475,6 +489,11 @@ export function buildSettingsDockToggles(this: SettingsSectionsHost, s: ISwSetti
             title.textContent = panel.title;
             row.appendChild(toggle);
             row.appendChild(title);
+            row.addEventListener("click", (event) => {
+                const target = event.target as HTMLElement | null;
+                if (target?.closest(".sw-switch")) return;
+                checkbox.click();
+            });
             box.appendChild(row);
         });
         if (dockPanels.length === 0) {

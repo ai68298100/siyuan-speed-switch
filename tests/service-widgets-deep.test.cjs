@@ -155,6 +155,10 @@ test("miniflux category discovery is wired through the config form host", () => 
     assert.match(indexTs, /async loadMinifluxCategoryOptions\(endpoint: string, token: string\)/);
     assert.match(indexTs, /\/v1\/categories/, "分类接口必须显式出现");
     assert.match(indexTs, /allowedMinifluxCategoriesUrl\(url\)/, "代理门禁必须放行分类路由");
+    assert.match(indexTs, /headers:\s*\{\s*"X-Auth-Token":\s*normalized\.token\s*\}/,
+        "分类发现必须发送已归一化的 token，避免粘贴空白导致请求失败");
+    assert.doesNotMatch(indexTs, /headers:\s*\{\s*"X-Auth-Token":\s*token\s*\}/,
+        "分类发现不得把未经归一化的 token 直接送入代理");
     const form = readSourceText(path.join(__dirname, "..", "src", "home-config-form.ts"));
     assert.match(form, /field\.type === "miniflux-category"/);
     assert.match(form, /loadMinifluxCategoryOptions\(String\(draft\.endpoint \|\| ""\), String\(draft\.token \|\| ""\)\)/);

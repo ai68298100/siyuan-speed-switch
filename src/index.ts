@@ -2064,7 +2064,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         const normalized = normalizeMinifluxConfig({endpoint, token});
         if (!normalized.origin || !normalized.token) return [];
         try {
-            const response = await this.fetchActivityWatchViaKernel(`${normalized.origin}/v1/categories`, {headers: {"X-Auth-Token": token}});
+            // Use the normalized token that passed validation.  The config form
+            // commonly supplies leading/trailing whitespace while users paste a
+            // token; sending the raw value makes discovery fail even though the
+            // same normalized config is accepted by the Miniflux adapter.
+            const response = await this.fetchActivityWatchViaKernel(`${normalized.origin}/v1/categories`, {headers: {"X-Auth-Token": normalized.token}});
             if (!response || response.ok !== true) return [];
             const body = await response.text();
             const rows = JSON.parse(body);

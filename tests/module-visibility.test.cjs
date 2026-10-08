@@ -64,3 +64,14 @@ test('module visibility wiring: floating-ball gate and quick-action filter (T-70
     assert.match(sectionsSource, /if \(key === "floatingBall"\) this\.updateFloatingBallVisibility\?\.\(\);/,
         '悬浮球开关变化必须触发重算挂载');
 });
+
+test('module and dock switches expose names and make the full row clickable (T-7218)', () => {
+    assert.match(sectionsSource, /checkbox\.setAttribute\("aria-label", label\);/,
+        '模块开关必须把可见文案暴露为 checkbox accessible name');
+    assert.match(sectionsSource, /checkbox\.setAttribute\("aria-label", panel\.title\);/,
+        '停靠开关必须把面板标题暴露为 checkbox accessible name');
+    assert.equal((sectionsSource.match(/row\.addEventListener\("click", \(event\) => \{/g) || []).length, 2,
+        '模块与停靠两组开关都必须绑定整行 click 反馈');
+    assert.match(sectionsSource, /if \(target\?\.closest\("\.sw-switch"\)\) return;/,
+        '整行点击不得重复触发开关本体的原生 click');
+});

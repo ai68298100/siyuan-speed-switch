@@ -48,3 +48,15 @@ test('mobile rerender preserves scroll and focused card across async rebuilds (T
     assert.match(fn, /if \(card\.dataset\.tabId === focusCardId\) \{ card\.focus\(\{preventScroll: true\}\); break; \}/,
         '焦点卡片必须按 tabId 找回，找不到诚实放弃');
 });
+
+test('mobile group actions surface rejected host operations and release busy state (T-7219)', () => {
+    const fn = mobileSource.slice(
+        mobileSource.indexOf('const appendAction = '),
+        mobileSource.indexOf('appendAction(this.i18n.openGroupTabs'),
+    );
+    assert.ok(fn.length > 400, '组操作按钮处理器必须存在后再检查失败事务');
+    assert.match(fn, /catch \(error\) \{[\s\S]*logger\.warn\("mobile group action failed", error\);[\s\S]*showMessage\(this\.i18n\.quickActionFailed, MESSAGE_DEFAULT_MS, "error"\);/,
+        '宿主拒绝必须有日志和用户可见错误反馈');
+    assert.match(fn, /catch \(error\) \{[\s\S]*\}\s*finally \{/,
+        '失败后必须仍进入 finally 释放忙状态与按钮禁用');
+});

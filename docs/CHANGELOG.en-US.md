@@ -4,6 +4,13 @@
 > releases; new entries are appended here at release time. 中文完整历史见 [`docs/CHANGELOG.md`](./CHANGELOG.md)。
 
 ## Changelog (full history)
+### v0.46.1 (2026-10-09)
+
+- **Fixed Miniflux category discovery**: send the normalized token so pasted surrounding whitespace no longer breaks category loading.
+- **Fixed mobile group action feedback**: rejected host operations now show an error receipt, log safely, and release the busy state.
+- **Improved settings switch accessibility**: module and dock switches support full-row clicks and expose accessible names.
+- **Verification**: full suite **8585/8585**; `tsc`, layout smoke, Chromium smoke, and negative gate checks passed.
+
 ### v0.46.0 (2026-10-09)
 
 - **Native snippet management**: adds snippet groups, backup/restore, metadata, editor foundations, and safety boundaries for a recoverable studio workflow.

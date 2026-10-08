@@ -762,6 +762,13 @@ export function openMobileGroupActions(this: MobileSwitcherUiHost, groupName: st
 if (count > 0) {
                         onChanged();
                     }
+                } catch (error) {
+                    // A host operation can reject even when its normal path
+                    // returns a bounded count. Keep the sheet usable and make
+                    // the failure visible instead of creating an unhandled
+                    // promise rejection with no feedback.
+                    logger.warn("mobile group action failed", error);
+                    showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
                 } finally {
                     delete overlay.dataset.busy;
                     if (overlay.isConnected) {

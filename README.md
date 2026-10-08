@@ -1,11 +1,25 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.46.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.1-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **当前稳定版：v0.46.0（2026-10-09）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.0) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **当前稳定版：v0.46.1（2026-10-09）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.1) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+
+## 本次更新（v0.46.1 · 2026-10-09）
+
+修复：Miniflux 分类发现的凭据处理
+
+- 修复粘贴令牌包含首尾空格时分类发现失败的问题，统一使用已校验的令牌发起请求。
+
+修复：移动端分组操作失败反馈
+
+- 修复分组操作被宿主拒绝时无提示和未处理 Promise 拒绝的问题；现在会显示失败反馈并恢复操作状态。
+
+优化：设置开关的可达性与点击体验
+
+- 模块可见性和停靠面板开关支持整行点击，并补齐屏幕阅读器可识别的开关名称。
 
 <p align="center"><img src="preview.png" width="720" alt="小驴雷切预览"/></p>
 
@@ -351,18 +365,18 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.46.0`（2026-10-09 正式发布；本轮合并补齐原生片段管理、片段分组与备份恢复、Gist 分享、编辑器基础能力、兼容性探针、桌面/侧栏验收矩阵及资源趋势长会话证据；同时保留 v0.45.0 的视觉、可靠性与图标 token 收口；Release 资产已随 GitHub Release 提供）。
+当前版本为 `v0.46.1`（2026-10-09 正式发布；本轮合并补齐原生片段管理、片段分组与备份恢复、Gist 分享、编辑器基础能力、兼容性探针、桌面/侧栏验收矩阵及资源趋势长会话证据；同时保留 v0.45.0 的视觉、可靠性与图标 token 收口；Release 资产已随 GitHub Release 提供）。
 
 ## 更新日志
 
 完整历史见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。最近版本：
 
-### v0.46.0（2026-10-09）
+### v0.46.1（2026-10-09）
 
 - **原生片段管理**：补齐片段分组、备份恢复、元数据、编辑基础能力和安全边界，支持在片段实验室内完成可恢复的管理流程。
 - **平台与搜索增强**：接入表面适配路由、标题搜索归一化、组合搜索与工作台缓存/生命周期治理，保留本地优先和失败可解释性。
 - **宿主验收与资源证据**：加入思源 3.8 兼容性探针、桌面/原生侧栏验收矩阵、隔离背景 E2E 与资源趋势长会话检查点。
-- **验证**：完整测试 **8583/8583**；`tsc` 通过；quality audit **50/50**；integration audit **50/50**；视觉矩阵、构建与发布包检查通过。
+- **验证**：完整测试 **8585/8585**；`tsc` 通过；quality audit **50/50**；integration audit **50/50**；视觉矩阵、构建与发布包检查通过。
 
 - **R13~R16 视觉/刻度战役**：完成字号、圆角、间距、阴影、动效、状态语言与密度档 token 刻度，交付四态一致性矩阵，统一三面板与多端状态表达。
 - **可靠性池约二十批**：围绕取消族、会话隔离、生命周期回收、焦点与键盘可访问性、失败回执、浮层 disposer、净化边界等收口，补齐异步竞态、卸载代际与操作反馈合同。
