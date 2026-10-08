@@ -8,7 +8,7 @@ Current build: `dist/index.js` 1109576 bytes; `dist/index.css` 339333 bytes; `pa
 
 本轮上一版 GitHub 发布：`v0.46.2` 标签指向 `d72fca9ff4942abc70d86eac2e8400e7956949ea`；远端 `package.zip` 下载端点返回 HTTP 200，资产大小 **571709 bytes**。Release 页面：[v0.46.2](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.2)。
 
-本轮 v0.46.3 已发布：tag 指向 `b8127b8199b2a960e6082e356b4ee87c60fa8185`，main 已推至 `b1f8225` 回填发布证据；Release 资产 `package.zip` 为 **572872 bytes**。
+本轮 v0.46.3 已发布：tag 指向 `b8127b8199b2a960e6082e356b4ee87c60fa8185`，main 已同步发布证据；Release 资产 `package.zip` 为 **572872 bytes**。
 
 历史发布窗口：v0.33.0 已完成 tag、推送和 Release workflow；v0.36.0~v0.42.0 已发布；v0.43.0 已完成 tag、推送和 Release workflow（证据见下）；本轮 v0.43.1 目标=紧急修复（九批攒版：057609b、b113073、34be685、b448ec1、15fdf0a、f2f8096、c453026、3fb6304、f91b915）。
 本轮 GitHub 发布：`v0.43.2` 标签指向 `e9a36e0`（v0.43.1 修复批 + 入口可发现性/数字角标/关闭钮修正 + 面板互切真实点击冒烟入链；首次 tag 指向 8abfda7 因 prepare 漏改根目录 README 徽标被 T-6744b 门禁精确红拦截——根目录文件不在 src/ 扫描范围，须纳入 prepare 检查单——移 tag 重发后 Release workflow 全绿）；`v0.43.0` 标签指向 `5b6d32c`（prepare 提交）；main 已推至远端（d8ad3be..5b6d32c，10 个提交，走 127.0.0.1:7897 代理）；Release workflow 由 tag 推送触发并自动创建 Release。发版门禁（本机 verify:release 全链）：tsc、可复现双构建、完整测试 6535/6535、release/quality/integration 三审计、四套冒烟全绿；首轮抓到 zip 快照漂移（CHANGELOG 属 publish.resources 声明文档，增长进 zip：550,613→551,952），经 `pnpm run readiness:snapshot` 回写后全链复绿。CI/Release 编号未留痕（本机无 gh CLI），Release 页：https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.43.0 。
@@ -31,7 +31,7 @@ Current build: `dist/index.js` 1109576 bytes; `dist/index.css` 339333 bytes; `pa
 | 集市同步欠账（D9/T-6306） | 待用户动作 | 思源集市自 **v0.26.0** 起未同步，欠账版本清单：v0.26.0、v0.27.0、v0.27.1、v0.28.0、v0.28.1、v0.28.2、v0.28.3、v0.29.0、v0.29.1、v0.30.0、v0.30.1、v0.31.0、v0.32.0、v0.33.0、v0.34.0、v0.35.0、v0.36.0、v0.37.0、v0.38.0、v0.39.0、v0.40.0、v0.41.0、v0.42.0；处置=随 v0.43.0 发版窗口以最新 Release 资产一次性补同步（集市按最新版覆盖即可，无需逐版提交），此后集市同步进每次发版检查单 |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
 | Android 真机验收 | 后置 | 按 D-042；当前环境无 `adb`、`java` 与设备 |
-| GitHub 发布动作 | 已通过 | `v0.46.3` tag 指向 `b8127b8199b2a960e6082e356b4ee87c60fa8185`，main 已推至 `b1f8225`；Release 资产 `package.zip` 为 572872 bytes，下载地址为 https://github.com/ai68298100/siyuan-speed-switch/releases/download/v0.46.3/package.zip |
+| GitHub 发布动作 | 已通过 | `v0.46.3` tag 指向 `b8127b8199b2a960e6082e356b4ee87c60fa8185`，main 已同步发布证据；Release 资产 `package.zip` 为 572872 bytes，下载地址为 https://github.com/ai68298100/siyuan-speed-switch/releases/download/v0.46.3/package.zip |
 
 ## 建议发布顺序
 
