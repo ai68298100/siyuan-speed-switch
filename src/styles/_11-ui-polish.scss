@@ -860,10 +860,20 @@
     }
 }
 
-// Keep the preview rail from stealing the main reading area on desktop.
+// The tab preview is a persistent reading rail.  Keep the documented 34%
+// column so the pane has enough room for readable excerpts, and stretch the
+// pane to the complete tab list row instead of leaving an empty lower half.
 .speed-switch .sw__tab-preview.sw--with-preview {
-    grid-template-columns: minmax(0, 1fr) clamp(280px, 26%, 340px);
-    column-gap: 12px;
+    grid-template-columns: minmax(0, 1fr) clamp(280px, 34%, 480px);
+    column-gap: 14px;
+    align-items: stretch;
+}
+
+.speed-switch .sw__tab-preview.sw--with-preview .sw__doc-preview {
+    grid-row: 1;
+    align-self: stretch;
+    height: auto;
+    min-height: min(60vh, 560px, calc(100cqh - 48px));
 }
 
 // Compact surfaces ----------------------------------------------------------

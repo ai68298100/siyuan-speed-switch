@@ -1,6 +1,6 @@
 {
   "name": "siyuan-speed-switch",
-  "version": "0.46.1",
+  "version": "0.46.2",
   "description": "Local-first SiYuan navigation and work-context platform: switcher, workbench, snippet lab, and floating-ball actions.",
   "main": "index.js",
   "scripts": {

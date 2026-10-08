@@ -45,3 +45,15 @@ test('dual pane: styles, bilingual labels and the sealed no-script boundary (T-7
     }
     assert.doesNotMatch(previewSource, /allow-scripts/, '预览模块必须保持零脚本封死（T-7022 安全半场）');
 });
+
+test('studio desktop layout keeps library, workspace and AI rail in one row (T-7221)', () => {
+    const layoutRule = scss.match(/&__layout\s*\{[^}]*\}/)?.[0] || '';
+    const libraryRule = scss.match(/&__library\s*\{[^}]*\}/)?.[0] || '';
+    const libraryListRule = scss.match(/&__library-list\s*\{[^}]*\}/)?.[0] || '';
+    assert.match(layoutRule, /display:\s*grid;/, '工作室布局必须使用网格承载三列');
+    assert.match(layoutRule, /grid-template-columns:\s*minmax\(220px,\s*280px\)\s+minmax\(0,\s*4fr\)\s+minmax\(280px,\s*1\.2fr\);/, '桌面布局必须为目录、工作区和 AI 侧栏提供三列');
+    assert.match(uiSource, /layout\.append\(library, main, aside\);/, '三列顺序必须与 DOM 子节点顺序一致');
+    assert.match(libraryRule, /display:\s*flex;/, '目录栏必须有独立的纵向布局');
+    assert.match(libraryRule, /overflow:\s*hidden;/, '目录栏必须裁剪边界并把滚动交给条目列表');
+    assert.match(libraryListRule, /overflow:\s*auto;/, '目录条目必须在目录栏内部滚动');
+});

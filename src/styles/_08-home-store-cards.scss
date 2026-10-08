@@ -616,6 +616,34 @@
     padding: 0;
 }
 
+.sw-home-store__close-bar {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-height: 38px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--b3-border-color);
+    background: var(--b3-theme-surface);
+}
+
+.sw-home-store__close {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    font-size: 20px;
+    line-height: 1;
+}
+
+@media (pointer: coarse) {
+    .sw-home-store__close {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
+}
+
 .sw-home-store__layout {
     flex: 1 1 auto;
     min-height: 0;

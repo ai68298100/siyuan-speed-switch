@@ -278,6 +278,19 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
         const catalogPane = root.querySelector<HTMLElement>(".sw-home-store__catalog");
         const detailPane = root.querySelector<HTMLElement>(".sw-home-store__detail");
         if (!catalogPane || !detailPane) return;
+        // T-7223：部分宿主主题会隐藏或裁掉 Dialog 原生标题栏关闭钮；商店
+        // 必须在自己的内容区保留一个可见、可触摸且能恢复焦点的关闭入口。
+        const closeBar = document.createElement("div");
+        closeBar.className = "sw-home-store__close-bar";
+        const closeButton = document.createElement("button");
+        closeButton.type = "button";
+        closeButton.className = "b3-button b3-button--text sw-home-store__close";
+        closeButton.textContent = "×";
+        closeButton.setAttribute("aria-label", this.i18n.close);
+        closeButton.title = this.i18n.close;
+        closeButton.addEventListener("click", () => storeDialog.destroy());
+        closeBar.appendChild(closeButton);
+        root.insertBefore(closeBar, root.firstChild);
         root.setAttribute("role", "region");
         root.setAttribute("aria-label", this.i18n.homeStoreTitle);
         root.dataset.device = device;

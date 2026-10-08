@@ -12,6 +12,11 @@ const secondPanelSource = readSourceText(path.join(root, "src", "second-panel-ui
 const configFormSource = readSourceText(path.join(root, "src", "home-config-form.ts"));
 
 test("widget store previews refresh real data and separate size selection from commit", () => {
+    // T-7223：商店内容区必须保留可见关闭动作，避免主题裁掉原生标题栏后无法退出。
+    assert.match(storeUiSource, /sw-home-store__close-bar/);
+    assert.match(storeUiSource, /sw-home-store__close/);
+    assert.match(storeUiSource, /closeButton\.addEventListener\("click", \(\) => storeDialog\.destroy\(\)\)/,
+        "组件商店必须提供内容区关闭按钮并销毁当前 Dialog");
     assert.match(storeUiSource, /controller\.mount\(\);\s*const markPreviewReady = \(\) =>/);
     assert.match(storeUiSource, /homeStoreApplySize/);
     assert.match(storeUiSource, /homeStoreAdd/);

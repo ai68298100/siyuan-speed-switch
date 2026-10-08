@@ -4,6 +4,14 @@
 > releases; new entries are appended here at release time. 中文完整历史见 [`docs/CHANGELOG.md`](./CHANGELOG.md)。
 
 ## Changelog (full history)
+### v0.46.2 (2026-10-09)
+
+- **Added a widget-store close control**: the store content area now keeps a visible, touch-friendly close action and restores focus after closing.
+- **Improved the first-panel preview**: removed the duplicate native dialog title row and extended the preview rail through the full result area.
+- **Fixed the three-panel layout**: the third panel keeps library, editor, and AI preview in one stable row instead of wrapping the preview rail.
+- **Fixed preview loading**: request options passed as the third argument are now treated as AbortSignal options rather than a timeout value.
+- **Verification**: full suite **8589/8589**; TypeScript, layout smoke, browser smoke, and negative gate checks passed.
+
 ### v0.46.1 (2026-10-09)
 
 - **Fixed Miniflux category discovery**: send the normalized token so pasted surrounding whitespace no longer breaks category loading.

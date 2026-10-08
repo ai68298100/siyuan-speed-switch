@@ -80,6 +80,17 @@
     background: var(--sw-platform-bg);
 }
 
+// Platform surfaces render their own branded header and close action.  Keep
+// SiYuan's generic Dialog title row out of the surface so the same title is
+// not shown twice (for example, "页签切换器" above the platform header).
+.b3-dialog__container.sw-platform-dialog > .b3-dialog__header {
+    display: none !important;
+}
+
+.b3-dialog__container.sw-platform-dialog > .b3-dialog__body {
+    padding-top: 0 !important;
+}
+
 .sw-platform-header__brand-name {
     overflow: hidden;
     text-overflow: ellipsis;

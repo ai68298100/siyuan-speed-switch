@@ -45,6 +45,17 @@ test('kernel fetch impl links external signal with its timeout abort', () => {
     assert.match(body, /typeof AbortController === "function"/, '无 AbortController 环境能力检测保留');
 });
 
+test('kernel fetch accepts extracted UI options in the third argument', () => {
+    const fnStart = index.indexOf('private async fetchKernelJson');
+    const body = index.slice(fnStart, index.indexOf('\n    }\n', fnStart) + 6);
+    assert.match(body, /timeoutOrOptions: number \| \{signal\?: AbortSignal\}/,
+        '实现必须兼容第三参直接传取消选项的抽取模块调用');
+    assert.match(body, /typeof timeoutOrOptions === "number" \? timeoutOrOptions : 5000/,
+        '对象形式不能被当作 setTimeout 延迟而立即触发 abort');
+    assert.match(body, /typeof timeoutOrOptions === "number" \? options : timeoutOrOptions/,
+        '第三参对象必须成为实际外部 signal');
+});
+
 test('detector self-check: replaying only-generation cancel is caught (negative verification)', () => {
     const legacy = 'const generation = (docPreviewGenerations.get(scrollElement) || 0) + 1;\n    return generation;';
     assert.doesNotMatch(legacy, /abort\(\)/, '历史只递增代际的取消必须能被识别为缺 abort');
