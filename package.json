@@ -1,7 +1,7 @@
 {
   "name": "siyuan-speed-switch",
   "version": "0.45.0",
-  "description": "SiYuan plugin: switch opened tabs with thumbnails like Windows Alt+Tab.",
+  "description": "Local-first SiYuan navigation and work-context platform: switcher, workbench, snippet lab, and floating-ball actions.",
   "main": "index.js",
   "scripts": {
     "dev": "webpack --config webpack.config.js --mode development",
@@ -28,7 +28,11 @@
   "keywords": [
     "siyuan",
     "plugin",
-    "tab"
+    "navigation",
+    "work-context",
+    "tab-switcher",
+    "snippet-studio",
+    "quick-actions"
   ],
   "author": "ai68298100",
   "license": "MIT",

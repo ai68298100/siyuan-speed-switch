@@ -1,8 +1,11 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.45.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.45.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
+
+> **Current stable release: v0.45.0 (2026-10-08)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.45.0) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
 <p align="center"><img src="preview.png" width="720" alt="LvSpeed Switch preview"/></p>
 
@@ -16,6 +19,8 @@ The four plugins currently developed under the Xiaolv series are:
 - **小驴打卡**
 - **小驴人脉**
 - **小驴拾遗**
+
+The four plugins remain independently installable and cooperate through the documented [widget protocol](./docs/widget-protocol.md) and quick-action protocol; installing LvSpeed Switch does not install or enable the other plugins.
 
 QQ community group: **871707735**
 
@@ -342,7 +347,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.45.0` (released 2026-10-08; the R13–R16 visual and scale campaign completed type, radius, spacing, shadow, motion, status-language, and density-token scales with a four-state consistency matrix; about twenty reliability-pool batches cover cancellation families, session isolation, lifecycle cleanup, and keyboard accessibility; T-7204 closes icon-system tokenization; Release assets are built automatically by the workflow).
+The current version is `v0.45.0` (released 2026-10-08; the R13–R16 visual and scale campaign completed type, radius, spacing, shadow, motion, status-language, and density-token scales with a four-state consistency matrix; about twenty reliability-pool batches cover cancellation families, session isolation, lifecycle cleanup, and keyboard accessibility; T-7204 closes icon-system tokenization; release assets are available in the GitHub Release).
 
 ## Changelog
 
