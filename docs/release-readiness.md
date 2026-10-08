@@ -29,7 +29,7 @@ Current build: `dist/index.js` 1109030 bytes; `dist/index.css` 332382 bytes; `pa
 | 集市同步欠账（D9/T-6306） | 待用户动作 | 思源集市自 **v0.26.0** 起未同步，欠账版本清单：v0.26.0、v0.27.0、v0.27.1、v0.28.0、v0.28.1、v0.28.2、v0.28.3、v0.29.0、v0.29.1、v0.30.0、v0.30.1、v0.31.0、v0.32.0、v0.33.0、v0.34.0、v0.35.0、v0.36.0、v0.37.0、v0.38.0、v0.39.0、v0.40.0、v0.41.0、v0.42.0；处置=随 v0.43.0 发版窗口以最新 Release 资产一次性补同步（集市按最新版覆盖即可，无需逐版提交），此后集市同步进每次发版检查单 |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
 | Android 真机验收 | 后置 | 按 D-042；当前环境无 `adb`、`java` 与设备 |
-| GitHub 发布动作 | 已通过 | `v0.46.2` 标签指向 `3d8ed756`；Release 页面与 `package.zip` 资产已创建，远端资产 571709 bytes，下载地址为 https://github.com/ai68298100/siyuan-speed-switch/releases/download/v0.46.2/package.zip；上一版 v0.46.1 的远端发布回执保留在下方历史记录 |
+| GitHub 发布动作 | 已通过 | `v0.46.2` 标签指向 `3d0fbf67`；Release 页面与 `package.zip` 资产已创建，远端资产 571709 bytes，下载地址为 https://github.com/ai68298100/siyuan-speed-switch/releases/download/v0.46.2/package.zip；上一版 v0.46.1 的远端发布回执保留在下方历史记录 |
 
 ## 建议发布顺序
 
