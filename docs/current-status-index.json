@@ -81,7 +81,8 @@
     "T-7197",
     "T-7198",
     "T-7199",
-    "T-7225"
+    "T-7225",
+    "T-7226"
   ],
   "tasks": [
     {
@@ -2073,6 +2074,24 @@
         "tests/store-mobile-layout-contract.test.cjs",
         "docs/adr/0154-comprehensive-surface-audit-v0463.md",
         "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7226",
+      "title": "R17 功能强化调研与下一程规划",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "research",
+      "dependsOn": [
+        "T-7225"
+      ],
+      "evidence": [
+        "docs/research-cycle-r17-2026-10-09.md",
+        "docs/adr/0155-r17-action-receipt-frontier.md",
+        "docs/dev-plan-2026-10-06.md",
+        "ROADMAP.md"
       ],
       "next": "T-7144"
     }
