@@ -4,6 +4,13 @@
 > releases; new entries are appended here at release time. 中文完整历史见 [`docs/CHANGELOG.md`](./CHANGELOG.md)。
 
 ## Changelog (full history)
+### v0.46.5 (2026-10-09)
+
+- **Added segmented surface navigation**: the switcher, workbench, and snippet lab now share visible icons, purpose hints, and current-state feedback.
+- **Improved top-bar hit areas and feedback**: borders and fills stay visible, hover/focus/pressed states respond immediately, inner icon/label nodes cannot steal events, and close targets are 36px desktop / 44px touch.
+- **Fixed unresponsive top-bar hover**: restored a stable hit layer, touch semantics, hint pass-through, and accessible names so the controls remain clickable while the pointer moves continuously.
+- **Verification**: targeted top-bar contracts **105/105**; full suite **8610/8610**; TypeScript, build, and UI smoke rerun after the version bump.
+
 ### v0.46.4 (2026-10-09)
 
 - **Added full-path boundary regression guards**: contracts and deletion-injection checks cover empty dialogs, preserved search scenes, floating-menu positioning, saved-search notebook scopes, and settings diff dialogs.

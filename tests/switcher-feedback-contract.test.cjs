@@ -34,4 +34,41 @@ test('T-7027 surface navigation feedback is immediate and pressed state is expli
         'keyboard focus must remain explicit after the active state rule');
     assert.equal(declaresIn(css, '.sw-platform-surface-nav__item:active', /transform:\s*none\b/, {atRule: /prefers-reduced-motion/}), true,
         'reduced motion must remove pressed translation');
+    assert.equal(declaresIn(css, '.sw-platform-surface-nav__item', /pointer-events:\s*auto\b/, base), true,
+        'surface navigation controls must retain their own hit target');
+    assert.equal(declaresIn(css, '.sw-platform-surface-nav__item', /touch-action:\s*manipulation\b/, base), true,
+        'surface navigation controls must avoid delayed touch activation');
+});
+
+test('T-7228 surface navigation labels expose purpose and current state', () => {
+    const source = readSourceText(path.join(root, 'src', 'index.ts'));
+    assert.match(source, /const surfaceHint = options\.labels\.hints\[surface\]/);
+    assert.match(source, /control\.setAttribute\("title", surfaceHint/);
+    assert.match(source, /control\.setAttribute\("aria-label", `\$\{options\.labels\.surfaces\[surface\]\}（当前）`\)/,
+        'current surface should announce its state');
+    const missingTitle = source.replace('control.setAttribute("title", surfaceHint', 'control.setAttribute("title", /* deleted */ surfaceHint');
+    assert.doesNotMatch(missingTitle, /control\.setAttribute\("title", surfaceHint/,
+        '删除入口 title 绑定后门禁必须失败');
+    const missingCurrent = source.replace('control.setAttribute("aria-label", `${options.labels.surfaces[surface]}（当前）`);', '/* deleted current state */');
+    assert.doesNotMatch(missingCurrent, /control\.setAttribute\("aria-label", `\$\{options\.labels\.surfaces\[surface\]\}（当前）`\)/,
+        '删除当前状态播报后门禁必须失败');
+});
+
+test('T-7228 hit-layer declarations remain guarded by negative probes', () => {
+    const source = readSourceText(path.join(root, 'src', 'styles', '_platform-shell.scss'));
+    const navBlock = (value) => {
+        const navMarker = value.indexOf('.sw-platform-surface-nav::-webkit-scrollbar');
+        const start = value.indexOf('.sw-platform-surface-nav__item {', navMarker);
+        const end = value.indexOf('\n}', start);
+        return start >= 0 && end > start ? value.slice(start, end) : '';
+    };
+    const original = navBlock(source);
+    assert.match(original, /pointer-events:\s*auto;/);
+    assert.match(original, /touch-action:\s*manipulation;/);
+    const missingPointerEvents = original.replace('pointer-events: auto;', '');
+    assert.doesNotMatch(missingPointerEvents, /pointer-events:\s*auto;/,
+        '删除顶栏入口命中层后门禁必须失败');
+    const missingTouchAction = original.replace('touch-action: manipulation;', '');
+    assert.doesNotMatch(missingTouchAction, /touch-action:\s*manipulation;/,
+        '删除顶栏触控语义后门禁必须失败');
 });

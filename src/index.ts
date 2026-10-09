@@ -673,10 +673,25 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
         const control = doc.createElement(navigable ? "button" : "span");
         control.className = "sw-platform-surface-nav__item";
         control.dataset.surface = surface;
-        control.textContent = options.labels.surfaces[surface];
+        const surfaceIcon = doc.createElement("svg");
+        surfaceIcon.className = "sw-platform-surface-nav__icon";
+        surfaceIcon.setAttribute("aria-hidden", "true");
+        surfaceIcon.innerHTML = `<use xlink:href="#${surface === "switcher" ? "iconLayout" : surface === "workbench" ? "iconLayoutHome" : "iconCode"}"></use>`;
+        const surfaceLabel = doc.createElement("span");
+        surfaceLabel.className = "sw-platform-surface-nav__label";
+        surfaceLabel.textContent = options.labels.surfaces[surface];
+        control.append(surfaceIcon, surfaceLabel);
+        const surfaceHint = options.labels.hints[surface];
+        control.setAttribute("aria-label", surfaceHint
+            ? `${options.labels.surfaces[surface]}：${surfaceHint}`
+            : options.labels.surfaces[surface]);
+        control.setAttribute("title", surfaceHint
+            ? `${options.labels.surfaces[surface]}：${surfaceHint}`
+            : options.labels.surfaces[surface]);
         if (surface === options.surface) {
             control.classList.add("is-active");
             control.setAttribute("aria-current", "page");
+            control.setAttribute("aria-label", `${options.labels.surfaces[surface]}（当前）`);
         }
         if (navigable) {
             (control as HTMLButtonElement).type = "button";

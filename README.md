@@ -1,11 +1,26 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.46.4-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.5-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **当前稳定版：v0.46.4（2026-10-09）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.4) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **当前稳定版：v0.46.5（2026-10-09）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.5) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+
+## 本次更新（v0.46.5 · 2026-10-09）
+
+新增：顶栏分段式表面导航
+
+- 为切换器、工作台、片段实验室增加图标、用途提示和当前状态，三个入口组成连续的分段控件。
+
+优化：顶栏命中区与即时反馈
+
+- 入口默认保留边界和底色，悬停、聚焦、按下时立即反馈；关闭按钮扩大到 36px，触控环境保持 44px 命中区。
+- 图标和文字不再抢占按钮事件，补齐鼠标、触控、键盘和屏幕阅读器语义。
+
+修复：顶栏悬停无反应、需要反复挪动鼠标
+
+- 修复宿主按钮皮肤、提示节点和透明边界造成的命中不稳定，顶栏入口现在可连续移动并稳定点击。
 
 ## 本次更新（v0.46.4 · 2026-10-09）
 
@@ -397,7 +412,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.46.4`（2026-10-09 正式发布；本版完成全路径边界审计，修复空 Dialog、搜索现场、浮层位置、保存范围和事实文案问题；Release 资产已随 GitHub Release 提供）。
+当前版本为 `v0.46.5`（2026-10-09 正式发布；本版重构顶栏分段导航，修复入口命中和悬停反馈问题；Release 资产已随 GitHub Release 提供）。
 
 ## 更新日志
 

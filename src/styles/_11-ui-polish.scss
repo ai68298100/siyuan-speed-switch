@@ -43,19 +43,46 @@
 
 .sw-platform-header__brand { letter-spacing: -0.015em; }
 .sw-platform-header__brand-name { font-size: 13px; font-weight: 720; }
-.sw-platform-header__close-hint { opacity: .92; }
+.sw-platform-header__close-hint { opacity: .92; pointer-events: none; }
 .sw-platform-header__close-hint-label { font-size: 11px; }
 
 .sw-platform-surface-nav { gap: 4px; }
+.sw-platform-surface-nav {
+    // T-7228：分段控件外壳让三个入口保持同一连续命中区；
+    // 默认边界可见，鼠标无需来回挪动才能确认当前指针落点。
+    padding: 4px;
+    border: 1px solid var(--sw-polish-line-soft);
+    border-radius: var(--sw-platform-radius-md, 12px);
+    background: color-mix(in srgb, var(--sw-platform-surface) 84%, var(--sw-platform-accent-soft));
+}
 .sw-platform-surface-nav__item {
     min-height: var(--sw-control-h);
     padding: 6px 12px;
-    border-color: transparent;
+    // T-7228：顶栏原型重构为“可见分段入口”。每个表面默认保留弱边界
+    // 与轻微底色，使 ①②③ 在未 hover 时也能被识别为可操作控件。
+    border-color: color-mix(in srgb, var(--sw-platform-line) 64%, transparent);
     border-radius: var(--sw-platform-radius-sm, 8px);
+    background: color-mix(in srgb, var(--sw-platform-surface) 88%, var(--sw-platform-bg));
     font-size: 13px;
     // 导航项是平台切换的即时反馈；保持 hover/focus 在一次指针动作内完成，
     // 避免切换表面时出现半帧的旧状态。
     transition: none;
+}
+
+.sw-platform-surface-nav__icon {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+    pointer-events: none;
+}
+
+.sw-platform-surface-nav__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
 }
 
 .sw-platform-surface-nav__item[aria-current="page"],
@@ -65,6 +92,21 @@
     color: var(--sw-platform-accent);
     font-weight: 650;
     box-shadow: none;
+}
+
+.sw-platform-surface-nav__item[aria-current="page"]:hover,
+.sw-platform-surface-nav__item[aria-current="page"]:focus-visible {
+    // 当前项虽不可重复导航，也要在指针落下时给出即时反馈，帮助用户理解
+    // ① 是当前表面而不是失效灰字。
+    border-color: color-mix(in srgb, var(--sw-platform-accent) 48%, transparent);
+    background: color-mix(in srgb, var(--sw-platform-accent) 16%, var(--sw-platform-surface));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--sw-platform-accent) 12%, transparent);
+}
+
+.sw-platform-surface-nav__item:not([aria-current="page"]):hover,
+.sw-platform-surface-nav__item:not([aria-current="page"]):focus-visible {
+    border-color: color-mix(in srgb, var(--sw-platform-accent) 40%, var(--sw-platform-line));
+    background: var(--sw-platform-accent-soft);
 }
 
 .sw-platform-context {

@@ -2120,6 +2120,26 @@
         "docs/dev-plan-2026-10-06.md"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7228",
+      "title": "顶栏分段导航与稳定命中层",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7227"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "src/styles/_platform-shell.scss",
+        "src/styles/_11-ui-polish.scss",
+        "tests/switcher-feedback-contract.test.cjs",
+        "docs/adr/0157-topbar-segmented-navigation-v0465.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {

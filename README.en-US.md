@@ -1,11 +1,26 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.46.4-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.5-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Current stable release: v0.46.4 (2026-10-09)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.4) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Current stable release: v0.46.5 (2026-10-09)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.5) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+
+## What's New In v0.46.5 (2026-10-09)
+
+Added: Segmented surface navigation in the top bar
+
+- Added icons, purpose hints, and current-state feedback for the switcher, workbench, and snippet lab in one continuous segmented control.
+
+Improved: Top-bar hit areas and instant feedback
+
+- Kept visible borders and fills by default; hover, focus, and pressed states respond immediately. The close button is 36px on desktop and keeps a 44px touch target on coarse pointers.
+- Icons and labels no longer compete with button events; mouse, touch, keyboard, and screen-reader semantics are explicit.
+
+Fixed: Unresponsive hover and repeated mouse movement
+
+- Fixed unstable hit testing caused by host button skins, hint nodes, and transparent boundaries so the top-bar controls can be hovered and clicked continuously.
 
 ## What's New In v0.46.4 (2026-10-09)
 
@@ -393,7 +408,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.46.4` (released 2026-10-09; this patch completes the full-path boundary audit, fixes empty dialogs, preserved search scenes, floating-menu positions, saved scopes, and factual copy; release assets are available in the GitHub Release).
+The current version is `v0.46.5` (released 2026-10-09; this patch rebuilds segmented top-bar navigation and fixes unstable hit testing and hover feedback; release assets are available in the GitHub Release).
 
 ## Changelog
 
