@@ -28,3 +28,11 @@ test('doc-set diff wiring: rollback reuses the existing reversible entry point, 
     assert.match(sectionsSource, /cancelBtn\.addEventListener\("click", \(\) => dialog\.destroy\(\)\);/,
         '取消只销毁弹窗，零写入');
 });
+
+test('doc-set diff tears down a malformed host dialog shell', () => {
+    const pattern = /const root = dialog\.element\.querySelector<HTMLElement>\("\.sw-doc-set-diff"\);[\s\S]{0,180}?if \(!root\) \{\s*dialog\.destroy\(\);\s*return;\s*\}/;
+    assert.match(sectionsSource, pattern, '文档集差异弹窗缺少根节点失败清理');
+    const matched = sectionsSource.match(pattern)?.[0];
+    const injected = sectionsSource.replace(matched, matched.replace('dialog.destroy();', '// injected violation'));
+    assert.doesNotMatch(injected, pattern, '删除文档集差异空壳销毁动作后门禁必须失败');
+});

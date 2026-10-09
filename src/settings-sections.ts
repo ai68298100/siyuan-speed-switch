@@ -2944,7 +2944,10 @@ function openDocumentSetDiffDialog(this: SettingsSectionsHost, item: any, versio
     });
     mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
     const root = dialog.element.querySelector<HTMLElement>(".sw-doc-set-diff");
-    if (!root) return;
+    if (!root) {
+        dialog.destroy();
+        return;
+    }
     const meta = document.createElement("p");
     meta.className = "sw-doc-set-diff__meta";
     meta.textContent = `${this.i18n.documentSetDiffTitle} · ${version.savedAt > 0 ? new Date(version.savedAt).toLocaleString() : this.i18n.documentSetDiffUnrecorded}`;
@@ -3040,7 +3043,10 @@ function openConfigPackDiffDialog(this: SettingsSectionsHost, parsed: unknown, g
     });
     mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
     const root = dialog.element.querySelector<HTMLElement>(".sw-config-pack-diff");
-    if (!root) return;
+    if (!root) {
+        dialog.destroy();
+        return;
+    }
     const selected = new Set<string>();
     const rebuild = (currentGroups: Array<{id: string; action: string; rows: Array<any>}>, currentSignature: string) => {
         root.textContent = "";

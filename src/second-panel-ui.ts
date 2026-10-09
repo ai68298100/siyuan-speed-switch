@@ -141,7 +141,13 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
         const root = dialog.element.querySelector<HTMLElement>(".sw-home");
-        if (!root) return;
+        // 宿主主题或 Dialog 改写内容时可能丢失工作台根节点。不要把
+        // 没有任何可用出口的空 Dialog 留在页面上；销毁回调会清掉单例
+        // 引用并执行已登记的资源释放链（当前尚未装配时为空操作）。
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
         root.dataset.swSurface = "workbench";
         // T-7012：只消费进入工作台时携带的稳定对象描述符；离开时不复用旧焦点。
         const focusObjectId = context?.objectKind === "widget"
@@ -1390,7 +1396,12 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             });
             mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
             const listRoot = dialog.element.querySelector<HTMLElement>(".sw-home-health");
-            if (!listRoot) return;
+            // 宿主主题可能改写健康详情内容；空 Dialog 没有任何关闭/回退
+            // 出口，必须按失败边界销毁，并由 destroyCallback 恢复入口焦点。
+            if (!listRoot) {
+                dialog.destroy();
+                return;
+            }
             const collectRows = () => homeControllers.map((entry) => {
                 const def = defs.get(entry.moduleId);
                 return {

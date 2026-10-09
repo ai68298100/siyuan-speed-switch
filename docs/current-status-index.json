@@ -2094,6 +2094,32 @@
         "ROADMAP.md"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7227",
+      "title": "全路径无死角审计与 v0.46.4 修复",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7226"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "src/doc-search-ui.ts",
+        "src/home-config-form.ts",
+        "src/second-panel-ui.ts",
+        "src/settings-sections.ts",
+        "tests/switcher-first-panel-regressions.test.cjs",
+        "tests/home-store-contract.test.cjs",
+        "tests/saved-search-edit-wiring.test.cjs",
+        "tests/doc-set-diff-wiring.test.cjs",
+        "tests/config-pack-diff-wiring.test.cjs",
+        "docs/adr/0156-comprehensive-surface-audit-v0464.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {

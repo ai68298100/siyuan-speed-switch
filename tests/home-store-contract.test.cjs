@@ -11,6 +11,47 @@ const secondPanelSource = readSourceText(path.join(root, "src", "second-panel-ui
 // R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
 const configFormSource = readSourceText(path.join(root, "src", "home-config-form.ts"));
 
+test("standalone dialogs tear down malformed host shells", () => {
+    const guards = [
+        ["store guide", /const root = dialog\.element\.querySelector<HTMLElement>\("\.sw-home-store-guide"\);[\s\S]{0,220}?if \(!root\) \{[\s\S]{0,120}?dialog\.destroy\(\);[\s\S]{0,80}?return;\s*\}/],
+        ["quick capture", /const root = dialog\.element\.querySelector<HTMLElement>\("\.sw-quick-capture"\);[\s\S]{0,220}?if \(!root\) \{[\s\S]{0,120}?dialog\.destroy\(\);[\s\S]{0,80}?return;\s*\}/],
+        ["settings", /const root = dialog\.element\.querySelector<HTMLElement>\("\.sw-settings"\);[\s\S]{0,220}?if \(!root\) \{[\s\S]{0,120}?dialog\.destroy\(\);[\s\S]{0,80}?return;\s*\}/],
+        ["template picker", /const root = dialog\.element\.querySelector<HTMLElement>\("\.sw-template-picker"\);[\s\S]{0,220}?if \(!root\) \{[\s\S]{0,120}?dialog\.destroy\(\);[\s\S]{0,80}?return;\s*\}/],
+        ["host list", /const root = dialog\.element\.querySelector<HTMLElement>\("\.sw__host-list"\);[\s\S]{0,220}?if \(!root\) \{[\s\S]{0,120}?dialog\.destroy\(\);[\s\S]{0,80}?return;\s*\}/],
+    ];
+    for (const [label, pattern] of guards) {
+        assert.match(source, pattern, `${label} 缺少空 Dialog 销毁保护`);
+        const matched = source.match(pattern)?.[0];
+        assert.ok(matched, `${label} 必须能提取可验证的保护块`);
+        const injected = source.replace(matched, matched.replace("dialog.destroy();", "// injected violation"));
+        assert.doesNotMatch(injected, pattern, `${label} 删除销毁动作后门禁必须失败`);
+    }
+});
+
+test("workbench tears down a malformed host dialog shell", () => {
+    const guard = secondPanelSource.match(/if \(!root\) \{[\s\S]{0,260}?dialog\.destroy\(\);[\s\S]{0,120}?return;\s*\}/);
+    assert.ok(guard, "宿主主题移除工作台根节点时必须销毁空 Dialog");
+    const injected = secondPanelSource.replace("dialog.destroy();", "");
+    assert.doesNotMatch(injected, /if \(!root\) \{[\s\S]{0,260}?dialog\.destroy\(\);[\s\S]{0,120}?return;\s*\}/,
+        "删除空壳销毁动作后门禁必须失败");
+});
+
+test("health details tears down a malformed host dialog shell", () => {
+    const guard = secondPanelSource.match(/const listRoot = dialog\.element\.querySelector<HTMLElement>\("\.sw-home-health"\);[\s\S]{0,260}?if \(!listRoot\) \{[\s\S]{0,160}?dialog\.destroy\(\);[\s\S]{0,100}?return;\s*\}/);
+    assert.ok(guard, "宿主主题移除健康详情根节点时必须销毁空 Dialog");
+    const injected = secondPanelSource.replace("if (!listRoot) {\n                dialog.destroy();", "if (!listRoot) {\n                // injected violation");
+    assert.doesNotMatch(injected, /const listRoot = dialog\.element\.querySelector<HTMLElement>\("\.sw-home-health"\);[\s\S]{0,260}?if \(!listRoot\) \{[\s\S]{0,160}?dialog\.destroy\(\);[\s\S]{0,100}?return;\s*\}/,
+        "删除健康详情空壳销毁动作后门禁必须失败");
+});
+
+test("widget config tears down a malformed host dialog shell", () => {
+    const guard = configFormSource.match(/const root = dialog\.element\.querySelector<HTMLElement>\("\.sw-home-config"\);[\s\S]{0,260}?if \(!root\) \{[\s\S]{0,160}?dialog\.destroy\(\);[\s\S]{0,100}?return;\s*\}/);
+    assert.ok(guard, "宿主主题移除组件配置根节点时必须销毁空 Dialog");
+    const injected = configFormSource.replace("if (!root) {\n            dialog.destroy();", "if (!root) {\n            // injected violation");
+    assert.doesNotMatch(injected, /const root = dialog\.element\.querySelector<HTMLElement>\("\.sw-home-config"\);[\s\S]{0,260}?if \(!root\) \{[\s\S]{0,160}?dialog\.destroy\(\);[\s\S]{0,100}?return;\s*\}/,
+        "删除组件配置空壳销毁动作后门禁必须失败");
+});
+
 test("widget store previews refresh real data and separate size selection from commit", () => {
     // T-7223：商店内容区必须保留可见关闭动作，避免主题裁掉原生标题栏后无法退出。
     assert.match(storeUiSource, /sw-home-store__close-bar/);

@@ -23,6 +23,26 @@ test('saved-search edit wiring: editor saves through the host normalized update'
     assert.ok(uiSource.includes('this.i18n.cancel'), '必须保留取消出口（零写入）');
 });
 
+test('saved-search editor preserves an existing notebook when the host list is unavailable', () => {
+    assert.match(uiSource, /const savedNotebook = typeof saved\.notebook === "string"/,
+        '编辑器必须先归一化并保留已保存 notebook');
+    assert.match(uiSource, /fallbackOption\.dataset\.swSavedNotebookFallback/,
+        '宿主清单失败时必须保留当前 notebook option');
+    assert.match(uiSource, /Array\.from\(notebookSelect\.options\)\.find\(\(option\) => option\.value === notebook\.id\)/,
+        '清单返回后必须复用 fallback option，不能重复插入同一 ID');
+    const broken = uiSource.replace('fallbackOption.dataset.swSavedNotebookFallback = "true";', 'fallbackOption.dataset.swSavedNotebookFallback = "";');
+    assert.doesNotMatch(broken, /fallbackOption\.dataset\.swSavedNotebookFallback = "true";/,
+        '负向注入：移除 notebook 兜底标记后必须被门禁识别');
+});
+
+test('saved-search editor tears down a malformed host dialog shell', () => {
+    const pattern = /const root = dialog\.element\.querySelector<HTMLElement>\("\.sw-saved-search-editor"\);[\s\S]{0,180}?if \(!root\) \{\s*dialog\.destroy\(\);\s*return;\s*\}/;
+    assert.match(uiSource, pattern, '保存搜索编辑器缺少根节点失败清理');
+    const matched = uiSource.match(pattern)?.[0];
+    const injected = uiSource.replace(matched, matched.replace('dialog.destroy();', '// injected violation'));
+    assert.doesNotMatch(injected, pattern, '删除保存搜索空壳销毁动作后门禁必须失败');
+});
+
 test('saved-search edit wiring: host update keeps ids via the pure model and persists once', () => {
     assert.ok(indexSource.includes('updateSavedSearchEntry(this.getSavedSearches(), id, patch)'),
         '宿主必须经纯模型 updateSavedSearchEntry 归一');

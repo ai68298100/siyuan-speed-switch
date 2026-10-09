@@ -12,7 +12,9 @@ test('sort menu lifecycle: bindSortTriggerMenu returns an owner disposer', () =>
         'bindSortTriggerMenu 必须声明返回 disposer');
     assert.match(src, /const disposeSortMenu = \(\) => \{ closePanel\(\); \};/,
         '必须提供 owner disposer（幂等关面板 + 摘全局监听）');
-    assert.match(src, /resizeHandler = positionPanel;\s*\n\s*\}\);\s*\n\s*return disposeSortMenu;\s*\n\s*\}/,
+    assert.match(src, /resizeHandler = positionPanel;\s*\n\s*window\.addEventListener\("resize", resizeHandler\);/,
+        '排序浮层必须在挂载后注册窗口尺寸监听');
+    assert.match(src, /return disposeSortMenu;\s*\n\s*\}/,
         '函数必须返回 disposer');
 });
 

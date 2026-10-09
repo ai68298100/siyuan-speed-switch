@@ -1,11 +1,27 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.46.3-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.4-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Current stable release: v0.46.3 (2026-10-09)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.3) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Current stable release: v0.46.4 (2026-10-09)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.4) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+
+## What's New In v0.46.4 (2026-10-09)
+
+Added: Full-path boundary regression guards
+
+- Added contracts and deletion-injection checks for empty dialogs, preserved search scenes, floating-menu positioning, saved-search notebook scopes, and settings diff dialogs.
+
+Improved: Continuous first- and second-panel workflows
+
+- Group redraws now replay the active search/filter; sort menus reposition on viewport changes; malformed host roots consistently destroy empty shells while preserving existing focus recovery.
+- Saved searches retain their notebook scope while the host notebook list is unavailable and reuse the option when the list returns.
+
+Fixed: Display copy and factual alignment
+
+- Fixed HTML entities appearing in favorite-group titles and added failure exits for settings, diff, template, and host-list dialogs.
+- Corrected the Chinese and English descriptions of path filtering and widget readiness, including level-by-level browsing, capability fallback, and external dependencies.
 
 ## What's New In v0.46.3 (2026-10-09)
 
@@ -58,7 +74,7 @@ QQ community group: **871707735**
 
 - [Xiaolv Plugins And Community](#xiaolv-plugins-and-community)
 - [Core Capabilities](#core-capabilities)
-- [Widget Panel: 58 Out-Of-The-Box Widgets](#widget-panel-58-out-of-the-box-widgets)
+- [Widget Panel: 58 Configurable Widgets](#widget-panel-58-configurable-widgets)
 - [SiYuan Agent Capabilities](#siyuan-agent-capabilities)
 - [Quick Start](#quick-start)
 - [Shortcuts](#shortcuts)
@@ -114,7 +130,7 @@ Search results keep a fixed priority:
 
 **Tab filter query syntax** (local layer): space-separated terms all match (AND); `-term` excludes tabs containing it; `"quoted phrase"` matches as a whole. Example: `project -weekly "meeting notes"`.
 
-Search requests use a 180 ms debounce, bounded in-memory cache, request-version validation, and cancellation. Desktop dialog, right sidebar, and mobile each own an isolated search session, so one surface cannot cancel or overwrite another. The current worktree supports notebook, content-type, subtype, search-method, and result-order filters; notebook/path-only filters keep the title fast path, while other filters use bounded native block-level full-text requests. Workspace results fetch up to 33 entries at once and render the first 12; a "Load more" button expands the rest purely client-side (no new requests, no cache-key changes) before falling back to SiYuan's native search. Path-tree selection is still not exposed in the UI, and this remains an addition rather than a replacement for SiYuan's native search page. See [ROADMAP.md](./ROADMAP.md) for that work.
+Search requests use a 180 ms debounce, bounded in-memory cache, request-version validation, and cancellation. Desktop dialog, right sidebar, and mobile each own an isolated search session, so one surface cannot cancel or overwrite another. The current worktree supports notebook, path, content-type, subtype, search-method, and result-order filters; notebook/path filters keep the title fast path, while other filters use bounded native block-level full-text requests. Workspace results fetch up to 33 entries at once and render the first 12; a "Load more" button expands the rest purely client-side (no new requests, no cache-key changes) before falling back to SiYuan's native search. The path menu browses notebook paths level by level and clearly degrades when the host lacks the capability; this remains an addition rather than a replacement for SiYuan's native search page. See [ROADMAP.md](./ROADMAP.md) for that work.
 
 ### Work Context, Commands & Actions (new)
 
@@ -158,9 +174,9 @@ Search requests use a 180 ms debounce, bounded in-memory cache, request-version 
 
 On mobile, the first frame waits for the WebView to reach a stable size before cards become visible, then scales thumbnails from the container's measured width. Mobile settings use a horizontally scrollable top tab row and single-column controls. Favorite and quick-action ordering use buttons instead of row dragging, avoiding gesture conflicts with page scrolling.
 
-## Widget Panel: 58 Out-Of-The-Box Widgets
+## Widget Panel: 58 Configurable Widgets
 
-The Workbench (surface entry or `Alt+Shift+P`) is the widget panel: 58 read-only widgets freely composed on a 12-column grid, with independent layouts for desktop / right sidebar / mobile. Cards expose source, capabilities, update time, and health; failures keep the card mounted and provide visible and screen-reader receipts. Every widget has completed a full depth pass against the eight-dimension scorecard: settings discoverability, data correctness, information hierarchy, size fitness, interaction feedback, state recovery, performance lifecycle, and three-surface/a11y/privacy.
+The Workbench (surface entry or `Alt+Shift+P`) is the widget panel: 58 read-only widgets can be composed through settings on a 12-column grid, with independent layouts for desktop / right sidebar / mobile. Cards expose source, capabilities, update time, and health; failures keep the card mounted and provide visible and screen-reader receipts. Some widgets depend on host data, a local service, or an external account, and cards expose that readiness state. Every widget has completed a full depth pass against the eight-dimension scorecard: settings discoverability, data correctness, information hierarchy, size fitness, interaction feedback, state recovery, performance lifecycle, and three-surface/a11y/privacy.
 
 | Group | Widgets |
 | --- | --- |
@@ -377,7 +393,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.46.3` (released 2026-10-09; this patch completes the three-panel interaction audit, restores merged-away feedback and preview boundaries, and hardens store-dialog cleanup; release assets are available in the GitHub Release).
+The current version is `v0.46.4` (released 2026-10-09; this patch completes the full-path boundary audit, fixes empty dialogs, preserved search scenes, floating-menu positions, saved scopes, and factual copy; release assets are available in the GitHub Release).
 
 ## Changelog
 

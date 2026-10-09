@@ -1,11 +1,27 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.46.3-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.4-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **当前稳定版：v0.46.3（2026-10-09）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.3) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **当前稳定版：v0.46.4（2026-10-09）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.4) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+
+## 本次更新（v0.46.4 · 2026-10-09）
+
+新增：全路径边界回归防线
+
+- 为空 Dialog、搜索现场、排序浮层位置、已存搜索 notebook 范围和设置差异弹窗增加契约与负向注入验证。
+
+优化：第一、第二面板的连续操作体验
+
+- 分组重绘后保留当前搜索/筛选；排序浮层随窗口尺寸变化重定位；宿主根节点缺失时统一销毁空壳并恢复已有焦点链。
+- 已存搜索在 notebook 清单暂时不可用时保留原范围，清单返回后复用并更新选项。
+
+修复：显示文案与事实对账
+
+- 修复收藏分组标题中的 HTML 实体误显示，并补齐多个设置/差异/模板/主机列表弹窗的失败出口。
+- 修正路径筛选和组件目录的中英文说明，明确逐级路径菜单、能力降级和外部依赖就绪状态。
 
 ## 本次更新（v0.46.3 · 2026-10-09）
 
@@ -59,7 +75,7 @@
 - [小驴插件与交流](#小驴插件与交流)
 - [核心能力](#核心能力)
 - [工作上下文、命令与动作](#工作上下文命令与动作)
-- [组件面板：58 个开箱即用的组件](#组件面板58-个开箱即用的组件)
+- [组件面板：58 个可配置组件](#组件面板58-个可配置组件)
 - [思源智能体（Agent）能力](#思源智能体agent能力)
 - [快速上手](#快速上手)
 - [快捷键](#快捷键)
@@ -115,7 +131,7 @@
 
 **页签过滤查询语法**（本地层）：空格分隔多个词 = 全部命中（AND）；`-词` = 排除含该词的页签；`"多词短语"` = 整体匹配。例：`项目 -周报 "会议记录"`。
 
-搜索请求使用 180ms 防抖、容量受限的内存缓存、请求版本校验和取消机制。桌面弹窗、右侧栏和手机端各自持有独立搜索会话，互不取消或覆盖。当前工作树支持笔记本、内容类型、子类型、搜索方式和结果排序筛选；仅笔记本/路径筛选保留标题快路径，其他筛选会直接使用受限的原生块级全文请求。全库结果一次最多拉取 33 条，首屏渲染 12 条，超出时通过面板内「加载更多」按钮纯客户端增量展开（不换缓存 key、不发新请求），全部展开后才回落到思源原生搜索出口。路径树选择仍未开放 UI，且本功能不替代思源原生搜索页。后续计划见 [ROADMAP.md](./ROADMAP.md)。
+搜索请求使用 180ms 防抖、容量受限的内存缓存、请求版本校验和取消机制。桌面弹窗、右侧栏和手机端各自持有独立搜索会话，互不取消或覆盖。当前工作树支持笔记本、路径、内容类型、子类型、搜索方式和结果排序筛选；笔记本/路径筛选保留标题快路径，其他筛选会直接使用受限的原生块级全文请求。全库结果一次最多拉取 33 条，首屏渲染 12 条，超出时通过面板内「加载更多」按钮纯客户端增量展开（不换缓存 key、不发新请求），全部展开后才回落到思源原生搜索出口。路径菜单按笔记本逐级浏览，并在宿主不支持时明确降级；本功能不替代思源原生搜索页。后续计划见 [ROADMAP.md](./ROADMAP.md)。
 
 ### 工作上下文、命令与动作
 
@@ -159,9 +175,9 @@
 
 手机端首次打开时会等待 WebView 得到稳定尺寸后再显示卡片，并在缩略图容器获得真实宽度后计算缩放，减少首次进入的瞬时错位。手机设置页采用顶部横向标签和单列控件，收藏与快捷入口使用按钮排序，避免拖拽和页面滚动争抢手势。
 
-## 组件面板：58 个开箱即用的组件
+## 组件面板：58 个可配置组件
 
-工作台（顶栏入口或 `Alt+Shift+P`）是组件面板：58 个只读组件自由组合、摆放到 12 列网格，桌面 / 右侧栏 / 手机端各自独立布局。组件卡显示来源、能力、更新时间和健康状态，失败时保留卡片并给出可见与读屏回执。全部组件按「设置可发现性、数据正确性、信息层级、尺寸适配、交互反馈、状态恢复、性能生命周期、三端/无障碍/隐私」八维评分卡逐项深度优化过一轮。
+工作台（顶栏入口或 `Alt+Shift+P`）是组件面板：58 个只读组件可按配置组合、摆放到 12 列网格，桌面 / 右侧栏 / 手机端各自独立布局。组件卡显示来源、能力、更新时间和健康状态，失败时保留卡片并给出可见与读屏回执；部分组件需要宿主数据、局域服务或外部账号，卡片会显示对应就绪状态。全部组件按「设置可发现性、数据正确性、信息层级、尺寸适配、交互反馈、状态恢复、性能生命周期、三端/无障碍/隐私」八维评分卡逐项深度优化过一轮。
 
 | 分组 | 组件 |
 | --- | --- |
@@ -381,7 +397,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.46.3`（2026-10-09 正式发布；本版完成三面板全路径体验审计，恢复合并后缺失的样式/状态反馈并修复商店异常 Dialog 生命周期；Release 资产已随 GitHub Release 提供）。
+当前版本为 `v0.46.4`（2026-10-09 正式发布；本版完成全路径边界审计，修复空 Dialog、搜索现场、浮层位置、保存范围和事实文案问题；Release 资产已随 GitHub Release 提供）。
 
 ## 更新日志
 

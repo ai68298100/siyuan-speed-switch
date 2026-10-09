@@ -4,6 +4,13 @@
 > releases; new entries are appended here at release time. 中文完整历史见 [`docs/CHANGELOG.md`](./CHANGELOG.md)。
 
 ## Changelog (full history)
+### v0.46.4 (2026-10-09)
+
+- **Added full-path boundary regression guards**: contracts and deletion-injection checks cover empty dialogs, preserved search scenes, floating-menu positioning, saved-search notebook scopes, and settings diff dialogs.
+- **Improved continuous workflows**: group redraws replay the active search/filter; sort menus reposition on viewport changes; malformed host roots destroy empty shells; saved searches retain their notebook scope when the host list is unavailable.
+- **Fixed display copy and factual alignment**: favorite-group titles no longer show HTML entities; settings, diff, template, and host-list dialogs have failure exits; path-filter and widget-readiness descriptions now match production behavior.
+- **Verification**: full suite **8608/8608**; TypeScript, build, release/quality/integration audits, UI smoke, and negative gates passed.
+
 ### v0.46.3 (2026-10-09)
 
 - **Added full-path interaction regression guards**: added style and lifecycle contracts for platform chrome, mobile sheets, search metadata, stale states, and snippet previews, with deletion-injection checks for critical declarations.

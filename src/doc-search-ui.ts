@@ -490,7 +490,10 @@ export function openSavedSearchEditor(this: DocSearchUiHost, id: string): void {
         });
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const root = dialog.element.querySelector<HTMLElement>(".sw-saved-search-editor");
-        if (!root) return;
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
         const buildField = (label: string, value: string) => {
             const wrap = document.createElement("div");
             wrap.className = "sw-saved-search-editor__field";
@@ -519,18 +522,35 @@ export function openSavedSearchEditor(this: DocSearchUiHost, id: string): void {
         anyOption.value = "";
         anyOption.textContent = this.i18n.searchSavedEditNotebookAny;
         notebookSelect.appendChild(anyOption);
-        notebookSelect.value = saved.notebook || "";
+        // 先保留已保存的 notebook ID。宿主清单可能暂时加载失败，或该
+        // 笔记本已被删除；若 select 没有对应 option，编辑名称/查询后
+        // 保存会把原有范围静默改成“不限”，造成不可见的数据丢失。
+        const savedNotebook = typeof saved.notebook === "string" ? saved.notebook.trim() : "";
+        if (savedNotebook) {
+            const fallbackOption = document.createElement("option");
+            fallbackOption.value = savedNotebook;
+            fallbackOption.textContent = savedNotebook;
+            fallbackOption.dataset.swSavedNotebookFallback = "true";
+            notebookSelect.appendChild(fallbackOption);
+            notebookSelect.value = savedNotebook;
+        }
         notebookRow.append(notebookLabel, notebookSelect);
         // 笔记本选项异步填充；加载失败保留「不限」+ 现值，编辑不因枚举失败而不可用
         void this.loadNotebooks().then((notebooks) => {
             if (!notebookSelect.isConnected) return;
             notebooks.forEach((notebook) => {
+                const existing = Array.from(notebookSelect.options).find((option) => option.value === notebook.id);
+                if (existing) {
+                    existing.textContent = notebook.name;
+                    delete existing.dataset.swSavedNotebookFallback;
+                    return;
+                }
                 const option = document.createElement("option");
                 option.value = notebook.id;
                 option.textContent = notebook.name;
                 notebookSelect.appendChild(option);
             });
-            notebookSelect.value = saved.notebook || "";
+            notebookSelect.value = savedNotebook;
         }).catch((): undefined => undefined);
 
         const hint = document.createElement("div");

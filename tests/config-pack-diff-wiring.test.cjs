@@ -29,3 +29,11 @@ test('pack diff wiring: host applier persists only selected groups and reports p
     assert.ok(model.includes('function diffConfigPackGroups'), '差异纯模型必须存在于 config-pack-model');
     assert.ok(model.includes('selected.has("settings")') || model.includes('selectedGroups'), '合并必须按勾选组');
 });
+
+test('pack diff tears down a malformed host dialog shell', () => {
+    const pattern = /const root = dialog\.element\.querySelector<HTMLElement>\("\.sw-config-pack-diff"\);[\s\S]{0,180}?if \(!root\) \{\s*dialog\.destroy\(\);\s*return;\s*\}/;
+    assert.match(sectionsSource, pattern, '配置包差异弹窗缺少根节点失败清理');
+    const matched = sectionsSource.match(pattern)?.[0];
+    const injected = sectionsSource.replace(matched, matched.replace('dialog.destroy();', '// injected violation'));
+    assert.doesNotMatch(injected, pattern, '删除配置包差异空壳销毁动作后门禁必须失败');
+});

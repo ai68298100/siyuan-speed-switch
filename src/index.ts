@@ -2677,7 +2677,12 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const root = dialog.element.querySelector<HTMLElement>(".sw-home-store-guide");
-        if (!root) return;
+        // 宿主主题可能改写 Dialog 内容；没有根节点时销毁空壳，避免留下
+        // 无法关闭的遮罩层。
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
         const hint = document.createElement("p");
         hint.className = "sw-home-store-guide__hint";
         hint.textContent = this.i18n.homeStoreGuideHint;
@@ -2755,7 +2760,11 @@ export default class SpeedSwitchPlugin extends Plugin {
             height: this.isMobile ? "min(320px, 68vh)" : "288px",
         });
         const root = dialog.element.querySelector<HTMLElement>(".sw-quick-capture");
-        if (!root) return;
+        // 快速记录没有根节点就没有输入或退出入口，按失败边界销毁空壳。
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
         type CaptureTarget = "journal" | "current";
         let target: CaptureTarget = "journal";
 
@@ -3153,6 +3162,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         const root = dialog.element.querySelector<HTMLElement>(".sw-settings");
         if (!root) {
+            dialog.destroy();
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
@@ -3960,6 +3970,12 @@ export default class SpeedSwitchPlugin extends Plugin {
         const releaseFab = this.suspendFABForDialog();
         const switcherRelease: {fn: () => void} = {fn: releaseFab};
         const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease, returnTo, context);
+        // 宿主主题可能在 Dialog 构造后改写内容，导致平台根节点消失。
+        // 在装配任何子模块前销毁空壳，避免留下遮罩并释放 FAB 挂起。
+        if (!dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]')) {
+            dialog.destroy();
+            return;
+        }
         // 工具栏、列表/回到顶部/缩略图懒加载 等子模块装配
         this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease, focusSearch, returnTo, context);
         // T-7012：跨表面返回焦点——带焦点来源重开时，把焦点送回来源控件
@@ -4620,6 +4636,11 @@ const updatedMap: {[rootId: string]: string} = {};
             const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
             if (scrollElement) {
                 this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, this.getSettings().sortBy, updatedMap);
+                // 分组变化也必须重放当前搜索现场。否则输入框仍显示关键词，
+                // 但卡片、统一索引和全库结果已经退回未筛选状态。
+                if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
+                    this.applySearch(scrollElement, searchInput, closeOverlay);
+                }
             }
         };
         sortSelect?.addEventListener("change", () => {
@@ -4745,6 +4766,10 @@ const updatedMap: {[rootId: string]: string} = {};
                 panel.style.right = `${Math.round(Math.max(6, window.innerWidth - rect.right))}px`;
             };
             positionPanel();
+            // 排序面板挂在 body 上，窗口尺寸变化后重新计算位置，避免
+            // 缩放或旋转后浮层落在旧坐标甚至离开视口。
+            resizeHandler = positionPanel;
+            window.addEventListener("resize", resizeHandler);
             // T-7192：radiogroup 键盘合同——打开入焦首个 menuitemradio，方向键循环选择。
             const menuItems = Array.from(panel.querySelectorAll<HTMLButtonElement>(".sw__sort-menu-option"));
             if (menuItems.length > 0) menuItems[0].focus({preventScroll: true});
@@ -4777,7 +4802,6 @@ const updatedMap: {[rootId: string]: string} = {};
                 }
             };
             document.addEventListener("keydown", keyHandler, true);
-            resizeHandler = positionPanel;
         });
         return disposeSortMenu;
     }
@@ -5430,7 +5454,10 @@ const updatedMap: {[rootId: string]: string} = {};
         });
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const root = dialog.element.querySelector<HTMLElement>(".sw-template-picker");
-        if (!root) return;
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
         const list = document.createElement("div");
         list.className = "sw-template-picker__list";
         entries.forEach((entry: {path: string}) => {
@@ -6327,7 +6354,10 @@ const updatedMap: {[rootId: string]: string} = {};
         });
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const root = dialog.element.querySelector<HTMLElement>(".sw__host-list");
-        if (!root) return;
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
         root.appendChild(content);
     }
 
@@ -10381,7 +10411,10 @@ private rootIdOf(tab: Tab): string | null {
         const favorite = this.getFavorites().find((item) => item.key === key);
         const groupNames = this.getFavoriteGroupNames();
         const dialog = new Dialog({
-            title: `${this.i18n.setGroup} · ${this.escapeAttr(this.titleOf(tab))}`,
+            // Dialog title is text, not an HTML attribute. Escaping here would
+            // visibly turn an ampersand or quote in a document title into
+            // entities; the content template below remains escaped separately.
+            title: `${this.i18n.setGroup} · ${this.titleOf(tab)}`,
             content: `<div class="b3-dialog__content">
     <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" aria-label="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(favorite?.group || "")}" />
     <datalist id="sw__group-list">${groupNames.map((name) => `<option value="${this.escapeAttr(name)}"></option>`).join("")}</datalist>
@@ -10397,6 +10430,10 @@ private rootIdOf(tab: Tab): string | null {
         });
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const input = dialog.element.querySelector<HTMLInputElement>(".sw__group-input");
+        if (!input) {
+            dialog.destroy();
+            return;
+        }
         const confirm = () => {
             // 未收藏时一并收藏；已收藏时仅调整分组（留空移出分组）
             this.addFavoriteToGroup(tab, input.value);
@@ -10422,7 +10459,7 @@ private rootIdOf(tab: Tab): string | null {
     private openFavoriteGroupDialog(panel: HTMLElement, fav: IFavoriteItem, onPick: () => void, onChanged: IOverlayClose = () => undefined) {
         const groupNames = this.getFavoriteGroupNames();
         const dialog = new Dialog({
-            title: `${this.i18n.setGroup} · ${this.escapeAttr(fav.title)}`,
+            title: `${this.i18n.setGroup} · ${fav.title}`,
             content: `<div class="b3-dialog__content">
     <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" aria-label="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(fav.group || "")}" />
     <datalist id="sw__group-list">${groupNames.map((name) => `<option value="${this.escapeAttr(name)}"></option>`).join("")}</datalist>
@@ -10438,6 +10475,10 @@ private rootIdOf(tab: Tab): string | null {
         });
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const input = dialog.element.querySelector<HTMLInputElement>(".sw__group-input");
+        if (!input) {
+            dialog.destroy();
+            return;
+        }
         const confirm = () => {
             this.applyFavItemChange(() => this.setFavoriteGroup(fav.key, input.value), panel, onPick, onChanged);
             dialog.destroy();

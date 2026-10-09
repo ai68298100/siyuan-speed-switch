@@ -76,7 +76,12 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
         });
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const root = dialog.element.querySelector<HTMLElement>(".sw-home-config");
-        if (!root) return;
+        // 配置窗格是商店详情上的二级弹窗；若宿主主题改写了内容，
+        // 销毁空壳以免遮挡仍可用的商店，并释放已登记的异步字段资源。
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
         root.innerHTML = "";
         root.dataset.moduleId = inst.moduleId;
         root.dataset.kind = configKind;
