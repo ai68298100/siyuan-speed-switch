@@ -129,7 +129,7 @@
     },
     {
       "id": "T-7115",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "environment",
       "blockedBy": [
@@ -2185,7 +2185,7 @@
     {
       "id": "T-7231",
       "title": "v0.46.6 紧急小版本发布",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "release",
