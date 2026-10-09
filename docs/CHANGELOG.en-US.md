@@ -4,6 +4,14 @@
 > releases; new entries are appended here at release time. 中文完整历史见 [`docs/CHANGELOG.md`](./CHANGELOG.md)。
 
 ## Changelog (full history)
+
+### v0.46.6 (2026-10-09)
+
+- **Added quick snippet toggles**: the persistent list and picker catalog now expose sibling Enable/Disable actions for native snippets, using whole-list writes, readback confirmation, JS confirmation, and dirty-draft protection.
+- **Improved second-panel and store hierarchy**: restored workbench radius/shadow/glass depth; the store detail pane now has one title, factual metadata, live preview, and action area, with stale aria references cleared on redraw.
+- **Fixed older-host compatibility and duplicate detail cards**: unknown master flags now use a neutral snapshot so confirmed writes are not reported as failures, and detail no longer mounts a full catalog card a second time.
+- **Verification**: full suite **8620/8620**; snippet, store-structure, material, and negative-injection contracts passed.
+
 ### v0.46.5 (2026-10-09)
 
 - **Added segmented surface navigation**: the switcher, workbench, and snippet lab now share visible icons, purpose hints, and current-state feedback.
@@ -518,4 +526,3 @@
 ### Older releases
 
 For the full per-version history, see [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases).
-

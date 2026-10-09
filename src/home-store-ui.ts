@@ -417,15 +417,19 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 }
             }
             catalogPane.innerHTML = "";
+            const storeFragment = document.createDocumentFragment();
+            const state = this.getHomeState();
+            // 秒开（D-382）：全部区块在离屏 fragment 中装配，最后一次挂载，避免逐组重排
             detailPane.innerHTML = "";
+            // 详情是可重绘的 region：先清掉上一组件的 aria 引用，避免无选中项时
+            // 仍指向已经脱离 DOM 的标题/状态节点。
+            detailPane.removeAttribute("aria-labelledby");
+            detailPane.removeAttribute("aria-describedby");
             delete root.dataset.catalogEmpty;
             detailPane.classList.add("sw-home-store__detail--empty");
             root.dataset.batchMode = String(storeBatchMode);
             if (storeSelectedModule) root.dataset.selectedModule = storeSelectedModule;
             else delete root.dataset.selectedModule;
-            // 秒开（D-382）：全部区块在离屏 fragment 中装配，最后一次挂载，避免逐组重排
-            const storeFragment = document.createDocumentFragment();
-            const state = this.getHomeState();
             const instanceByModule = new Map<string, any>();
             const instanceStateByModule = new Map<string, any>();
             ((state.layouts[device] || []) as Array<any>).forEach((entry) => {
@@ -1539,9 +1543,27 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                         sheetBar.appendChild(sheetBack);
                         detailPane.appendChild(sheetBar);
                     }
+                    // 详情窗格是一个独立的“预览 + 动作”现场：复用卡片构建器只
+                    // 借用标题、状态和尺寸/动作节点，不把目录卡片壳与第二份缩略
+                    // 预览一起搬进来。旧实现会在 live preview 后再渲染一张完整卡片，
+                    // 造成预览重复、滚动层级不清，也让右侧看起来像另一套商店。
+                    const detailCard = buildReadyCard(storeSelectedModule, detailDef, "detail", inlinePreview.mount.setSize);
+                    const detailHead = detailCard.querySelector<HTMLElement>(".sw-home-store__card-head");
+                    const detailSizes = detailCard.querySelector<HTMLElement>(".sw-home-store__sizes");
+                    if (detailHead) {
+                        detailHead.classList.add("sw-home-store__detail-head");
+                        detailPane.appendChild(detailHead);
+                        const detailTitle = detailHead.querySelector<HTMLElement>("strong");
+                        const detailStatus = detailHead.querySelector<HTMLElement>(".sw-home-store__status");
+                        if (detailTitle?.id) detailPane.setAttribute("aria-labelledby", detailTitle.id);
+                        if (detailStatus?.id) detailPane.setAttribute("aria-describedby", detailStatus.id);
+                    }
                     detailPane.appendChild(buildDetailMeta(storeSelectedModule, detailDef));
                     detailPane.appendChild(inlinePreview.section);
-                    detailPane.appendChild(buildReadyCard(storeSelectedModule, detailDef, "detail", inlinePreview.mount.setSize));
+                    if (detailSizes) {
+                        detailSizes.classList.add("sw-home-store__detail-actions");
+                        detailPane.appendChild(detailSizes);
+                    }
                     detailPane.classList.remove("sw-home-store__detail--empty");
                     const detailNote = document.createElement("p");
                     detailNote.className = "sw-home-store__detail-note";

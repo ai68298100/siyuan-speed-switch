@@ -715,6 +715,66 @@
     line-height: 1.55;
 }
 
+// T-7231：详情页是商店的“现场预览”，不再把目录卡片外壳整张复制进来。
+// 这里给抽出的标题、预览和动作区各自建立材质层级：标题/元信息说明组件，
+// 中部只保留一份可滚动的真实预览，底部动作区负责尺寸和添加/配置/移除。
+// 这样桌面宽屏有稳定的阅读顺序，移动端 sheet 也不会出现嵌套卡片和双预览。
+.sw-home-store__detail-head {
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 76%, var(--b3-theme-primary) 24%);
+    border-radius: var(--sw-radius-card, 14px);
+    background: color-mix(in srgb, var(--b3-theme-surface) 92%, var(--b3-theme-primary) 8%);
+    box-shadow: var(--sw-shadow-sm, 0 6px 18px rgb(0 0 0 / 10%));
+}
+
+.sw-home-store__detail .sw-home-store__detail-meta {
+    margin-bottom: 12px;
+    border-radius: var(--sw-radius-md, 10px);
+    background: color-mix(in srgb, var(--b3-theme-surface) 84%, var(--b3-theme-background));
+}
+
+.sw-home-store__detail .sw-home-store__live-preview {
+    display: flex;
+    flex-direction: column;
+    min-height: clamp(220px, 34vh, 420px);
+    margin: 0 0 12px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 74%, var(--b3-theme-primary) 26%);
+    border-radius: var(--sw-radius-card, 14px);
+    background: color-mix(in srgb, var(--b3-theme-surface) 78%, var(--b3-theme-background));
+    box-shadow: var(--sw-shadow-sm, 0 6px 18px rgb(0 0 0 / 10%));
+}
+
+.sw-home-store__detail .sw-home-store__inline-preview {
+    display: grid;
+    flex: 1 1 auto;
+    place-items: center;
+    min-height: clamp(180px, 28vh, 340px);
+    padding: 14px;
+    background: color-mix(in srgb, var(--b3-theme-background) 66%, var(--b3-theme-primary) 5%);
+}
+
+.sw-home-store__detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 84%, transparent);
+    border-radius: var(--sw-radius-md, 10px);
+    background: color-mix(in srgb, var(--b3-theme-surface) 88%, var(--b3-theme-primary) 12%);
+    box-shadow: var(--sw-shadow-xs, 0 2px 8px rgb(0 0 0 / 8%));
+
+    .sw-home-store__choose-size {
+        flex: 1 0 100%;
+        margin: 0;
+    }
+
+    .sw-home-store__add { margin-inline-start: auto; }
+}
+
 // T-6967 S2：详情窗格元信息四行明文（数据来源/刷新/隐私/缓存）——
 // 取代原先 chips 形态的来源信息；dt 定宽左列、dd 明文右列，只表事实不加状态色。
 .sw-home-store__detail-meta {

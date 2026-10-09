@@ -1,12 +1,26 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.46.5-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.6-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Current stable release: v0.46.5 (2026-10-09)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.5) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Current stable release: v0.46.6 (2026-10-09)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.6) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
+## What's New In v0.46.6 (2026-10-09)
+
+Added: Quick snippet enable/disable
+
+- The persistent snippet list and picker catalog now expose sibling Enable/Disable actions for native snippets with visible state and failure receipts.
+
+Improved: Second-panel and widget-store hierarchy
+
+- Restored card radius, shadow, and glass depth in the workbench; the store detail pane now presents one title, factual metadata, live preview, and action area instead of a duplicate card.
+- Cleared stale accessibility references during redraw and kept the same hierarchy in desktop and mobile detail sheets.
+
+Fixed: Snippet toggling and older-host compatibility
+
+- Quick toggles reuse whole-list write/readback confirmation and the dirty-draft guard; hosts without master flags no longer turn confirmed writes into false errors.
 ## What's New In v0.46.5 (2026-10-09)
 
 Added: Segmented surface navigation in the top bar
@@ -408,7 +422,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.46.5` (released 2026-10-09; this patch rebuilds segmented top-bar navigation and fixes unstable hit testing and hover feedback; release assets are available in the GitHub Release).
+The current version is `v0.46.6` (released 2026-10-09; this patch adds quick snippet toggles and repairs second-panel/store hierarchy and material; release assets are available in the GitHub Release).
 
 ## Changelog
 
@@ -610,6 +624,10 @@ Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；En
 - **Widget second wave**: writing streak supports weekly n/m goals and rest-day exemptions; note stats gains an optional writing-strength score; recent writing activity gains a year-grid heatmap view (53-week paging + color legend).
 - **Ecosystem & configuration**: DailyHot supports a base-URL + route selector (validated by the same URL whitelist); the world clock accepts Chinese city names via a built-in 110-city offline table.
 - **Compatibility & engineering**: minimum SiYuan version raised to 3.8.0 (ADR 0064); four performance benchmarks, an accessibility baseline gate and dual-theme WCAG contrast sampling added to the release gates; ActivityWatch supports bucket selection.
+
+## Acknowledgements
+
+This plugin’s interaction research and implementation draw on [TCOTC/snippets](https://github.com/TCOTC/snippets), [Obsidian Canvas](https://obsidian.md/help/plugins/canvas), [JSON Canvas](https://github.com/obsidianmd/jsoncanvas), Visual Notes, Advanced Canvas, Miro, and Milanote for ideas around snippet management, free-form layout, preview, and information hierarchy. Thanks to their maintainers and communities for the public design and implementation references.
 
 ## License
 

@@ -2139,6 +2139,69 @@
         "docs/adr/0157-topbar-segmented-navigation-v0465.md",
         "docs/dev-plan-2026-10-06.md"
       ],
+      "next": "T-7229"
+    },
+    {
+      "id": "T-7229",
+      "title": "第三面板片段目录快速启停",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7228"
+      ],
+      "evidence": [
+        "src/snippet-studio-ui.js",
+        "src/styles/_snippet-studio.scss",
+        "tests/snippet-studio-mount.test.cjs",
+        "tests/snippet-catalog-quick-toggle.test.cjs",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7230"
+    },
+    {
+      "id": "T-7230",
+      "title": "第二面板与组件商店层级修复",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7229"
+      ],
+      "evidence": [
+        "src/home-store-ui.ts",
+        "src/styles/_08-home-store-cards.scss",
+        "src/styles/_11-ui-polish.scss",
+        "tests/home-store-contract.test.cjs",
+        "tests/panel2-premium-store-contract.test.cjs",
+        "docs/adr/0158-panel-store-interaction-v0466.md",
+        "docs/research-cycle-r18-2026-10-09.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7231"
+    },
+    {
+      "id": "T-7231",
+      "title": "v0.46.6 紧急小版本发布",
+      "status": "in_progress",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "release",
+      "dependsOn": [
+        "T-7230"
+      ],
+      "evidence": [
+        "package.json",
+        "plugin.json",
+        "README.md",
+        "README.en-US.md",
+        "docs/CHANGELOG.md",
+        "docs/CHANGELOG.en-US.md",
+        "docs/release-readiness.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
       "next": "T-7144"
     }
   ],

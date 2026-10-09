@@ -470,10 +470,14 @@
     .sw-home__cell {
         padding: 0;
         border: 1px solid var(--sw-polish-line);
-        border-radius: var(--sw-platform-radius-md, 12px);
-        box-shadow: none;
-        backdrop-filter: none;
-        -webkit-backdrop-filter: none;
+        // T-7231：恢复 T-7054 的层级材质。此前这里为了收平三表面观感，
+        // 用更高层级把玻璃、阴影和大圆角全部归零，导致工作台在生产环境只
+        // 剩下一排扁平边框；组件自己的渐变仍由 _07/_08 负责，这里只补
+        // 容器层次，不改具体组件色彩。
+        border-radius: var(--sw-radius-card, var(--sw-platform-radius-md, 14px));
+        box-shadow: var(--sw-shadow-sm, var(--sw-polish-shadow-card));
+        backdrop-filter: var(--sw-blur-lg, blur(20px));
+        -webkit-backdrop-filter: var(--sw-blur-lg, blur(20px));
     }
 
     // Keep the fallback surface deliberately low-specificity. Widget families

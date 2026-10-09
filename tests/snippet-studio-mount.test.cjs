@@ -406,3 +406,85 @@ test('studio picker filters committed IME queries once and keeps normal navigati
     query.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true}));
     assert.equal(picker.isConnected, false, '非组合 Esc 仍关闭当前目录');
 });
+
+test('studio picker exposes an in-place enable/disable action for native snippets (T-7229)', async (t) => {
+    const {document, mountSnippetStudio, i18n} = createHarness(t);
+    const native = {id: '20261006000000-toggle01', name: 'Toggle me', type: 'css', content: '.toggle{}', enabled: false};
+    let writes = 0;
+    const controller = mountSnippetStudio(document.getElementById('root'), {
+        i18n,
+        session: {draft: {...native}, baseline: {...native}},
+        store: {
+            read: async () => [{...native}],
+            mutate: async (baseline, action, draft) => {
+                assert.equal(action, 'toggle');
+                assert.equal(baseline.id, native.id);
+                writes += 1;
+                return [{...draft, enabled: true}];
+            },
+            dispose: () => {},
+        },
+    });
+    t.after(() => controller.dispose());
+    await controller.ready;
+    Array.from(document.querySelectorAll('.sw-studio__button')).find((button) => button.textContent === i18n.snippetChoose).click();
+    const picker = document.querySelector('.sw-studio__picker');
+    const row = picker.querySelector(`.sw-studio__catalog-item[data-snippet-id="${native.id}"]`).parentElement;
+    const toggle = row.querySelector('.sw-studio__catalog-toggle');
+    assert.ok(toggle, '原生片段目录项必须提供就地启停按钮');
+    assert.equal(toggle.getAttribute('aria-pressed'), 'false');
+    assert.equal(toggle.getAttribute('aria-label'), `${i18n.snippetEnable}: ${native.name}`);
+    toggle.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(writes, 1);
+    assert.equal(document.querySelector('.sw-studio__catalog-toggle')?.getAttribute('aria-pressed'), 'true');
+});
+
+test('studio picker quick toggle refuses to bypass an unsaved draft (T-7229)', async (t) => {
+    const {dom, document, mountSnippetStudio, i18n} = createHarness(t);
+    const native = {id: '20261006000000-toggle02', name: 'Toggle guard', type: 'css', content: '.guard{}', enabled: false};
+    let writes = 0;
+    const controller = mountSnippetStudio(document.getElementById('root'), {
+        i18n,
+        session: {draft: {...native}, baseline: {...native}},
+        store: {read: async () => [{...native}], mutate: async () => { writes += 1; }, dispose: () => {}},
+    });
+    t.after(() => controller.dispose());
+    await controller.ready;
+    const editor = document.querySelector('.sw-studio__editor');
+    editor.value = '.unsaved{}';
+    editor.dispatchEvent(new dom.window.Event('input', {bubbles: true}));
+    Array.from(document.querySelectorAll('.sw-studio__button')).find((button) => button.textContent === i18n.snippetChoose).click();
+    document.querySelector(`.sw-studio__catalog-item[data-snippet-id="${native.id}"]`).parentElement.querySelector('.sw-studio__catalog-toggle').click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(writes, 0, '未保存草稿存在时，目录快捷启停不得绕过离开守卫');
+    assert.equal(document.querySelector('.sw-studio__status').dataset.state, 'blocked');
+});
+
+test('studio persistent snippet selector exposes the same in-place toggle (T-7229)', async (t) => {
+    const {document, mountSnippetStudio, i18n} = createHarness(t);
+    const native = {id: '20261006000000-library-toggle', name: 'Library toggle', type: 'css', content: '.library-toggle{}', enabled: false};
+    let writes = 0;
+    const controller = mountSnippetStudio(document.getElementById('root'), {
+        i18n,
+        store: {
+            read: async () => [{...native}],
+            mutate: async (_baseline, action, draft) => {
+                assert.equal(action, 'toggle');
+                writes += 1;
+                return [{...draft, enabled: true}];
+            },
+            dispose: () => {},
+        },
+    });
+    t.after(() => controller.dispose());
+    await controller.ready;
+    const row = document.querySelector(`.sw-studio__library-item[data-library-snippet-id="${native.id}"]`).parentElement;
+    const toggle = row.querySelector('.sw-studio__library-toggle');
+    assert.ok(toggle, '常驻片段选择器必须提供就地启停按钮');
+    assert.equal(toggle.getAttribute('aria-pressed'), 'false');
+    toggle.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(writes, 1);
+    assert.equal(document.querySelector('.sw-studio__library-toggle')?.getAttribute('aria-pressed'), 'true');
+});

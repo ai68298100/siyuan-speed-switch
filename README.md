@@ -1,12 +1,26 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.46.5-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.6-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **当前稳定版：v0.46.5（2026-10-09）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.5) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **当前稳定版：v0.46.6（2026-10-09）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.6) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
+## 本次更新（v0.46.6 · 2026-10-09）
+
+新增：片段目录快速启停
+
+- 第三面板常驻片段列表和选择器目录为原生片段提供并列的“启用/停用”按钮，显示当前状态并保留失败回执。
+
+优化：第二面板与组件商店层级
+
+- 恢复工作台卡片的圆角、阴影和玻璃景深；商店详情改为标题、事实元信息、唯一实时预览和动作区，避免重复卡片。
+- 对详情区重绘清理无效无障碍引用，移动端 sheet 与桌面双栏共用同一信息层级。
+
+修复：片段启停与旧宿主兼容
+
+- 快速启停复用整表写入、回读确认和脏稿守卫；旧宿主未提供片段总开关时不再把已确认写入误报为失败。
 ## 本次更新（v0.46.5 · 2026-10-09）
 
 新增：顶栏分段式表面导航
@@ -412,7 +426,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.46.5`（2026-10-09 正式发布；本版重构顶栏分段导航，修复入口命中和悬停反馈问题；Release 资产已随 GitHub Release 提供）。
+当前版本为 `v0.46.6`（2026-10-09 正式发布；本版补齐片段目录快速启停，修复第二面板材质与商店详情层级；Release 资产已随 GitHub Release 提供）。
 
 ## 更新日志
 
@@ -620,6 +634,10 @@ pnpm verify:release
 - **组件二轮增量**：写作打卡支持每周 n/m 口径与豁免休息日；笔记统计可选写作强度分；近期写作活跃度新增年历网格视图（53 周分页 + 色阶图例）。
 - **生态与配置**：DailyHot 支持基址+路由选择器（经同一 URL 白名单校验）；世界时钟城市字段直接支持中文名（内置 110 城离线表）。
 - **兼容与工程**：最低版本升至思源 3.8.0（ADR 0064）；新增四类性能基准、可访问性基线与对比度双主题采样门禁；ActivityWatch 支持桶选择。
+
+## 致谢
+
+本插件的交互研究与实现参考了 [TCOTC/snippets](https://github.com/TCOTC/snippets) 的片段管理方式、[Obsidian Canvas](https://obsidian.md/help/plugins/canvas) 与 [JSON Canvas](https://github.com/obsidianmd/jsoncanvas) 的画布模型，也参考了 Visual Notes、Advanced Canvas、Miro 和 Milanote 对自由编排、预览与信息层级的处理。感谢这些项目及其维护者提供公开的设计与实现启发。
 
 ## 许可证
 

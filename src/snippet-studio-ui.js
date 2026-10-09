@@ -472,6 +472,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let picker = null;
     let pickerRelease = () => {};
     let libraryFilter = "all";
+    const libraryToggleBusy = new Set();
     // T-7044：目录重绘钩子——冲突副本保存成功后按现状刷新已打开的目录；
     // openPicker 注册、closePicker 摘除，picker 关闭时无渲染面可刷新
     let pickerRefresh = null;
@@ -495,6 +496,13 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         enabledCSS: typeof initialSnippetSettings?.enabledCSS === "boolean" ? initialSnippetSettings.enabledCSS : null,
         enabledJS: typeof initialSnippetSettings?.enabledJS === "boolean" ? initialSnippetSettings.enabledJS : null,
     };
+    // Signature snapshots require concrete booleans even in a test host or an
+    // older host that does not expose master flags yet. Unknown flags preserve
+    // the model's neutral default so catalog writes can still be confirmed.
+    const snapshotSettings = () => ({
+        enabledCSS: masterFlags.enabledCSS !== false,
+        enabledJS: masterFlags.enabledJS !== false,
+    });
     root.classList.add("sw-studio", "sw-platform-surface", "sw-platform-surface--studio");
     root.dataset.swSurface = "studio";
     const node = (tag, className = "", text = "") => {
@@ -1435,7 +1443,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             const next = await store.readSettings();
             if (disposed || typeof next?.enabledCSS !== "boolean" || typeof next?.enabledJS !== "boolean") return;
             masterFlags = {enabledCSS: next.enabledCSS, enabledJS: next.enabledJS};
-            lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: masterFlags});
+            lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: snapshotSettings()});
             syncFields();
         } catch (_) { /* an unavailable host setting remains visibly unavailable */ }
     }
@@ -1540,6 +1548,45 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         updateAIMode();
         renderLibrary();
     }
+    async function toggleNativeSnippet(item, busySet, refresh) {
+        if (item?.source === "builtin" || !item?.id || busy || loading || loadFailed || disposed) return;
+        if (dirty()) {
+            setStatus(t("snippetSaveFirst"), "blocked");
+            return;
+        }
+        if (busySet.has(item.id)) return;
+        const latest = snippets.find((entry) => entry.id === item.id);
+        if (!latest) {
+            setStatus(t("snippetUnavailable"), "blocked");
+            return;
+        }
+        if (latest.type === "js" && !latest.enabled && typeof win.confirm === "function" && !win.confirm(t("snippetConfirmJS"))) return;
+        busySet.add(item.id);
+        refresh?.();
+        try {
+            const next = await store.mutate(latest, "toggle", {...latest, enabled: !latest.enabled});
+            if (disposed) return;
+            if (!Array.isArray(next)) throw new Error("snippet-invalid-response");
+            snippets = next;
+            lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: snapshotSettings()});
+            const saved = next.find((entry) => entry.id === latest.id);
+            if (!saved) {
+                setStatus(t("snippetUnavailable"), "error");
+                return;
+            }
+            if (baseline?.id === latest.id) {
+                baseline = {...saved};
+                draft = {...draft, enabled: saved.enabled};
+                syncFields();
+            }
+            setStatus(saved.enabled ? t("snippetEnabled") : t("snippetDisabled"), "ready");
+        } catch (error) {
+            if (!disposed) setStatus(errorText(error), "error");
+        } finally {
+            busySet.delete(item.id);
+            if (!disposed) refresh?.();
+        }
+    }
     function renderLibrary() {
         if (!libraryList) return;
         const query = librarySearch.value.trim().toLowerCase();
@@ -1555,14 +1602,27 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             return;
         }
         for (const item of entries) {
+            const row = node("div", "sw-studio__library-item-wrap");
             const button = node("button", "sw-studio__library-item");
             button.type = "button";
             button.dataset.librarySnippetId = item.id;
             button.classList.toggle("is-active", item.id === baseline?.id);
             button.setAttribute("aria-pressed", String(item.id === baseline?.id));
+            button.disabled = libraryToggleBusy.has(item.id) || busy || loading || loadFailed;
             button.append(node("span", "sw-studio__catalog-kind", item.type.toUpperCase()), node("span", "sw-studio__library-item-copy", item.name), node("span", "sw-studio__library-item-state", item.enabled ? t("snippetEnabled") : t("snippetDisabled")));
             button.addEventListener("click", () => guardLeave(() => choose(item, item)));
-            libraryList.appendChild(button);
+            const toggle = action(item.enabled ? "snippetDisable" : "snippetEnable", (event) => {
+                event.stopPropagation();
+                void toggleNativeSnippet(item, libraryToggleBusy, renderLibrary);
+            }, "is-quiet");
+            toggle.className = "sw-studio__library-toggle";
+            toggle.dataset.librarySnippetToggleId = item.id;
+            toggle.setAttribute("aria-pressed", String(item.enabled === true));
+            toggle.setAttribute("aria-label", `${t(item.enabled ? "snippetDisable" : "snippetEnable")}: ${item.name}`);
+            toggle.title = t(item.enabled ? "snippetDisable" : "snippetEnable");
+            toggle.disabled = libraryToggleBusy.has(item.id) || busy || loading || loadFailed;
+            row.append(button, toggle);
+            libraryList.appendChild(row);
         }
     }
     function syncEditorChrome() {
@@ -2050,7 +2110,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         if (snapshot?.settings && typeof snapshot.settings.enabledCSS === "boolean" && typeof snapshot.settings.enabledJS === "boolean") {
             masterFlags = {enabledCSS: snapshot.settings.enabledCSS, enabledJS: snapshot.settings.enabledJS};
         }
-        lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: masterFlags});
+        lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: snapshotSettings()});
         pickerRefresh?.();
         if (reselect) {
             const selected = baseline?.id ? snippets.find((item) => item.id === baseline.id) || null : null;
@@ -2234,7 +2294,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             if (disposed || requestGeneration !== loadGeneration) return;
             snippets = result;
             reconcileLoadedSnippetGroups();
-            lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: masterFlags});
+            lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: snapshotSettings()});
             loadFailed = false;
             if (reselect && baseline) {
                 const current = snippets.find((item) => item.id === baseline.id);
@@ -2286,7 +2346,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 try { recycle.save(appendRecycleEntry(recycle.load(), recycleCandidate)); } catch (_) {}
             }
             snippets = next;
-            lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: masterFlags});
+            lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: snapshotSettings()});
             const saved = actionName === "delete" ? null : next.find((item) => item.id === input.id) || null;
             const metadataSaved = !saved || persistSnippetMetadata(saved.id, metadata);
             reconcileLoadedSnippetGroups();
@@ -2680,6 +2740,49 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const list = node("div", "sw-studio__catalog");
         const more = action("snippetMore", () => { limit += 40; render(); });
         let limit = 40;
+        // T-7229：目录中的原生片段提供与 TCOTC/snippets 一致的就地启停。
+        // 选择与启停拆成两个并列控件，避免把 toggle 嵌套在选择按钮里；写入仍复用
+        // 原生 whole-list mutation / 回读确认链路，失败时保留真实错误回执。
+        const catalogToggleBusy = new Set();
+        const toggleCatalogItem = async (item) => {
+            if (item?.source !== "native" || !item.id || busy || loading || loadFailed || disposed) return;
+            if (dirty()) {
+                setStatus(t("snippetSaveFirst"), "blocked");
+                return;
+            }
+            if (catalogToggleBusy.has(item.id)) return;
+            const latest = snippets.find((entry) => entry.id === item.id);
+            if (!latest) {
+                setStatus(t("snippetUnavailable"), "blocked");
+                return;
+            }
+            if (latest.type === "js" && !latest.enabled && typeof win.confirm === "function" && !win.confirm(t("snippetConfirmJS"))) return;
+            catalogToggleBusy.add(item.id);
+            render();
+            try {
+                const next = await store.mutate(latest, "toggle", {...latest, enabled: !latest.enabled});
+                if (disposed) return;
+                if (!Array.isArray(next)) throw new Error("snippet-invalid-response");
+                snippets = next;
+                lastSnapshotSignature = snippetSnapshotSignature({snippets, settings: snapshotSettings()});
+                const saved = next.find((entry) => entry.id === latest.id);
+                if (!saved) {
+                    setStatus(t("snippetUnavailable"), "error");
+                    return;
+                }
+                if (baseline?.id === latest.id && saved) {
+                    baseline = {...saved};
+                    draft = {...draft, enabled: saved.enabled};
+                    syncFields();
+                }
+                setStatus(saved?.enabled ? t("snippetEnabled") : t("snippetDisabled"), "ready");
+            } catch (error) {
+                if (!disposed) setStatus(errorText(error), "error");
+            } finally {
+                catalogToggleBusy.delete(item.id);
+                if (!disposed) pickerRefresh?.();
+            }
+        };
         const attachDropTarget = (target, groupId) => {
             target.addEventListener("dragover", (event) => {
                 if (!event.dataTransfer) return;
@@ -2706,6 +2809,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             const isCurrent = item.source === "native"
                 ? item.id === baseline?.id
                 : !baseline && item.type === draft.type && item.name === draft.name && item.content === draft.content;
+            const wrapper = node("div", "sw-studio__catalog-item-wrap");
             const button = action("snippetSelect", () => {
                 if (browse) { previewStoreEntry(item); return; }
                 guardLeave(() => {
@@ -2717,6 +2821,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             button.dataset.snippetId = item.source === "native" ? item.id : "";
             button.dataset.groupId = groupId;
             button.draggable = item.source === "native";
+            button.disabled = item.source === "native" && catalogToggleBusy.has(item.id);
             button.setAttribute("aria-pressed", String(isCurrent));
             button.setAttribute("aria-label", `${item.name} · ${item.type.toUpperCase()}`);
             if (isCurrent) button.classList.add("is-current");
@@ -2737,8 +2842,23 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                     button.classList.add("is-dragging");
                 });
                 button.addEventListener("dragend", () => button.classList.remove("is-dragging"));
+                if (!browse) {
+                    const toggle = action(item.enabled ? "snippetDisable" : "snippetEnable", (event) => {
+                        event.stopPropagation();
+                        void toggleCatalogItem(item);
+                    }, "is-quiet");
+                    toggle.className = "sw-studio__catalog-toggle";
+                    toggle.dataset.snippetToggleId = item.id;
+                    toggle.setAttribute("aria-pressed", String(item.enabled === true));
+                    toggle.setAttribute("aria-label", `${t(item.enabled ? "snippetDisable" : "snippetEnable")}: ${item.name}`);
+                    toggle.title = t(item.enabled ? "snippetDisable" : "snippetEnable");
+                    toggle.disabled = catalogToggleBusy.has(item.id) || busy || loading || loadFailed;
+                    wrapper.append(button, toggle);
+                } else wrapper.appendChild(button);
+                return wrapper;
             }
-            return button;
+            wrapper.appendChild(button);
+            return wrapper;
         };
         const appendGroup = (group, entries, index) => {
             const section = node("section", "sw-studio__group");

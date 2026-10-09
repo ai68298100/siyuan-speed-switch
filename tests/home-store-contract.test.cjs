@@ -10,6 +10,7 @@ const storeUiSource = readSourceText(path.join(root, "src", "home-store-ui.ts"))
 const secondPanelSource = readSourceText(path.join(root, "src", "second-panel-ui.ts"));
 // R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
 const configFormSource = readSourceText(path.join(root, "src", "home-config-form.ts"));
+const storeCardStyles = readSourceText(path.join(root, "src", "styles", "_08-home-store-cards.scss"));
 
 test("standalone dialogs tear down malformed host shells", () => {
     const guards = [
@@ -131,6 +132,8 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(storeUiSource, /homeStoreResultSummary/);
     assert.match(storeUiSource, /homeStoreChooseSize/);
     assert.match(storeUiSource, /homeStoreStatusCurrent/);
+    assert.match(storeCardStyles, /\.sw-home-store__detail-head\s*\{/);
+    assert.match(storeCardStyles, /\.sw-home-store__detail-actions\s*\{/);
     assert.match(storeUiSource, /collapsedGroups = new Set/);
     assert.match(storeUiSource, /homeStoreCollapseGroup/);
     assert.match(storeUiSource, /homeStoreExpandGroup/);
@@ -159,4 +162,19 @@ test("third-party home modules survive host normalization and store preview hono
         "内联预览必须使用卡片当前已添加尺寸或同一默认档位");
     assert.match(storeUiSource, /buildReadyCard\(storeSelectedModule, detailDef, "detail", inlinePreview\.mount\.setSize\)/,
         "尺寸按钮必须把变化同步到内联预览");
+    // T-7231：详情栏只借用卡片的标题和尺寸动作，不能把第二份完整卡片
+    // 再挂到实时预览之后，否则右栏会出现重复预览和不清晰的滚动层级。
+    assert.match(storeUiSource, /const detailHead = detailCard\.querySelector<HTMLElement>\("\.sw-home-store__card-head"\)/);
+    assert.match(storeUiSource, /detailPane\.appendChild\(inlinePreview\.section\)/);
+    assert.match(storeUiSource, /detailSizes\.classList\.add\("sw-home-store__detail-actions"\)/);
+    assert.match(storeUiSource, /detailPane\.removeAttribute\("aria-labelledby"\)/);
+    assert.match(storeUiSource, /detailPane\.setAttribute\("aria-labelledby", detailTitle\.id\)/);
+    assert.doesNotMatch(storeUiSource, /detailPane\.appendChild\(buildReadyCard\(storeSelectedModule, detailDef, "detail", inlinePreview\.mount\.setSize\)\)/,
+        "详情栏不得把完整目录卡和实时预览重复挂载");
+    const injectedDuplicate = storeUiSource.replace(
+        "detailPane.appendChild(inlinePreview.section);",
+        "detailPane.appendChild(inlinePreview.section); detailPane.appendChild(buildReadyCard(storeSelectedModule, detailDef, \"detail\", inlinePreview.mount.setSize));",
+    );
+    assert.match(injectedDuplicate, /detailPane\.appendChild\(buildReadyCard\(storeSelectedModule, detailDef, "detail", inlinePreview\.mount\.setSize\)\)/,
+        "负向注入必须能识别重复详情卡");
 });
