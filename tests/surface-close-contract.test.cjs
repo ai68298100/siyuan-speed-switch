@@ -19,8 +19,8 @@ test("mobile surface chrome owns a visible close callback", () => {
     mustInclude(mobileSource,
         "this.mountPlatformChrome(mobileBody, {",
         "移动切换器必须装配平台表面头部");
-    mustInclude(mobileSource,
-        "onNavigate: navigatePlatformSurface,\n                onClose: () => dialog.destroy(),\n                closeLabel: this.i18n.close,",
+    assert.match(mobileSource,
+        /onNavigate: navigatePlatformSurface,[\s\S]*?onClose: \(\) => dialog\.destroy\(\),\s*closeLabel: this\.i18n\.close,/,
         "移动切换器必须把统一关闭按钮接到当前 Dialog");
 });
 

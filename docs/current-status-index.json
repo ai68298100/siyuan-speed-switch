@@ -2323,6 +2323,25 @@
         "docs/dev-plan-2026-10-06.md"
       ],
       "next": "T-7140"
+    },
+    {
+      "id": "T-7237",
+      "title": "首屏打开与组件商店筛选性能",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "performance",
+      "dependsOn": [
+        "T-7236"
+      ],
+      "evidence": [
+        "src/styles/_03-switcher-mobile.scss",
+        "src/home-store-ui.ts",
+        "tests/switcher-performance-contract.test.cjs",
+        "docs/adr/0164-performance-first-paint.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7140"
     }
   ],
   "global": {

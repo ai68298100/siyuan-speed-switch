@@ -4607,16 +4607,19 @@ const updatedMap: {[rootId: string]: string} = {};
         }
         this.bindKeydown(scrollElement, closeOverlay);
 
-        // 最近编辑排序和可选卡片改动信息共用 blocks.updated；非排序模式仅更新卡片 meta。
-        this.loadUpdatedMap(tabs).then((map) => {
-            Object.assign(updatedMap, map);
-            if (!dialog.element.isConnected) return;
-            if (sortSelect?.value === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
-                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
-            } else if (this.getSettings().showCardUpdatedBadge === true) {
-                this.refreshCardUpdatedBadges(scrollElement, updatedMap);
-            }
-        });
+        // 最近编辑排序和可选卡片改动信息共用 blocks.updated。默认按 MRU 且未开启
+        // 改动标记时，首屏不消费该映射，跳过一次内核 SQL，避免打开切换器被无用请求拖慢。
+        if (settings.sortBy === "updatedDesc" || settings.showCardUpdatedBadge === true) {
+            this.loadUpdatedMap(tabs).then((map) => {
+                Object.assign(updatedMap, map);
+                if (!dialog.element.isConnected) return;
+                if (sortSelect?.value === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
+                    this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
+                } else if (this.getSettings().showCardUpdatedBadge === true) {
+                    this.refreshCardUpdatedBadges(scrollElement, updatedMap);
+                }
+            });
+        }
 
         // 搜索：已打开页签匹配显示在上半部分，同时全库文档结果显示在下半部分
         if (searchInput) {
@@ -12634,20 +12637,22 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 {id: this.getMobileActiveTabId()} as Tab, listOpts, sortSelect.value as SortBy, updatedMap);
         };
         refreshMobileList();
-        // 移动端沿用同一更新时间映射；非排序模式只刷新卡片信息，保留查询与滚动。
+        // 移动端沿用同一更新时间映射；默认 MRU 且未显示改动标记时跳过首屏 SQL。
         const mergedMap = updatedMap;
-        this.loadUpdatedMap(this.getMobileTabs()).then((map) => {
-            Object.assign(mergedMap, map);
-            if (dialog.element.isConnected && sortSelect.value === "updatedDesc") {
-                refreshMobileList();
-                const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
-                if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
-                    this.applySearch(scrollElement, searchInput, () => dialog.destroy());
+        if (settings.sortBy === "updatedDesc" || settings.showCardUpdatedBadge === true) {
+            this.loadUpdatedMap(this.getMobileTabs()).then((map) => {
+                Object.assign(mergedMap, map);
+                if (dialog.element.isConnected && sortSelect.value === "updatedDesc") {
+                    refreshMobileList();
+                    const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
+                    if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
+                        this.applySearch(scrollElement, searchInput, () => dialog.destroy());
+                    }
+                } else if (dialog.element.isConnected && this.getSettings().showCardUpdatedBadge === true) {
+                    this.refreshCardUpdatedBadges(scrollElement, mergedMap);
                 }
-            } else if (dialog.element.isConnected && this.getSettings().showCardUpdatedBadge === true) {
-                this.refreshCardUpdatedBadges(scrollElement, mergedMap);
-            }
-        });
+            });
+        }
         return {renderMobileList: refreshMobileList};
     }
 
@@ -13488,16 +13493,19 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             }
         }
 
-        // 侧栏共用 blocks.updated；非排序模式只刷新卡片信息，避免破坏搜索过滤。
-        this.loadUpdatedMap(tabs).then((map) => {
-            Object.assign(updatedMap, map);
-            const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
-            if (element.isConnected && this.getSettings().sortBy === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
-                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
-            } else if (element.isConnected && this.getSettings().showCardUpdatedBadge === true) {
-                this.refreshCardUpdatedBadges(scrollElement, updatedMap);
-            }
-        });
+        // 侧栏共用 blocks.updated；无排序/标记需求时跳过首屏 SQL，避免侧栏打开等待内核。
+        const sidebarSettings = this.getSettings();
+        if (sidebarSettings.sortBy === "updatedDesc" || sidebarSettings.showCardUpdatedBadge === true) {
+            this.loadUpdatedMap(tabs).then((map) => {
+                Object.assign(updatedMap, map);
+                const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
+                if (element.isConnected && this.getSettings().sortBy === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
+                    this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
+                } else if (element.isConnected && this.getSettings().showCardUpdatedBadge === true) {
+                    this.refreshCardUpdatedBadges(scrollElement, updatedMap);
+                }
+            });
+        }
 
         // 面板尺寸变化时仅重算缩略图缩放比例（ResizeObserver 覆盖拖动分隔条等所有场景）
         this.observeSidebarResize(element);

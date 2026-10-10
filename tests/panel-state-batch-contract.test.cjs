@@ -22,7 +22,7 @@ test('renderList captures scroll and focus scene before clearing (T-7009)', () =
     assert.match(indexSource, /const restoreListScene = \(\) => \{[\s\S]{0,240}?scrollElement\.scrollTop = Math\.min\(scenePrevScrollTop, Math\.max\(0, scrollElement\.scrollHeight - scrollElement\.clientHeight\)\);/);
     assert.match(indexSource, /\.find\(\(card\) => card\.dataset\.tabId === sceneFocusTabId\);[\s\S]{0,60}restored\?\.focus\(\{preventScroll: true\}\);/);
     // 两个恢复点：空态分支 + 渲染尾部（updateDigitBadges 之后）
-    assert.match(indexSource, /scrollElement\.appendChild\(this\.buildEmptyState\(\)\);\s*\n\s*restoreListScene\(\);\s*\n\s*return;/);
+    assert.match(indexSource, /scrollElement\.appendChild\(this\.buildEmptyState\(scrollElement\)\);\s*\n\s*restoreListScene\(\);\s*\n\s*return;/);
     assert.match(indexSource, /this\.updateDigitBadges\(scrollElement\);\s*\n\s*restoreListScene\(\);\s*\n\s*\}/);
 });
 

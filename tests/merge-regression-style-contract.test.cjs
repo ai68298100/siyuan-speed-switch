@@ -29,7 +29,8 @@ test('platform chrome restores settings, Escape hint and dialog close affordance
     const missingIcon = removeFromRule(source, '.sw-platform-header__icon-action {', 'cursor: pointer;');
     assert.equal(declaresIn(missingIcon, '.sw-platform-header__icon-action', /cursor:\s*pointer/, topLevel), false,
         '删除设置按钮 cursor 后门禁必须失败');
-    const missingHint = removeFromRule(source, '.sw-platform-header__close-hint,', 'display: inline-flex;');
+    // 锚定真正的提示联合规则；更早的侧栏隐藏规则也包含同名选择器，不能误删其块。
+    const missingHint = removeFromRule(source, '.sw-platform-header__close-hint,\n.sw-platform-dialog__close-hint {', 'display: inline-flex;');
     assert.equal(declaresIn(missingHint, '.sw-platform-header__close-hint', /display:\s*inline-flex/, topLevel), false,
         '删除 Esc 提示 display 后门禁必须失败');
 });

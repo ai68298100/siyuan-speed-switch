@@ -513,6 +513,13 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             storeFragment.appendChild(searchBar);
             let filterEmptyState: HTMLElement | null = null;
             let resultSummary: HTMLElement | null = null;
+            // Filtering runs for every search keystroke. Keep the nodes created by
+            // this render pass in a small index so input handling does not repeat
+            // the same querySelectorAll/Array.from walks on the whole store tree.
+            let catalogCards: HTMLElement[] = [];
+            let catalogCardDatasets: DOMStringMap[] = [];
+            let catalogGroups: Array<{heading: HTMLElement; grid: HTMLElement; cards: HTMLElement[]}> = [];
+            let storeSections: Array<{heading: HTMLElement; section: HTMLElement}> = [];
 
             const applyFilter = () => {
                 const query = normalizeHomeStoreQuery(searchInput.value);
@@ -527,34 +534,30 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 // 是让"源码扫描类"门禁读到旧表达式文本——而那些文本其实躺在行尾注释
                 // 里，门禁一直在读注释（2026-09-16 扫描前剥离注释后暴露，见 D-395）。
                 // T-6967 S1：筛选只作用于目录窗格——详情窗格的完整卡片不随搜索隐藏。
-                catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
+                const cardDatasets = catalogCardDatasets;
+                catalogCards.forEach((card) => {
                     const visible = matchesHomeStoreTokens(card.dataset, query, filter);
                     card.classList.toggle("fn__none", !visible);
                     card.setAttribute("aria-hidden", String(!visible));
                     card.dataset.filterMatch = String(visible);
                 });
-                catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__group").forEach((heading) => {
-                    const grid = heading.nextElementSibling;
-                    if (!grid) return;
-                    const visible = Array.from(grid.children).some((card) => !card.classList.contains("fn__none"));
+                catalogGroups.forEach(({heading, grid, cards}) => {
+                    const visible = cards.some((card) => !card.classList.contains("fn__none"));
                     heading.classList.toggle("fn__none", !visible);
                     grid.classList.toggle("fn__none", !visible);
                     grid.classList.toggle("fn__none", heading.dataset.collapsed === "true");
                     heading.setAttribute("aria-hidden", String(!visible));
                     grid.setAttribute("aria-hidden", String(!visible || heading.dataset.collapsed === "true"));
                 });
-                root.querySelectorAll<HTMLElement>(".sw-home-store__section").forEach((heading) => {
-                    const section = heading.nextElementSibling;
-                    if (!section) return;
+                storeSections.forEach(({heading, section}) => {
                     const visible = heading.dataset.section === "ready"
-                        ? Array.from(catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__group"))
-                            .some((group) => !group.classList.contains("fn__none"))
+                        ? catalogGroups.some(({heading: group}) => !group.classList.contains("fn__none"))
                         : Array.from(section.children).some((card) => !card.classList.contains("fn__none"));
                     heading.classList.toggle("fn__none", !visible);
                     heading.setAttribute("aria-hidden", String(!visible));
                     if (heading.dataset.section !== "ready") section.classList.toggle("fn__none", !visible);
                 });
-                const hasVisibleCards = Array.from(catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__card"))
+                const hasVisibleCards = catalogCards
                     .some((card) => !card.classList.contains("fn__none"));
                 const focusedCard = focusedBeforeFilter?.closest<HTMLElement>(".sw-home-store__card");
                 if (focusedCard && focusedCard.classList.contains("fn__none")) {
@@ -565,8 +568,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 filterEmptyState?.classList.toggle("fn__none", hasVisibleCards);
                 filterEmptyState?.setAttribute("aria-hidden", String(hasVisibleCards));
                 if (resultSummary) {
-                    const cards = Array.from(catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__card"));
-                    const summary = summarizeHomeStoreCards(cards.map((card) => card.dataset), query, filter);
+                    const summary = summarizeHomeStoreCards(cardDatasets, query, filter);
                     // Legacy summary contract: this.i18n.homeStoreResultSummary.replace("{visible}", String(summary.visible)).replace("{total}", String(summary.total)).replace("{added}", String(summary.added));
                     resultSummary.textContent = buildHomeStoreResultSummary(summary, this.i18n.homeStoreResultSummary);
                     resultSummary.dataset.visible = String(summary.visible);
@@ -577,7 +579,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                     root.dataset.totalCount = String(summary.total);
                     root.dataset.addedCount = String(summary.added);
                 }
-                const tabCounts = buildHomeStoreTabCounts(Array.from(catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__card")).map((card) => card.dataset));
+                const tabCounts = buildHomeStoreTabCounts(cardDatasets);
                 tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((button) => {
                     const key = button.dataset.tabKey || "all";
                     const count = tabCounts[key as keyof typeof tabCounts] ?? 0;
@@ -1523,6 +1525,29 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 activeCard?.classList.add("is-active");
                 activeCard?.setAttribute("aria-current", "true");
             }
+            // Build the filter index once after the catalog fragment is mounted.
+            // Subsequent input events can now update classes and summaries without
+            // forcing repeated selector walks through the complete store DOM.
+            catalogCards = Array.from(catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__card"));
+            catalogCardDatasets = catalogCards.map((card) => card.dataset);
+            catalogGroups = Array.from(catalogPane.querySelectorAll<HTMLElement>(".sw-home-store__group"))
+                .map((heading) => {
+                    const grid = heading.nextElementSibling;
+                    if (!(grid instanceof HTMLElement)) return null;
+                    return {
+                        heading,
+                        grid,
+                        cards: Array.from(grid.children).filter((child): child is HTMLElement => child instanceof HTMLElement
+                            && child.classList.contains("sw-home-store__card")),
+                    };
+                })
+                .filter((group): group is {heading: HTMLElement; grid: HTMLElement; cards: HTMLElement[]} => group !== null);
+            storeSections = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__section"))
+                .map((heading) => {
+                    const section = heading.nextElementSibling;
+                    return section instanceof HTMLElement ? {heading, section} : null;
+                })
+                .filter((section): section is {heading: HTMLElement; section: HTMLElement} => section !== null);
             const mobileDetailReturnFocus = storeSelectedModule
                 ? catalogPane.querySelector<HTMLElement>(`.sw-home-store__card[data-module-id="${storeSelectedModule}"]`)
                 : null;

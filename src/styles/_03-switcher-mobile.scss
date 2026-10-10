@@ -2102,6 +2102,16 @@
         }
     }
 
+    // T-7237：首屏打开性能——桌面切换器/侧栏可能同时承载几十到上百张
+    // 卡片。保留完整 DOM 和 IntersectionObserver 的缩略图契约，但让浏览器
+    // 跳过可视区外卡片的布局与绘制；固有尺寸避免滚动条在卡片进入视口时跳动。
+    // 手机端使用独立卡片密度和宿主滚动语义，继续走原有路径，避免旧 WebView
+    // 对 content-visibility 的实现差异影响触控焦点。
+    &:not(.sw__mobile) .sw__card {
+        content-visibility: auto;
+        contain-intrinsic-size: 220px 176px;
+    }
+
     // 缩略图框（高度可由 --sw-thumb-height 变量控制）
     .sw__thumb {
         position: relative;
