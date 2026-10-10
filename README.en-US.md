@@ -1,17 +1,37 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.46.8-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.9-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Current stable release: v0.46.8 (2026-10-10)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.8) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Current stable release: v0.46.9 (2026-10-11)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.9) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
 > **Beta notice**: 小驴考试, 小驴管家, 小驴闪卡, and 小驴常用 are beta plugins under active development and validation. Join QQ group **871707735** for bug reports and feature requests.
 
-## What's New In v0.46.8 (2026-10-10)
+## What's New In v0.46.9 (2026-10-11)
 
-This release closes the three-surface UI loop with compact-container support, recoverable failures, focus continuity, and full interaction regression coverage.
+This release closes the real-kernel E2E loop with bounded previews, reliable mobile settings geometry, and honest stale-state feedback.
+
+Added: Real-kernel E2E release evidence
+
+- Completed the three-surface, settings, mobile-layout, widget-store, and snippet flows in an isolated SiYuan `3.8.7-alpha.6` backend run with exit code 0.
+- Added assertions for preview boundaries, mobile touch targets, retained stale state, and search-index readiness.
+
+Improved: Preview and mobile settings layout
+
+- The third-panel preview section owns its overflow boundary, so short windows no longer cover the details below it.
+- Mobile settings tabs keep a 44px touch target and the search bar aligns with panel padding without horizontal overflow.
+
+Fixed: Mobile timing and workbench state regression
+
+- Mobile E2E waits for the host search index after creating documents instead of treating indexing latency as an empty result.
+- A failed refresh with retained content is reported as stale and keeps the existing content and Retry action.
+
+<details>
+<summary>Previous release updates (v0.46.8 and earlier)</summary>
+
+## Previous release updates (v0.46.8 · 2026-10-10)
 
 Added: Compact top-bar containers and snippet focus continuity
 
@@ -31,9 +51,6 @@ Improved: Top-bar hierarchy and touch targets
 Fixed: Notebook configuration failure feedback
 
 - Notebook request failures now show an explicit failure state and retry action instead of an empty list; successful retries restore options, the previous value, and button state, while late responses after disposal are ignored.
-
-<details>
-<summary>Previous release updates (v0.46.7 and earlier)</summary>
 
 ## Previous release updates (v0.46.7 · 2026-10-09)
 
@@ -475,7 +492,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.46.8` (2026-10-10; this release closes the three-surface UI loop with compact-container support, recoverable failures, focus continuity, and regression coverage; GitHub release assets are synchronized).
+The current version is `v0.46.9` (2026-10-11; this release closes the real-kernel E2E loop with bounded previews, reliable mobile settings geometry, and honest stale-state feedback; GitHub release assets are synchronized).
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>

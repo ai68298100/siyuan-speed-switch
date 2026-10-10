@@ -10,6 +10,16 @@ import {openApp, createClient} from "./helpers/app.mjs";
 const OUT = path.resolve(".tmp", "mobile-layout");
 const RUN = String(Date.now()).slice(-6);
 
+async function waitForIndexedDocuments(client, titles) {
+    await expect.poll(async () => {
+        const indexed = await Promise.all(titles.map(async (title) => {
+            const records = await client.postChecked("/api/filetree/searchDocs", {k: title});
+            return Array.isArray(records) && records.some((record) => String(record?.hPath || "").split("/").pop() === title);
+        }));
+        return indexed.every(Boolean);
+    }, {timeout: 30000, intervals: [250, 500, 1000]}).toBe(true);
+}
+
 async function newMobilePage(browser) {
     const context = await browser.newContext({...devices["iPhone 13"]});
     const page = await context.newPage();
@@ -54,6 +64,7 @@ test("mobile switcher: recent cards keep one card body", async ({browser}) => {
                 notebook, path: `/速切布局文档${RUN}-${i}`, markdown: `# 速切布局文档${RUN}-${i}\n\n内容段落，用于生成缩略图。`,
             });
         }
+        await waitForIndexedDocuments(client, [1, 2].map((i) => `速切布局文档${RUN}-${i}`));
         const {context, page} = await newMobilePage(browser);
         // 打开两篇文档生成最近记录，然后回到切换器（手机走真实顶栏按钮路径——
         // 公开钩子 openSwitcher 在手机端是 no-op）
@@ -108,6 +119,7 @@ test("mobile: closing a tab from the switcher stays in the plugin (T-6925)", asy
                 notebook, path: `/速切关签文档${RUN}-${i}`, markdown: `# 速切关签文档${RUN}-${i}\n\n内容。`,
             });
         }
+        await waitForIndexedDocuments(client, [1, 2].map((i) => `速切关签文档${RUN}-${i}`));
         const {context, page} = await newMobilePage(browser);
         // 依次打开两篇文档（第二篇为活动页签，第一篇为非活动）
         for (let i = 1; i <= 2; i++) {

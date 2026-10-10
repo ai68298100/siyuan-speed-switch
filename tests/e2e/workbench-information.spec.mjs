@@ -38,10 +38,12 @@ test("workbench keeps actions compact and exposes loading, failure and recovery"
     const refresh = root.locator(".sw-home__refresh");
     await page.evaluate(() => {window.__workbenchFixture.mode = "failed";});
     await refresh.click();
-    await expect.soft(receipt, "failed receipt").toHaveAttribute("data-state", "error", {timeout: 300});
-    await expect(summary).toHaveText("1/2 widgets healthy · 1 failed");
+    // A failed refresh with a retained snapshot is an honest stale-cache state:
+    // the workbench remains usable while the affected cell exposes the failure.
+    await expect.soft(receipt, "stale receipt").toHaveAttribute("data-state", "ready", {timeout: 300});
+    await expect(summary).toHaveText("1/2 widgets healthy · 1 stale");
     await expect(root.locator('.sw-home__cell[data-module-id="e2e-workbench-slow"]')).toContainText("Retained component content");
-    await expect(root.locator('.sw-home__cell[data-module-id="e2e-workbench-slow"]')).toHaveAttribute("data-sw-health", "failed");
+    await expect(root.locator('.sw-home__cell[data-module-id="e2e-workbench-slow"]')).toHaveAttribute("data-sw-health", "stale");
     await expect(refresh).toHaveAttribute("aria-busy", "false");
     await expect(refresh).toContainText("Retry");
     await page.evaluate(() => {window.__workbenchFixture.mode = "pending"; window.__workbenchFixture.release = null;});

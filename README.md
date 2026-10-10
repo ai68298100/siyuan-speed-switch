@@ -1,17 +1,37 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.46.8-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.9-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **当前稳定版：v0.46.8（2026-10-10）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.8) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **当前稳定版：v0.46.9（2026-10-11）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.9) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡、小驴常用为内测版，功能仍在持续开发与验证中；欢迎加入 QQ 群 **871707735** 反馈 Bug、提交需求。
 
-## 本次更新（v0.46.8 · 2026-10-10）
+## 本次更新（v0.46.9 · 2026-10-11）
 
-本版完成三面板 UI 收口，补齐窄容器、失败重试、焦点恢复和发布前全量交互回归。
+本版完成真实内核 E2E 收口，修复短窗口预览遮挡、手机设置窄屏触控与索引时序误报。
+
+新增：真实内核 E2E 发布回归证据
+
+- 在独立思源 `3.8.7-alpha.6` 后台完成三面板、设置、移动布局、组件商店和片段链路回归；通过轮次退出码为 0。
+- 增加预览边界、手机设置触控尺寸、工作台 stale 状态和索引就绪条件的自动化断言。
+
+优化：第三面板预览与手机设置布局
+
+- 预览区自身承载溢出滚动，短窗口下不再覆盖下方详情。
+- 手机设置标签保持至少 44px 触控高度，搜索条与面板内边距对齐，不再产生横向溢出。
+
+修复：移动布局与工作台状态回归
+
+- 创建文档后等待思源搜索索引就绪，避免把宿主异步延迟误报为插件无结果。
+- 保留旧快照的刷新失败显示为 stale，并保留原内容和 Retry 操作。
+
+<details>
+<summary>历史更新（v0.46.8 及更早，点击展开）</summary>
+
+## 上一版本更新（v0.46.8 · 2026-10-10）
 
 新增：顶栏窄容器适配与片段入口焦点连续性
 
@@ -31,9 +51,6 @@
 修复：笔记本配置加载失败反馈
 
 - 笔记本请求失败不再伪装为空列表，设置页显示失败状态和重试按钮；重试成功后恢复选项、原值和按钮状态，表单销毁后忽略迟到回包。
-
-<details>
-<summary>历史更新（v0.46.7 及更早，点击展开）</summary>
 
 ## 上一版本更新（v0.46.7 · 2026-10-09）
 
@@ -478,7 +495,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.46.8`（2026-10-10；本版完成三面板 UI 收口并补齐窄容器、失败重试、焦点恢复和交互回归；Release 资产已同步至 GitHub）。
+当前版本为 `v0.46.9`（2026-10-11；本版完成真实内核 E2E 收口并修复预览边界、手机设置触控和 stale 状态；Release 资产已同步至 GitHub）。
 
 <details>
 <summary>历史更新日志（点击展开）</summary>

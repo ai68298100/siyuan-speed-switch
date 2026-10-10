@@ -99,7 +99,10 @@
         background: color-mix(in srgb, var(--b3-theme-background) 92%, var(--studio-surface));
         box-shadow: var(--studio-shadow-card);
     }
-    &__preview-section { display: flex; flex-direction: column; padding: 14px; }
+    // Keep the preview card inside its grid row when the toolbar wraps or the
+    // host window is short. The preview canvas still owns its own iframe
+    // scrolling; this boundary only exposes the section's overflow controls.
+    &__preview-section { display: flex; flex-direction: column; overflow: auto; padding: 14px; }
     &__section-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; margin-bottom: 10px; }
     &__section-lead { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; flex-wrap: wrap; }
     &__section-title { margin: 0; font-size: 14px; line-height: 1.35; font-weight: 700; letter-spacing: -.01em; }

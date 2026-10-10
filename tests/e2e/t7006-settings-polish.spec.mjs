@@ -13,6 +13,7 @@ test("T-7006 settings rail and range controls stay usable at narrow width", asyn
     const settings = page.locator(".sw-settings");
     await expect(settings).toBeVisible();
     const rail = settings.locator(".sw-settings__tabs");
+    await expect.poll(() => rail.evaluate((element) => getComputedStyle(element.closest(".b3-dialog__container")).transform)).toBe("none");
     const railMetrics = await rail.evaluate((element) => {
         const style = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
@@ -29,6 +30,7 @@ test("T-7006 settings rail and range controls stay usable at narrow width", asyn
     expect(railMetrics.scrollable).toBeTruthy();
 
     const tab = rail.locator('.sw-settings__tab[data-panel="mobile"]');
+    expect(await tab.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
     await tab.focus();
     await expect(tab).toBeFocused();
     expect(await tab.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none");

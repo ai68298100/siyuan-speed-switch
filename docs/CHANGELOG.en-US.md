@@ -5,6 +5,13 @@
 
 ## Changelog (full history)
 
+### v0.46.9 (2026-10-11)
+
+- **Added real-kernel E2E release evidence**: completed the three-surface, settings, mobile-layout, widget-store, and snippet flows in an isolated SiYuan `3.8.7-alpha.6` backend run with exit code 0, including preview-boundary, touch-target, stale-state, and index-readiness assertions.
+- **Improved preview and mobile settings layout**: the third-panel preview section owns its overflow boundary; mobile settings tabs keep a 44px touch target and the search bar no longer overflows horizontally.
+- **Fixed mobile timing and workbench state regression**: mobile E2E waits for the host index after creating documents; retained content after a failed refresh is reported as stale with the existing Retry action preserved.
+- **Verification**: background run `20261010172658-63372-e9c870` on SiYuan `3.8.7-alpha.6` exited 0; targeted E2E, TypeScript, production build, and release gates passed.
+
 ### v0.46.8 (2026-10-10)
 
 - **Added compact top-bar containers and snippet focus continuity**: custom narrow panels now use the real container width, and closing the snippet picker restores focus to its actual opener.

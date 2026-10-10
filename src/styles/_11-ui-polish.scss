@@ -1191,3 +1191,15 @@
     .sw-home .sw-home__cell,
     .speed-switch .sw__doc-status--loading > .sw__spin { transition: none !important; animation: none !important; }
 }
+
+// T-7240：窄屏设置页触控区与搜索条边界收口。
+// _04/_05 的桌面主题规则位于基础窄屏规则之后，会把标签按钮降到 36px；
+// 同时桌面搜索条的 -18px 外边距不匹配手机面板的 14px 内边距，造成 4px 溢出。
+@media (max-width: 560px) {
+    .sw-settings .sw-settings__tabs { min-height: 49px; }
+    .sw-settings .sw-settings__tab { min-height: 44px; }
+    .sw-settings .sw-settings__search {
+        margin-inline: -14px;
+        padding-inline: 14px;
+    }
+}
