@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const {readSourceFile} = require('./source-scan.cjs');
 
 const formSource = readSourceFile('src/home-config-form.ts');
+const notebookLoaderSource = readSourceFile('src/notebook-load-ui.js');
 const panelSource = readSourceFile('src/second-panel-ui.ts');
 const zh = JSON.parse(require('node:fs').readFileSync(path0(), 'utf8'));
 function path0() {
@@ -64,8 +65,10 @@ test('lifecycle: home config form disposes search timers and ignores late option
     assert.match(formSource,
         /loadHomeDatabaseOptions\(\)\.then\(\(items\) => \{\s*if \(formDisposed\) return;/,
         '数据库选项迟到响应必须在销毁后丢弃');
-    assert.match(formSource,
-        /loadNotebooks\(\)\.then\(\(notebooks\) => \{\s*if \(formDisposed\) return;/,
+    assert.equal((formSource.match(/load: \(\) => this\.loadNotebooksDetailed\(\)/g) || []).length, 2,
+        '笔记本初次加载与重试都必须保留详细失败状态');
+    assert.match(notebookLoaderSource,
+        /if \(isDisposed\(\)\) return;/,
         '笔记本选项迟到响应必须在销毁后丢弃');
     assert.match(formSource,
         /if \(!formDisposed && generation === loadGeneration && blockId === String\(draft\.blockId \|\| ""\)\) render\(items\);/,
@@ -82,4 +85,10 @@ test('lifecycle: home config form disposes search timers and ignores late option
     assert.match(formSource,
         /let initialFocusTimer: number \| null = window\.setTimeout\(\(\) => \{\s*initialFocusTimer = null;\s*const first = controls\.values\(\)\.next\(\)\.value;\s*if \(root\.isConnected\) first\?\.focus\(\);\s*\}, 0\);\s*registerConfigFormCleanup\(\(\) => \{\s*if \(initialFocusTimer !== null\) \{\s*window\.clearTimeout\(initialFocusTimer\);/,
         '首焦点 timer 必须随配置表单销毁清理');
+});
+
+test('lifecycle contract rejects the legacy notebook array-only loader wiring', () => {
+    const regressed = formSource.replace(/load: \(\) => this\.loadNotebooksDetailed\(\)/g, 'load: () => this.loadNotebooks()');
+    assert.notEqual((regressed.match(/load: \(\) => this\.loadNotebooksDetailed\(\)/g) || []).length, 2,
+        '负向注入必须破坏详细加载接线');
 });

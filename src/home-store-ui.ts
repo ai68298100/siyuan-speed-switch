@@ -850,6 +850,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 if (availability) {
                     const badge = document.createElement("em");
                     badge.className = `sw-home-store__availability sw-home-store__availability--${availability}`;
+                    badge.id = `sw-home-store-availability-${moduleId}${idSuffix}`;
                     badge.textContent = availability === "external" ? this.i18n.homeStoreAvailabilityExternal : this.i18n.homeStoreAvailabilityConditional;
                     badge.setAttribute("aria-label", badge.textContent);
                     badge.title = badge.textContent;
@@ -858,6 +859,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 }
                 const desc = document.createElement("span");
                 desc.textContent = def.description || "";
+                desc.id = `sw-home-store-description-${moduleId}${idSuffix}`;
                 const supportedDevices = Array.isArray(def.supportedDevices) ? def.supportedDevices : [device];
                 const deviceLabels: Record<string, string> = {
                     desktop: this.i18n.homeStoreDeviceDesktop,
@@ -1040,7 +1042,12 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                         tile.dataset.selected = "true";
                         tiles.dataset.selectedSize = sizeKey;
                         addButton.dataset.selectedSize = sizeKey;
-                        addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId} · ${tile.textContent || sizeKey}`);
+                        const sizeActionLabel = guideOnly
+                            ? resolveHomeStorePrimaryActionLabel(card.dataset, {guide: this.i18n.homeStoreGuide || "查看说明"})
+                            : added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd;
+                        const accessibleLabel = `${sizeActionLabel} · ${def.title || moduleId}${guideOnly ? "" : ` · ${tile.textContent || sizeKey}`}`;
+                        addButton.setAttribute("aria-label", accessibleLabel);
+                        addButton.title = accessibleLabel;
                         onSizeChange(sizeKey);
                     };
                     bindRenderListener(tile, "keydown", (event) => {
@@ -1055,29 +1062,37 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 });
                 tiles.insertAdjacentHTML("beforeend", `<button class="b3-button b3-button--outline sw-home-store__add">${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd}</button>`);
                 const addButton = tiles.lastElementChild as HTMLButtonElement;
+                const guideOnly = !added && card.dataset.primaryAction === "guide";
                 addButton.type = "button";
                 addButton.id = actionId;
-                addButton.dataset.action = added ? "apply-size" : "add";
+                addButton.dataset.action = guideOnly ? "guide" : added ? "apply-size" : "add";
                 addButton.dataset.moduleId = moduleId;
                 addButton.dataset.selectedSize = selectedTile?.dataset.size || preferredSize;
                 addButton.textContent = added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd;
-                if (!added && def.availability === "external") {
-                    addButton.textContent = resolveHomeStorePrimaryActionLabel(card.dataset, {guide: this.i18n.homeStoreGuide || "查看说明"});
-                    addButton.dataset.action = "guide";
-                }
+                if (guideOnly) addButton.textContent = resolveHomeStorePrimaryActionLabel(card.dataset, {guide: this.i18n.homeStoreGuide || "查看说明"});
                 const stateSummary = buildHomeStoreCardStateSummary(card.dataset, {conditional: this.i18n.homeStoreAvailabilityConditional, external: this.i18n.homeStoreAvailabilityExternal});
                 addButton.dataset.stateSummary = stateSummary.text;
-                addButton.setAttribute("aria-describedby", sizeLabel.id);
-                addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId} · ${selectedTile?.textContent || preferredSize}`);
+                const actionLabel = guideOnly
+                    ? resolveHomeStorePrimaryActionLabel(card.dataset, {guide: this.i18n.homeStoreGuide || "查看说明"})
+                    : added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd;
+                addButton.setAttribute("aria-label", `${actionLabel} · ${def.title || moduleId}${guideOnly ? "" : ` · ${selectedTile?.textContent || preferredSize}`}`);
+                const descriptionIds = guideOnly
+                    ? [card.querySelector<HTMLElement>(".sw-home-store__availability")?.id, desc.id].filter(Boolean).join(" ")
+                    : sizeLabel.id;
+                if (descriptionIds) addButton.setAttribute("aria-describedby", descriptionIds);
                 addButton.title = addButton.getAttribute("aria-label") || "";
                 addButton.dataset.installability = installability;
-                if (!added && !canHomeStoreInstall(card.dataset, {installability})) {
+                if (!added && !guideOnly && !canHomeStoreInstall(card.dataset, {installability})) {
                     addButton.disabled = true;
                     addButton.title = resolveHomeStoreInstallabilityReason(installability);
                     addButton.setAttribute("aria-label", `${resolveHomeStoreInstallabilityReason(installability)} · ${def.title || moduleId}`);
                 }
                 addButton.style.minHeight = `${resolveHomeStoreTouchTargetSize(device)}px`;
                 addButton.onclick = () => {
+                    if (guideOnly) {
+                        this.openHomeWidgetGuide();
+                        return;
+                    }
                     const sizeKey = selectedTile!.dataset.size;
                     const {w, h} = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize]!;
                     const next = this.getHomeState();

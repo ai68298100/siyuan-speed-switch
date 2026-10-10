@@ -4,11 +4,13 @@ const assert = require('node:assert/strict');
 const {readSourceFile} = require('./source-scan.cjs');
 
 const index = readSourceFile('src/index.ts');
+const configForm = readSourceFile('src/home-config-form.ts');
+const notebookLoadUi = readSourceFile('src/notebook-load-ui.js');
 const zh = JSON.parse(require('node:fs').readFileSync('src/i18n/zh-CN.json', 'utf8'));
 const en = JSON.parse(require('node:fs').readFileSync('src/i18n/en.json', 'utf8'));
 
 test('notebook loading distinguishes failure from empty (T-7185)', () => {
-    assert.match(index, /private async loadNotebooksDetailed\(\): Promise<\{notebooks: Array<\{id: string, name: string\}>, failed: boolean\}>/,
+    assert.match(index, /async loadNotebooksDetailed\(\): Promise<\{notebooks: Array<\{id: string, name: string\}>, failed: boolean\}>/,
         '失败可区分的详细加载必须存在');
     assert.match(index, /return \{notebooks: \[\], failed: true\};/, '失败路径必须带 failed 标记');
     assert.match(index, /return \{notebooks: result, failed: false\};/, '成功路径必须带 failed=false');
@@ -36,7 +38,24 @@ test('detector self-check: catch-return-empty is caught (negative verification)'
     const legacy = 'catch (e) {\n    logger.warn("load notebooks fail", e);\n    return [];\n}';
     assert.match(legacy, /return \[\];/, '历史 catch 返回空数组的形态必须可被识别');
     const detailed = readSourceFile('src/index.ts');
-    const fnStart = detailed.indexOf('private async loadNotebooksDetailed');
+    const fnStart = detailed.indexOf('async loadNotebooksDetailed');
     const body = detailed.slice(fnStart, detailed.indexOf('\n    }\n', fnStart) + 6);
     assert.doesNotMatch(body, /return \[\];/, '详细加载不得返回裸空数组（失败必须带标记）');
+});
+
+test('home config consumes detailed failure state instead of the legacy empty-array wrapper', () => {
+    assert.equal((configForm.match(/load: \(\) => this\.loadNotebooksDetailed\(\)/g) || []).length, 2,
+        '初次加载和手动重试都读取带 failed 的结果');
+    assert.match(notebookLoadUi, /result\.failed === true/,
+        '结果级失败必须渲染重试入口');
+});
+
+test('detailed-loader wiring detector rejects regression to the array-only wrapper', () => {
+    const assertDetailedLoaderWiring = (source) => {
+        assert.equal((source.match(/load: \(\) => this\.loadNotebooksDetailed\(\)/g) || []).length, 2,
+            '两个加载入口都必须保留失败状态');
+    };
+    assert.doesNotThrow(() => assertDetailedLoaderWiring(configForm));
+    const regressed = configForm.replace(/load: \(\) => this\.loadNotebooksDetailed\(\)/g, 'load: () => this.loadNotebooks()');
+    assert.throws(() => assertDetailedLoaderWiring(regressed), /两个加载入口都必须保留失败状态/);
 });

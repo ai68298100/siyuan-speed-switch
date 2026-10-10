@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-09",
-  "currentTask": "T-7140",
+  "updated": "2026-10-10",
+  "currentTask": "T-7233",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7144",
+  "nextLocalTask": "T-7233",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -979,6 +979,54 @@
         ".artifacts/e2e-background/20261008030619-2464-72e951/artifacts/t7203-resource-trend/test-results/resource-trend-T-7153-真实宿主资源趋势-商店重绘时释放旧渲染监听并在关闭后归零/resource-trend.json",
         ".artifacts/e2e-background/20261008030619-2464-72e951/artifacts/t7203-resource-trend/test-results/resource-trend-T-7153-真实宿主资源趋势-商店重绘时释放旧渲染监听并在关闭后归零/resource-trend-checkpoints.ndjson",
         ".artifacts/e2e-background/20261008030619-2464-72e951/summary.json"
+      ],
+      "next": "T-7232"
+    },
+    {
+      "id": "T-7232",
+      "title": "R5 顶栏原型、真实侧栏回归与配置失败回执",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7231"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "src/home-config-form.ts",
+        "src/notebook-load-ui.js",
+        "src/styles/_platform-shell.scss",
+        "src/styles/_11-ui-polish.scss",
+        "docs/design/platform-topbar-redesign-r5-2026-10-09.html",
+        "tests/platform-topbar-layout-contract.test.cjs",
+        "tests/surface-switch-browser-smoke.cjs",
+        "tests/home-config-notebook-retry-behavior.test.cjs",
+        "tests/notebook-failure-contract.test.cjs",
+        "docs/adr/0159-topbar-r5-and-notebook-retry-v0467.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7233",
+      "title": "全量 UI 复核与交互契约收口",
+      "status": "in_progress",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7232"
+      ],
+      "evidence": [
+        "src/styles/_platform-shell.scss",
+        "src/styles/_11-ui-polish.scss",
+        "src/home-config-form.ts",
+        "src/notebook-load-ui.js",
+        "tests/home-lifecycle.test.cjs",
+        "tests/home-store-contract.test.cjs",
+        "docs/adr/0160-comprehensive-ui-contract-closeout-v0467.md",
+        "docs/dev-plan-2026-10-06.md"
       ],
       "next": "T-7144"
     },

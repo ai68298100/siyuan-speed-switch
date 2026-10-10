@@ -7,6 +7,7 @@ import {clampOversizedIcons} from "./util";
 import {buildHomeConfigSections, resolveHomeConfigHint, resolveHomeConfigIntegration, resolveHomeConfigKind, resolveHomeConfigPlaceholder, resolveHomeStoreSourceInfo, summarizeHomeConfigDraft} from "./home-store-model";
 import {CITY_TIME_ZONES} from "./local-time-model";
 import {mountPlatformDialogCloseHint} from "./platform-dom";
+import {runNotebookLoad} from "./notebook-load-ui";
 
 export interface HomeConfigFormHost {
     i18n: Record<string, string>;
@@ -14,7 +15,7 @@ export interface HomeConfigFormHost {
     homeRuntime: {listModules(device: string): Array<Record<string, any>>};
     getHomeState(): {schemaVersion: number; instances: unknown[]; layouts: Record<string, unknown[]>};
     saveHomeState(state: {schemaVersion: number; instances: unknown[]; layouts: Record<string, unknown[]>}): void;
-    loadNotebooks(): Promise<Array<{id: string, name: string}>>;
+    loadNotebooksDetailed(): Promise<{notebooks: Array<{id: string, name: string}>; failed: boolean}>;
     loadHomeFavoriteGroups(): Array<{id: string; title: string}>;
     currentDocumentSetEntries(): Array<{rootId: string; title: string}>;
     loadHomeDocumentOptions(query?: string): Promise<Array<{id: string; title: string}> & {truncated?: boolean; limit?: number}>;
@@ -198,40 +199,55 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 const current = typeof draft[field.key] === "string" ? (draft[field.key] as string) : (field.defaults as string || "");
                 draft[field.key] = current;
                 select.disabled = true;
-                const loading = document.createElement("option");
-                loading.value = "";
-                loading.textContent = this.i18n.notebookLoading;
-                select.appendChild(loading);
-                const fill = (options: Array<{id: string; name: string}>) => {
-                    select.innerHTML = "";
-                    const emptyOption = document.createElement("option");
-                    emptyOption.value = "";
-                    emptyOption.textContent = this.i18n.notebookPlaceholder;
-                    select.appendChild(emptyOption);
-                    options.forEach((nb) => {
-                        const optionEl = document.createElement("option");
-                        optionEl.value = nb.id;
-                        optionEl.textContent = nb.name;
-                        select.appendChild(optionEl);
+                const retry = document.createElement("button");
+                retry.type = "button";
+                retry.className = "b3-button b3-button--text sw-home-config__retry";
+                retry.textContent = this.i18n.homeRetry || "重试";
+                retry.setAttribute("aria-label", `${this.i18n.homeRetry || "重试"} · ${field.label}`);
+                retry.hidden = true;
+                retry.addEventListener("click", () => {
+                    if (formDisposed || retry.disabled) return;
+                    void runNotebookLoad({
+                        select,
+                        retry,
+                        labels: {
+                            loading: this.i18n.notebookLoading,
+                            failed: this.i18n.notebookLoadFailed || "笔记本加载失败",
+                            placeholder: this.i18n.notebookPlaceholder,
+                            unavailable: this.i18n.homeConfigUnavailableValue,
+                        },
+                        load: () => this.loadNotebooksDetailed(),
+                        isDisposed: () => formDisposed,
+                        currentValue: () => resetKeys.has(field.key) ? "" : current,
+                        onLoaded: (value: string) => {
+                            draft[field.key] = value;
+                            resetKeys.delete(field.key);
+                            updateSummary();
+                        },
+                        retrying: true,
                     });
-                    if (current && !options.some((nb) => nb.id === current)) {
-                        const stale = document.createElement("option");
-                        stale.value = current;
-                        stale.textContent = `${current} · ${this.i18n.homeConfigUnavailableValue}`;
-                        select.appendChild(stale);
-                    }
-                    select.value = resetKeys.has(field.key) ? "" : current;
-                    draft[field.key] = select.value;
-                    resetKeys.delete(field.key);
-                    select.disabled = false;
-                    updateSummary();
-                };
+                });
                 controls.set(field.key, select);
                 select.addEventListener("change", () => { draft[field.key] = select.value; updateSummary(); });
-                row.appendChild(select);
-                void this.loadNotebooks().then((notebooks) => {
-                    if (formDisposed) return;
-                    fill(notebooks);
+                row.append(select, retry);
+                void runNotebookLoad({
+                    select,
+                    retry,
+                    labels: {
+                        loading: this.i18n.notebookLoading,
+                        failed: this.i18n.notebookLoadFailed || "笔记本加载失败",
+                        placeholder: this.i18n.notebookPlaceholder,
+                        unavailable: this.i18n.homeConfigUnavailableValue,
+                    },
+                    load: () => this.loadNotebooksDetailed(),
+                    isDisposed: () => formDisposed,
+                    currentValue: () => resetKeys.has(field.key) ? "" : current,
+                    onLoaded: (value: string) => {
+                        draft[field.key] = value;
+                        resetKeys.delete(field.key);
+                        updateSummary();
+                    },
+                    retrying: false,
                 });
             } else if (field.type === "favorite-group") {
                 const select = document.createElement("select");

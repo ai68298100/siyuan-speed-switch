@@ -471,6 +471,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let activeHunkAccepted = [];
     let picker = null;
     let pickerRelease = () => {};
+    // 选择器可能由左侧“选择片段”或顶部“组件商店”打开。关闭时恢复
+    // 实际触发入口，避免商店入口误把焦点跳回另一处控件。
+    let pickerOpener = null;
     let libraryFilter = "all";
     const libraryToggleBusy = new Set();
     // T-7044：目录重绘钩子——冲突副本保存成功后按现状刷新已打开的目录；
@@ -2560,7 +2563,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         // At narrow widths the workbench is a vertical scroller. Restoring
         // focus must not scroll the hidden editor into view underneath the
         // picker that just closed.
-        chooseButton.focus({preventScroll: true});
+        const focusTarget = pickerOpener && pickerOpener.isConnected ? pickerOpener : chooseButton;
+        pickerOpener = null;
+        focusTarget?.focus({preventScroll: true});
         root.scrollTop = pickerScrollTop.root;
         layout.scrollTop = pickerScrollTop.layout;
     }
@@ -2665,6 +2670,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     function openPicker(browse = false) {
         if (picker || busy) return;
         pickerScrollTop = {root: root.scrollTop, layout: layout.scrollTop};
+        const active = doc.activeElement;
+        pickerOpener = active instanceof win.HTMLElement && active !== doc.body
+            ? active
+            : (browse ? snippetStoreButton : chooseButton);
         picker = node("div", "sw-studio__picker");
         picker.setAttribute("role", "dialog");
         picker.setAttribute("aria-modal", "true");
@@ -3074,6 +3083,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             session.baseline = baseline ? {...baseline} : null;
             clearTimeout(previewTimer);
             pickerRelease();
+            pickerOpener = null;
             root.removeEventListener("keydown", onStudioKeydown);
             preview.dispose();
             previewSaved.dispose();

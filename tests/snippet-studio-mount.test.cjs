@@ -407,6 +407,28 @@ test('studio picker filters committed IME queries once and keeps normal navigati
     assert.equal(picker.isConnected, false, '非组合 Esc 仍关闭当前目录');
 });
 
+test('studio picker restores focus to the entry that opened it', async (t) => {
+    const {document, mountSnippetStudio, i18n} = createHarness(t);
+    const controller = mountSnippetStudio(document.getElementById('root'), {
+        i18n, store: {read: async () => [], dispose: () => {}},
+    });
+    t.after(() => controller.dispose());
+    await controller.ready;
+
+    const storeButton = Array.from(document.querySelectorAll('.sw-studio__button'))
+        .find((button) => button.textContent === i18n.snippetStore);
+    assert.ok(storeButton, '组件商店入口必须存在');
+    storeButton.focus();
+    storeButton.click();
+    const picker = document.querySelector('.sw-studio__picker');
+    assert.ok(picker, '组件商店选择器必须打开');
+    const close = Array.from(picker.querySelectorAll('button'))
+        .find((button) => button.textContent === i18n.snippetClose);
+    assert.ok(close, '选择器必须提供关闭入口');
+    close.click();
+    assert.equal(document.activeElement, storeButton, '关闭选择器后焦点应回到实际打开入口');
+});
+
 test('studio picker exposes an in-place enable/disable action for native snippets (T-7229)', async (t) => {
     const {document, mountSnippetStudio, i18n} = createHarness(t);
     const native = {id: '20261006000000-toggle01', name: 'Toggle me', type: 'css', content: '.toggle{}', enabled: false};

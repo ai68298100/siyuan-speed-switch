@@ -29,6 +29,14 @@ test("standalone dialogs tear down malformed host shells", () => {
     }
 });
 
+test("notebook placeholder contract rejects bypassing the shared loader helper", () => {
+    const notebookLoaderSource = readSourceText(path.join(root, "src", "notebook-load-ui.js"));
+    const regressed = notebookLoaderSource.replace(/setOption\(select, "", labels\.placeholder\)/, 'setOption(select, "", labels.loading)');
+    assert.notEqual(regressed, notebookLoaderSource);
+    assert.doesNotMatch(regressed, /setOption\(select, "", labels\.placeholder\)/,
+        "负向注入必须破坏成功态占位选项合同");
+});
+
 test("workbench tears down a malformed host dialog shell", () => {
     const guard = secondPanelSource.match(/if \(!root\) \{[\s\S]{0,260}?dialog\.destroy\(\);[\s\S]{0,120}?return;\s*\}/);
     assert.ok(guard, "宿主主题移除工作台根节点时必须销毁空 Dialog");
@@ -117,7 +125,9 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(configFormSource, /input\.type = "date"/);
     assert.match(configFormSource, /input\.min = "1900-01-01"/);
     assert.match(configFormSource, /input:invalid, select:invalid/);
-    assert.match(configFormSource, /emptyOption\.textContent = this\.i18n\.notebookPlaceholder/);
+    assert.match(configFormSource, /runNotebookLoad\(/, '笔记本字段必须通过统一加载回执助手渲染');
+    assert.match(readSourceText(path.join(root, 'src', 'notebook-load-ui.js')), /setOption\(select, "", labels\.placeholder\)/,
+        '成功态必须保留笔记本占位选项');
     assert.match(configFormSource, /homeConfigUnavailableValue/);
     assert.match(configFormSource, /homeConfigReset/);
     assert.match(secondPanelSource, /sw-home__empty-store/);

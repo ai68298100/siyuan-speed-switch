@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 平台顶栏 R5 原型</title>
+<style>
+:root {
+  --b3-theme-primary:#6758d8; --b3-theme-on-primary:#fff;
+  --b3-theme-background:#f5f6fa; --b3-theme-surface:#fff;
+  --b3-theme-surface-lighter:#eef0f6; --b3-theme-on-background:#202331;
+  --b3-theme-on-surface-light:#778096; --b3-border-color:#dfe2eb;
+  --b3-theme-success:#2d9865; --b3-theme-warning:#b7761d; --b3-theme-error:#c7515b;
+  --sw-accent:var(--b3-theme-primary); --sw-bg:var(--b3-theme-background);
+  --sw-surface:var(--b3-theme-surface); --sw-text:var(--b3-theme-on-background);
+  --sw-muted:var(--b3-theme-surface-lighter); --sw-subtle:var(--b3-theme-on-surface-light);
+  --sw-line:var(--b3-border-color); --sw-focus:0 0 0 3px color-mix(in srgb,var(--sw-accent) 26%,transparent);
+  --sw-radius-sm:8px; --sw-radius-md:12px; --sw-radius-lg:16px;
+  --sw-shadow:0 14px 36px rgb(46 55 88 / 11%); --sw-dur:150ms;
+}
+[data-theme="dark"] { --b3-theme-primary:#9e91ff; --b3-theme-on-primary:#171922; --b3-theme-background:#171922; --b3-theme-surface:#222531; --b3-theme-surface-lighter:#2b2f3d; --b3-theme-on-background:#f2f3f7; --b3-theme-on-surface-light:#a1a8bb; --b3-border-color:#3a4050; --b3-theme-success:#67d59a; --b3-theme-warning:#e4a254; --b3-theme-error:#ee7c86; }
+[data-theme="contrast"] { --b3-theme-primary:#ffe45b; --b3-theme-on-primary:#000; --b3-theme-background:#000; --b3-theme-surface:#101010; --b3-theme-surface-lighter:#1c1c1c; --b3-theme-on-background:#fff; --b3-theme-on-surface-light:#e5e5e5; --b3-border-color:#fff; --b3-theme-success:#63ff9b; --b3-theme-warning:#ffb85b; --b3-theme-error:#ff7183; }
+* { box-sizing:border-box; }
+html,body { min-height:100%; }
+body { margin:0; background:var(--sw-bg); color:var(--sw-text); font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif; }
+button { font:inherit; color:inherit; border:0; cursor:pointer; }
+button:focus-visible { outline:2px solid var(--sw-accent); outline-offset:2px; box-shadow:var(--sw-focus); }
+.proto-toolbar { position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:8px; min-height:48px; padding:8px max(18px,calc((100vw - 1380px)/2)); background:#111522; color:#fff; }
+.proto-toolbar strong { letter-spacing:0; }
+.proto-toolbar small { color:#c2c9dc; }
+.proto-toolbar .spacer { flex:1; }
+.proto-toolbar button { min-height:30px; padding:5px 10px; border-radius:8px; background:#293149; color:#e9ecf6; }
+.proto-toolbar button:hover,.proto-toolbar button.is-active { background:#8072ef; color:#fff; }
+.page { width:min(1380px,calc(100% - 36px)); margin:0 auto; padding:26px 0 56px; }
+.page-head { display:flex; align-items:flex-start; gap:16px; margin-bottom:18px; }
+.page-head h1 { margin:0; font-size:24px; line-height:1.2; letter-spacing:0; }
+.page-head p { max-width:760px; margin:6px 0 0; color:var(--sw-subtle); }
+.page-head .badge { flex:none; margin-top:2px; padding:4px 9px; border:1px solid color-mix(in srgb,var(--sw-accent) 36%,var(--sw-line)); border-radius:999px; color:var(--sw-accent); background:color-mix(in srgb,var(--sw-accent) 10%,transparent); font-size:11px; font-weight:700; }
+.showcase { display:grid; grid-template-columns:minmax(0,1fr) 290px; gap:18px; align-items:start; }
+.canvas { min-width:0; display:grid; gap:18px; }
+.demo { min-width:0; overflow:hidden; border:1px solid var(--sw-line); border-radius:var(--sw-radius-lg); background:var(--sw-surface); box-shadow:var(--sw-shadow); }
+.demo > header { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; border-bottom:1px solid var(--sw-line); }
+.demo > header h2 { margin:0; font-size:14px; }
+.demo > header span { color:var(--sw-subtle); font-size:11px; }
+.demo-body { padding:14px; background:color-mix(in srgb,var(--sw-bg) 55%,var(--sw-surface)); }
+.demo.desktop .demo-body,.demo.narrow .demo-body,.demo.mobile .demo-body { overflow-x:auto; }
+
+/* R5 platform chrome: three stable zones and a dedicated right edge. */
+.sw-platform-chrome { container-name:sw-platform; container-type:inline-size; color:var(--sw-text); background:var(--sw-surface); }
+.sw-platform-header { display:grid; grid-template-columns:minmax(0,1fr) minmax(350px,520px) minmax(0,1fr); grid-template-areas:"brand nav actions"; align-items:center; gap:16px; min-height:64px; padding:8px 16px; border-bottom:1px solid var(--sw-line); background:var(--sw-surface); }
+.sw-platform-header__brand { grid-area:brand; display:flex; align-items:center; gap:9px; min-width:132px; }
+.brand-mark { width:28px; height:28px; display:grid; place-items:center; flex:none; border-radius:8px; background:linear-gradient(135deg,var(--sw-accent),#31a6a1); color:#fff; font-size:13px; font-weight:800; }
+.sw-platform-header__brand-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; font-weight:800; }
+.brand-subtitle { display:block; color:var(--sw-subtle); font-size:10px; font-weight:500; line-height:1.2; }
+.sw-platform-surface-nav { grid-area:nav; justify-self:center; display:flex; align-items:stretch; justify-content:flex-start; gap:4px; width:100%; min-width:0; max-width:100%; padding:4px; overflow-x:auto; scrollbar-width:none; border:1px solid var(--sw-line); border-radius:11px; background:var(--sw-muted); }
+.sw-platform-surface-nav::-webkit-scrollbar { display:none; }
+.sw-platform-surface-nav__item { position:relative; display:inline-flex; align-items:center; justify-content:center; gap:8px; flex:1 1 0; min-width:0; min-height:48px; padding:5px 10px; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--sw-subtle); text-align:left; white-space:nowrap; appearance:none; touch-action:manipulation; transition:background var(--sw-dur) ease,border-color var(--sw-dur) ease,color var(--sw-dur) ease,transform 80ms ease; }
+.sw-platform-surface-nav__item:hover { color:var(--sw-text); background:var(--sw-surface); }
+.sw-platform-surface-nav__item:active { transform:translateY(1px); background:color-mix(in srgb,var(--sw-accent) 18%,transparent); }
+.sw-platform-surface-nav__item.is-active { border-color:color-mix(in srgb,var(--sw-accent) 34%,var(--sw-line)); background:var(--sw-surface); color:var(--sw-accent); box-shadow:0 2px 5px rgb(36 43 72 / 9%); }
+.sw-platform-surface-nav__item[aria-current="page"] { cursor:default; }
+.sw-platform-surface-nav__item.is-active::after { content:""; position:absolute; left:16px; right:16px; bottom:-4px; height:3px; border-radius:4px; background:var(--sw-accent); }
+.nav-icon { width:18px; height:18px; display:grid; place-items:center; flex:none; border:1px solid currentColor; border-radius:5px; font-size:10px; font-weight:800; line-height:1; pointer-events:none; }
+.nav-copy { min-width:0; display:grid; gap:1px; pointer-events:none; }
+.nav-label { overflow:hidden; text-overflow:ellipsis; font-size:12px; font-weight:700; }
+.nav-hint { overflow:hidden; text-overflow:ellipsis; color:var(--sw-subtle); font-size:10px; font-weight:500; }
+.sw-platform-surface-nav__item.is-active .nav-hint { color:color-mix(in srgb,var(--sw-accent) 72%,var(--sw-subtle)); }
+.sw-platform-header__actions { grid-area:actions; display:flex; align-items:center; justify-self:end; justify-content:flex-end; gap:6px; min-width:max-content; }
+.platform-status { display:inline-flex; align-items:center; gap:6px; min-height:28px; padding:4px 9px; border:1px solid color-mix(in srgb,var(--b3-theme-success) 33%,var(--sw-line)); border-radius:999px; color:var(--b3-theme-success); background:color-mix(in srgb,var(--b3-theme-success) 9%,transparent); font-size:11px; white-space:nowrap; }
+.platform-status i { width:6px; height:6px; border-radius:50%; background:currentColor; }
+.header-icon { width:32px; height:32px; min-width:32px; display:inline-grid; place-items:center; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--sw-subtle); font-size:16px; }
+.header-icon:hover { border-color:color-mix(in srgb,var(--sw-accent) 34%,var(--sw-line)); color:var(--sw-accent); background:color-mix(in srgb,var(--sw-accent) 11%,transparent); }
+.close-cluster { display:flex; align-items:center; gap:8px; padding-left:10px; border-left:1px solid var(--sw-line); }
+.close-hint { color:var(--sw-subtle); font-size:10px; white-space:nowrap; }
+.kbd { display:inline-flex; align-items:center; justify-content:center; min-width:28px; min-height:20px; padding:1px 6px; border:1px solid var(--sw-line); border-radius:5px; background:var(--sw-surface); color:var(--sw-subtle); font:600 10px/1 ui-monospace,Consolas,monospace; }
+.header-close { width:40px; height:40px; min-width:40px; display:grid; place-items:center; border:1px solid var(--sw-line); border-radius:9px; background:var(--sw-surface); color:var(--sw-text); font-size:20px; line-height:1; }
+.header-close:hover { border-color:var(--sw-accent); background:color-mix(in srgb,var(--sw-accent) 12%,transparent); color:var(--sw-accent); }
+.header-close:active { transform:translateY(1px); }
+.sw-platform-header__icon-action { width:32px; height:32px; min-width:32px; }
+.sw-platform-context { display:flex; align-items:center; gap:8px; min-width:0; min-height:35px; padding:7px 16px; border-bottom:1px solid var(--sw-line); background:color-mix(in srgb,var(--sw-bg) 54%,var(--sw-surface)); color:var(--sw-subtle); font-size:11px; }
+.context-current { color:var(--sw-text); font-weight:700; }
+.context-desc { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.context-spacer { flex:1; }
+.context-kbd { display:flex; gap:5px; flex:none; }
+.surface-content { min-height:138px; padding:16px; background:linear-gradient(135deg,color-mix(in srgb,var(--sw-accent) 8%,var(--sw-surface)),var(--sw-surface)); }
+.surface-content .line { height:10px; margin:9px 0; border-radius:5px; background:var(--sw-muted); }
+.surface-content .line.short { width:56%; }
+
+@container sw-platform (max-width:960px) {
+  .sw-platform-header { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"brand actions" "nav nav"; gap:8px 12px; min-height:0; padding:8px 12px; }
+  .sw-platform-surface-nav { justify-self:stretch; }
+  .sw-platform-surface-nav .nav-hint,.sw-platform-header__close-hint { display:none; }
+}
+@container sw-platform (max-width:560px) {
+  .sw-platform-surface-nav .nav-icon { display:none; }
+  .sw-platform-surface-nav__item { gap:4px; padding-inline:6px; }
+  .sw-platform-surface-nav__item .nav-label { font-size:11px; }
+  .sw-platform-header__close,.sw-platform-header__icon-action { width:44px; height:44px; min-width:44px; }
+}
+
+/* The sidebar example is the real minimum width used by the native dock. */
+.demo.narrow .sw-platform-chrome { width:245px; max-width:none; margin-inline:auto; }
+.demo.narrow .sw-platform-header { grid-template-columns:minmax(0,1fr); grid-template-areas:"actions" "nav"; gap:6px; padding:8px 10px; }
+.demo.narrow .sw-platform-header__brand { display:none; }
+.demo.narrow .sw-platform-surface-nav { justify-self:stretch; width:100%; }
+.demo.narrow .sw-platform-header__actions { justify-self:end; }
+.demo.narrow .sw-platform-header__actions .platform-status,.demo.narrow .close-hint { display:none; }
+.demo.narrow .nav-icon { display:none; }
+.demo.narrow .sw-platform-surface-nav__item { padding-inline:3px; }
+.demo.narrow .nav-label { font-size:11px; }
+.demo.narrow .nav-hint { display:none; }
+.demo.mobile .sw-platform-chrome { width:360px; max-width:none; margin-inline:auto; }
+.demo.mobile .sw-platform-header { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"brand actions" "nav nav"; gap:7px 10px; min-height:0; padding:6px 8px; }
+.demo.mobile .sw-platform-header__brand { min-width:0; }
+.demo.mobile .brand-mark { width:26px; height:26px; }
+.demo.mobile .sw-platform-header__actions { gap:2px; }
+.demo.mobile .platform-status,.demo.mobile .close-hint { display:none; }
+.demo.mobile .header-icon { width:44px; height:44px; min-width:44px; }
+.demo.mobile .close-cluster { gap:2px; padding-left:0; border-left:0; }
+.demo.mobile .header-close { width:44px; height:44px; min-width:44px; border-radius:10px; }
+.demo.mobile .sw-platform-surface-nav { justify-self:stretch; margin:0 -2px; padding:3px; }
+.demo.mobile .nav-icon { display:none; }
+.demo.mobile .sw-platform-surface-nav__item { min-width:0; min-height:48px; padding:5px 6px; }
+.demo.mobile .nav-hint { display:none; }
+.demo.mobile .nav-label { font-size:11px; }
+.demo.mobile .sw-platform-context { min-height:32px; padding:6px 10px; }
+.demo.mobile .context-kbd { display:none; }
+
+.demo-note { display:flex; gap:8px; padding:9px 12px; border-top:1px solid var(--sw-line); color:var(--sw-subtle); background:var(--sw-surface); font-size:11px; }
+.demo-note b { color:var(--sw-text); }
+.spec { position:sticky; top:66px; display:grid; gap:12px; }
+.spec-card { padding:14px; border:1px solid var(--sw-line); border-radius:var(--sw-radius-md); background:var(--sw-surface); }
+.spec-card h2 { margin:0 0 10px; font-size:13px; }
+.spec-card dl { display:grid; grid-template-columns:74px 1fr; gap:8px 10px; margin:0; font-size:11px; }
+.spec-card dt { color:var(--sw-subtle); }
+.spec-card dd { margin:0; }
+.spec-list { display:grid; gap:7px; margin:0; padding-left:17px; color:var(--sw-subtle); font-size:11px; }
+.spec-list strong { color:var(--sw-text); }
+.receipt { min-height:20px; margin-top:4px; color:var(--sw-subtle); font-size:11px; }
+@media (max-width:900px) { .showcase { grid-template-columns:1fr; } .spec { position:static; grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:620px) { .page { width:calc(100% - 20px); padding-top:18px; } .proto-toolbar { flex-wrap:wrap; padding-inline:10px; } .proto-toolbar small { display:none; } .page-head { display:block; } .page-head .badge { display:inline-block; margin-top:10px; } .spec { grid-template-columns:1fr; } .demo > header { padding-inline:12px; } }
+@media (prefers-reduced-motion:reduce) { *,*:before,*:after { transition-duration:0.001ms !important; animation-duration:0.001ms !important; } }
+</style>
+</head>
+<body>
+<div class="proto-toolbar">
+  <strong>R5 顶栏原型</strong><small>统一命中区 · 当前态 · 固定关闭锚点</small><span class="spacer"></span>
+  <button type="button" data-theme="light">浅色</button><button type="button" data-theme="dark">深色</button><button type="button" data-theme="contrast">高对比</button>
+</div>
+<main class="page">
+  <header class="page-head"><div><h1>平台顶栏重构 · R5</h1><p>把每个表面的顶栏收敛为同一套稳定结构：桌面保留身份、居中导航和右侧动作；侧栏与移动端把导航下沉到独立一行。关闭始终锚定在动作区最右侧，窄侧栏按真实 245px 验证。</p></div><span class="badge">设计候选 · 2026-10-09</span></header>
+  <div class="showcase">
+    <section class="canvas" aria-label="顶栏原型预览">
+      <article class="demo desktop">
+        <header><h2>桌面弹窗 · 1200px</h2><span>完整标签与用途说明</span></header>
+        <div class="demo-body">
+          <div class="sw-platform-chrome">
+            <header class="sw-platform-header" aria-label="小驴雷切平台">
+              <div class="sw-platform-header__brand"><span class="brand-mark" aria-hidden="true">驴</span><span><strong class="sw-platform-header__brand-name">小驴雷切</strong><span class="brand-subtitle">工作上下文平台</span></span></div>
+              <nav class="sw-platform-surface-nav" aria-label="切换工作表面">
+                <span class="sw-platform-surface-nav__item is-active" data-surface="switcher" aria-current="page" title="切换器：查找、预览和打开内容"><span class="nav-icon" aria-hidden="true">↔</span><span class="nav-copy"><span class="nav-label">切换器</span><span class="nav-hint">查找与预览</span></span></span>
+                <button class="sw-platform-surface-nav__item" type="button" data-surface="workbench" title="工作台：编排信息组件和工作现场"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-copy"><span class="nav-label">工作台</span><span class="nav-hint">查看与编排</span></span></button>
+                <button class="sw-platform-surface-nav__item" type="button" data-surface="studio" title="片段实验室：安全编辑、预览和管理代码片段"><span class="nav-icon" aria-hidden="true">{ }</span><span class="nav-copy"><span class="nav-label">片段实验室</span><span class="nav-hint">编辑与审查</span></span></button>
+              </nav>
+              <div class="sw-platform-header__actions"><span class="platform-status"><i></i>内核已连接</span><button class="header-icon" type="button" aria-label="打开设置" title="打开设置">⚙</button><span class="close-cluster"><span class="close-hint"><span class="kbd">Esc</span>关闭</span><button class="header-close" type="button" aria-label="关闭平台" title="关闭平台">×</button></span></div>
+            </header>
+            <div class="sw-platform-context"><span>工作上下文</span><span aria-hidden="true">›</span><span class="context-current">切换器</span><span class="context-desc">查找、预览和打开内容</span><span class="context-spacer"></span><span class="context-kbd"><span class="kbd">Ctrl K</span><span class="kbd">Tab</span></span></div>
+            <div class="surface-content"><strong>主内容区</strong><div class="line"></div><div class="line short"></div><div class="line"></div></div>
+          </div>
+        </div>
+        <div class="demo-note"><b>命中策略</b><span>可切换项整块区域都是 button，当前项标为当前表面；图标与文字 pointer-events:none，悬停/聚焦/按下即时反馈。</span>
+        </div>
+      </article>
+
+      <article class="demo narrow">
+        <header><h2>窄侧栏 · 245px</h2><span>隐藏图标，完整显示三项文字</span></header>
+        <div class="demo-body">
+          <div class="sw-platform-chrome">
+            <header class="sw-platform-header" aria-label="小驴雷切平台">
+              <div class="sw-platform-header__brand"><span class="brand-mark" aria-hidden="true">驴</span><span><strong class="sw-platform-header__brand-name">小驴雷切</strong><span class="brand-subtitle">工作上下文平台</span></span></div>
+              <nav class="sw-platform-surface-nav" aria-label="切换工作表面">
+                <button class="sw-platform-surface-nav__item" type="button" data-surface="switcher"><span class="nav-icon" aria-hidden="true">↔</span><span class="nav-copy"><span class="nav-label">切换器</span><span class="nav-hint">查找与预览</span></span></button>
+                <span class="sw-platform-surface-nav__item is-active" data-surface="workbench" aria-current="page"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-copy"><span class="nav-label">工作台</span><span class="nav-hint">查看与编排</span></span></span>
+                <button class="sw-platform-surface-nav__item" type="button" data-surface="studio"><span class="nav-icon" aria-hidden="true">{ }</span><span class="nav-copy"><span class="nav-label">片段实验室</span><span class="nav-hint">编辑与审查</span></span></button>
+              </nav>
+              <div class="sw-platform-header__actions"><span class="platform-status"><i></i>已连接</span><button class="header-icon" type="button" aria-label="打开设置" title="打开设置">⚙</button><span class="close-cluster"><span class="close-hint"><span class="kbd">Esc</span>关闭</span><button class="header-close" type="button" aria-label="关闭平台" title="关闭平台">×</button></span></div>
+            </header>
+            <div class="sw-platform-context"><span>工作上下文</span><span aria-hidden="true">›</span><span class="context-current">工作台</span><span class="context-desc">写作现场 · 4 个组件</span><span class="context-spacer"></span><span class="context-kbd"><span class="kbd">Tab</span></span></div>
+            <div class="surface-content"><strong>工作台内容区</strong><div class="line"></div><div class="line short"></div></div>
+          </div>
+        </div>
+        <div class="demo-note"><b>退化规则</b><span>状态徽标和关闭提示隐藏，设置与关闭留在第一行右侧；导航独占第二行，保留 48px 命中高度和完整标签。</span></div>
+      </article>
+
+      <article class="demo mobile">
+        <header><h2>移动端 · 360px</h2><span>触控优先，关闭 44px</span></header>
+        <div class="demo-body">
+          <div class="sw-platform-chrome">
+            <header class="sw-platform-header" aria-label="小驴雷切平台">
+              <div class="sw-platform-header__brand"><span class="brand-mark" aria-hidden="true">驴</span><span><strong class="sw-platform-header__brand-name">小驴雷切</strong><span class="brand-subtitle">工作上下文平台</span></span></div>
+              <nav class="sw-platform-surface-nav" aria-label="切换工作表面">
+                <button class="sw-platform-surface-nav__item" type="button" data-surface="switcher"><span class="nav-icon" aria-hidden="true">↔</span><span class="nav-copy"><span class="nav-label">切换器</span></span></button>
+                <button class="sw-platform-surface-nav__item" type="button" data-surface="workbench"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-copy"><span class="nav-label">工作台</span></span></button>
+                <span class="sw-platform-surface-nav__item is-active" data-surface="studio" aria-current="page"><span class="nav-icon" aria-hidden="true">{ }</span><span class="nav-copy"><span class="nav-label">片段实验室</span></span></span>
+              </nav>
+              <div class="sw-platform-header__actions"><span class="platform-status"><i></i>已连接</span><button class="header-icon" type="button" aria-label="打开设置" title="打开设置">⚙</button><span class="close-cluster"><span class="close-hint"><span class="kbd">Esc</span>关闭</span><button class="header-close" type="button" aria-label="关闭平台" title="关闭平台">×</button></span></div>
+            </header>
+            <div class="sw-platform-context"><span>工作上下文</span><span aria-hidden="true">›</span><span class="context-current">片段实验室</span><span class="context-desc">安全编辑与审查</span><span class="context-spacer"></span><span class="context-kbd"><span class="kbd">Esc</span></span></div>
+            <div class="surface-content"><strong>片段实验室内容区</strong><div class="line"></div><div class="line short"></div></div>
+          </div>
+        </div>
+        <div class="demo-note"><b>触控规则</b><span>导航 48px、设置和关闭 44px；关闭不覆盖内容，也不与设置重叠；退出继续调用各表面已有的关闭处理。</span></div>
+      </article>
+      <p class="receipt" id="receipt" aria-live="polite">点击任意表面入口查看当前态、上下文和回执变化。</p>
+    </section>
+
+    <aside class="spec" aria-label="R5 设计约束">
+      <section class="spec-card"><h2>结构与尺寸</h2><dl><dt>桌面高度</dt><dd>64px 顶栏 + 35px 上下文</dd><dt>导航命中</dt><dd>桌面 / 触控 48px，短窗最低 44px</dd><dt>设置 / 关闭</dt><dd>桌面 32 / 40px；窄屏 44px</dd><dt>右侧锚点</dt><dd>状态 → 设置 → Esc 提示 → 关闭</dd><dt>窄侧栏</dt><dd>245px；导航第二行，关闭固定右上角</dd></dl></section>
+      <section class="spec-card"><h2>交互状态</h2><ul class="spec-list"><li><strong>默认：</strong>所有可切换项都有边界与底色，不等待 hover 才显形。</li><li><strong>当前：</strong>主色底、底部指示条、aria-current=page；当前项不伪装成可切换按钮。</li><li><strong>悬停 / 聚焦：</strong>整块变色，图标和文字不截获事件。</li><li><strong>按下：</strong>轻微下沉，避免点击无反馈。</li><li><strong>不可用：</strong>不渲染成假按钮；缺少导航回调时直接隐藏。</li></ul></section>
+      <section class="spec-card"><h2>实现映射</h2><ul class="spec-list"><li>沿用 <strong>sw-platform-header</strong>、<strong>sw-platform-surface-nav</strong>、<strong>sw-platform-header__close</strong>。</li><li>保留 title、aria-label、aria-current 和键盘焦点。</li><li>上下文栏只表达当前表面与现场，不重复宿主 Dialog 标题。</li><li>关闭动作永远是右侧独立控件，脏稿守卫在回调内处理。</li></ul></section>
+    </aside>
+  </div>
+</main>
+<script>
+(() => {
+  const root = document.documentElement;
+  const receipt = document.getElementById('receipt');
+  const labels = {switcher:'切换器', workbench:'工作台', studio:'片段实验室'};
+  document.querySelectorAll('[data-theme]').forEach((button) => button.addEventListener('click', () => {
+    root.dataset.theme = button.dataset.theme;
+    receipt.textContent = `已切换为${button.textContent}主题；顶栏对比度和焦点环保持可见。`;
+  }));
+  const changeTag = (item, tag) => {
+    const next = document.createElement(tag);
+    for (const attribute of item.attributes) next.setAttribute(attribute.name, attribute.value);
+    next.innerHTML = item.innerHTML;
+    if (tag === 'button') next.type = 'button';
+    item.replaceWith(next);
+    return next;
+  };
+  document.querySelectorAll('.sw-platform-surface-nav').forEach((nav) => nav.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-surface]');
+    if (!button || !nav.contains(button)) return;
+    const demo = button.closest('.demo');
+    const surface = button.dataset.surface;
+    demo.querySelectorAll('[data-surface]').forEach((item) => {
+      const active = item.dataset.surface === surface;
+      const control = active && item.tagName !== 'SPAN'
+        ? changeTag(item, 'span')
+        : !active && item.tagName !== 'BUTTON' ? changeTag(item, 'button') : item;
+      control.classList.toggle('is-active', active);
+      if (active) control.setAttribute('aria-current', 'page'); else control.removeAttribute('aria-current');
+    });
+    const current = labels[surface];
+    const context = demo.querySelector('.context-current');
+    if (context) context.textContent = current;
+    receipt.textContent = `${current}已切换；当前标记和上下文已更新，关闭仍位于顶栏最右侧。`;
+  }));
+  document.querySelectorAll('.header-close').forEach((button) => button.addEventListener('click', () => {
+    receipt.textContent = '关闭动作已触发；生产实现应恢复来源焦点或回到宿主编辑器。';
+  }));
+  document.querySelectorAll('.header-icon').forEach((button) => button.addEventListener('click', () => {
+    receipt.textContent = '设置入口已触发；生产实现应保留 returnTo 上下文。';
+  }));
+})();
+</script>
+</body>
+</html>

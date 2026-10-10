@@ -25,6 +25,7 @@ const source = readSourceText('src/index.ts');
 const secondPanelSource = readSourceText('src/second-panel-ui.ts');
 // R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
 const configFormSource = readSourceText('src/home-config-form.ts');
+const notebookLoadUiSource = readSourceText('src/notebook-load-ui.js');
 const documentFieldSource = configFormSource.slice(configFormSource.indexOf('field.type === "document"'), configFormSource.indexOf('field.type === "database"'));
 // R1 重构（D-379）：商店方法体已外迁至 home-store-ui.ts。
 const storeSource = readSourceText('src/home-store-ui.ts');
@@ -124,7 +125,7 @@ test('mobile store empty result has atomic live semantics', () => assert.match(s
 test('mobile store result summary has atomic live semantics', () => assert.match(storeSource,/resultSummary\.setAttribute\("aria-atomic", "true"\)/));
 test('mobile store clear filters restores all tab', () => assert.match(storeSource,/storeTab = "all"/));
 test('mobile store clear filters restores search focus', () => assert.match(storeSource,/applyFilter\(\);\s*searchInput\.focus\(\)/));
-test('mobile store add action remains independent from size selection', () => assert.match(storeSource,/dataset\.action = added \? "apply-size" : "add"/));
+test('mobile store primary action remains independent from size selection', () => assert.match(storeSource,/dataset\.action = guideOnly \? "guide" : added \? "apply-size" : "add"/));
 test('mobile store detail preview remains an inline region', () => assert.match(storeSource,/container\.setAttribute\("role", "region"\)/));
 test('mobile store detail back restores focus to the catalog card', () => {
     assert.match(storeSource,/delete root\.dataset\.detailOpen;[\s\S]{0,700}target\.focus\(\{preventScroll: true\}\)/,
@@ -222,7 +223,7 @@ test('store group headings expose level three', () => assert.match(storeSource,/
 test('store card size controls expose orientation', () => assert.match(storeSource,/tiles\.setAttribute\("aria-orientation", "horizontal"\)/));
 test('store size buttons expose selected state', () => assert.match(storeSource,/tile\.setAttribute\("aria-pressed", String\(tile === selectedTile\)\)/));
 test('store size group records module id', () => assert.match(storeSource,/tiles\.dataset\.moduleId = moduleId/));
-test('store action buttons preserve operation metadata', () => assert.match(storeSource,/addButton\.dataset\.action = added \? "apply-size" : "add"/));
+test('store action buttons preserve operation metadata', () => assert.match(storeSource,/addButton\.dataset\.action = guideOnly \? "guide" : added \? "apply-size" : "add"/));
 test('store inline preview has no duplicate operation button', () => assert.doesNotMatch(storeSource,/previewButton\.dataset\.action = "preview"/));
 test('store configure button preserves operation metadata', () => assert.match(storeSource,/configButton\.dataset\.action = "configure"/));
 test('store remove button preserves operation metadata', () => assert.match(storeSource,/removeButton\.dataset\.action = "remove"/));
@@ -350,11 +351,19 @@ test('home config labels target generated controls', () => assert.match(configFo
 test('home config select controls use block styling', () => assert.match(configFormSource, /select\.className = "b3-select fn__block"/));
 test('home config select fields render declared options', () => assert.match(configFormSource, /\(field\.options \|\| \[\]\)\.forEach\(\(option\) =>/));
 test('home config select changes update draft', () => assert.match(configFormSource, /select\.addEventListener\("change", \(\) => \{ draft\[field\.key\] = select\.value; \}\)/));
-test('home config notebook controls start disabled', () => { const i = configFormSource.indexOf('select.disabled = true;'); assert.ok(i >= 0); const w = configFormSource.slice(i, i + 300); assert.ok(w.includes('notebookLoading'), 'notebook 控件须先进入 loading'); });
-test('home config notebook controls expose loading option', () => assert.match(configFormSource, /loading\.textContent = this\.i18n\.notebookLoading/));
-test('home config notebook fill exposes empty option', () => assert.match(configFormSource, /emptyOption\.textContent = this\.i18n\.notebookPlaceholder/));
+test('home config notebook controls start disabled in loading state', () => {
+    assert.match(notebookLoadUiSource, /setOption\(select, "", loadingLabel\);\s*select\.disabled = true;/);
+});
+test('home config notebook controls delegate loading and state rendering', () => {
+    assert.equal((configFormSource.match(/runNotebookLoad\(\{/g) || []).length, 2);
+    assert.match(configFormSource, /load: \(\) => this\.loadNotebooksDetailed\(\)/);
+});
 test('home config notebook preserves stale values', () => assert.match(configFormSource, /homeConfigUnavailableValue/));
-test('home config notebook controls enable after fill', () => assert.match(configFormSource, /select\.disabled = false/));
+test('home config notebook detailed loader preserves request failure state', () => {
+    assert.match(source, /async loadNotebooksDetailed\(\): Promise<\{notebooks: Array<\{id: string, name: string\}>, failed: boolean\}>/);
+    assert.match(configFormSource, /load: \(\) => this\.loadNotebooksDetailed\(\)/);
+    assert.doesNotMatch(configFormSource, /load: \(\) => this\.loadNotebooks\(\)/);
+});
 test('home config document search uses bounded length', () => assert.match(documentFieldSource, /input\.maxLength = 48/));
 test('home config document selection validates persisted block id shape', () => assert.match(documentFieldSource, /\^\[0-9\]\{14\}-\[0-9a-z\]\+\$\/i\.test\(configuredId\)/));
 test('home config document input has suggestions list', () => assert.match(configFormSource, /input\.setAttribute\("list", suggestions\.id\)/));
@@ -411,12 +420,17 @@ test('config label and control are placed in same row', () => { const i = source
 test('config select value starts from draft', () => assert.match(configFormSource, /select\.value = current/));
 test('config select draft starts from selected value', () => assert.match(configFormSource, /draft\[field\.key\] = select\.value/));
 test('config notebook current value reads draft', () => assert.match(configFormSource, /typeof draft\[field\.key\] === "string"/));
-test('config notebook current value is bounded by option list', () => assert.match(configFormSource, /!options\.some\(\(nb\) => nb\.id === current\)/));
-test('config stale notebook option uses current id', () => assert.match(configFormSource, /stale\.value = current/));
-test('config stale notebook option is labelled unavailable', () => assert.match(configFormSource, /stale\.textContent = `\$\{current\} · \$\{this\.i18n\.homeConfigUnavailableValue\}`/));
-test('config notebook selects restored value after fill', () => assert.match(configFormSource, /select\.value = resetKeys\.has\(field\.key\) \? "" : current/));
+test('config notebook current value is bounded by option list', () => assert.match(notebookLoadUiSource, /!result\.notebooks\.some\(\(notebook\) => notebook\?\.id === currentValue\)/));
+test('config stale notebook option uses current id', () => assert.match(notebookLoadUiSource, /setOption\(select, currentValue, `\$\{currentValue\} · \$\{labels\.unavailable\}`\)/));
+test('config notebook selects restored value after fill', () => {
+    assert.match(configFormSource, /currentValue: \(\) => resetKeys\.has\(field\.key\) \? "" : current/);
+    assert.match(notebookLoadUiSource, /select\.value = currentValue \|\| ""/);
+});
 test('config notebook change listener is installed', () => assert.match(configFormSource, /select\.addEventListener\("change", \(\) => \{ draft\[field\.key\] = select\.value; \}\)/));
-test('config notebook promise checks field options and ignores late disposal', () => assert.match(configFormSource, /void this\.loadNotebooks\(\)\.then\(\(notebooks\) => \{\s*if \(formDisposed\) return;\s*fill\(notebooks\)/));
+test('config notebook promise checks disposal before updating controls', () => {
+    assert.match(configFormSource, /isDisposed: \(\) => formDisposed/);
+    assert.match(notebookLoadUiSource, /if \(isDisposed\(\)\) return;\s*const settled = renderResult/);
+});
 test('config document input has placeholder', () => assert.match(configFormSource, /input\.placeholder = placeholderText\(resolveHomeConfigPlaceholder\(inst\.moduleId, field\.key\)\) \|| this\.i18n\.homeConfigDocumentPlaceholder/));
 test('config document input starts from draft', () => assert.match(configFormSource, /input\.value = typeof draft\[field\.key\] === "string"/));
 test('config document input records initial draft', () => assert.match(configFormSource, /draft\[field\.key\] = input\.value/));
@@ -494,8 +508,8 @@ test('size button has accessible hint', () => assert.match(storeSource,/tile\.se
 test('size button controls action', () => assert.match(storeSource,/tile\.setAttribute\("aria-controls", actionId\)/));
 test('size button exposes set size', () => assert.match(storeSource,/tile\.setAttribute\("aria-setsize", String\(supported\.length\)\)/));
 test('size button exposes position', () => assert.match(storeSource,/tile\.setAttribute\("aria-posinset", String\(sizeIndex \+ 1\)\)/));
-test('size selection updates action label', () => assert.match(storeSource,/addButton\.setAttribute\("aria-label", `\$\{added \? this\.i18n\.homeStoreApplySize : this\.i18n\.homeStoreAdd\}/));
-test('add action describes size label', () => assert.match(storeSource,/addButton\.setAttribute\("aria-describedby", sizeLabel\.id\)/));
+test('size selection updates action label', () => assert.match(storeSource,/const actionLabel = guideOnly[\s\S]*?addButton\.setAttribute\("aria-label", `\$\{actionLabel\}/));
+test('add action describes size or guide prerequisites', () => assert.match(storeSource,/const descriptionIds = guideOnly[\s\S]*?: sizeLabel\.id;[\s\S]*?addButton\.setAttribute\("aria-describedby", descriptionIds\)/));
 test('selected detail exposes an inline preview action surface', () => assert.match(storeSource,/detailPane\.appendChild\(inlinePreview\.section\)/));
 test('size selection updates the inline preview with chosen size (T-7069)', () => assert.match(storeSource,/buildReadyCard\(storeSelectedModule, detailDef, "detail", inlinePreview\.mount\.setSize\)/));
 
@@ -509,7 +523,7 @@ test('size selection sets pressed state', () => assert.match(storeSource,/tile\.
 test('size selection sets data state', () => assert.match(storeSource,/tile\.dataset\.selected = "true"/));
 test('size selection records selected size on group', () => assert.match(storeSource,/tiles\.dataset\.selectedSize = sizeKey/));
 test('size selection records selected size on action', () => assert.match(storeSource,/addButton\.dataset\.selectedSize = sizeKey/));
-test('size selection updates action accessible label', () => assert.match(storeSource,/addButton\.setAttribute\("aria-label", `\$\{added \? this\.i18n\.homeStoreApplySize : this\.i18n\.homeStoreAdd/));
+test('size selection updates action accessible label', () => assert.match(storeSource,/const sizeActionLabel = guideOnly[\s\S]*?addButton\.setAttribute\("aria-label", accessibleLabel\)/));
 test('size buttons support ArrowLeft', () => assert.match(storeSource,/\["ArrowLeft", "ArrowRight", "Home", "End"\]/));
 test('size buttons support ArrowRight', () => assert.match(storeSource,/event\.key === "ArrowLeft" \? -1 : 1/));
 test('size buttons support Home', () => assert.match(storeSource,/event\.key === "Home" \? 0/));
@@ -576,12 +590,12 @@ test('config field rows use dedicated class', () => assert.match(configFormSourc
 test('config labels use dedicated class', () => assert.match(configFormSource, /label\.className = "sw-home-config__label"/));
 test('config control ids sanitize unsafe characters', () => assert.match(configFormSource, /const controlId = .*\.replace\(\//));
 test('config controls are registered after creation', () => assert.match(configFormSource, /controls\.set\(field\.key, (select|input)\)/));
-test('config notebook fill clears loading options', () => assert.match(configFormSource, /select\.innerHTML = ""/));
-test('config notebook fill appends available notebooks', () => assert.match(configFormSource, /options\.forEach\(\(nb\) =>/));
-test('config notebook fill restores current value', () => assert.match(configFormSource, /select\.value = resetKeys\.has\(field\.key\) \? "" : current/));
-test('config notebook fill updates draft value', () => assert.match(configFormSource, /draft\[field\.key\] = select\.value/));
+test('config notebook fill clears loading options', () => assert.match(notebookLoadUiSource, /select\.replaceChildren\(\)/));
+test('config notebook fill appends available notebooks', () => assert.match(notebookLoadUiSource, /result\.notebooks\.forEach\(\(notebook\) =>/));
+test('config notebook fill restores current value', () => assert.match(notebookLoadUiSource, /select\.value = currentValue \|\| ""/));
+test('config notebook fill updates draft value', () => assert.match(configFormSource, /draft\[field\.key\] = value/));
 test('config notebook reset key is consumed', () => assert.match(configFormSource, /resetKeys\.delete\(field\.key\)/));
-test('config notebook loading is asynchronous', () => assert.match(source, /void this\.loadNotebooks\(\)\.then\(\(notebooks\) =>/));
+test('config notebook loading is asynchronous', () => assert.match(configFormSource, /void runNotebookLoad\(\{/));
 test('config document datalist has stable id', () => assert.match(configFormSource, /suggestions\.id = `\$\{controlId\}-options`/));
 test('config document datalist appends options', () => assert.match(configFormSource, /suggestions\.appendChild\(option\)/));
 test('config document input listener searches without mutating draft', () => assert.match(documentFieldSource, /input\.addEventListener\("input", queueLoad\)/));

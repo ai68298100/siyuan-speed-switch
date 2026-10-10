@@ -27,11 +27,43 @@ test('store size selection updates action state', () => assert.match(storeUiSour
 test('store add action is created as a button', () => assert.match(source, /const addButton = document\.createElement\("button"\)/));
 test('store add action declares button type', () => assert.match(storeUiSource, /addButton\.type = "button"/));
 test('store add action has a stable id', () => assert.match(storeUiSource, /addButton\.id = actionId/));
-test('store add action records operation', () => assert.match(storeUiSource, /addButton\.dataset\.action = added \? "apply-size" : "add"/));
+test('store primary action records operation', () => assert.match(storeUiSource, /addButton\.dataset\.action = guideOnly \? "guide" : added \? "apply-size" : "add"/));
 test('store add action records selected size', () => assert.match(storeUiSource, /addButton\.dataset\.selectedSize = selectedTile\?\.dataset\.size/));
-test('store add action references the size label', () => assert.match(storeUiSource, /addButton\.setAttribute\("aria-describedby", sizeLabel\.id\)/));
-test('store add action includes selected size in its label', () => assert.match(storeUiSource, /addButton\.setAttribute\("aria-label", `\$\{added \? this\.i18n\.homeStoreApplySize : this\.i18n\.homeStoreAdd\}/));
+test('store action describes the selected size or external prerequisites', () => {
+    assert.match(storeUiSource, /const descriptionIds = guideOnly[\s\S]*?: sizeLabel\.id;/);
+    assert.match(storeUiSource, /if \(descriptionIds\) addButton\.setAttribute\("aria-describedby", descriptionIds\)/);
+});
+test('store action accessible label matches its operation and selected size', () => {
+    assert.match(storeUiSource, /const actionLabel = guideOnly[\s\S]*?addButton\.setAttribute\("aria-label", `\$\{actionLabel\}/);
+});
 test('store add action has a tooltip', () => assert.match(storeUiSource, /addButton\.title = addButton\.getAttribute\("aria-label"\)/));
+function assertExternalStoreActionContract(source) {
+    assert.match(source, /const guideOnly = !added && card\.dataset\.primaryAction === "guide";/,
+        '外部来源必须从主动作事实选择说明动作');
+    assert.match(source, /addButton\.dataset\.action = guideOnly \? "guide" : added \? "apply-size" : "add";/,
+        '按钮的 action 元数据必须与可见的主动作一致');
+    assert.match(source, /if \(!added && !guideOnly && !canHomeStoreInstall\(card\.dataset, \{installability\}\)\)/,
+        '安装能力只应禁用添加动作，不能禁用说明入口');
+    assert.match(source, /if \(guideOnly\) \{\s*this\.openHomeWidgetGuide\(\);\s*return;\s*\}/,
+        '外部来源说明动作必须打开说明并退出添加写入路径');
+    assert.match(source, /const actionLabel = guideOnly[\s\S]*?addButton\.setAttribute\("aria-label", `\$\{actionLabel\}/,
+        '可见主动作、无障碍名称与提示必须使用同一动作文案');
+    assert.match(source, /const descriptionIds = guideOnly\s*\? \[card\.querySelector<HTMLElement>\("\.sw-home-store__availability"\)\?\.id, desc\.id\][\s\S]*?: sizeLabel\.id;/,
+        '说明按钮应关联组件前置条件，尺寸提交按钮才关联尺寸选择');
+    assert.match(source, /const sizeActionLabel = guideOnly[\s\S]*?addButton\.title = accessibleLabel;/,
+        '切换预览尺寸后仍须保持说明按钮名称和提示一致');
+}
+test('external store primary action is available, accurately labelled and opens its guide', () => {
+    assertExternalStoreActionContract(storeUiSource);
+});
+test('external guide action contract rejects a disabled or misrouted guide action', () => {
+    const withoutGuideRoute = storeUiSource.replace('this.openHomeWidgetGuide();\n                        return;', 'return;');
+    assert.throws(() => assertExternalStoreActionContract(withoutGuideRoute), /说明动作必须打开说明/);
+    const disabledGuide = storeUiSource.replace('!added && !guideOnly && !canHomeStoreInstall', '!added && !canHomeStoreInstall');
+    assert.throws(() => assertExternalStoreActionContract(disabledGuide), /不能禁用说明入口/);
+    const staleSizeLabel = storeUiSource.replace('const sizeActionLabel = guideOnly', 'const sizeActionLabel = false');
+    assert.throws(() => assertExternalStoreActionContract(staleSizeLabel), /切换预览尺寸后仍须保持说明按钮名称和提示一致/);
+});
 test('store source metadata is a note', () => assert.match(storeUiSource, /sourceMeta\.setAttribute\("role", "note"\)/));
 test('store source metadata has an accessible label', () => assert.match(storeUiSource, /sourceMeta\.setAttribute\("aria-label", this\.i18n\.homeStoreGuideHint\)/));
 test('store source chips expose their kind', () => assert.match(storeUiSource, /chip\.dataset\.kind = kind/));

@@ -20,6 +20,11 @@ test("screenshot infra: capture tool, npm script and matrix coverage exist (T-70
     }
     assert.match(captureScript, /const applyViewport = \(viewport\) => \{/, "逐 case 视口覆写必须存在");
     assert.match(captureScript, /applyViewport\(entry\.viewport\);/, "响应式 case 必须实际应用视口");
+    assert.match(captureScript, /copyFileSync\(cssPath, path\.join\(artifactDir, "index\.css"\)\)/, "必须把生产样式复制到截图页面，不能只捕获无样式 DOM");
+    assert.match(captureScript, /cssRules\.length > 20/, "CSS 未加载或样式规则为空时必须拒绝输出截图");
+    assert.match(captureScript, /expected panel surface is not visible/, "截图前必须确认目标面板真实显示");
+    assert.match(captureScript, /png\.length < 10_000/, "空白或损坏截图必须被拒绝");
+    assert.match(captureScript, /cssSha256:/, "截图清单必须记录所用生产 CSS 指纹");
     // 主题区分能力：明暗两套近似调色板必须在 harness 中定义
     assert.match(captureScript, /light: "--b3-theme-primary:/, "明色调色板必须定义");
     assert.match(captureScript, /dark: "--b3-theme-primary:/, "暗色调色板必须定义");

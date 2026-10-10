@@ -42,7 +42,7 @@
     --sw-platform-shadow-card: var(--sw-card-shadow, 0 1px 2px rgb(51 58 83 / 5%), 0 8px 24px rgb(75 85 120 / 8%));
     --sw-platform-shadow-floating: var(--sw-float-shadow, 0 14px 36px rgb(55 65 100 / 15%), 0 3px 10px rgb(55 65 100 / 8%));
     --sw-platform-focus: var(--sw-focus-ring, 0 0 0 3px color-mix(in srgb, var(--sw-platform-accent) 24%, transparent));
-    --sw-platform-header-height: 52px;
+    --sw-platform-header-height: 64px;
 }
 
 // PlatformShell -------------------------------------------------------------
@@ -76,6 +76,8 @@
     flex: 0 0 auto;
     flex-direction: column;
     min-width: 0;
+    container-name: sw-platform;
+    container-type: inline-size;
     color: var(--sw-platform-text);
     background: var(--sw-platform-bg);
 }
@@ -113,17 +115,23 @@
 .sw-platform-surface-nav__item[aria-current="page"] { cursor: default; }
 .sw-platform-surface-nav__item:not(button) { user-select: none; }
 
-// A sidebar has less horizontal room and already exposes the host identity;
-// the shared nav keeps its labels but gives the body more room for content.
+// Sidebar chrome keeps actions on the first row and gives the full second row to navigation.
 .sw--sidebar > .sw-platform-chrome .sw-platform-header {
-    min-height: 40px;
-    padding: 4px 8px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "actions" "nav";
+    gap: 6px;
+    min-height: 0;
+    padding: 8px 10px;
 }
 
 .sw--sidebar > .sw-platform-chrome .sw-platform-header__brand { display: none; }
 .sw--sidebar > .sw-platform-chrome .sw-platform-context { display: none; }
+.sw--sidebar > .sw-platform-chrome .sw-platform-header__actions { justify-self: end; }
 .sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav { width: 100%; }
 .sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item { flex: 1 1 auto; min-width: 0; padding-inline: var(--sw-space-md, 8px); }
+.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__hint,
+.sw--sidebar > .sw-platform-chrome .sw-platform-status,
+.sw--sidebar > .sw-platform-chrome .sw-platform-header__close-hint { display: none; }
 
 .sw__mobile > .sw-platform-chrome .sw-platform-header {
     min-height: 44px;
@@ -135,14 +143,15 @@
     padding-inline: 10px;
 }
 
-.sw__mobile > .sw-platform-chrome .sw-platform-header__brand { flex-basis: auto; }
-.sw__mobile > .sw-platform-chrome .sw-platform-surface-nav__item { min-height: 40px; }
+.sw__mobile > .sw-platform-chrome .sw-platform-header__brand { min-width: 0; }
 
 // Header and surface navigation --------------------------------------------
 .sw-platform-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(350px, 520px) minmax(0, 1fr);
+    grid-template-areas: "brand nav actions";
     align-items: center;
-    gap: var(--sw-platform-space-3);
+    gap: var(--sw-platform-space-4);
     min-width: 0;
     min-height: var(--sw-platform-header-height);
     padding: var(--sw-platform-space-2) var(--sw-platform-space-4);
@@ -159,18 +168,18 @@
     gap: var(--sw-platform-space-2);
 }
 
-.sw-platform-header__brand { flex: 0 0 auto; font-weight: 700; }
+.sw-platform-header__brand { grid-area: brand; min-width: 0; font-weight: 700; }
 .sw-platform-header__context { flex: 1 1 auto; color: var(--sw-platform-text-muted); font-size: 12px; overflow: hidden; }
 .sw-platform-header__context > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sw-platform-header__actions { flex: 0 0 auto; justify-content: flex-end; }
+.sw-platform-header__actions { grid-area: actions; justify-self: end; flex: 0 0 auto; justify-content: flex-end; }
 
 .sw-platform-header__close {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
     padding: 0;
     // T-7015b（用户反馈）：关闭钮从纯文本钮升级为带边框/底色的实感钮——
     // 位置本就在 header 最右，此前只是无背景小图标，可发现性不足。
@@ -251,6 +260,14 @@
 .sw-platform-header__close-hint-label,
 .sw-platform-dialog__close-hint-label { line-height: 1; }
 
+.sw-platform-header__close-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 10px;
+    border-left: 1px solid var(--sw-platform-line);
+}
+
 .sw-platform-dialog__close-button {
     flex: 0 0 auto;
     min-width: 36px;
@@ -258,11 +275,14 @@
 }
 
 .sw-platform-surface-nav {
+    grid-area: nav;
+    justify-self: center;
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
     min-width: 0;
     max-width: 100%;
+    width: 100%;
     overflow-x: auto;
     scrollbar-width: none;
 }
@@ -273,9 +293,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 auto;
-    min-height: 36px;
-    padding: 6px 12px;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 48px;
+    gap: 8px;
+    padding: 4px 10px;
     // T-7015c（用户反馈）：非当前项默认给淡边框胶囊——静态观感即可辨认「这是
     // 可点的按钮」，不再依赖 hover 才显形（按钮可发现性）。
     border: 1px solid color-mix(in srgb, var(--sw-platform-line, var(--b3-border-color)) 72%, transparent);
@@ -295,6 +317,12 @@
     pointer-events: auto;
     transition: none;
 }
+
+.sw-platform-surface-nav__icon { flex: 0 0 18px; width: 18px; height: 18px; pointer-events: none; }
+.sw-platform-surface-nav__copy { display: grid; min-width: 0; gap: 2px; text-align: left; pointer-events: none; }
+.sw-platform-surface-nav__label { overflow: hidden; color: inherit; font-size: 12px; font-weight: 700; text-overflow: ellipsis; }
+.sw-platform-surface-nav__hint { overflow: hidden; color: var(--sw-platform-text-muted); font-size: 10px; font-weight: 400; text-overflow: ellipsis; }
+.sw-platform-surface-nav__item.is-active .sw-platform-surface-nav__hint { color: color-mix(in srgb, var(--sw-platform-accent) 72%, var(--sw-platform-text-muted)); }
 
 .sw-platform-surface-nav__item:hover,
 .sw-platform-surface-nav__item:focus-visible {
@@ -572,7 +600,7 @@
 
 @media (pointer: coarse) {
     .sw-platform-surface-nav__item,
-    .sw-platform-action { min-height: 44px; }
+    .sw-platform-action { min-height: 48px; }
     // 分段项本体 38px + 容器上下 padding 3px = 44px 命中区（触控不降级）。
     .sw-platform-seg__item { min-height: 38px; }
     .sw-platform-header__close,
@@ -584,10 +612,17 @@
     .sw-platform-dialog__close-button { min-width: 44px; min-height: 44px; }
 }
 
-@media (max-width: 640px) {
-    .sw-platform-header { align-items: flex-start; flex-wrap: wrap; }
-    .sw-platform-header__context { order: 3; flex-basis: 100%; }
-    .sw-platform-header__actions { margin-left: auto; }
+@media (max-width: 960px) {
+    .sw-platform-header {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "brand actions" "nav nav";
+        gap: 8px 12px;
+        min-height: 0;
+        padding: 8px 12px;
+    }
+    .sw-platform-surface-nav { justify-self: stretch; }
+    .sw-platform-surface-nav__hint { display: none; }
+    .sw-platform-header__close-hint { display: none; }
     .sw-platform-context { align-items: flex-start; flex-wrap: wrap; }
     .sw-platform-context__actions { margin-left: 0; flex-basis: 100%; }
     // 真机反馈（T-6970）：分段项 nowrap，皮肤选择这类长标签（融合主题（默认）/苹果风格 · 液态玻璃）
@@ -600,12 +635,54 @@
     .sw-platform-dialog__close-hint-label,
     .sw__mobile > .sw-platform-chrome .sw-platform-header__close-hint-label { display: none; }
     .sw-platform-dialog__close-hint .sw-platform-kbd { min-width: 26px; }
+    .sw-platform-surface-nav__icon { display: none; }
+    .sw-platform-surface-nav__item { gap: 4px; padding-inline: 6px; }
+    .sw-platform-surface-nav__label { font-size: 11px; }
+    .sw-platform-header__close,
+    .sw-platform-header__icon-action { width: 44px; height: 44px; min-width: 44px; }
     .sw__mobile > .sw-platform-chrome .sw-platform-header {
         gap: 6px;
         padding-inline: 8px;
     }
-    .sw__mobile > .sw-platform-chrome .sw-platform-header__actions { gap: 2px; }
-    .sw__mobile > .sw-platform-chrome .sw-platform-header__close-hint { gap: 0; }
+    .sw__mobile > .sw-platform-chrome .sw-platform-header__actions { gap: 4px; }
+}
+
+// Dialog width can be smaller than the browser viewport (custom/adaptive
+// panel sizes), so viewport media queries alone leave the three-column header
+// in an over-constrained row.  Mirror the compact header contract from the
+// viewport rules against the chrome container as well.  The sidebar keeps its
+// dedicated actions-then-navigation layout through the more specific rules
+// above.
+@container sw-platform (max-width: 960px) {
+    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-header {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "brand actions" "nav nav";
+        gap: 8px 12px;
+        min-height: 0;
+        padding: 8px 12px;
+    }
+
+    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-surface-nav { justify-self: stretch; }
+    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-surface-nav__hint,
+    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-header__close-hint { display: none; }
+}
+
+@container sw-platform (max-width: 560px) {
+    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-surface-nav__icon { display: none; }
+    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-surface-nav__item { gap: 4px; padding-inline: 6px; }
+    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-surface-nav__label { font-size: 11px; }
+    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-header__close,
+    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-header__icon-action {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
+}
+
+@container sw-platform (max-width: 300px) {
+    .sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__icon { display: none; }
+    .sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item { padding-inline: 4px; }
+    .sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__label { font-size: 11px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

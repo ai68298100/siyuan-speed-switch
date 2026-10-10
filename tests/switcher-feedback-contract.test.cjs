@@ -43,6 +43,9 @@ test('T-7027 surface navigation feedback is immediate and pressed state is expli
 test('T-7228 surface navigation labels expose purpose and current state', () => {
     const source = readSourceText(path.join(root, 'src', 'index.ts'));
     assert.match(source, /const surfaceHint = options\.labels\.hints\[surface\]/);
+    assert.match(source, /copy\.className = "sw-platform-surface-nav__copy"/);
+    assert.match(source, /hint\.className = "sw-platform-surface-nav__hint"/);
+    assert.match(source, /control\.append\(surfaceIcon, copy\)/);
     assert.match(source, /control\.setAttribute\("title", surfaceHint/);
     assert.match(source, /control\.setAttribute\("aria-label", `\$\{options\.labels\.surfaces\[surface\]\}（当前）`\)/,
         'current surface should announce its state');
@@ -52,6 +55,13 @@ test('T-7228 surface navigation labels expose purpose and current state', () => 
     const missingCurrent = source.replace('control.setAttribute("aria-label", `${options.labels.surfaces[surface]}（当前）`);', '/* deleted current state */');
     assert.doesNotMatch(missingCurrent, /control\.setAttribute\("aria-label", `\$\{options\.labels\.surfaces\[surface\]\}（当前）`\)/,
         '删除当前状态播报后门禁必须失败');
+});
+
+test('T-7232 close hint and close button stay in one right-side group', () => {
+    const source = readSourceText(path.join(root, 'src', 'index.ts'));
+    assert.match(source, /closeGroup\.appendChild\(closeHint\)/);
+    assert.match(source, /closeGroup\.appendChild\(close\)/);
+    assert.match(source, /actions\.appendChild\(closeGroup\)/);
 });
 
 test('T-7228 hit-layer declarations remain guarded by negative probes', () => {

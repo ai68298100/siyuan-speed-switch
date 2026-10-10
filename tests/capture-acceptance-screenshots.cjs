@@ -6,6 +6,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const crypto = require("node:crypto");
 const {spawn} = require("node:child_process");
 const {createRequire} = require("node:module");
 const esbuild = createRequire(require.resolve("esbuild-loader"))("esbuild");
@@ -17,6 +18,12 @@ const artifactDir = path.join(repo, ".tmp", "acceptance-shots");
 fs.mkdirSync(artifactDir, {recursive: true});
 const profile = fs.mkdtempSync(path.join(artifactDir, "profile-"));
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const cssPath = path.join(repo, "dist", "index.css");
+if (!fs.existsSync(cssPath) || fs.statSync(cssPath).size < 1024) {
+    throw new Error("Production CSS is missing or empty; run pnpm build before capturing UI screenshots");
+}
+fs.copyFileSync(cssPath, path.join(artifactDir, "index.css"));
 
 const bundle = esbuild.buildSync({
     stdin: {contents: 'import * as mod from "./index.ts";\nglobalThis.__SpeedSwitch = mod.default ?? mod;',
@@ -135,15 +142,52 @@ async function main() {
             }
             const state = await evalJs("window.__bootState || 'loading'");
             if (state !== "booted") { failures.push(`${entry.id}: boot ${state}`); continue; }
+            const cssState = await evalJs(`(() => {
+                const sheet = [...document.styleSheets].find((item) => item.href && item.href.endsWith("/index.css"));
+                try { return {loaded: Boolean(sheet && sheet.cssRules.length > 20), rules: sheet?.cssRules.length || 0}; }
+                catch (_) { return {loaded: false, rules: 0}; }
+            })()`);
+            if (!cssState?.loaded) { failures.push(`${entry.id}: production CSS missing or not loaded (${cssState?.rules || 0} rules)`); continue; }
             applyViewport(entry.viewport);
             await evalJs(entry.action);
             await delay(600);
+            const targetSelector = entry.id.startsWith("switcher-") ? ".sw__main"
+                : entry.id.startsWith("studio-") ? ".sw-studio"
+                    : '[data-sw-surface="workbench"]';
+            const panelState = await evalJs(`(() => {
+                const target = document.querySelector(${JSON.stringify(targetSelector)});
+                if (!target) return JSON.stringify({visible: false, targetFound: false,
+                    dialogs: [...document.querySelectorAll(".b3-dialog")].map((dialog) => ({
+                        open: dialog.isConnected, surface: dialog.querySelector("[data-sw-surface]")?.dataset.swSurface || null,
+                        classes: dialog.className,
+                    }))});
+                const rect = target.getBoundingClientRect();
+                const style = getComputedStyle(target);
+                return JSON.stringify({visible: rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden",
+                    targetFound: true, rect: {width: Math.round(rect.width), height: Math.round(rect.height)},
+                    display: style.display, visibility: style.visibility,
+                    dialogs: [...document.querySelectorAll(".b3-dialog")].map((dialog) => ({
+                        open: dialog.isConnected, surface: dialog.querySelector("[data-sw-surface]")?.dataset.swSurface || null,
+                        classes: dialog.className,
+                    }))});
+            })()`);
+            const panelStatus = JSON.parse(panelState);
+            if (!panelStatus.visible) { failures.push(`${entry.id}: expected panel surface is not visible (${targetSelector}): ${panelState}`); continue; }
             const shot = await send("Page.captureScreenshot", {format: "png"});
             const out = path.join(outDir, `${entry.id}.png`);
-            fs.writeFileSync(out, Buffer.from(shot.data, "base64"));
-            console.log(`captured ${entry.id} -> ${path.relative(repo, out)} (${fs.statSync(out).size} bytes)`);
+            const png = Buffer.from(shot.data, "base64");
+            if (png.length < 10_000) { failures.push(`${entry.id}: screenshot is unexpectedly small (${png.length} bytes)`); continue; }
+            fs.writeFileSync(out, png);
+            console.log(`captured ${entry.id} -> ${path.relative(repo, out)} (${png.length} bytes)`);
         }
         if (failures.length) throw new Error(failures.join("; "));
+        const packageJson = JSON.parse(fs.readFileSync(path.join(repo, "package.json"), "utf8"));
+        fs.writeFileSync(path.join(outDir, "manifest.json"), JSON.stringify({
+            version: packageJson.version,
+            generatedAt: new Date().toISOString(),
+            cssSha256: crypto.createHash("sha256").update(fs.readFileSync(cssPath)).digest("hex"),
+            cases: CASES.map(({id, theme, viewport}) => ({id, theme, viewport: viewport || {width: 1366, height: 768}})),
+        }, null, 2) + "\n");
         console.log(`acceptance screenshots: ${CASES.length} captured to acceptance-screenshots/`);
     } finally {
         socket?.close();

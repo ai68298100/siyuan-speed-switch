@@ -680,8 +680,17 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
         const surfaceLabel = doc.createElement("span");
         surfaceLabel.className = "sw-platform-surface-nav__label";
         surfaceLabel.textContent = options.labels.surfaces[surface];
-        control.append(surfaceIcon, surfaceLabel);
         const surfaceHint = options.labels.hints[surface];
+        const copy = doc.createElement("span");
+        copy.className = "sw-platform-surface-nav__copy";
+        copy.appendChild(surfaceLabel);
+        if (surfaceHint) {
+            const hint = doc.createElement("span");
+            hint.className = "sw-platform-surface-nav__hint";
+            hint.textContent = surfaceHint;
+            copy.appendChild(hint);
+        }
+        control.append(surfaceIcon, copy);
         control.setAttribute("aria-label", surfaceHint
             ? `${options.labels.surfaces[surface]}：${surfaceHint}`
             : options.labels.surfaces[surface]);
@@ -715,6 +724,8 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
         actions.appendChild(settings);
     }
     if (options.onClose) {
+        const closeGroup = doc.createElement("span");
+        closeGroup.className = "sw-platform-header__close-group";
         const closeHint = doc.createElement("span");
         closeHint.className = "sw-platform-header__close-hint";
         closeHint.setAttribute("aria-label", options.closeHint || "Escape to close");
@@ -723,7 +734,7 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
         closeHintLabel.className = "sw-platform-header__close-hint-label";
         closeHintLabel.textContent = options.closeHint || "to close";
         closeHint.appendChild(closeHintLabel);
-        actions.appendChild(closeHint);
+        closeGroup.appendChild(closeHint);
         const close = doc.createElement("button");
         close.type = "button";
         close.className = "b3-button b3-button--text sw-platform-header__close";
@@ -731,7 +742,8 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
         close.title = options.closeLabel || "Close";
         close.innerHTML = '<svg><use xlink:href="#iconClose"></use></svg>';
         close.addEventListener("click", () => options.onClose?.());
-        actions.appendChild(close);
+        closeGroup.appendChild(close);
+        actions.appendChild(closeGroup);
     }
     header.append(brand, nav, actions);
 
@@ -2588,7 +2600,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 拉取已打开的笔记本列表（id + name），用于默认日记笔记本下拉
     // T-7185：失败可区分的笔记本加载——failed=true 时调用方展示失败回执/重试，
     // 不再与「真空笔记本」同形。
-    private async loadNotebooksDetailed(): Promise<{notebooks: Array<{id: string, name: string}>, failed: boolean}> {
+    async loadNotebooksDetailed(): Promise<{notebooks: Array<{id: string, name: string}>, failed: boolean}> {
     // 内核无响应时超时中断请求，避免设置页下拉一直停在加载中
         const controller = typeof AbortController === "function" ? new AbortController() : null;
         let timer: number | null = null;

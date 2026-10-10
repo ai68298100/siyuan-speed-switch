@@ -5,6 +5,21 @@
 
 ## Changelog (full history)
 
+### v0.46.8 (2026-10-10)
+
+- **Added compact top-bar containers and snippet focus continuity**: custom narrow panels now use the real container width, and closing the snippet picker restores focus to its actual opener.
+- **Added full UI interaction regression gates**: coverage includes the three-surface top bar, 245px sidebar, widget store, configuration form, and snippet picker entry conditions, button states, empty/error feedback, disposal races, and deletion-injection checks.
+- **Improved top-bar hierarchy and touch targets**: sidebar navigation continues to use density tokens; fine-pointer short windows may compact close controls while coarse pointers retain touch targets.
+- **Fixed notebook failure feedback and stale contracts**: failure, empty, retry, and disposal states remain distinct, and source contracts now follow the shared loader helper.
+- **Verification**: full suite **8635/8635**; TypeScript, production build, top-bar/sidebar, store, snippet, and Chromium smoke checks passed.
+
+### v0.46.7 (2026-10-09)
+
+- **Added the R5 platform top-bar prototype and real sidebar coverage**: documented desktop, 245px sidebar, and 360px mobile rules, then verified labels, overflow, close anchoring, target sizes, and coordinate clicks in a real-width fixture.
+- **Improved top-bar current state and compact hierarchy**: restored the current-surface underline and moved sidebar/mobile navigation onto its own row while keeping settings and close reachable on the right.
+- **Fixed notebook configuration failure feedback**: separated request failure from an empty list, added retry UI, restored options and the previous value after success, and ignored late responses after disposal.
+- **Verification**: targeted top-bar, store, and notebook contracts **850/850**; TypeScript, build, and Chromium surface smoke passed.
+
 ### v0.46.6 (2026-10-09)
 
 - **Added quick snippet toggles**: the persistent list and picker catalog now expose sibling Enable/Disable actions for native snippets, using whole-list writes, readback confirmation, JS confirmation, and dirty-draft protection.

@@ -90,6 +90,10 @@ async function main() {
             if (r.exceptionDetails) throw new Error("PAGE ERROR: " + JSON.stringify(r.exceptionDetails).slice(0, 600));
             return r.result.value;
         };
+        const captureHeader = async (name) => {
+            const shot = await send("Page.captureScreenshot", {format: "png"});
+            fs.writeFileSync(path.join(artifactDir, name), Buffer.from(shot.data, "base64"));
+        };
         await send("Page.enable");
         await send("Emulation.setDeviceMetricsOverride", {width: 1366, height: 768, deviceScaleFactor: 1, mobile: false});
         await send("Page.navigate", {url: "file:///" + path.join(artifactDir, "page.html").replace(/\\/g, "/")});
@@ -160,6 +164,166 @@ async function main() {
         await assertDialogs("case C (fullscreen workbench, surface-nav click)", [
             {surface: "studio", studioMounted: true, fullscreen: true, zAbove: true},
         ]);
+
+        const readHeaderGeometry = async () => JSON.parse(await evalJs(`(() => {
+            const headers = [...document.querySelectorAll('.sw-platform-header')]
+                .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
+            const header = headers.at(-1);
+            if (!header) return null;
+            const rect = (selector) => {
+                const el = selector === '.sw-platform-header' ? header : header.querySelector(selector);
+                if (!el) return null;
+                const r = el.getBoundingClientRect();
+                return {left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height};
+            };
+            return JSON.stringify({
+                header: rect('.sw-platform-header'),
+                brand: rect('.sw-platform-header__brand'),
+                nav: rect('.sw-platform-surface-nav'),
+                actions: rect('.sw-platform-header__actions'),
+                settings: rect('.sw-platform-header__settings'),
+                close: rect('.sw-platform-header__close'),
+                items: [...header.querySelectorAll('.sw-platform-surface-nav__item')].map((el) => {
+                    const r = el.getBoundingClientRect();
+                    return {surface: el.dataset.surface, tag: el.tagName, width: r.width, height: r.height};
+                }),
+            });
+        })()`));
+        const desktopGeometry = await readHeaderGeometry();
+        assert.ok(desktopGeometry?.close, "R5 header: close button is present in the active surface");
+        assert.ok(desktopGeometry.actions.right <= desktopGeometry.header.right - 12,
+            `R5 desktop: action group is anchored to the right edge (${JSON.stringify(desktopGeometry)})`);
+        assert.ok(Math.abs((desktopGeometry.nav.left + desktopGeometry.nav.right) / 2
+            - (desktopGeometry.header.left + desktopGeometry.header.right) / 2) < 4,
+        `R5 desktop: surface navigation is centered (${JSON.stringify(desktopGeometry)})`);
+        assert.ok(desktopGeometry.items.every((item) => item.width >= 100 && item.height >= 48),
+            `R5 desktop: every surface entry has a stable hit target (${JSON.stringify(desktopGeometry.items)})`);
+        await captureHeader("topbar-desktop.png");
+
+        await send("Emulation.setDeviceMetricsOverride", {width: 560, height: 820, deviceScaleFactor: 1, mobile: false});
+        await delay(200);
+        const narrowGeometry = await readHeaderGeometry();
+        assert.ok(narrowGeometry.nav.top >= narrowGeometry.actions.bottom,
+            `R5 narrow: navigation occupies its own second row (${JSON.stringify(narrowGeometry)})`);
+        assert.ok(narrowGeometry.close.right <= narrowGeometry.header.right - 8,
+            `R5 narrow: close button stays at the far right (${JSON.stringify(narrowGeometry)})`);
+        assert.ok(narrowGeometry.items.every((item) => item.width >= 80 && item.height >= 44),
+            `R5 narrow: surface entries remain easy to hit (${JSON.stringify(narrowGeometry.items)})`);
+        await captureHeader("topbar-narrow.png");
+
+        await send("Emulation.setDeviceMetricsOverride", {width: 560, height: 600, deviceScaleFactor: 1, mobile: false});
+        await delay(120);
+        const shortWindowGeometry = await readHeaderGeometry();
+        assert.ok(shortWindowGeometry.items.every((item) => item.height >= 44),
+            `R5 short window: compact header keeps 44px navigation targets (${JSON.stringify(shortWindowGeometry.items)})`);
+
+        await send("Emulation.setDeviceMetricsOverride", {width: 390, height: 844, deviceScaleFactor: 1, mobile: false});
+        await send("Emulation.setTouchEmulationEnabled", {enabled: true, maxTouchPoints: 1});
+        await delay(120);
+        const touchGeometry = await readHeaderGeometry();
+        const touchPointer = await evalJs(`matchMedia('(pointer: coarse)').matches`);
+        assert.ok(touchPointer, "R5 touch: browser is emulating a coarse primary pointer");
+        assert.ok(touchGeometry.items.every((item) => item.height >= 48),
+            `R5 touch: surface entries keep a 48px target (${JSON.stringify(touchGeometry.items)})`);
+        assert.ok(touchGeometry.close.height >= 44,
+            `R5 touch: close remains at least 44px (${JSON.stringify(touchGeometry.close)})`);
+        assert.ok(touchGeometry.settings?.height >= 44,
+            `R5 touch: settings remains at least 44px (${JSON.stringify(touchGeometry.settings)})`);
+        await captureHeader("topbar-touch.png");
+
+        await send("Emulation.setTouchEmulationEnabled", {enabled: false});
+        await send("Emulation.setDeviceMetricsOverride", {width: 560, height: 820, deviceScaleFactor: 1, mobile: false});
+        await delay(120);
+        const clickSurfaceWithPointer = async (surface, label) => {
+            const point = await evalJs(`(() => {
+                const button = [...document.querySelectorAll('.sw-platform-surface-nav__item')]
+                    .find((el) => el.dataset.surface === ${JSON.stringify(surface)} && el.tagName === 'BUTTON');
+                if (!button) return null;
+                const r = button.getBoundingClientRect();
+                return {x: r.left + r.width / 2, y: r.top + r.height / 2};
+            })()`);
+            assert.ok(point, `${label}: ${surface} surface must be a real button`);
+            await send("Input.dispatchMouseEvent", {type: "mouseMoved", x: point.x, y: point.y});
+            await send("Input.dispatchMouseEvent", {type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1});
+            await send("Input.dispatchMouseEvent", {type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1});
+            await delay(600);
+            await assertDialogs(`${label} (coordinate click)`, [{surface, studioMounted: surface === "studio"}]);
+        };
+        await clickSurfaceWithPointer("workbench", "R5 narrow switch to workbench");
+        await clickSurfaceWithPointer("switcher", "R5 narrow switch to switcher");
+        await clickSurfaceWithPointer("studio", "R5 narrow switch back to studio");
+
+        const sidebarSetup = await evalJs(`(() => {
+            const host = document.createElement('div');
+            host.className = 'sw--sidebar';
+            Object.assign(host.style, {position: 'fixed', left: '0', top: '0', width: '245px', zIndex: '99999'});
+            document.body.appendChild(host);
+            const labels = {
+                platformName: '小驴雷切', contextLabel: '工作上下文',
+                surfaces: {switcher: '切换器', workbench: '工作台', studio: '片段实验室'},
+                hints: {switcher: '查找、预览和打开内容', workbench: '编排信息组件和工作现场', studio: '安全编辑、预览和管理代码片段'},
+            };
+            window.__sidebarNavigation = '';
+            window.__plugin.mountPlatformChrome(host, {
+                surface: 'switcher', labels, status: {label: '已连接'},
+                onNavigate: (surface) => { window.__sidebarNavigation = surface; },
+                onSettings: () => {}, onClose: () => {}, settingsLabel: '打开设置', closeLabel: '关闭平台',
+            });
+            return true;
+        })()`);
+        assert.equal(sidebarSetup, true, "R5 sidebar: production chrome mounts in a native-width host");
+        const sidebarGeometry = JSON.parse(await evalJs(`(() => {
+            const host = document.querySelector('.sw--sidebar');
+            const chrome = host.querySelector(':scope > .sw-platform-chrome');
+            const header = chrome.querySelector('.sw-platform-header');
+            const rect = (selector) => {
+                const el = chrome.querySelector(selector);
+                if (!el) return null;
+                const r = el.getBoundingClientRect();
+                return {left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height};
+            };
+            const nav = chrome.querySelector('.sw-platform-surface-nav');
+            const navRect = nav.getBoundingClientRect();
+            const actions = chrome.querySelector('.sw-platform-header__actions').getBoundingClientRect();
+            return JSON.stringify({
+                width: host.getBoundingClientRect().width,
+                header: rect('.sw-platform-header'), actions: rect('.sw-platform-header__actions'),
+                nav: {left: navRect.left, right: navRect.right, top: navRect.top, bottom: navRect.bottom,
+                    width: navRect.width, height: navRect.height, clientWidth: nav.clientWidth, scrollWidth: nav.scrollWidth},
+                settings: rect('.sw-platform-header__settings'), close: rect('.sw-platform-header__close'),
+                closeGroup: rect('.sw-platform-header__close-group'),
+                items: [...header.querySelectorAll('.sw-platform-surface-nav__item')].map((el) => {
+                    const r = el.getBoundingClientRect();
+                    const label = el.querySelector('.sw-platform-surface-nav__label');
+                    return {surface: el.dataset.surface, tag: el.tagName, width: r.width, height: r.height,
+                        text: label.textContent, labelWidth: label.clientWidth, labelScrollWidth: label.scrollWidth,
+                        current: el.getAttribute('aria-current')};
+                }),
+            });
+        })()`));
+        assert.equal(sidebarGeometry.width, 245, `R5 sidebar: fixture must use the actual 245px host width (${JSON.stringify(sidebarGeometry)})`);
+        assert.ok(sidebarGeometry.nav.top >= sidebarGeometry.actions.bottom,
+            `R5 sidebar: navigation occupies a dedicated row below actions (${JSON.stringify(sidebarGeometry)})`);
+        assert.ok(sidebarGeometry.nav.scrollWidth <= sidebarGeometry.nav.clientWidth + 1,
+            `R5 sidebar: navigation does not horizontally overflow (${JSON.stringify(sidebarGeometry.nav)})`);
+        assert.ok(sidebarGeometry.items.every((item) => item.height >= 44 && item.labelScrollWidth <= item.labelWidth + 1),
+            `R5 sidebar: all labels fit inside accessible hit targets (${JSON.stringify(sidebarGeometry.items)})`);
+        assert.equal(sidebarGeometry.items.find((item) => item.surface === 'switcher').current, 'page',
+            "R5 sidebar: current surface has a current-page state");
+        assert.ok(sidebarGeometry.close.right <= sidebarGeometry.header.right - 8,
+            `R5 sidebar: close button stays anchored to the right (${JSON.stringify(sidebarGeometry)})`);
+        assert.ok(sidebarGeometry.settings.right < sidebarGeometry.closeGroup.left,
+            `R5 sidebar: settings and close groups do not overlap (${JSON.stringify(sidebarGeometry)})`);
+        const sidebarClick = {
+            x: sidebarGeometry.items.find((item) => item.surface === 'workbench').width,
+            y: sidebarGeometry.items.find((item) => item.surface === 'workbench').height,
+        };
+        const sidebarPoint = await evalJs(`(() => { const b = document.querySelector('.sw--sidebar [data-surface="workbench"]'); const r = b.getBoundingClientRect(); return {x: r.left + r.width / 2, y: r.top + r.height / 2}; })()`);
+        await send("Input.dispatchMouseEvent", {type: "mouseMoved", x: sidebarPoint.x, y: sidebarPoint.y});
+        await send("Input.dispatchMouseEvent", {type: "mousePressed", x: sidebarPoint.x, y: sidebarPoint.y, button: "left", clickCount: 1});
+        await send("Input.dispatchMouseEvent", {type: "mouseReleased", x: sidebarPoint.x, y: sidebarPoint.y, button: "left", clickCount: 1});
+        assert.equal(await evalJs("window.__sidebarNavigation"), "workbench",
+            `R5 sidebar: coordinate click reaches the intended surface (${JSON.stringify(sidebarClick)})`);
         console.log("surface-switch smoke: all cases green");
     } finally {
         socket?.close();

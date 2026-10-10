@@ -1,13 +1,57 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.46.6-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.8-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **当前稳定版：v0.46.6（2026-10-09）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.6) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **当前稳定版：v0.46.8（2026-10-10）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.8) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
-## 本次更新（v0.46.6 · 2026-10-09）
+> **内测说明**：小驴考试、小驴管家、小驴闪卡、小驴常用为内测版，功能仍在持续开发与验证中；欢迎加入 QQ 群 **871707735** 反馈 Bug、提交需求。
+
+## 本次更新（v0.46.8 · 2026-10-10）
+
+本版完成三面板 UI 收口，补齐窄容器、失败重试、焦点恢复和发布前全量交互回归。
+
+新增：顶栏窄容器适配与片段入口焦点连续性
+
+- 自定义窄面板按真实 `.sw-platform` 容器宽度自动换行，导航、设置和关闭按钮不会被宽视口挤出边界。
+- 片段选择器关闭后恢复实际打开它的入口焦点，从组件商店返回时不再跳回错误按钮。
+
+新增：全量 UI 交互回归门禁
+
+- 覆盖顶栏、245px 侧栏、商店、配置表单和片段选择器的入口、按钮状态、空态、错误态、反馈与销毁竞态。
+- 增加删除注入负向验证，防止合同测试只“看起来通过”。
+
+优化：顶栏层级与触控命中区
+
+- 当前表面保留底部强调线；侧栏和移动端导航独立放在动作区下方，短窗细指针压缩关闭按钮，粗指针保持触控命中尺寸。
+- 侧栏导航继续消费密度 token，收拢奇数间距碎片，保持标签完整、无横向溢出和关闭动作可达。
+
+修复：笔记本配置加载失败反馈
+
+- 笔记本请求失败不再伪装为空列表，设置页显示失败状态和重试按钮；重试成功后恢复选项、原值和按钮状态，表单销毁后忽略迟到回包。
+
+<details>
+<summary>历史更新（v0.46.7 及更早，点击展开）</summary>
+
+## 上一版本更新（v0.46.7 · 2026-10-09）
+
+新增：平台顶栏 R5 原型与真实侧栏回归
+
+- 新增统一顶栏原型，明确桌面、245px 侧栏和 360px 移动端的导航、设置、关闭和当前态规则。
+- 新增真实 245px 侧栏浏览器 smoke，检查标签完整、无横向溢出、关闭锚点、按钮尺寸和坐标点击。
+
+优化：顶栏当前态与窄屏层级
+
+- 当前表面恢复底部强调线；侧栏和移动端把导航独立放在动作区下方，设置和关闭保持右侧可达。
+- 原型示例固定为真实容器宽度，反馈文案与生产关闭/切换语义一致。
+
+修复：笔记本配置加载失败反馈
+
+- 笔记本请求失败与空列表分离，设置页提供重试；重试成功恢复选项和原值，销毁后忽略迟到回包。
+
+## 上一版本更新（v0.46.6 · 2026-10-09）
 
 新增：片段目录快速启停
 
@@ -82,26 +126,34 @@
 
 - 模块可见性和停靠面板开关支持整行点击，并补齐屏幕阅读器可识别的开关名称。
 
+</details>
+
 <p align="center"><img src="preview.png" width="720" alt="小驴雷切预览"/></p>
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="小驴雷切桌面弹窗、右侧栏与手机端界面分布图"/></p>
 
-## 小驴插件与交流
+## 小驴系列插件与交流
 
-目前已开发的四款插件：
+> **内测说明**：小驴考试、小驴管家、小驴闪卡、小驴常用目前为内测版，功能仍在持续开发与验证中。欢迎通过 QQ 群 **871707735** 反馈 Bug、提交需求和交流使用体验。
 
-- **小驴雷切**：统一切换与工作上下文平台
-- **小驴打卡**
-- **小驴人脉**
-- **小驴拾遗**
+小驴系列插件均可独立安装；小驴雷切不会自动安装或启用其他插件。插件之间可通过公开的[组件协议](./docs/widget-protocol.md)与快捷动作协议协作。
 
-四款插件彼此独立，通过公开的[组件协议](./docs/widget-protocol.md)与快捷动作协议协作；安装小驴雷切不会自动安装或启用其他插件。
+| 插件名称 | 一句话简介 | GitHub 仓库 |
+| --- | --- | --- |
+| [小驴雷切](https://github.com/ai68298100/siyuan-speed-switch) | 本地优先的思源导航与工作上下文平台，连接页签切换、组件工作台、片段实验室和悬浮球。 | [siyuan-speed-switch](https://github.com/ai68298100/siyuan-speed-switch) |
+| [小驴打卡](https://github.com/ai68298100/siyuan-checkin) | 本地优先的习惯、打卡与复盘工作台。 | [siyuan-checkin](https://github.com/ai68298100/siyuan-checkin) |
+| [小驴人脉](https://github.com/ai68298100/siyuan-contacts) | 在思源中管理联系人、人际关系、组织与互动跟进。 | [siyuan-contacts](https://github.com/ai68298100/siyuan-contacts) |
+| [小驴拾遗](https://github.com/ai68298100/siyuan-glean) | 整理思源剪藏文章，支持确认入库、分拣阅读与日后回顾。 | [siyuan-glean](https://github.com/ai68298100/siyuan-glean) |
+| [小驴考试（内测版）](https://github.com/ai68298100/siyuan-exam) | 本地题库学习工作台，支持导入、刷题、模考、错题复盘与可审核 AI 辅助。 | [siyuan-exam](https://github.com/ai68298100/siyuan-exam) |
+| [小驴管家（内测版）](https://github.com/ai68298100/siyuan-home) | 家庭与生活台账、成员档案、到期提醒及事务跟进中枢。 | [siyuan-home](https://github.com/ai68298100/siyuan-home) |
+| [小驴闪卡（内测版）](https://github.com/ai68298100/siyuan-lv-cards) | 基于思源原生 FSRS 的本地优先全生命周期闪卡学习与复习平台。 | [siyuan-lv-cards](https://github.com/ai68298100/siyuan-lv-cards) |
+| [小驴常用（内测版）](https://github.com/ai68298100/xiaolv-common) | 基于思源文档与块快速调用常用语、模板、代码等内容。 | [xiaolv-common](https://github.com/ai68298100/xiaolv-common) |
 
-交流 QQ 群：**871707735**
+交流 QQ 群：**871707735**（反馈 Bug、提交需求）
 
 ## 目录
 
-- [小驴插件与交流](#小驴插件与交流)
+- [小驴系列插件与交流](#小驴系列插件与交流)
 - [核心能力](#核心能力)
 - [工作上下文、命令与动作](#工作上下文命令与动作)
 - [组件面板：58 个可配置组件](#组件面板58-个可配置组件)
@@ -426,7 +478,10 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.46.6`（2026-10-09 正式发布；本版补齐片段目录快速启停，修复第二面板材质与商店详情层级；Release 资产已随 GitHub Release 提供）。
+当前版本为 `v0.46.8`（2026-10-10；本版完成三面板 UI 收口并补齐窄容器、失败重试、焦点恢复和交互回归；Release 资产已同步至 GitHub）。
+
+<details>
+<summary>历史更新日志（点击展开）</summary>
 
 ## 更新日志
 
@@ -634,6 +689,8 @@ pnpm verify:release
 - **组件二轮增量**：写作打卡支持每周 n/m 口径与豁免休息日；笔记统计可选写作强度分；近期写作活跃度新增年历网格视图（53 周分页 + 色阶图例）。
 - **生态与配置**：DailyHot 支持基址+路由选择器（经同一 URL 白名单校验）；世界时钟城市字段直接支持中文名（内置 110 城离线表）。
 - **兼容与工程**：最低版本升至思源 3.8.0（ADR 0064）；新增四类性能基准、可访问性基线与对比度双主题采样门禁；ActivityWatch 支持桶选择。
+
+</details>
 
 ## 致谢
 

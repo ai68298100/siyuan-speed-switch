@@ -1,13 +1,57 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.46.6-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.46.8-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Current stable release: v0.46.6 (2026-10-09)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.6) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Current stable release: v0.46.8 (2026-10-10)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.8) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
-## What's New In v0.46.6 (2026-10-09)
+> **Beta notice**: 小驴考试, 小驴管家, 小驴闪卡, and 小驴常用 are beta plugins under active development and validation. Join QQ group **871707735** for bug reports and feature requests.
+
+## What's New In v0.46.8 (2026-10-10)
+
+This release closes the three-surface UI loop with compact-container support, recoverable failures, focus continuity, and full interaction regression coverage.
+
+Added: Compact top-bar containers and snippet focus continuity
+
+- Custom narrow panels now respond to the real `.sw-platform` container width, keeping navigation, settings, and close controls reachable.
+- The snippet picker restores focus to the actual opener, including the widget-store entry, instead of returning to an unrelated button.
+
+Added: Full UI interaction regression gates
+
+- Covers top-bar, 245px sidebar, store, configuration, and snippet-picker entry conditions, button states, empty/error feedback, and disposal races.
+- Adds deletion-injection checks so contracts fail when a required declaration or guard is removed.
+
+Improved: Top-bar hierarchy and touch targets
+
+- Preserved the current-surface underline; sidebar and mobile navigation stay on their own row, while fine-pointer short windows may compact close controls and coarse pointers retain touch targets.
+- Sidebar navigation continues to consume density tokens, removing odd spacing fragments while keeping labels and close actions reachable.
+
+Fixed: Notebook configuration failure feedback
+
+- Notebook request failures now show an explicit failure state and retry action instead of an empty list; successful retries restore options, the previous value, and button state, while late responses after disposal are ignored.
+
+<details>
+<summary>Previous release updates (v0.46.7 and earlier)</summary>
+
+## Previous release updates (v0.46.7 · 2026-10-09)
+
+Added: R5 platform top-bar prototype and real sidebar coverage
+
+- Added one top-bar prototype covering desktop, a real 245px sidebar, and a 360px mobile surface, including navigation, settings, close, and current-state rules.
+- Added a real 245px sidebar browser smoke that checks complete labels, no horizontal overflow, close anchoring, target sizes, and coordinate clicks.
+
+Improved: Top-bar current state and compact layout
+
+- Restored the current-surface underline; sidebar and mobile layouts place navigation on their own row while keeping settings and close reachable on the right.
+- Fixed prototype examples to use their real container widths and aligned feedback copy with production close and switch semantics.
+
+Fixed: Notebook configuration failure feedback
+
+- Separated request failure from an empty list, added retry UI, restored options and the previous value after success, and ignored late responses after disposal.
+
+## Previous release updates (v0.46.6 · 2026-10-09)
 
 Added: Quick snippet enable/disable
 
@@ -82,27 +126,36 @@ Improved: Settings switch accessibility and click behavior
 
 - Module visibility and dock switches now support full-row clicks and expose accessible names to screen readers.
 
+</details>
+
 <p align="center"><img src="preview.png" width="720" alt="LvSpeed Switch preview"/></p>
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
 ## Xiaolv Plugins And Community
 
-The four plugins currently developed under the Xiaolv series are:
+> **Beta notice**: 小驴考试, 小驴管家, 小驴闪卡, and 小驴常用 are beta plugins under active development and validation. Use QQ group **871707735** for bug reports, feature requests, and feedback.
 
-- **小驴雷切** (LvSpeed Switch): the unified switching and work-context platform
-- **小驴打卡**
-- **小驴人脉**
-- **小驴拾遗**
+All Xiaolv plugins are independently installable. LvSpeed Switch does not install or enable the others; plugins can cooperate through the documented [widget protocol](./docs/widget-protocol.md) and quick-action protocol.
 
-The four plugins remain independently installable and cooperate through the documented [widget protocol](./docs/widget-protocol.md) and quick-action protocol; installing LvSpeed Switch does not install or enable the other plugins.
+| Plugin | One-line description | GitHub repository |
+| --- | --- | --- |
+| [小驴雷切](https://github.com/ai68298100/siyuan-speed-switch) | Local-first SiYuan navigation and work-context platform connecting tab switching, the widget workbench, snippet lab, and floating ball. | [siyuan-speed-switch](https://github.com/ai68298100/siyuan-speed-switch) |
+| [小驴打卡](https://github.com/ai68298100/siyuan-checkin) | Local-first habits, check-ins, and review workspace. | [siyuan-checkin](https://github.com/ai68298100/siyuan-checkin) |
+| [小驴人脉](https://github.com/ai68298100/siyuan-contacts) | Contact, relationship, organization, and interaction follow-up management in SiYuan. | [siyuan-contacts](https://github.com/ai68298100/siyuan-contacts) |
+| [小驴拾遗](https://github.com/ai68298100/siyuan-glean) | A local reading library for confirmed, sorted, and reviewable SiYuan clippings. | [siyuan-glean](https://github.com/ai68298100/siyuan-glean) |
+| [小驴考试（内测版）](https://github.com/ai68298100/siyuan-exam) | Local question banks, practice, mock exams, mistake review, and reviewable AI assistance. | [siyuan-exam](https://github.com/ai68298100/siyuan-exam) |
+| [小驴管家（内测版）](https://github.com/ai68298100/siyuan-home) | Family and life ledgers, member records, due-date reminders, and follow-up management. | [siyuan-home](https://github.com/ai68298100/siyuan-home) |
+| [小驴闪卡（内测版）](https://github.com/ai68298100/siyuan-lv-cards) | Local-first full-lifecycle flashcards and review built on SiYuan's native FSRS. | [siyuan-lv-cards](https://github.com/ai68298100/siyuan-lv-cards) |
+| [小驴常用（内测版）](https://github.com/ai68298100/xiaolv-common) | Fast reuse of common phrases, templates, code, and other content from SiYuan documents and blocks. | [xiaolv-common](https://github.com/ai68298100/xiaolv-common) |
 
-QQ community group: **871707735**
+QQ community group: **871707735** (bug reports and feature requests)
 
 ## Table of Contents
 
 - [Xiaolv Plugins And Community](#xiaolv-plugins-and-community)
 - [Core Capabilities](#core-capabilities)
+- [Work Context, Commands & Actions](#work-context-commands--actions-new)
 - [Widget Panel: 58 Configurable Widgets](#widget-panel-58-configurable-widgets)
 - [SiYuan Agent Capabilities](#siyuan-agent-capabilities)
 - [Quick Start](#quick-start)
@@ -422,7 +475,10 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.46.6` (released 2026-10-09; this patch adds quick snippet toggles and repairs second-panel/store hierarchy and material; release assets are available in the GitHub Release).
+The current version is `v0.46.8` (2026-10-10; this release closes the three-surface UI loop with compact-container support, recoverable failures, focus continuity, and regression coverage; GitHub release assets are synchronized).
+
+<details>
+<summary>Full historical changelog (click to expand)</summary>
 
 ## Changelog
 
@@ -624,6 +680,8 @@ Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；En
 - **Widget second wave**: writing streak supports weekly n/m goals and rest-day exemptions; note stats gains an optional writing-strength score; recent writing activity gains a year-grid heatmap view (53-week paging + color legend).
 - **Ecosystem & configuration**: DailyHot supports a base-URL + route selector (validated by the same URL whitelist); the world clock accepts Chinese city names via a built-in 110-city offline table.
 - **Compatibility & engineering**: minimum SiYuan version raised to 3.8.0 (ADR 0064); four performance benchmarks, an accessibility baseline gate and dual-theme WCAG contrast sampling added to the release gates; ActivityWatch supports bucket selection.
+
+</details>
 
 ## Acknowledgements
 
