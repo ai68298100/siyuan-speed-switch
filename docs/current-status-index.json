@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-11",
-  "currentTask": "T-7241",
+  "currentTask": "T-7141",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7241",
+  "nextLocalTask": "T-7141",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -645,7 +645,7 @@
     {
       "id": "T-7140",
       "title": "主题、缩放、短窗与长双语布局",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "conditional",
@@ -694,7 +694,7 @@
     {
       "id": "T-7141",
       "title": "全平台焦点与动态播报审计",
-      "status": "planned",
+      "status": "in_progress",
       "priority": "P1",
       "owner": "local",
       "workType": "conditional",
@@ -1008,6 +1008,8 @@
         "tests/notebook-failure-contract.test.cjs",
         "docs/adr/0159-topbar-r5-and-notebook-retry-v0467.md",
         "docs/dev-plan-2026-10-06.md"
+      ,"docs/release-readiness.md",
+        "ROADMAP.md"
       ],
       "next": "T-7144"
     },
@@ -2396,7 +2398,7 @@
     {
       "id": "T-7241",
       "title": "v0.46.9 小版本发布",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P0",
       "owner": "release",
       "workType": "release",
@@ -2412,6 +2414,7 @@
         "docs/CHANGELOG.en-US.md",
         "docs/release-readiness.md",
         "ROADMAP.md",
+        ".github/workflows/release.yml",
         "docs/dev-plan-2026-10-06.md"
       ],
       "next": "T-7140"

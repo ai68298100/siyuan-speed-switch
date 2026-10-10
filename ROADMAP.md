@@ -1,7 +1,7 @@
 # 小驴雷切整体开发路线
-> 基线：`v0.46.9`（2026-10-11：真实内核 E2E 收口、第三面板预览边界、手机设置触控与 stale 状态修复；完整发布门禁通过）；最后更新：2026-10-11（v0.46.9 发布准备）
+> 基线：`v0.46.9`（2026-10-11：真实内核 E2E 收口、第三面板预览边界、手机设置触控与 stale 状态修复；完整发布门禁通过）；最后更新：2026-10-11（v0.46.9 已发布）
 >
-> 当前状态：`v0.46.8` 已发布（tag `v0.46.8` 已推送，main 提交 `f104114b87529b03f4589b6929369e64288ac032`；Release 远端资产 `package.zip` 为 580433 bytes，SHA-256 为 `ea93d52461163aa3f13c63ebe6de465101648c84499ac88af91e448b2bb7376c`，本机 Windows 构建与远端相差 14 bytes）。GitHub 默认分支为 `main`，README、CI 浏览器环境和 Release 页面已对齐；集市同步仍由用户手动完成。Android 真机、最窄侧栏和外部服务等环境项继续按 `BLOCKERS.md` 后置，不等同于本地自动化通过。
+> 当前状态：`v0.46.9` 已发布（tag `v0.46.9` 已推送，main 发布提交 `050db5d6deecc354714c14e752c31401d6ee0640`；Release 远端资产 `package.zip` 为 586480 bytes，SHA-256 为 `5076954ebff4bcb02af86b992ca0155879d8f68f261ed0476b733802f2ce0dcf`，本机 Windows 构建与远端相差 14 bytes）。GitHub 默认分支为 `main`，README、CI 浏览器环境和 Release 页面已对齐；集市同步仍由用户手动完成。Android 真机、最窄侧栏和外部服务等环境项继续按 `BLOCKERS.md` 后置，不等同于本地自动化通过。
 >
 > **下一阶段执行入口：[2026-09-27 产品方向与功能深化计划](docs/dev-plan-2026-09-27.md)，决策 [ADR 0088](docs/adr/0088-local-functional-deepening.md)。** v0.46.3 之后继续推进 T-7144 等下一批任务；集市同步欠账由用户在发版窗口手动补齐（D9）。本地开发验收不要求启动思源内核、个人安装或外部服务；真实宿主兼容结论另记，不把模拟测试当实装证据，安全与兼容约束继续生效。
 >
@@ -29,7 +29,7 @@
 
 > **T-7240 E2E 收口与表面细节修复（2026-10-11）**：第三面板预览 section 增加自身溢出边界；手机设置标签恢复 44px 触控高度并修正搜索条边界；移动布局 E2E 等待内核索引；工作台保留快照失败显示 stale。取舍见 [`ADR 0166`](docs/adr/0166-v0469-e2e-and-surface-polish.md)。
 
-> **T-7241 v0.46.9 小版本发布（2026-10-11）**：更新版本元数据、双语 README/changelog、发布就绪快照，完成 `verify:release`、构建、main/tag 推送和 GitHub Release 资产回读。真实 Android、读屏、最窄原生侧栏与集市同步仍按 `BLOCKERS.md` 后置。
+> **T-7241 v0.46.9 小版本发布（2026-10-11）**：更新版本元数据、双语 README/changelog、发布就绪快照，完成 `verify:release`、构建、main/tag 推送和 GitHub Release 资产回读；远端资产 586480 bytes，SHA-256 为 `5076954ebff4bcb02af86b992ca0155879d8f68f261ed0476b733802f2ce0dcf`。真实 Android、读屏、最窄原生侧栏与集市同步仍按 `BLOCKERS.md` 后置。
 
 ## 1. 产品定位
 
