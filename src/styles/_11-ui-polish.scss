@@ -908,13 +908,19 @@
     grid-template-columns: minmax(0, 1fr) clamp(280px, 34%, 480px);
     column-gap: 14px;
     align-items: stretch;
+    // 让短列表也撑满滚动区：右栏是一块连续的阅读表面，不在卡片内容结束后
+    // 留出一整段与预览无关的空白。正文仍由 body 独立滚动，左侧结果列不被拉伸。
+    min-height: 100%;
 }
 
 .speed-switch .sw__tab-preview.sw--with-preview .sw__doc-preview {
     grid-row: 1;
-    align-self: stretch;
-    height: auto;
-    min-height: min(60vh, 560px, calc(100cqh - 48px));
+    align-self: start;
+    // The rail itself owns the available height. The pane follows it for a
+    // short result list, while the container query cap keeps a long left
+    // column from stretching the preview card beyond the reading viewport.
+    height: 100cqh;
+    max-height: 100cqh;
 }
 
 // Compact surfaces ----------------------------------------------------------

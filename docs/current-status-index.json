@@ -82,7 +82,8 @@
     "T-7198",
     "T-7199",
     "T-7225",
-    "T-7226"
+    "T-7226",
+    "T-7234"
   ],
   "tasks": [
     {
@@ -1036,6 +1037,25 @@
         "docs/release-readiness.md"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7234",
+      "title": "第一面板预览填充可用高度",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7233"
+      ],
+      "evidence": [
+        "src/styles/_11-ui-polish.scss",
+        "tests/e2e/doc-preview-layout.spec.mjs",
+        "tests/panel1-urgent-fix.test.cjs",
+        "docs/adr/0161-tab-preview-available-height.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7140"
     },
     {
       "id": "T-7154",

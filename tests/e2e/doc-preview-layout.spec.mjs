@@ -66,3 +66,68 @@ test("document preview adapts its frame and keeps the header outside body scroll
     await page.setViewportSize({width: 1440, height: 900});
     await page.screenshot({path: artifactPath("doc-preview-layout.png")});
 });
+
+test("tab preview fills the available reading rail when the document is short", async ({page}) => {
+    await openApp(page);
+    await openSwitcher(page);
+    const scroll = page.locator(".sw__scroll").first();
+    await scroll.evaluate(element => {
+        element.innerHTML = '<div class="sw__tab-preview sw--with-preview">'
+            + '<div class="sw__tab-content"><div class="sw__group"><div class="sw__window-label">Documents</div>'
+            + '<div class="sw__doc-grid"><button class="sw__doc-item">A document</button></div></div></div>'
+            + '<aside class="sw__doc-preview"><div class="sw__doc-preview-header">Document preview</div>'
+            + '<div tabindex="0" class="sw__doc-preview-body"><h3 class="sw__doc-preview-title">A short document</h3>'
+            + '<p class="sw__doc-preview-block">Only one short paragraph.</p></div></aside></div>';
+    });
+    const rail = scroll.locator(".sw__tab-preview");
+    const pane = rail.locator(".sw__doc-preview");
+    await expect(pane).toBeVisible();
+    const metrics = await scroll.evaluate(element => {
+        const rail = element.querySelector(".sw__tab-preview");
+        const pane = element.querySelector(".sw__doc-preview");
+        const style = getComputedStyle(element);
+        const railBox = rail.getBoundingClientRect();
+        const paneBox = pane.getBoundingClientRect();
+        const scrollBox = element.getBoundingClientRect();
+        const bottom = railBox.bottom;
+        return {
+            railHeight: railBox.height,
+            railMinHeight: getComputedStyle(rail).minHeight,
+            railHeightStyle: getComputedStyle(rail).height,
+            railMarginTop: getComputedStyle(rail).marginTop,
+            railMarginBottom: getComputedStyle(rail).marginBottom,
+            scrollHeightStyle: getComputedStyle(element).height,
+            paneHeight: paneBox.height,
+            paneBottomGap: bottom - paneBox.bottom,
+            scrollClientHeight: element.clientHeight,
+            scrollBoxTop: scrollBox.top,
+            scrollBoxBottom: scrollBox.bottom,
+            railTop: railBox.top,
+            railBottom: railBox.bottom,
+            railContentHeight: rail.scrollHeight,
+        };
+    });
+    expect(metrics.railHeight).toBeGreaterThan(400);
+    expect(metrics.paneHeight).toBeGreaterThan(400);
+    expect(metrics.paneBottomGap).toBeLessThanOrEqual(2);
+    expect(metrics.railContentHeight).toBeGreaterThanOrEqual(metrics.railHeight - 1);
+
+    await scroll.evaluate(element => {
+        element.innerHTML = '<div class="sw__tab-preview sw--with-preview">'
+            + '<div class="sw__tab-content"><div class="sw__group"><div class="sw__window-label">Many documents</div>'
+            + '<div class="sw__doc-grid">' + '<button class="sw__doc-item">A document</button>'.repeat(40) + '</div></div></div>'
+            + '<aside class="sw__doc-preview"><div class="sw__doc-preview-header">Document preview</div>'
+            + '<div tabindex="0" class="sw__doc-preview-body"><p class="sw__doc-preview-block">Short content.</p></div></aside></div>';
+    });
+    const longMetrics = await scroll.evaluate(element => {
+        const pane = element.querySelector(".sw__doc-preview");
+        const body = pane.querySelector(".sw__doc-preview-body");
+        const style = getComputedStyle(element);
+        const paneBox = pane.getBoundingClientRect();
+        const scrollBox = element.getBoundingClientRect();
+        const available = element.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+        return {paneHeight: paneBox.height, available, bodyOverflow: getComputedStyle(body).overflowY};
+    });
+    expect(longMetrics.paneHeight).toBeLessThanOrEqual(longMetrics.available + 2);
+    expect(longMetrics.bodyOverflow).toBe("auto");
+});
