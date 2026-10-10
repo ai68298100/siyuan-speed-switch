@@ -606,9 +606,11 @@ export interface PlatformSurfaceChromeOptions {
     kbdHints?: readonly string[];
     status?: {state?: string; label: string};
     onNavigate?: (surface: PlatformSurface) => void;
+    onHelp?: () => void;
     onSettings?: () => void;
     onClose?: () => void;
     settingsLabel?: string;
+    helpLabel?: string;
     closeHint?: string;
     closeLabel?: string;
 }
@@ -723,6 +725,21 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
         settings.addEventListener("click", () => options.onSettings?.());
         actions.appendChild(settings);
     }
+    if (options.onHelp) {
+        const help = doc.createElement("button");
+        help.type = "button";
+        help.className = "b3-button b3-button--text sw-platform-header__icon-action sw-platform-header__help";
+        const helpLabel = options.helpLabel || "Quick start";
+        help.setAttribute("aria-label", helpLabel);
+        help.title = helpLabel;
+        help.innerHTML = '<svg><use xlink:href="#iconHelp"></use></svg>';
+        const helpText = doc.createElement("span");
+        helpText.className = "sw-platform-header__help-label";
+        helpText.textContent = helpLabel;
+        help.appendChild(helpText);
+        help.addEventListener("click", () => options.onHelp?.());
+        actions.appendChild(help);
+    }
     if (options.onClose) {
         const closeGroup = doc.createElement("span");
         closeGroup.className = "sw-platform-header__close-group";
@@ -805,15 +822,19 @@ declare module "./snippet-studio-ui" {
                 context?: PlatformSurfaceContext | null;
                 status?: {state?: string; label: string};
                 onNavigate?: (surface: PlatformSurface) => void;
+                onHelp?: () => void;
                 onSettings?: () => void;
                 onClose?: (guarded?: boolean) => void;
                 settingsLabel?: string;
+                helpLabel?: string;
                 closeHint?: string;
                 closeLabel?: string;
             }) => HTMLElement;
             onNavigate?: (surface: PlatformSurface) => void;
+            onHelp?: () => void;
             onSettings?: () => void;
             settingsLabel?: string;
+            helpLabel?: string;
             closeHint?: string;
             onClose?: (guarded?: boolean) => void;
         };
@@ -1078,6 +1099,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private platformSwitcherDialog: Dialog | null = null;
     private mobileSwitcherDialog: Dialog | null = null;
     private workbenchDialog: Dialog | null = null;
+    private platformGuideDialog: Dialog | null = null;
     // 仅当工作台经表面导航离开时记录编辑现场；普通打开与 X 关闭保持查看态。
     private workbenchResumeEditing = false;
     // T-6878（P2）：片段对象投影的会话缓存（60s TTL）与竞态代际。
@@ -1973,6 +1995,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.mobileSwitcherDialog = null;
         this.workbenchDialog?.destroy();
         this.workbenchDialog = null;
+        this.platformGuideDialog?.destroy();
+        this.platformGuideDialog = null;
         this.mobileSwitcherDialog?.destroy();
         this.mobileSwitcherDialog = null;
         // T-6831：面包屑入口随生命周期拆除
@@ -2771,6 +2795,76 @@ export default class SpeedSwitchPlugin extends Plugin {
         dependencyLink.rel = "noopener noreferrer";
         dependencyLink.textContent = this.i18n.homeStoreDependencyLink;
         root.appendChild(dependencyLink);
+    }
+
+    // T-7236：共享快速开始说明。它使用本地 DOM，不依赖网络，也不改变当前
+    // 表面的搜索/编辑现场；帮助入口始终可见，用户可以随时重新查看。
+    public openPlatformGuide(surface: PlatformSurface = "switcher") {
+        if (this.platformGuideDialog?.element.isConnected) {
+            this.platformGuideDialog.element.querySelector<HTMLElement>(".sw-platform-guide__close")?.focus({preventScroll: true});
+            return;
+        }
+        const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const dialog = new Dialog({
+            title: this.i18n.platformGuideTitle || "快速开始",
+            content: '<div class="sw-platform-guide"></div>',
+            width: this.isMobile ? "min(520px, 94vw)" : "min(760px, 78vw)",
+            height: this.isMobile ? "min(680px, 86vh)" : "min(620px, 78vh)",
+            destroyCallback: () => {
+                if (this.platformGuideDialog === dialog) this.platformGuideDialog = null;
+                if (!this.isUnloading && returnFocus?.isConnected) returnFocus.focus({preventScroll: true});
+            },
+        });
+        this.platformGuideDialog = dialog;
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "退出");
+        const root = dialog.element.querySelector<HTMLElement>(".sw-platform-guide");
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
+        dialog.element.addEventListener("keydown", (event: KeyboardEvent) => {
+            if (event.key !== "Escape" || event.defaultPrevented) return;
+            event.preventDefault();
+            event.stopPropagation();
+            dialog.destroy();
+        }, true);
+        const close = document.createElement("button");
+        close.type = "button";
+        close.className = "b3-button b3-button--outline sw-platform-guide__close";
+        close.textContent = this.i18n.platformGuideClose || this.i18n.close || "关闭";
+        close.addEventListener("click", () => dialog.destroy());
+        const intro = document.createElement("p");
+        intro.className = "sw-platform-guide__intro";
+        intro.textContent = this.i18n.platformGuideIntro || "从这里开始熟悉小驴雷切的三个工作面板。";
+        root.append(intro);
+        const sections: Array<{surface: PlatformSurface; title: string; steps: string[]}> = [
+            {surface: "switcher", title: this.i18n.platformGuideSwitcherTitle || "第一面板 · 切换器", steps: [this.i18n.platformGuideSwitcherStep1 || "在搜索框输入关键词，立即筛选已打开页签，并可继续查找全库文档。", this.i18n.platformGuideSwitcherStep2 || "全库结果普通点击打开或定位；按住 Alt 点击可预览命中片段。", this.i18n.platformGuideSwitcherStep3 || "用收藏、最近和日记入口恢复高频工作现场。"]},
+            {surface: "workbench", title: this.i18n.platformGuideWorkbenchTitle || "第二面板 · 工作台", steps: [this.i18n.platformGuideWorkbenchStep1 || "打开组件商店，选择要放到工作台的信息组件。", this.i18n.platformGuideWorkbenchStep2 || "点击“编辑布局”后拖动、调整尺寸或移除组件，改动会实时保存。", this.i18n.platformGuideWorkbenchStep3 || "组件出现旧内容或失败时，使用卡片上的刷新/重试；设置可调整显示模块和窗口。"]},
+            {surface: "studio", title: this.i18n.platformGuideStudioTitle || "第三面板 · 片段实验室", steps: [this.i18n.platformGuideStudioStep1 || "选择已有片段，或新建 CSS/JS 草稿；商店片段会先以禁用状态加入。", this.i18n.platformGuideStudioStep2 || "在编辑区修改并查看预览，保存后才会写入片段库。", this.i18n.platformGuideStudioStep3 || "确认内容后再单独启用；JS 片段不会在实验室中直接执行。"]},
+        ];
+        sections.forEach((section) => {
+            const article = document.createElement("section");
+            article.className = `sw-platform-guide__section${section.surface === surface ? " is-current" : ""}`;
+            const heading = document.createElement("h3");
+            heading.textContent = section.title;
+            article.appendChild(heading);
+            const list = document.createElement("ol");
+            section.steps.forEach((step) => {
+                const item = document.createElement("li");
+                item.textContent = step;
+                list.appendChild(item);
+            });
+            article.appendChild(list);
+            root.appendChild(article);
+        });
+        const footer = document.createElement("p");
+        footer.className = "sw-platform-guide__footer";
+        const shortcuts = this.getPlatformShortcutBindings();
+        footer.textContent = (this.i18n.platformGuideSettings || "当前快捷键：切换器 {switcher}，工作台 {workbench}。需要调整窗口尺寸、快捷键或模块显示时，打开右上角设置。")
+            .replace("{switcher}", shortcuts.switcher)
+            .replace("{workbench}", shortcuts.workbench);
+        root.append(footer, close);
+        close.focus({preventScroll: true});
     }
 
     // 商店预览 dialog（openStoreWidgetPreview）已外迁至 home-store-ui.ts（R1，D-379）
@@ -4055,6 +4149,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 context,
                 kbdHints: ["Tab", "1-9", "Enter", this.i18n.platformKbdPreview],
                 status: {state: "ready", label: this.i18n.platformConnected},
+                onHelp: () => this.openPlatformGuide("switcher"),
+                helpLabel: this.i18n.platformGuideButton,
                 onSettings: () => {
                     if (!dialog.element.isConnected) return;
                     const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
@@ -4157,6 +4253,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             labels: this.getPlatformSurfaceLabels(),
             available: this.getAvailablePlatformSurfaces(),
             status: {state: "loading", label: this.i18n.snippetLoading},
+            onHelp: () => this.openPlatformGuide("studio"),
+            helpLabel: this.i18n.platformGuideButton,
             closeHint: this.i18n.platformCloseHint,
             closeLabel: this.i18n.close,
             onClose: () => dialog.destroy(),
@@ -4202,6 +4300,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 platform: {
                     labels: this.getPlatformSurfaceLabels(),
                     status: {state: "ready", label: this.i18n.platformConnected},
+                    onHelp: () => this.openPlatformGuide("studio"),
+                    helpLabel: this.i18n.platformGuideButton,
                     onSettings: () => {
                         if (!dialog.element.isConnected) return;
                         const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
@@ -10741,7 +10841,7 @@ private rootIdOf(tab: Tab): string | null {
         }
 
         if (all.length === 0) {
-            scrollElement.appendChild(this.buildEmptyState());
+            scrollElement.appendChild(this.buildEmptyState(scrollElement));
             // T-7009：空态同样恢复滚动现场（钳制后通常归零）
             restoreListScene();
             return;
@@ -11176,14 +11276,51 @@ private rootIdOf(tab: Tab): string | null {
     }
 
     // 空态：主文案 + 引导副文案（提示可搜索全库文档）
-    private buildEmptyState(): HTMLElement {
+    private buildEmptyState(surfaceRoot?: Element | null): HTMLElement {
         const empty = document.createElement("div");
         empty.className = "sw__empty";
-        empty.setAttribute("role", "status");
-        empty.setAttribute("aria-live", "polite");
-        empty.innerHTML = `<div class="sw__empty-title"></div><div class="sw__empty-sub"></div>`;
+        empty.innerHTML = `<div class="sw__empty-message" role="status" aria-live="polite"><div class="sw__empty-title"></div><div class="sw__empty-sub"></div></div>`;
         empty.querySelector(".sw__empty-title")!.textContent = this.i18n.noOpenedTabs;
         empty.querySelector(".sw__empty-sub")!.textContent = this.i18n.emptyHint;
+        const actions = document.createElement("div");
+        actions.className = "sw__empty-actions";
+        const searchSurface = empty.closest<HTMLElement>(".sw-platform-surface")
+            || surfaceRoot?.closest<HTMLElement>(".sw-platform-surface")
+            || surfaceRoot
+            || this.sidebarElement
+            || document.querySelector<HTMLElement>(".sw__mobile[data-sw-surface='switcher']");
+        const addAction = (action: string, label: string, callback: () => void) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "b3-button b3-button--outline sw__empty-action";
+            button.dataset.action = action;
+            button.textContent = label;
+            button.setAttribute("aria-label", label);
+            button.addEventListener("click", callback);
+            actions.appendChild(button);
+        };
+        const closeSwitcherDialog = () => {
+            if (this.platformSwitcherDialog?.element.contains(empty)) this.platformSwitcherDialog.destroy();
+            if (this.mobileSwitcherDialog?.element.contains(empty)) this.mobileSwitcherDialog.destroy();
+        };
+        addAction("focus-search", this.i18n.platformGuideSearchAction || "开始搜索", () => {
+            searchSurface?.querySelector<HTMLInputElement>(".sw__search")?.focus({preventScroll: true});
+        });
+        const available = this.getAvailablePlatformSurfaces();
+        if (available.includes("workbench")) {
+            addAction("open-workbench", this.i18n.platformGuideWorkbenchAction || "打开工作台", () => {
+                closeSwitcherDialog();
+                this.openPlatformSurface("workbench", "switcher", {entry: "surface-nav"});
+            });
+        }
+        if (available.includes("studio")) {
+            addAction("open-studio", this.i18n.platformGuideStudioAction || "打开片段实验室", () => {
+                closeSwitcherDialog();
+                this.openPlatformSurface("studio", "switcher", {entry: "surface-nav"});
+            });
+        }
+        addAction("open-guide", this.i18n.platformGuideButton || "快速开始", () => this.openPlatformGuide("switcher"));
+        empty.appendChild(actions);
         return empty;
     }
 
@@ -11338,7 +11475,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         }
         // 全部页签关闭后展示空态（弹窗保持打开，用户可搜索全库文档打开新的）
         if (scroll && scroll.querySelectorAll(".sw__card").length === 0 && !scroll.querySelector(".sw__doc-results")) {
-            scroll.appendChild(this.buildEmptyState());
+            scroll.appendChild(this.buildEmptyState(scroll));
         }
         onTabsChanged();
     }
@@ -13286,6 +13423,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 if (this.isUnloading || !element.isConnected) return;
                 this.openPlatformSurface(surface, "switcher", {entry: "surface-nav"});
             },
+            onHelp: () => this.openPlatformGuide("switcher"),
+            helpLabel: this.i18n.platformGuideButton,
             // 侧栏没有可依赖的 Dialog 外壳；把平台头部的关闭动作接回
             // SiYuan dock 模型，保证与弹窗/移动面板使用同一退出语义。
             onClose: () => {

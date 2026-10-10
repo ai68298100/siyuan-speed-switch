@@ -131,7 +131,8 @@
 .sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item { flex: 1 1 auto; min-width: 0; padding-inline: var(--sw-space-md, 8px); }
 .sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__hint,
 .sw--sidebar > .sw-platform-chrome .sw-platform-status,
-.sw--sidebar > .sw-platform-chrome .sw-platform-header__close-hint { display: none; }
+.sw--sidebar > .sw-platform-chrome .sw-platform-header__close-hint,
+.sw--sidebar > .sw-platform-chrome .sw-platform-header__help-label { display: none; }
 
 .sw__mobile > .sw-platform-chrome .sw-platform-header {
     min-height: 44px;
@@ -235,6 +236,8 @@
 
 .sw-platform-header__icon-action:active { transform: translateY(1px); }
 .sw-platform-header__icon-action svg { width: 16px; height: 16px; }
+.sw-platform-header__help { width: auto; min-width: 36px; gap: 6px; padding-inline: 8px; }
+.sw-platform-header__help-label { font-size: 12px; white-space: nowrap; }
 
 .sw-platform-header__close-hint,
 .sw-platform-dialog__close-hint {
@@ -623,6 +626,7 @@
     .sw-platform-surface-nav { justify-self: stretch; }
     .sw-platform-surface-nav__hint { display: none; }
     .sw-platform-header__close-hint { display: none; }
+    .sw-platform-header__help-label { display: none; }
     .sw-platform-context { align-items: flex-start; flex-wrap: wrap; }
     .sw-platform-context__actions { margin-left: 0; flex-basis: 100%; }
     // 真机反馈（T-6970）：分段项 nowrap，皮肤选择这类长标签（融合主题（默认）/苹果风格 · 液态玻璃）
@@ -664,7 +668,8 @@
 
     .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-surface-nav { justify-self: stretch; }
     .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-surface-nav__hint,
-    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-header__close-hint { display: none; }
+    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-header__close-hint,
+    .sw-platform-surface:not(.sw--sidebar) > .sw-platform-chrome .sw-platform-header__help-label { display: none; }
 }
 
 @container sw-platform (max-width: 560px) {

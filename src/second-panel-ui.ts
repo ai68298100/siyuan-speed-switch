@@ -50,6 +50,7 @@ export interface SecondPanelUiHost {
     getAvailablePlatformSurfaces?(): PlatformSurface[];
     getPlatformSurfaceLabels?(): PlatformSurfaceLabels;
     mountPlatformChrome?(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement;
+    openPlatformGuide?(surface?: PlatformSurface): void;
     // T-6869：工作台单例守卫字段 + 跨表面导航的编辑现场 + 会话级表面记录钩子
     workbenchDialog: Dialog | null;
     workbenchResumeEditing: boolean;
@@ -309,6 +310,9 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 available: this.getAvailablePlatformSurfaces?.() || (this.isMobile ? ["switcher", "workbench"] : ["switcher", "workbench", "studio"]),
                 context: context || null,
                 status: {state: "ready", label: this.i18n.platformConnected || "Kernel connected"},
+                onHelp: () => this.openPlatformGuide?.("workbench"),
+                helpLabel: this.i18n.platformGuideButton,
+                closeLabel: this.i18n.close,
                 onSettings: () => {
                     if (!dialog.element.isConnected) return;
                     const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
@@ -323,7 +327,6 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 closeHint: this.i18n.platformCloseHint || "退出",
                 onNavigate: navigatePlatformSurface,
                 onClose: () => dialog.destroy(),
-                closeLabel: this.i18n.close,
             });
             const defs = new Map<string, any>();
             this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))

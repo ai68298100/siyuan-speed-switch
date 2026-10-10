@@ -3033,6 +3033,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             available: platform.available,
             context: platform.context || null,
             status: {state: "ready", label: locale.i18n.platformConnected || "Kernel connected"},
+            onHelp: platform.onHelp,
+            helpLabel: platform.helpLabel || locale.i18n.platformGuideButton || "Quick start",
             onSettings: platform.onSettings,
             settingsLabel: platform.settingsLabel || locale.i18n.settings || "Settings",
             closeHint: platform.closeHint || locale.i18n.platformCloseHint || "to close",

@@ -49,6 +49,7 @@ export interface MobileSwitcherUiHost {
     getPlatformSurfaceLabels?(): PlatformSurfaceLabels;
     getAvailablePlatformSurfaces?(): PlatformSurface[];
     mountPlatformChrome?(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement;
+    openPlatformGuide?(surface?: PlatformSurface): void;
     pinKeyOf(tab: Tab): string;
     pruneThumbCache(tabs: Tab[]): void;
     registerSwitcherRefresh(callback: () => void): () => void;
@@ -108,6 +109,8 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
                 context: context || null,
                 status: {state: "ready", label: this.i18n.platformConnected || "Kernel connected"},
                 onNavigate: navigatePlatformSurface,
+                onHelp: () => this.openPlatformGuide?.("switcher"),
+                helpLabel: this.i18n.platformGuideButton,
                 onClose: () => dialog.destroy(),
                 closeLabel: this.i18n.close,
                 closeHint: this.i18n.platformCloseHint || "退出",

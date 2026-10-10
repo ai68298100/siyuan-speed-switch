@@ -722,6 +722,8 @@
         color: var(--b3-theme-on-surface-light);
         text-align: center;
 
+        .sw__empty-message { display: grid; gap: 6px; }
+
         .sw__empty-title {
             font-weight: 600;
             color: var(--b3-theme-on-surface);

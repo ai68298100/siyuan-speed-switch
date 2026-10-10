@@ -62,7 +62,7 @@
   "homeHistoryConfig": "Edit config",
   "homeHistoryUpdate": "Update layout",
   "homeHistoryProviderGone": "Layout restored; {x} widgets skipped (provider unloaded)",
-  "homeEmpty": "The second panel is empty. Use 'Add module' to place recents, favorites, journal, document sets, or plugin modules.",
+  "homeEmpty": "The second panel is empty. Open the widget store to choose components, then arrange them on the workbench.",
   "homeEmptyOpenStore": "Open widget store",
   "homeEmptyModule": "Nothing here yet",
   "homeLoading": "Loading…",
@@ -1304,6 +1304,26 @@
   ,"settingsGroupWorkbenchBehavior": "Workbench behavior"
   ,"settingsGroupJournal": "Journal strategy"
   ,"platformKbdPreview": "Alt Preview"
+  ,"platformGuideButton": "Quick start"
+  ,"platformGuideTitle": "LvSpeed Switch quick start"
+  ,"platformGuideIntro": "Use this local guide to learn the three work surfaces. You can reopen it whenever you need it."
+  ,"platformGuideClose": "Got it"
+  ,"platformGuideSwitcherTitle": "Panel 1 · Switcher"
+  ,"platformGuideSwitcherStep1": "Type in the search box to filter open tabs first, then search the whole workspace when needed."
+  ,"platformGuideSwitcherStep2": "Click a workspace result to open or locate it; hold Alt while clicking to preview a matching excerpt."
+  ,"platformGuideSwitcherStep3": "Use Favorites, Recent and Journal to return to frequent work."
+  ,"platformGuideWorkbenchTitle": "Panel 2 · Workbench"
+  ,"platformGuideWorkbenchStep1": "Open the widget store and choose the information components for your workbench."
+  ,"platformGuideWorkbenchStep2": "Choose Edit layout to drag, resize or remove widgets; changes are saved as you work."
+  ,"platformGuideWorkbenchStep3": "Use refresh/retry on a widget when data is stale or unavailable; settings control modules and window size."
+  ,"platformGuideStudioTitle": "Panel 3 · Snippet lab"
+  ,"platformGuideStudioStep1": "Choose an existing snippet or create a CSS/JS draft; store snippets start disabled."
+  ,"platformGuideStudioStep2": "Edit and preview the draft; Save is required before it is written to the snippet library."
+  ,"platformGuideStudioStep3": "Enable a snippet only after reviewing it; JavaScript snippets are not executed in the lab."
+  ,"platformGuideSettings": "Current shortcuts: Switcher {switcher}, Workbench {workbench}. Open Settings to adjust window size, shortcuts and visible modules."
+  ,"platformGuideSearchAction": "Start searching"
+  ,"platformGuideWorkbenchAction": "Open workbench"
+  ,"platformGuideStudioAction": "Open snippet lab"
   ,"mobileLayoutFailed": "The switcher failed to initialize. Close it and try again."
   ,"openHistory": "Recent"
   ,"noOpenHistory": "No recent documents"

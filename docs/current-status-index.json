@@ -83,7 +83,8 @@
     "T-7199",
     "T-7225",
     "T-7226",
-    "T-7234"
+    "T-7234",
+    "T-7236"
   ],
   "tasks": [
     {
@@ -2297,6 +2298,31 @@
         "ROADMAP.md"
       ],
       "next": null
+    },
+    {
+      "id": "T-7236",
+      "title": "三面板首次使用快速开始引导",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7234"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "src/second-panel-ui.ts",
+        "src/mobile-switcher-ui.ts",
+        "src/snippet-studio-ui.js",
+        "src/styles/_05-settings-widgets.scss",
+        "src/styles/_platform-shell.scss",
+        "src/i18n/zh-CN.json",
+        "src/i18n/en.json",
+        "tests/first-use-guide.test.cjs",
+        "docs/adr/0163-first-use-guide.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7140"
     }
   ],
   "global": {
