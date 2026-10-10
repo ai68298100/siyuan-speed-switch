@@ -2278,6 +2278,25 @@
         "docs/dev-plan-2026-10-06.md"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7235",
+      "title": "思源 OCR 接入调研与稳定版后置开发",
+      "status": "deferred",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "research",
+      "deferredBy": [
+        "ADR-0162",
+        "思源 v3.8.7 正式版"
+      ],
+      "evidence": [
+        "docs/research-siyuan-ocr-2026-10-10.md",
+        "docs/adr/0162-siyuan-ocr-integration-deferred.md",
+        "docs/dev-plan-2026-10-06.md",
+        "ROADMAP.md"
+      ],
+      "next": null
     }
   ],
   "global": {
