@@ -90,7 +90,7 @@ import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction, findTodayJournal as findTodayJournalAction} from "./journal-actions";
 import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry, normalizeFavoriteSmartGroups, buildTagSmartGroupQuery, projectTagSmartGroupEntries} from "./favorite-actions";
 import {normalizeSettings, resolvePanelSize, normalizeEssentials} from "./settings-model";
-import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction, resolveFloatingActionAvailability, normalizeFloatingBallConfig, applyFloatingBallPreset, pickNextFloatingBallPreset} from "./floating-ball-model";
+import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction, resolveFloatingActionAvailability, normalizeFloatingBallConfig, applyFloatingBallPreset, pickNextFloatingBallPreset, findFloatingAction} from "./floating-ball-model";
 import {createFloatingBallUi} from "./floating-ball-ui";
 import {createFloatingBallActionExecutor} from "./floating-ball-actions";
 import {selectAdjacentTab, scrollSurfaceTo} from "./floating-ball-generic-actions";
@@ -2837,10 +2837,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         intro.className = "sw-platform-guide__intro";
         intro.textContent = this.i18n.platformGuideIntro || "从这里开始熟悉小驴雷切的三个工作面板。";
         root.append(intro);
-        const sections: Array<{surface: PlatformSurface; title: string; steps: string[]}> = [
+        const sections: Array<{surface?: PlatformSurface; title: string; steps: string[]}> = [
             {surface: "switcher", title: this.i18n.platformGuideSwitcherTitle || "第一面板 · 切换器", steps: [this.i18n.platformGuideSwitcherStep1 || "在搜索框输入关键词，立即筛选已打开页签，并可继续查找全库文档。", this.i18n.platformGuideSwitcherStep2 || "全库结果普通点击打开或定位；按住 Alt 点击可预览命中片段。", this.i18n.platformGuideSwitcherStep3 || "用收藏、最近和日记入口恢复高频工作现场。"]},
             {surface: "workbench", title: this.i18n.platformGuideWorkbenchTitle || "第二面板 · 工作台", steps: [this.i18n.platformGuideWorkbenchStep1 || "打开组件商店，选择要放到工作台的信息组件。", this.i18n.platformGuideWorkbenchStep2 || "点击“编辑布局”后拖动、调整尺寸或移除组件，改动会实时保存。", this.i18n.platformGuideWorkbenchStep3 || "组件出现旧内容或失败时，使用卡片上的刷新/重试；设置可调整显示模块和窗口。"]},
             {surface: "studio", title: this.i18n.platformGuideStudioTitle || "第三面板 · 片段实验室", steps: [this.i18n.platformGuideStudioStep1 || "选择已有片段，或新建 CSS/JS 草稿；商店片段会先以禁用状态加入。", this.i18n.platformGuideStudioStep2 || "在编辑区修改并查看预览，保存后才会写入片段库。", this.i18n.platformGuideStudioStep3 || "确认内容后再单独启用；JS 片段不会在实验室中直接执行。"]},
+            {title: this.i18n.platformGuideFloatingBallTitle || "悬浮球 · 全局入口", steps: [this.i18n.platformGuideFloatingBallStep1 || "在设置中分别开启桌面端或手机端；轻触执行主点击动作，默认打开切换器。", this.i18n.platformGuideFloatingBallStep2 || "拖动超过 8 px 可选择首层动作；拖到空白处松手保存位置，拖到动作上松手执行。", this.i18n.platformGuideFloatingBallStep3 || "手机端可配置快滑、双击和长按；半隐藏或弹窗让位后，点击边缘恢复把手即可找回悬浮球。"]},
         ];
         sections.forEach((section) => {
             const article = document.createElement("section");
@@ -12916,13 +12917,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     private executeFloatingBallBoundAction(surface: FloatingBallSurface, reference: unknown) {
-        const ref = reference as {actionId?: unknown; id?: unknown} | null;
-        const actionId = [ref?.actionId, ref?.id].find((value) => typeof value === "string" && value.trim());
+        const ref = reference as {actionId?: unknown; id?: unknown; value?: unknown} | null;
+        const actionId = [ref?.actionId, ref?.id, ref?.value].find((value) => typeof value === "string" && value.trim());
         const id = typeof actionId === "string" ? actionId.trim() : "";
-        const candidate = id ? this.getFloatingBallActions().find((item) =>
-            [(item as IQuickAction & {actionId?: string}).actionId, item.id].some((value) => value === id)) : null;
+        const catalog = this.getFloatingBallActions();
+        const candidate = id ? findFloatingAction(catalog, id) : null;
         const descriptor = this.getSettings().floatingBall?.actions?.[surface]
-            ?.find((entry: {actionId?: string}) => entry.actionId === id);
+            ?.find((entry: {actionId?: string; id?: string; value?: string}) =>
+                [entry.actionId, entry.id, entry.value].some((value) => value === id));
         const action = candidate && descriptor?.mobileOverride === true
             ? {...candidate, mobileOverride: true} : candidate;
         const availability = resolveFloatingActionAvailability(action, surface, {
@@ -12946,8 +12948,15 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             this.floatingBallPanels.get(surface)?.openMore();
             return;
         }
-        const action = (this.getFloatingBallActions() as IQuickAction[]).find((item) => item.value === actionId);
+        const action = findFloatingAction(this.getFloatingBallActions() as IQuickAction[], actionId);
         if (!action) {
+            showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const availability = resolveFloatingActionAvailability(action, surface, {
+            resolveSupport: (item: IQuickAction, target: QuickActionTarget) => this.getQuickActionSupport(item, target),
+        });
+        if (availability.status === "unsupported" || availability.status === "unavailable") {
             showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
             return;
         }
@@ -13091,17 +13100,24 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 },
                 // T-6886（T-6858 第一批）：四向快滑动作分发——按方向读取绑定值
                 // （more=更多面板；其余按动作值在目录中查找后走既有执行器）。
-                onFlickAction: (direction: "down" | "left" | "right") => {
+                onFlickAction: (direction: "up" | "down" | "left" | "right") => {
                     const current: any = this.getSettings().floatingBall || {};
-                    const bound = current.behavior?.flickActions?.[direction];
+                    const bound = direction === "up" ? "more" : current.behavior?.flickActions?.[direction];
                     if (!bound) return;
                     if (bound === "more") {
                         this.refreshFloatingBallPanels();
                         this.floatingBallPanels.get(surface)?.openMore();
                         return;
                     }
-                    const action = (this.getFloatingBallActions() as IQuickAction[]).find((item) => item.value === bound);
+                    const action = findFloatingAction(this.getFloatingBallActions() as IQuickAction[], bound);
                     if (!action) {
+                        showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
+                        return;
+                    }
+                    const availability = resolveFloatingActionAvailability(action, surface, {
+                        resolveSupport: (item: IQuickAction, target: QuickActionTarget) => this.getQuickActionSupport(item, target),
+                    });
+                    if (availability.status === "unsupported" || availability.status === "unavailable") {
                         showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
                         return;
                     }

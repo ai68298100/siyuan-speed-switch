@@ -272,6 +272,8 @@ test("floating settings contracts reject lost per-surface writes, presentation a
         ['{label: title.value}', '{label: ""}', assertPresentationSettings, "label override persists"],
         ['{icon}));', '{icon: "iconPlugin"}));', assertPresentationSettings, "icon override persists"],
         ['{mobileOverride: mobileTry.checked}', '{mobileOverride: false}', assertMobileTrySettings, "mobile opt-in persists"],
+        ['edgeAvoidInput.disabled = surface !== "mobile";', 'edgeAvoidInput.disabled = false;', assertEdgeAvoidSurfaceGuard, "desktop editing must disable the mobile-only setting"],
+        ['firstUse.hidden = Boolean(latest.enabled.desktop || latest.enabled.mobile);', 'firstUse.hidden = false;', assertFirstUseSettings, "guide hides once at least one surface is enabled"],
     ]) {
         assert.equal(original.split(target).length - 1, 1, `mutation target exists exactly once: ${target}`);
         const transformSource = (source) => source.replace(target, replacement);
@@ -300,6 +302,49 @@ test("floating settings UI toggles desktop and mobile independently and reads la
     assert.deepEqual(ui.state.floatingBall.position.mobile, {edge: "left", yRatio: 0.11});
     assert.equal(ui.state.fabEnabled, true, "legacy mobile projection remains in sync");
     assert.equal(ui.patches.length, 3);
+});
+
+test("floating settings keeps the mobile up-flick as the fixed More entry", (t) => {
+    const config = createDefaultFloatingBallConfig();
+    config.behavior.flickActions.up = "global-outline";
+    const ui = mount(t, {config});
+    const up = ui.root.querySelector('[data-flick-direction="up"]');
+    const down = ui.root.querySelector('[data-flick-direction="down"]');
+    assert.ok(up && down);
+    assert.equal(up.disabled, true, "up-flick must not expose a binding that runtime ignores");
+    assert.equal(up.value, "more");
+    assert.equal(up.options.length, 1);
+    assert.equal(down.disabled, false, "other directions remain configurable");
+});
+
+test("floating flick options follow the selected surface capability", (t) => {
+    const desktopOnly = {
+        id: "desktop-outline", kind: "global", value: "outline",
+        targets: ["desktop"], enabled: true, available: true,
+    };
+    const ui = mount(t, {quickActions: [desktopOnly], catalog: [desktopOnly]});
+    const down = ui.root.querySelector('[data-flick-direction="down"]');
+    const surface = ui.root.querySelector('.sw-floating-ball-settings__surface select');
+    assert.ok(down && surface, "flick and surface controls expose stable hooks");
+    assert.equal(Array.from(down.options).some((option) => option.value === "desktop-outline"), true,
+        "desktop actions are available while editing the desktop surface");
+    surface.value = "mobile";
+    surface.dispatchEvent(new ui.window.Event("change"));
+    assert.equal(Array.from(down.options).some((option) => option.value === "desktop-outline"), false,
+        "desktop-only actions are filtered while editing the mobile surface");
+});
+
+test("floating settings offers an inline first-use enable path when both surfaces are off", (t) => {
+    const ui = mount(t);
+    const setup = ui.root.querySelector(".sw-floating-ball-settings__first-use");
+    assert.ok(setup);
+    assert.equal(setup.hidden, false);
+    const desktop = setup.querySelector('button[data-surface="desktop"]');
+    assert.ok(desktop);
+    desktop.click();
+    assert.equal(ui.state.floatingBall.enabled.desktop, true);
+    assert.equal(setup.hidden, true, "the setup card leaves the main flow after enabling a surface");
+    assert.equal(ui.document.activeElement.dataset.surface, "desktop", "focus returns to the persisted surface switch");
 });
 
 test("floating settings UI sorting follows rendered order and leaves other surfaces intact", (t) => {
@@ -352,6 +397,53 @@ test("floating settings sliders preview without writes and commit once on change
     opacity.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
     assert.equal(ui.state.floatingBall.appearance.idleOpacity, 0.75);
     assert.equal(ui.patches.length, 2);
+});
+
+function assertEdgeAvoidSurfaceGuard(t, options = {}) {
+    const ui = mount(t, options);
+    const control = ui.root.querySelector('[data-control="edgeAvoidMobile"]');
+    assert.ok(control, "mobile edge-avoid setting exposes a stable control hook");
+    assert.equal(control.disabled, true, "desktop editing must disable the mobile-only setting");
+    assert.equal(control.getAttribute("aria-disabled"), "true");
+    selectSurface(ui, "mobile");
+    assert.equal(control.disabled, false, "mobile editing enables the mobile-only setting");
+    assert.equal(control.getAttribute("aria-disabled"), "false");
+    control.click();
+    assert.equal(ui.state.floatingBall.behavior.edgeAvoidMobile, true,
+        "the setting remains writable on its supported surface");
+    // Refresh from an external settings write must update the same control.
+    ui.state = {...ui.state, floatingBall: {
+        ...ui.state.floatingBall,
+        behavior: {...ui.state.floatingBall.behavior, edgeAvoidMobile: false},
+    }};
+    ui.root.dispatchEvent(new ui.window.Event("sw-floating-ball-refresh"));
+    assert.equal(control.checked, false, "refresh reads the latest persisted value");
+}
+
+test("floating settings disable mobile-only edge avoidance on desktop and resync on refresh", (t) => {
+    assertEdgeAvoidSurfaceGuard(t);
+});
+
+function assertFirstUseSettings(t, options = {}) {
+    const ui = mount(t, options);
+    const guide = ui.root.querySelector(".sw-floating-ball-settings__first-use");
+    assert.ok(guide, "first-use guide is mounted in the real settings view");
+    assert.equal(guide.hidden, false, "all-disabled defaults expose an actionable guide");
+    const desktop = guide.querySelector('button[data-surface="desktop"]');
+    assert.ok(desktop, "the guide provides a desktop enable action");
+    desktop.click();
+    assert.equal(ui.state.floatingBall.enabled.desktop, true, "guide action uses the existing settings write path");
+    assert.equal(guide.hidden, true, "guide hides once at least one surface is enabled");
+    ui.state = {...ui.state, floatingBall: {
+        ...ui.state.floatingBall,
+        enabled: {...ui.state.floatingBall.enabled, desktop: false, mobile: false},
+    }};
+    ui.root.dispatchEvent(new ui.window.Event("sw-floating-ball-refresh"));
+    assert.equal(guide.hidden, false, "external refresh restores the guide when no surface is enabled");
+}
+
+test("floating settings first-use guide enables a surface and follows refresh state", (t) => {
+    assertFirstUseSettings(t);
 });
 
 test("floating settings positions edit only the selected surface and redock free positions", (t) => {

@@ -2006,6 +2006,47 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
         sidebar: this.i18n.floatingBallSidebar,
         mobile: this.i18n.floatingBallMobile,
     };
+    // T-7238：新用户默认关闭全部端侧开关时，设置页必须给出可执行的
+    // 下一步。说明保持轻量且可重复出现，不弹窗、不写入配置，点击端侧按钮
+    // 后由现有 persist/刷新链路完成启用和运行时挂载。
+    const firstUse = document.createElement("section");
+    firstUse.className = "sw-floating-ball-settings__first-use";
+    firstUse.setAttribute("aria-label", this.i18n.floatingBallFirstUseTitle);
+    const firstUseTitle = document.createElement("strong");
+    firstUseTitle.textContent = this.i18n.floatingBallFirstUseTitle;
+    const firstUseHint = document.createElement("p");
+    firstUseHint.className = "sw-settings__hint";
+    firstUseHint.textContent = this.i18n.floatingBallFirstUseTip;
+    const firstUseActions = document.createElement("div");
+    firstUseActions.className = "sw-floating-ball-settings__first-use-actions";
+    const enableFirstUseSurface = (surface: "desktop" | "mobile", label: string) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "b3-button b3-button--outline";
+        button.dataset.surface = surface;
+        button.textContent = label;
+        button.addEventListener("click", () => {
+            const next: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+            next.enabled[surface] = true;
+            if (!persist(next)) return;
+            renderFirstUse();
+            toggles.get(surface)?.focus();
+            renderControls();
+            renderActions();
+        });
+        return button;
+    };
+    firstUseActions.append(
+        enableFirstUseSurface("desktop", this.i18n.floatingBallEnableDesktop),
+        enableFirstUseSurface("mobile", this.i18n.floatingBallEnableMobile),
+    );
+    firstUse.append(firstUseTitle, firstUseHint, firstUseActions);
+    wrapper.appendChild(firstUse);
+    const renderFirstUse = () => {
+        const latest: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+        firstUse.hidden = Boolean(latest.enabled.desktop || latest.enabled.mobile);
+    };
+    renderFirstUse();
     const toggleBox = document.createElement("div");
     toggleBox.className = "sw-floating-ball-settings__toggles";
     const toggles = new Map<string, HTMLInputElement>();
@@ -2017,9 +2058,12 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             const next: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
             next.enabled[surface] = checked;
             persist(next);
+            renderFirstUse();
             renderActions();
         });
-        const input = toggle.querySelector<HTMLInputElement>("input");
+        const input = toggle.matches?.("input")
+            ? toggle as HTMLInputElement
+            : toggle.querySelector<HTMLInputElement>("input");
         if (input) {
             input.setAttribute("aria-label", label);
             input.dataset.surface = surface;
@@ -2106,25 +2150,29 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     const renderFlickOptions = () => {
         const config: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
         const catalog = this.getFloatingBallActions();
+        const surface = surfaceSelect.value as QuickActionTarget;
         flickSelects.forEach(({direction, select}) => {
             const current = config.behavior?.flickActions?.[direction] || "";
+            const fixedMore = direction === "up";
             const options: Array<{value: string; label: string}> = [
-                {value: "", label: this.i18n.floatingBallFlickNone},
                 {value: "more", label: this.i18n.floatingBallFlickMore},
             ];
+            if (!fixedMore) options.unshift({value: "", label: this.i18n.floatingBallFlickNone});
             const seen = new Set(options.map((option) => option.value));
-            catalog.forEach((action: any) => {
+            if (!fixedMore) catalog.forEach((action: any) => {
                 if (!action?.id || seen.has(action.id)) return;
-                if (this.getQuickActionSupport(action, "mobile" as QuickActionTarget) === "unsupported") return;
+                if (this.getQuickActionSupport(action, surface) === "unsupported") return;
                 seen.add(action.id);
-                options.push({value: action.id, label: clickActionLabel(action, config, "mobile")});
+                options.push({value: action.id, label: clickActionLabel(action, config, surface)});
             });
-            if (current && !seen.has(current)) {
+            if (!fixedMore && current && !seen.has(current)) {
                 options.push({value: current, label: current});
             }
             select.innerHTML = "";
             options.forEach((option) => select.appendChild(new Option(option.label, option.value)));
-            select.value = current;
+            select.disabled = fixedMore;
+            select.setAttribute("aria-disabled", String(fixedMore));
+            select.value = fixedMore ? "more" : current;
         });
     };
     wrapper.appendChild(flickSection);
@@ -2175,11 +2223,12 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
                 {value: "more", label: this.i18n.floatingBallFlickMore},
             ];
             const seen = new Set(options.map((option) => option.value));
+            const surface = surfaceSelect.value as QuickActionTarget;
             catalog.forEach((action: any) => {
                 if (!action?.id || seen.has(action.id)) return;
-                if (this.getQuickActionSupport(action, "mobile" as QuickActionTarget) === "unsupported") return;
+                if (this.getQuickActionSupport(action, surface) === "unsupported") return;
                 seen.add(action.id);
-                options.push({value: action.id, label: clickActionLabel(action, config, "mobile")});
+                options.push({value: action.id, label: clickActionLabel(action, config, surface)});
             });
             if (current && !seen.has(current)) options.push({value: current, label: current});
             select.innerHTML = "";
@@ -2384,6 +2433,14 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
         const current = this.getSettings().floatingBall;
         this.updateSettings({floatingBall: {...current, behavior: {...(current.behavior || {}), edgeAvoidMobile: v}}});
     });
+    // 离边停靠只由手机端宿主侧滑手势使用。桌面端仍保留共享配置值，
+    // 但不能让用户在编辑桌面布局时误改一个不会生效的控制项。
+    const edgeAvoidInput = edgeAvoidSwitch.matches?.("input")
+        ? edgeAvoidSwitch as HTMLInputElement
+        : edgeAvoidSwitch.querySelector<HTMLInputElement>("input");
+    if (edgeAvoidInput) {
+        edgeAvoidInput.dataset.control = "edgeAvoidMobile";
+    }
     controlLabel(this.i18n.floatingBallEdgeAvoid, edgeAvoidSwitch, this.i18n.floatingBallEdgeAvoidTip);
     controlLabel(this.i18n.floatingBallHideOnScroll, hideOnScroll);
     controlLabel(this.i18n.floatingBallHideOnFullscreen, hideOnFullscreen);
@@ -2903,13 +2960,28 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
         hideOnScroll.checked = config.behavior.hideOnScroll;
         hideOnFullscreen.checked = config.behavior.hideOnFullscreen;
         yieldToModals.checked = config.behavior.yieldToModals;
+        if (edgeAvoidInput) {
+            edgeAvoidInput.checked = config.behavior.edgeAvoidMobile === true;
+            edgeAvoidInput.disabled = surface !== "mobile";
+            edgeAvoidInput.setAttribute("aria-disabled", String(surface !== "mobile"));
+        }
         renderControlValues();
     };
-    surfaceSelect.addEventListener("change", () => { renderControls(); renderActions(); renderDigitSlots(); });
-    wrapper.addEventListener("sw-floating-ball-refresh", () => { renderControls(); renderActions(); renderDigitSlots(); });
+    surfaceSelect.addEventListener("change", () => {
+        renderControls();
+        renderActions();
+        renderDigitSlots();
+        renderFlickOptions();
+        renderGestureOptions();
+    });
+    wrapper.addEventListener("sw-floating-ball-refresh", () => {
+        renderFirstUse(); renderControls(); renderActions(); renderDigitSlots(); renderFlickOptions(); renderGestureOptions();
+    });
     renderControls();
     renderActions();
     renderDigitSlots();
+    renderFlickOptions();
+    renderGestureOptions();
     renderPresets();
 
     const footer = document.createElement("div");

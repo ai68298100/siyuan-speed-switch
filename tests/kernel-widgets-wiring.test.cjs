@@ -1932,13 +1932,13 @@ test('flick radial actions: direction classifier, host dispatch and config defau
         'the ui must classify flicks via the model pure function');
     assert.match(uiSource, /const direction = classifyFlickDirection\(last\.x - first\.x, last\.y - first\.y, dt\);/,
         'the flick judgment must use the classifier');
-    assert.match(uiSource, /if \(direction === "up"\) \{\s*\n\s*this\.setState\("more"\);/,
-        'up keeps the P6 more-panel semantics');
+    assert.match(uiSource, /if \(direction === "up" && !this\.options\.onFlickAction\) \{\s*\n\s*this\.setState\("more"\);/,
+        'up keeps the More-panel fallback when no bound-action dispatcher exists');
     assert.match(uiSource, /this\.options\.onFlickAction\?\.\(direction\);/,
-        'down/left/right must dispatch via onFlickAction');
+        'bound flick directions must dispatch via onFlickAction');
     // 宿主分发：绑定值 more=更多面板；目录查找失败给不可用回执。
-    assert.match(indexSource, /onFlickAction: \(direction: "down" \| "left" \| "right"\) => \{/,
-        'the host must wire onFlickAction');
+    assert.match(indexSource, /onFlickAction: \(direction: "up" \| "down" \| "left" \| "right"\) => \{/,
+        'the host must wire all flick directions');
     const flickHandler = indexSource.slice(indexSource.indexOf('onFlickAction: (direction:'), indexSource.indexOf('onBeforeTargeting: () => this.refreshFloatingBallPanels()'));
     assert.match(flickHandler, /if \(bound === "more"\) \{/, 'more binding opens the panel');
     assert.match(flickHandler, /this\.executeFloatingBallSurfaceAction\(surface, action\);/,
@@ -1962,13 +1962,17 @@ test('flick actions settings: visual binding card with per-direction selects (T-
         'select changes must write the bound action back');
     assert.match(sectionsSource, /persist\(next\);/,
         'flick binding changes must persist through the budget-checked path');
-    // 选项来源：无操作 + 更多面板 + 目录（mobile 支持过滤）。
-    assert.match(sectionsSource, /\{value: "", label: this\.i18n\.floatingBallFlickNone\}/,
-        'the none option must exist');
+    // 选项来源：无操作 + 更多面板 + 目录；上滑固定为 More。
+    assert.match(sectionsSource, /const fixedMore = direction === "up";/,
+        'up must be identified as the fixed More direction');
+    assert.match(sectionsSource, /select\.disabled = fixedMore;/,
+        'up must be disabled because runtime owns its More route');
     assert.match(sectionsSource, /\{value: "more", label: this\.i18n\.floatingBallFlickMore\}/,
         'the more option must exist');
-    assert.match(sectionsSource, /getQuickActionSupport\(action, "mobile" as QuickActionTarget\) === "unsupported"\) return;/,
-        'catalog options must be mobile-support filtered');
+    assert.match(sectionsSource, /const surface = surfaceSelect\.value as QuickActionTarget;/,
+        'gesture options must follow the selected surface');
+    assert.match(sectionsSource, /getQuickActionSupport\(action, surface\) === "unsupported"\) return;/,
+        'catalog options must be selected-surface filtered');
     // 刷新：sw-floating-ball-refresh 事件重读绑定值。
     assert.match(sectionsSource, /wrapper\.addEventListener\("sw-floating-ball-refresh", \(\) => renderFlickOptions\(\)\);/,
         'the refresh event must re-render the flick binds');

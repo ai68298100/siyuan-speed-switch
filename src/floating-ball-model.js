@@ -343,6 +343,13 @@ function normalizeFloatingBallConfig(input, options = {}) {
     const flickSource = isRecord(behavior.flickActions) ? behavior.flickActions : {};
     const flickDefaults = defaults.behavior && defaults.behavior.flickActions ? defaults.behavior.flickActions : {};
     config.behavior.flickActions = ["up", "down", "left", "right"].reduce((acc, direction) => {
+        // 上滑是移动端“更多动作”的固定安全入口。运行时一直将 up
+        // 路由到更多面板，配置也必须反映同一事实，避免导入旧值后设置页
+        // 显示一个永远不会执行的自定义动作。
+        if (direction === "up") {
+            acc[direction] = "more";
+            return acc;
+        }
         const raw = flickSource[direction];
         acc[direction] = typeof raw === "string"
             ? raw.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 48)
@@ -465,7 +472,16 @@ function actionIdOf(action) {
 
 function findFloatingAction(actions, actionId) {
     const id = normalizeActionId(actionId);
-    return (Array.isArray(actions) ? actions : []).find((action) => actionIdOf(action) === id) || null;
+    if (!id) return null;
+    const source = Array.isArray(actions) ? actions : [];
+    // Prefer the persisted stable reference.  Only fall back to value after
+    // checking actionId/id across the whole catalog, so a provider value that
+    // collides with another action's ID cannot execute the wrong action.
+    for (const field of ["actionId", "id", "value"]) {
+        const found = source.find((action) => normalizeActionId(action?.[field]) === id);
+        if (found) return found;
+    }
+    return null;
 }
 
 function applyFloatingBallActionPresentation(action, descriptor) {
@@ -652,6 +668,7 @@ module.exports = {
     normalizeFloatingBallActionList,
     normalizeFloatingBallDigitSlot,
     normalizeFloatingBallDigitSlots,
+    findFloatingAction,
     setFloatingBallDigitSlot,
     clampFloatingBallPosition,
     snapFloatingBallPosition,

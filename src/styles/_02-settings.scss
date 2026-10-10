@@ -869,6 +869,37 @@
         margin: 0;
     }
 
+    // 首次使用提示只在桌面/手机都关闭时显示；保持为设置页内联卡片，
+    // 避免弹窗打断用户，同时让下一步操作拥有明确的触控命中区。
+    &__first-use {
+        box-sizing: border-box;
+        display: grid;
+        gap: 6px;
+        padding: 12px;
+        border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 30%, var(--b3-border-color));
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--b3-theme-primary) 7%, var(--b3-theme-surface, var(--b3-theme-background-light)));
+
+        > strong {
+            color: var(--b3-theme-primary);
+        }
+
+        > p {
+            margin: 0;
+        }
+    }
+
+    &__first-use-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+
+        .b3-button {
+            min-height: 36px;
+        }
+    }
+
     %sw-fb-panel {
         box-sizing: border-box;
         border: 1px solid var(--b3-border-color);

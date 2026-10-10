@@ -79,8 +79,8 @@ export interface FloatingBallUiOptions {
     observeHost?: boolean;
     onOpenSwitcher?: () => void;
     onOpenMore?: () => void;
-    /** T-6886（T-6858 第一批）：四向快滑（移动端 docked 状态）非上方向的动作分发。 */
-    onFlickAction?: (direction: "down" | "left" | "right") => void;
+    /** T-6886（T-6858 第一批）：四向快滑（移动端 docked 状态）的动作分发。 */
+    onFlickAction?: (direction: "up" | "down" | "left" | "right") => void;
     /** T-6919：双击/长按绑定探针（实时读取）与分发回调；双击绑定后单击延迟判别。 */
     isDoubleTapBound?: () => boolean;
     isLongPressBound?: () => boolean;
@@ -664,8 +664,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         };
         const onPointerUp = (event: PointerEvent) => {
             if (this.activePointerId !== event.pointerId) return;
-            // P6-B/T-6886：docked 状态下快滑 = 四向动作分发（速度+方向双判定；
-            // 上=更多面板保留 P6 语义；下/左/右经 onFlickAction 分发绑定动作）。
+            // P6-B/T-6886：docked 状态下快滑 = 四向动作分发（速度+方向双判定）。
             // 触发后抑制合成 click，避免再打开切换器。
             if (this.surface === "mobile" && this.state === "docked" && this.flingSamples.length >= 2) {
                 const first = this.flingSamples[0];
@@ -676,7 +675,7 @@ export class FloatingBallUi implements FloatingBallUiController {
                     this.flingSamples = [];
                     this.suppressClick = true;
                     this.cancelPointer(false);
-                    if (direction === "up") {
+                    if (direction === "up" && !this.options.onFlickAction) {
                         this.setState("more");
                         this.options.onOpenMore?.();
                     } else {

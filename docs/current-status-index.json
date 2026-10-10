@@ -84,7 +84,8 @@
     "T-7225",
     "T-7226",
     "T-7234",
-    "T-7236"
+    "T-7236",
+    "T-7238"
   ],
   "tasks": [
     {
@@ -2339,6 +2340,33 @@
         "src/home-store-ui.ts",
         "tests/switcher-performance-contract.test.cjs",
         "docs/adr/0164-performance-first-paint.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7140"
+    },
+    {
+      "id": "T-7238",
+      "title": "悬浮球首次使用引导与动作扩展边界",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7237"
+      ],
+      "evidence": [
+        "src/settings-sections.ts",
+        "src/floating-ball-model.js",
+        "src/floating-ball-ui.ts",
+        "src/index.ts",
+        "src/i18n/zh-CN.json",
+        "src/i18n/en.json",
+        "src/styles/_02-settings.scss",
+        "tests/floating-ball-model.test.cjs",
+        "tests/floating-ball-host.test.cjs",
+        "tests/floating-ball-settings-ui.test.cjs",
+        "tests/kernel-widgets-wiring.test.cjs",
+        "docs/adr/0165-floating-ball-first-use-and-action-boundary.md",
         "docs/dev-plan-2026-10-06.md"
       ],
       "next": "T-7140"

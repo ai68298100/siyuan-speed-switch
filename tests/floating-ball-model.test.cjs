@@ -20,6 +20,7 @@ const {
     FLOATING_BALL_DOUBLE_TAP_MS,
     selectFloatingBallFirstLayer,
     resolveFloatingBallClickAction,
+    findFloatingAction,
 } = require("../src/floating-ball-model.js");
 
 test("floating ball config: defaults are bounded, independent and cloned", () => {
@@ -33,6 +34,19 @@ test("floating ball config: defaults are bounded, independent and cloned", () =>
     const again = createDefaultFloatingBallConfig();
     assert.equal(again.position.mobile.yRatio, 0.72);
     assert.equal(again.actions.mobile[0].actionId, "journal");
+});
+
+test("floating ball bindings normalize the fixed up-flick and match stable action aliases", () => {
+    const config = normalizeFloatingBallConfig({behavior: {
+        flickActions: {up: "global-outline", down: "outline", left: "global-outline", right: ""},
+    }});
+    assert.equal(config.behavior.flickActions.up, "more", "up-flick is reserved for the More panel");
+    const catalog = [
+        {id: "global-outline", actionId: "outline-alias", value: "outline"},
+    ];
+    assert.equal(findFloatingAction(catalog, "global-outline"), catalog[0]);
+    assert.equal(findFloatingAction(catalog, "outline-alias"), catalog[0]);
+    assert.equal(findFloatingAction(catalog, "outline"), catalog[0]);
 });
 
 test("free position and margin migrate additively and stay local during transfer", () => {

@@ -20,6 +20,7 @@ const methodNames = [
     "createFloatingBallSurface", "destroyFloatingBallSurface", "persistFloatingBallPosition",
     "suspendFABForDialog", "updateFloatingBallVisibility", "executeFloatingBallSurfaceAction", "getFloatingBallActions",
     "refreshFloatingBallPanels", "executeFloatingBallSavedSearch", "executeFloatingBallBoundAction",
+    "executeFloatingBallBoundGesture",
     // T-6869：悬浮球 onSwitcher 恢复链依赖的平台路由方法（openPlatformFromBall →
     // openPlatformSurface → notePlatformSurface / getAvailablePlatformSurfaces）。
     "openPlatformFromBall", "openPlatformSurface", "notePlatformSurface", "getAvailablePlatformSurfaces",
@@ -80,6 +81,7 @@ function mount(t, options = {}) {
     const dependencies = {
         window: dom.window, document, createFloatingBallUi, createFloatingBallPanelController, createFloatingBallActionExecutor,
         resolveFloatingBallClickAction, resolveFloatingActionAvailability: require("../src/floating-ball-model.js").resolveFloatingActionAvailability,
+        findFloatingAction: require("../src/floating-ball-model.js").findFloatingAction,
         resolveQuickActionLabel,
         applySavedSearchFilters(scroll, input, saved) {
             calls.savedSearch.push({scroll, input, saved});
@@ -190,6 +192,32 @@ test("T-6891 saved-search host contract detects stale-ID fallback", (t) => {
     assert.throws(() => assertSavedSearchPlayback(t, {transformSource: (source) => source.replace(target,
         "this.getSavedSearches()[0]")}),
     (error) => error instanceof assert.AssertionError && error.actual?.ok === true && error.expected?.ok === false);
+});
+
+test("floating-ball gesture bindings resolve action id/value aliases and honor the current surface", (t) => {
+    const {host, config, calls} = mount(t);
+    const executed = [];
+    const action = {
+        id: "global-outline", kind: "global", value: "outline",
+        targets: ["desktop", "mobile"], enabled: true, available: true,
+    };
+    host.getFloatingBallActions = () => [action];
+    host.getQuickActionSupport = (_action, surface) => surface === "desktop" ? "supported" : "unsupported";
+    host.executeFloatingBallSurfaceAction = (surface, resolved) => executed.push([surface, resolved.id]);
+    config.behavior.flickActions.down = "global-outline";
+    config.behavior.doubleTapAction = "outline";
+    const desktop = host.createFloatingBallSurface("desktop");
+    desktop.config.onFlickAction("down");
+    desktop.config.onDoubleTap();
+    assert.deepEqual(executed, [["desktop", "global-outline"], ["desktop", "global-outline"]],
+        "id and value bindings must both resolve to the same catalog action");
+
+    // The same binding must not bypass a live surface capability change.
+    host.getQuickActionSupport = () => "unsupported";
+    desktop.config.onFlickAction("down");
+    desktop.config.onDoubleTap();
+    assert.equal(executed.length, 2, "unsupported actions stay blocked on the current surface");
+    assert.equal(calls.messages.length, 2, "each blocked gesture reports unavailable feedback");
 });
 
 function assertBoundActionLiveCheck(t, options = {}) {
