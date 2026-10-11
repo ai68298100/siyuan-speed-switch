@@ -1,15 +1,37 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.46.9-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.47.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Current stable release: v0.46.9 (2026-10-11)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.9) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Current stable release: v0.47.0 (2026-10-11)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.0) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
 > **Beta notice**: 小驴考试, 小驴管家, 小驴闪卡, and 小驴常用 are beta plugins under active development and validation. Join QQ group **871707735** for bug reports and feature requests.
 
-## What's New In v0.46.9 (2026-10-11)
+## What's New In v0.47.0 (2026-10-11)
+
+This release brings the R54-inspired canvas, work-surface, hierarchy, and compact-container rules to all three LvSpeed Switch surfaces.
+
+Added: R54 three-surface visual adapter
+
+- Added scoped visual tokens for the switcher, workbench, widget store, and snippet studio, aligning surfaces, borders, radii, spacing, and restrained elevation.
+- Added real surface-container handling for the 760px and 560px compact layouts.
+
+Added: R54 visual contract and negative verification
+
+- Added contracts for material, primary/secondary hierarchy, touch targets, and compact-container behavior, including deletion probes that fail when a required declaration is removed.
+
+Improved: Three-surface work hierarchy
+
+- The switcher now reads as a continuous search and preview workspace; the workbench and store share a calm catalog/detail hierarchy; the snippet editor is the primary work surface with preview and AI as supporting surfaces.
+- Existing production data, APIs, states, close behavior, and focus restoration remain the source of truth; prototype demo data is not copied into production.
+
+Fixed: Inconsistent compact-surface material and scrolling
+
+- Normalized card material, surface spacing, and compact/mobile scroll ownership across historical style layers.
+
+## Previous release updates (v0.46.9 · 2026-10-11)
 
 This release closes the real-kernel E2E loop with bounded previews, reliable mobile settings geometry, and honest stale-state feedback.
 
@@ -492,7 +514,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.46.9` (2026-10-11; this release closes the real-kernel E2E loop with bounded previews, reliable mobile settings geometry, and honest stale-state feedback; GitHub release assets are synchronized).
+The current version is `v0.47.0` (2026-10-11; this release applies the R54 visual surface adapter and work-surface hierarchy across all three panels; GitHub release assets are synchronized).
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>

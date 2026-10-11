@@ -5,6 +5,14 @@
 
 ## Changelog (full history)
 
+### v0.47.0 (2026-10-11)
+
+- **Added an R54 three-surface visual adapter**: brought the R54-inspired canvas, white work surfaces, hairline borders, radii, spacing, and restrained elevation to the switcher, workbench, widget store, and snippet studio, informed by the other Little Lv plugins.
+- **Added the R54 visual contract and negative verification**: covers material, primary/secondary hierarchy, touch targets, and compact-container degradation, with deletion probes for required declarations.
+- **Improved the three-surface work hierarchy**: the switcher is a continuous search/preview workspace, the workbench and store share a catalog/detail hierarchy, and the snippet editor is the primary work surface with preview and AI as supporting surfaces.
+- **Fixed inconsistent compact-surface material and scrolling**: real `sw-platform` container widths now drive the 760px/560px fallbacks while existing data, APIs, states, close behavior, and focus restoration remain unchanged.
+- **Verification**: full suite **8653/8653**; the R54 contract (including deletion probes), TypeScript, production build, surface-switch, mobile-layout, and Chromium style smoke checks passed.
+
 ### v0.46.9 (2026-10-11)
 
 - **Added real-kernel E2E release evidence**: completed the three-surface, settings, mobile-layout, widget-store, and snippet flows in an isolated SiYuan `3.8.7-alpha.6` backend run with exit code 0, including preview-boundary, touch-target, stale-state, and index-readiness assertions.

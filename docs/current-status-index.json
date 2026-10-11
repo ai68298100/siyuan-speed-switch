@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-11",
-  "currentTask": "T-7141",
+  "currentTask": "T-7242",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7141",
+  "nextLocalTask": "T-7242",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -85,7 +85,8 @@
     "T-7226",
     "T-7234",
     "T-7236",
-    "T-7238"
+    "T-7238",
+    "T-7242"
   ],
   "tasks": [
     {
@@ -2417,7 +2418,26 @@
         ".github/workflows/release.yml",
         "docs/dev-plan-2026-10-06.md"
       ],
-      "next": "T-7140"
+      "next": "T-7242"
+    },
+    {
+      "id": "T-7242",
+      "title": "R54 三面板视觉适配与工作面重构",
+      "status": "in_progress",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7241"
+      ],
+      "evidence": [
+        "src/styles/_12-r54-surface-adapter.scss",
+        "src/index.scss",
+        "tests/r54-surface-adapter-contract.test.cjs",
+        "docs/adr/0167-r54-surface-adapter-v0470.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7243"
     }
   ],
   "global": {

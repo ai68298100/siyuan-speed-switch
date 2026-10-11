@@ -1,15 +1,37 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.46.9-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.47.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **当前稳定版：v0.46.9（2026-10-11）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.9) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **当前稳定版：v0.47.0（2026-10-11）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.0) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡、小驴常用为内测版，功能仍在持续开发与验证中；欢迎加入 QQ 群 **871707735** 反馈 Bug、提交需求。
 
-## 本次更新（v0.46.9 · 2026-10-11）
+## 本次更新（v0.47.0 · 2026-10-11）
+
+本版参考小驴闪卡 R54、小驴打卡以及小驴人脉/小驴管家的重构方向，统一三面板的画布、工作面和窄容器体验。
+
+新增：R54 三面板视觉适配层
+
+- 为切换器、工作台、组件商店和片段实验室增加作用域视觉 token，统一白色工作面、细描边、圆角、间距和层级阴影。
+- 以真实面板容器宽度处理 760px/560px 降级，窄面板不再依赖浏览器视口猜测布局。
+
+新增：R54 视觉契约与负向验证
+
+- 增加三面板材质、主次关系、触控尺寸和窄容器规则的契约测试，并验证删除关键声明时测试会失败。
+
+优化：三面板工作路径层级
+
+- 第一面板强化搜索与预览的连续阅读工作面；第二面板收拢工作台和商店的目录—详情层级；第三面板明确编辑器为主工作面、预览和 AI 为辅助面。
+- 保留已有真实数据、API、状态、关闭和焦点语义，不用原型合成数据替代生产功能。
+
+修复：窄面板材质与滚动承载不一致
+
+- 修正不同历史样式叠加造成的卡片材质、面板间距和移动/窄容器主滚动区不一致问题。
+
+## 上一版本更新（v0.46.9 · 2026-10-11）
 
 本版完成真实内核 E2E 收口，修复短窗口预览遮挡、手机设置窄屏触控与索引时序误报。
 
@@ -495,7 +517,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.46.9`（2026-10-11；本版完成真实内核 E2E 收口并修复预览边界、手机设置触控和 stale 状态；Release 资产已同步至 GitHub）。
+当前版本为 `v0.47.0`（2026-10-11；本版完成 R54 三面板视觉适配与工作面重构；Release 资产已同步至 GitHub）。
 
 <details>
 <summary>历史更新日志（点击展开）</summary>

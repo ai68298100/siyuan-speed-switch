@@ -1,0 +1,244 @@
+@use "00-tokens" as *;
+
+// T-7242：把小驴闪卡 R54 的“画布 / 工作面 / 主动作”层级迁移到雷切三面板。
+// 这里是 scoped 适配层：只消费思源主题变量和既有 sw-* token，不接管业务状态、
+// 数据源或事件。三面板仍保留各自的工作方式，只共享材质、间距、边界和响应式节奏。
+
+:is(.speed-switch, .sw-home, .sw-studio, .sw-platform-shell) {
+    --sw-r54-canvas: color-mix(in srgb, var(--b3-theme-background) 90%, var(--b3-theme-primary) 3%);
+    --sw-r54-surface: var(--b3-theme-surface, var(--b3-theme-background));
+    --sw-r54-soft: color-mix(in srgb, var(--b3-theme-surface) 78%, var(--b3-theme-background));
+    --sw-r54-line: color-mix(in srgb, var(--b3-border-color) 78%, transparent);
+    --sw-r54-line-soft: color-mix(in srgb, var(--b3-border-color) 56%, transparent);
+    --sw-r54-radius-card: 16px;
+    --sw-r54-radius-control: 12px;
+    --sw-r54-space-1: 4px;
+    --sw-r54-space-2: 8px;
+    --sw-r54-space-3: 12px;
+    --sw-r54-space-4: 16px;
+    --sw-r54-space-5: 24px;
+    --sw-r54-shadow-card: 0 1px 2px color-mix(in srgb, #29304c 5%, transparent),
+        0 8px 24px color-mix(in srgb, #29304c 7%, transparent);
+}
+
+// R54 的普通卡片主要依靠明度、边框和间距建立层次；阴影只留给真正的工作面。
+:is(.sw-platform-surface, .sw-studio, .sw-home) {
+    color: var(--b3-theme-on-background);
+    background: var(--sw-r54-canvas);
+}
+
+// 自定义 Dialog 的真实宽度可能小于浏览器视口；把容器查询锚在表面根节点，
+// 让 R54 降级规则按面板宽度生效，而不是按外层窗口宽度猜测。
+.sw-platform-surface {
+    container-name: sw-r54-surface;
+    container-type: inline-size;
+}
+
+// 第一面板：搜索和预览是一条连续的阅读工作面，空态也保留明确的主动作区域。
+.speed-switch {
+    &.sw__body { border-radius: var(--sw-platform-radius-lg, 16px); }
+
+    .sw__main { min-width: 0; }
+
+    .sw__toolbar {
+        min-height: 64px;
+        gap: var(--sw-r54-space-2);
+        padding: var(--sw-r54-space-3) var(--sw-r54-space-4);
+        border-bottom: 1px solid var(--sw-r54-line);
+        background: var(--sw-r54-surface);
+    }
+
+    .sw__search-wrap { flex-basis: 280px; }
+    .sw__search { border-radius: var(--sw-r54-radius-control); }
+
+    .sw__scroll {
+        padding: var(--sw-r54-space-4) var(--sw-r54-space-5) 28px;
+        background: var(--sw-r54-canvas);
+    }
+
+    .sw__dock {
+        width: 184px;
+        border-right: 1px solid var(--sw-r54-line);
+        background: var(--sw-r54-surface);
+    }
+
+    .sw__dock-item {
+        min-height: 46px;
+        margin: 2px 8px;
+        border-radius: var(--sw-r54-radius-control);
+    }
+
+    .sw__empty {
+        min-height: 220px;
+        padding: 40px var(--sw-r54-space-4);
+        border: 1px dashed var(--sw-r54-line);
+        border-radius: var(--sw-r54-radius-card);
+        background: var(--sw-r54-surface);
+    }
+
+    .sw__tab-preview {
+        gap: var(--sw-r54-space-4);
+        padding: var(--sw-r54-space-4);
+        // 预览 rail 以右栏底边作为连续阅读面的收口，避免外层底部
+        // padding 在短文档时形成一条与内容无关的空白带。
+        padding-bottom: 0;
+        border: 1px solid var(--sw-r54-line);
+        border-radius: var(--sw-r54-radius-card);
+        background: var(--sw-r54-surface);
+        box-shadow: var(--sw-r54-shadow-card);
+    }
+
+    .sw__doc-preview {
+        border-color: var(--sw-r54-line);
+        border-radius: var(--sw-r54-radius-control);
+        background: var(--sw-r54-surface);
+        box-shadow: none;
+    }
+
+    .sw__group-header { min-height: 40px; margin-bottom: 10px; }
+}
+
+// 第二面板：工作台首屏先给页面标题/动作空间，再进入可重排的组件网格；
+// 商店沿用同一套目录—详情工作面，避免“目录卡片 + 预览卡片”材质割裂。
+.sw-home {
+    padding: var(--sw-r54-space-4) var(--sw-r54-space-5) 0;
+
+    &__bar {
+        min-height: 48px;
+        margin-bottom: var(--sw-r54-space-4);
+        padding: 0 0 var(--sw-r54-space-3);
+        border-bottom: 1px solid var(--sw-r54-line);
+    }
+
+    &__body { scrollbar-gutter: stable; }
+
+    &__grid {
+        gap: var(--sw-r54-space-4);
+        padding-bottom: var(--sw-r54-space-4);
+    }
+
+    &__cell {
+        border: 1px solid var(--sw-r54-line);
+        border-radius: var(--sw-r54-radius-card);
+        background: var(--sw-r54-surface);
+        box-shadow: var(--sw-r54-shadow-card);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        transition: border-color $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease;
+
+        &:hover {
+            border-color: color-mix(in srgb, var(--b3-theme-primary) 34%, var(--sw-r54-line));
+            box-shadow: 0 8px 24px color-mix(in srgb, #29304c 10%, transparent);
+        }
+    }
+
+    &__empty {
+        min-height: 220px;
+        border-radius: var(--sw-r54-radius-card);
+        background: var(--sw-r54-surface);
+    }
+}
+
+.sw-home-store {
+    background: var(--sw-r54-canvas);
+
+    &__search,
+    &__filter-bar,
+    &__tabs {
+        border-color: var(--sw-r54-line-soft);
+    }
+
+    &__catalog,
+    &__detail { background: var(--sw-r54-canvas); }
+
+    &__card {
+        border-color: var(--sw-r54-line);
+        border-radius: var(--sw-r54-radius-card);
+        background: var(--sw-r54-surface);
+        box-shadow: none;
+    }
+
+    &__card:hover,
+    &__card:focus-within { box-shadow: var(--sw-r54-shadow-card); }
+
+    &__detail-head,
+    &__detail .sw-home-store__live-preview,
+    &__detail-actions {
+        border-radius: var(--sw-r54-radius-card);
+        box-shadow: var(--sw-r54-shadow-card);
+    }
+}
+
+// 第三面板：编辑器是主工作面，预览和 AI 是清晰分开的辅助面；
+// 头部只保留当前片段上下文和可继续的动作，不额外堆叠装饰。
+.sw-studio {
+    background: var(--sw-r54-canvas);
+
+    &__header {
+        min-height: 64px;
+        padding: var(--sw-r54-space-3) var(--sw-r54-space-5);
+        border-bottom-color: var(--sw-r54-line);
+        background: var(--sw-r54-surface);
+    }
+
+    &__layout { gap: 0; }
+
+    &__library {
+        padding: var(--sw-r54-space-4);
+        border-right-color: var(--sw-r54-line);
+        background: var(--sw-r54-soft);
+    }
+
+    &__main { gap: var(--sw-r54-space-4); padding: var(--sw-r54-space-4); }
+
+    &__preview-section,
+    &__details,
+    &__editor-section,
+    &__ai {
+        border-color: var(--sw-r54-line);
+        border-radius: var(--sw-r54-radius-card);
+        box-shadow: none;
+    }
+
+    &__preview-section,
+    &__editor-section { background: var(--sw-r54-surface); }
+    &__preview { border-radius: var(--sw-r54-radius-control); }
+    &__details,
+    &__ai { background: var(--sw-r54-soft); }
+    &__button { min-height: 40px; border-radius: var(--sw-r54-radius-control); }
+    &__library-item,
+    &__catalog-item { border-radius: var(--sw-r54-radius-control); }
+}
+
+// 以容器为准适配宿主窄面板；不改变领域逻辑，只把三面板降级成单一主滚动区。
+@container sw-r54-surface (max-width: 760px) {
+    .sw-home { padding-inline: var(--sw-r54-space-3); }
+    .sw-home__grid { gap: var(--sw-r54-space-3); }
+    .sw-studio__layout { grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); }
+    .sw-studio__ai { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--sw-r54-line); }
+}
+
+@container sw-r54-surface (max-width: 560px) {
+    .speed-switch .sw__scroll { padding: var(--sw-r54-space-3) var(--sw-r54-space-3) 20px; }
+    .speed-switch .sw__dock { display: none; }
+    .sw-home { padding: var(--sw-r54-space-3) var(--sw-r54-space-3) 0; }
+    .sw-home__cell { grid-column: 1 / -1; }
+    .sw-studio__layout { display: flex; flex-direction: column; overflow: hidden; }
+    .sw-studio__library { flex: 0 0 auto; max-height: 190px; border-right: 0; border-bottom: 1px solid var(--sw-r54-line); }
+    .sw-studio__main { flex: 1 1 auto; min-height: 540px; }
+    .sw-studio__ai { flex: 0 0 auto; min-height: 320px; }
+}
+
+@media (pointer: coarse) {
+    .sw-home__bar .b3-button,
+    .sw-home-store button,
+    .sw-studio__button,
+    .sw-studio__library-item { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .speed-switch .sw__tab-preview,
+    .sw-home .sw-home__cell,
+    .sw-home-store__card,
+    .sw-studio__button { transition: none !important; }
+}
