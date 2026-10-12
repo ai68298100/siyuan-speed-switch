@@ -44,7 +44,7 @@
 
 > **T-7247 跨模块既有刻度收敛（2026-10-12）**：追加 483 条具有同值既有 token 的声明迁移，覆盖间距、字号、行高和字重；覆盖率分别达到 55.94%/84.86%/35.04%/90.18%，Chromium 30 场景/480 个元素差异 0，expanded CSS +12238 bytes。完整测试 8662/8662、可复现构建和 `verify:release` 全链通过；本批只改善维护一致性，不宣传性能收益。决策见 [`ADR 0172`](docs/adr/0172-exact-existing-tier-migration.md)。
 
-> **T-7248 v0.47.1 小版本发布（2026-10-13）**：完成 `main` 与 `v0.47.1` tag 推送；GitHub Release workflow `38286004587`、main CI `38285967543` 均成功，远端 `package.zip` 589779 bytes，SHA-256 为 `021B9ABE3361A0931F8B113D48251A9B8985C61EEE60A7A3C5C0B6F3E1413137`，本机 Windows 构建 589793 bytes，差异 14 bytes。真实 Android、读屏、最窄原生侧栏与集市同步仍按 `BLOCKERS.md` 后置。
+> **T-7248 v0.47.1 小版本发布（2026-10-13）**：完成 `main` 与 `v0.47.1` tag 推送；GitHub Release workflow `38289653473`、main CI `38289581929` 均成功，远端 `package.zip` 589640 bytes，SHA-256 为 `5D9A893F25E682969ED2D0A4AC2FE5A2263B41CFD473B227989D5E27EE82E3B3`，本机 Windows 构建同为 589640 bytes，包内 README 与资源条目逐项一致。真实 Android、读屏、最窄原生侧栏与集市同步仍按 `BLOCKERS.md` 后置。
 
 ## 1. 产品定位
 
