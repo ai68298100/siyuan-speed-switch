@@ -56,6 +56,10 @@ test('preview presents the selected title, separate paragraphs and an outline', 
         f.schedule(); await f.flush();
         const pane = f.box.querySelector('.sw__doc-preview');
         assert.equal(pane.querySelector('.sw__doc-preview-title').textContent, 'Preview document');
+        const readyStatus = pane.querySelector('.sw__doc-preview-status');
+        assert.equal(readyStatus?.getAttribute('role'), 'status', '预览完成状态必须可被读屏播报');
+        assert.equal(readyStatus?.getAttribute('aria-live'), 'polite', '预览状态播报不得打断当前阅读');
+        assert.equal(readyStatus?.getAttribute('aria-atomic'), 'true', '预览状态应作为完整短回执播报');
         assert.deepEqual([...pane.querySelectorAll('.sw__doc-preview-excerpt')].map(el => el.textContent),
             ['First paragraph', 'Second paragraph']);
         assert.deepEqual([...pane.querySelectorAll('.sw__doc-preview-heading')].map(el => el.textContent),

@@ -1,15 +1,52 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.47.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.47.1-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Current stable release: v0.47.0 (2026-10-11)**<br>
+> **Latest stable release: v0.47.0 (2026-10-11)** · **Local candidate: v0.47.1 (local gates passed; not released)**<br>
 > [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.0) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
 > **Beta notice**: 小驴考试, 小驴管家, 小驴闪卡, and 小驴常用 are beta plugins under active development and validation. Join QQ group **871707735** for bug reports and feature requests.
 
-## What's New In v0.47.0 (2026-10-11)
+## What's New In v0.47.1 (2026-10-12)
+
+This local candidate brings more of the R5 prototype into production, turns the all-unavailable workbench state into a full recovery surface, and closes keyboard selection, retry focus, conflict focus, and preview announcements.
+
+Added: Shared top-bar brand identity
+
+- Added a theme-colored brand mark, product name, and localized “Work context platform” subtitle across desktop, sidebar, and mobile surfaces.
+- The brand mark remains decorative for assistive technology.
+
+Improved: Compact top-bar hierarchy
+
+- The subtitle hides and the mark shrinks inside 560px containers, preserving space for navigation, settings, and close controls.
+- Existing surface routing, current-state, Escape close, and focus restoration semantics remain intact.
+
+Added: Workbench recovery for unavailable widgets
+
+- When every widget in a saved layout is unavailable, the workbench preserves the layout, explains the state, and offers a direct route to the widget store.
+- Unavailable placeholders now live in the scrollable work area; the recovery surface offers add-widget and edit-to-remove paths.
+
+Improved: Widget-store keyboard selection feedback
+
+- The first Enter/Space activation of a catalog card now opens its detail; a second activation invokes the detail's primary action, matching pointer selection.
+
+Fixed: Focus continuity and preview announcements
+
+- Retry, snippet-conflict close/reload, and copy-success paths return focus to the editor; the first-panel preview announces its ready state without making the full body a live region.
+
+Fixed: Mobile floating-ball flick classification
+
+- Fixed the first move crossing touch slop being mistaken for a drag; flicks restore the parked position and consume the synthetic click while slow drags and action drops keep their semantics.
+
+Improved: Continued convergence of shared typography tiers
+
+- Migrated 298 spacing, 17 font-size, 34 line-height, and 134 font-weight declarations to existing shared variables while retaining numeric fallbacks.
+- Coverage moved from 29.73%/80.27%/5.98%/7.98% to 55.94%/84.86%/35.04%/90.18%; 30 Chromium scenarios across both themes and multiple widths measured 480 elements with zero computed-style or geometry differences.
+- Expanded CSS grew by 12,238 bytes, so this batch improves maintenance consistency rather than claiming a loading or bundle-size gain.
+
+## Previous release updates (v0.47.0 · 2026-10-11)
 
 This release brings the R54-inspired canvas, work-surface, hierarchy, and compact-container rules to all three LvSpeed Switch surfaces.
 
@@ -31,6 +68,9 @@ Fixed: Inconsistent compact-surface material and scrolling
 
 - Normalized card material, surface spacing, and compact/mobile scroll ownership across historical style layers.
 
+<details>
+<summary>Older release updates (v0.46.9 and earlier)</summary>
+
 ## Previous release updates (v0.46.9 · 2026-10-11)
 
 This release closes the real-kernel E2E loop with bounded previews, reliable mobile settings geometry, and honest stale-state feedback.
@@ -49,9 +89,6 @@ Fixed: Mobile timing and workbench state regression
 
 - Mobile E2E waits for the host search index after creating documents instead of treating indexing latency as an empty result.
 - A failed refresh with retained content is reported as stale and keeps the existing content and Retry action.
-
-<details>
-<summary>Previous release updates (v0.46.8 and earlier)</summary>
 
 ## Previous release updates (v0.46.8 · 2026-10-10)
 
@@ -403,12 +440,12 @@ The plugin uses six layers. Its three surfaces share navigation services and per
 | Orchestration | `registerSwitcherRefresh` / SearchSession / action executor | View refresh broadcasting, isolated async state, shared command routing |
 | Navigation services | Tabs / favorites / search / quick actions / journal / panels | Sorting, deduplication, batch behavior, and progressive feature composition |
 | SiYuan integration | `getAllTabs` / MobileTabs / kernel API / Dock / plugin commands | Encapsulates host capabilities and third-party plugin boundaries |
-| Persistence | `loadData` / `saveDataDebounced` / `storage-migration.js` | 15 validated storage keys (12 managed migrations + 2 inspected + 1 version stamp), debounced writes, unload flush, a read-only migration drill, and configuration transfer |
+| Persistence | `loadData` / `saveDataDebounced` / `storage-migration.js` | 18 validated storage keys (15 handled migrations + 2 inspected + 1 schema-version stamp), debounced writes, unload flush, a read-only migration drill, and configuration transfer |
 | Infrastructure | `util.js` / `search-session.js` / `quick-actions.js` / types and constants | Host-independent pure functions, types, boundaries, logging, and tests |
 
 **Performance isolation**: open-tab switching uses local state only. Workspace requests, thumbnail backfill, and third-party actions are optional layers that may fail independently. Every search surface owns its request version, abort controller, timer, and cache, all released on destruction.
 
-**Data boundaries**: the 15 storage keys persist independently (list in `src/constants.ts` as `PERSISTENT_KEYS`; per-key migrations and capacity bounds in [`docs/storage-compatibility-matrix.md`](docs/storage-compatibility-matrix.md)). Favorites are capped at 512 entries, pins at 64, and favorite groups at 64; loading and runtime writes both deduplicate, clamp, and safely write back. Re-queryable search results and temporary UI state are never written to plugin data.
+**Data boundaries**: the 18 storage keys persist independently (listed in `src/constants.ts` as `PERSISTENT_KEYS`; per-key migrations and capacity bounds live in [`docs/storage-compatibility-matrix.md`](docs/storage-compatibility-matrix.md)). Favorites are capped at 512 entries, pins at 64, and favorite groups at 64; loading and runtime writes both deduplicate, clamp, and safely write back. Re-queryable search results and temporary UI state are never written to plugin data.
 
 **Widget panel open protocol**: third-party plugins may call `registerHomeModule` to register read-only, per-surface-isolated widgets that appear in the widget store (size model declaration, description, and a failure-jump callback are supported). The full integration guide lives in [`docs/widget-protocol.md`](docs/widget-protocol.md). The plugin never changes the default switcher home automatically and never persists external function references; callers should run the returned unregister function and `dispose()` the controller during unload.
 
@@ -514,7 +551,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.47.0` (2026-10-11; this release applies the R54 visual surface adapter and work-surface hierarchy across all three panels; GitHub release assets are synchronized).
+The current version is `v0.47.1` (local candidate; automated release gates passed, but it is not released yet. It adds the R5 brand identity, an unavailable-widget recovery surface, and reliable widget-store keyboard selection.) The latest stable GitHub release remains `v0.47.0`.
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>
@@ -698,28 +735,7 @@ Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；En
 - **Performance benchmarks promoted to hard gates**: after three stable releases the four benchmark classes now enforce unconditionally — the filter benchmarks measure CPU time with hard average asserts (15/48/20 ms budgets) and the 40 ms large-library pathology line also blocks on CI; pathological regressions fail precisely in every environment.
 - **Full storage-migration drill**: 12 managed keys x 5 corruption classes degrade deterministically through a sanitize fixpoint; a v0.23.5-era payload set (no schema stamp) survives the upgrade key-by-key.
 
-### v0.26.0 (2026-09-21)
-
-- **Publish compliance (F7 closed)**: `plugin.json` now declares `publish.resources`, listing the four packaged `docs/` assets per file (matching the upstream publish-mode resource rule); a new package-resource contract gate fails whenever a non-standard packaged file is undeclared.
-- **Documentation alignment**: the English README now mirrors the Chinese one 1:1 across all 15 sections (widget catalog table, Agent capability table, Settings rows), with the full English history moved to `docs/CHANGELOG.en-US.md`.
-- **Quality gates**: the large-library aggregation benchmark now measures CPU time recalibrated to a 40 ms pathology line (no more false reds under a loaded full-suite run); an `aggregateSearchResults` doubling-complexity gate was added; store group-collapse aria contracts and zero-match empty-state behavioral tests landed (special line B4 closed).
-- **Size**: package.zip 376583 bytes (English README slimmed by ~6.5 KiB), well within the 512 KiB archive ceiling.
-
-### v0.25.0 (2026-09-20)
-
-- **Tab filter query syntax**: space-separated terms all match (AND); `-term` excludes tabs containing it; "quoted phrase" matches as a whole. Exclusions also filter aggregated workspace cards across the opened and global layers.
-- **World-clock offline city table grows to 217 entries**: the cities field accepts Chinese names directly (上海,东京) with native datalist autocomplete in the config form.
-- **Accessibility**: reduced-motion fallbacks now cover the settings dialog and mobile switcher roots; a gate validates every city-table entry as a valid IANA identifier.
-
-### v0.24.0 (2026-09-20)
-
-- **Agent execution chain goes live**: two new capabilities — `workspace-plan` (read-only, drafts a bounded ≤8-step plan) and `execute-workspace-plan` (executes the whole plan after one host confirmation card and returns a bounded receipt). Confirmation, timeout and cancellation are handled by the SiYuan host via `actionEffects` declarations; the self-built approval pipeline (6 modules) was removed.
-- **Gray-scale switch**: a settings toggle turns off all controlled write/batch capabilities and the execution chain at once; read-only capabilities stay.
-- **Storage governance**: persistent keys grow to 15 — a schema-version stamp (detects downgrade/unknown data) and RSS read-state (bounded to 200 entries); the RSS widget gains a hide-read filter.
-- **Widget second wave**: writing streak supports weekly n/m goals and rest-day exemptions; note stats gains an optional writing-strength score; recent writing activity gains a year-grid heatmap view (53-week paging + color legend).
-- **Ecosystem & configuration**: DailyHot supports a base-URL + route selector (validated by the same URL whitelist); the world clock accepts Chinese city names via a built-in 110-city offline table.
-- **Compatibility & engineering**: minimum SiYuan version raised to 3.8.0 (ADR 0064); four performance benchmarks, an accessibility baseline gate and dual-theme WCAG contrast sampling added to the release gates; ActivityWatch supports bucket selection.
-
+The complete history lives in [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); the Chinese version is [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 </details>
 
 ## Acknowledgements

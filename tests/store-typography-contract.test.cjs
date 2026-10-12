@@ -41,10 +41,10 @@ test('title typography supports unicode',()=>assert.ok(css.includes('overflow-wr
 test('description typography supports long URLs',()=>assert.ok(css.includes('overflow-wrap: anywhere')));
 test('group typography supports long labels',()=>assert.ok(css.includes('text-wrap: balance')));
 test('summary remains bounded',()=>assert.ok(css.includes('min-height: 18px')));
-test('card title retains font size',()=>assert.ok(css.includes('font-size: 13px')));
-test('card description retains font size',()=>assert.ok(css.includes('font-size: 12px')));
+test('card title retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head strong',/font-size:\s*var\(--sw-font-md,\s*13px\)/,base)));
+test('card description retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head span',/font-size:\s*var\(--sw-font-sm,\s*12px\)/,base)));
 test('support text retains font size',()=>assert.ok(css.includes('font-size: var(--sw-font-xs, 11px)')));
-test('group label retains font size',()=>assert.ok(css.includes('font-size: 12px')));
+test('group label retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__group',/font-size:\s*var\(--sw-font-sm,\s*12px\)/,base)));
 test('summary retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__summary',/font-size:\s*var\(--sw-font-xs,\s*11px\)/,base)));
 // 旧断言先截"card-head 到下一个选择器"的块再做否定窗口，锚点漂移即失效；
 // 正确形态：先取声明了 balance 的规则，再断言这些规则自身禁写死宽度。

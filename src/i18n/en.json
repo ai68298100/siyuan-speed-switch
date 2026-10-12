@@ -63,6 +63,8 @@
   "homeHistoryUpdate": "Update layout",
   "homeHistoryProviderGone": "Layout restored; {x} widgets skipped (provider unloaded)",
   "homeEmpty": "The second panel is empty. Open the widget store to choose components, then arrange them on the workbench.",
+  "homeEmptyUnavailable": "Workbench widgets are unavailable",
+  "homeEmptyUnavailableDetail": "Your saved layout is preserved. Open the widget store to add an available widget, or edit the layout to remove unavailable placeholders.",
   "homeEmptyOpenStore": "Open widget store",
   "homeEmptyModule": "Nothing here yet",
   "homeLoading": "Loading…",
@@ -1275,6 +1277,7 @@
   ,"documentSetsGuideNote": "Note: document sets store stable root-document references only. They do not save cursor positions, transient tabs, or document content. Deleted or unavailable documents are marked missing before restore."
   ,"secondPanel": "Widgets"
   ,"platformName": "LvSpeed Switch"
+  ,"platformSubtitle": "Work context platform"
   ,"platformContext": "Work context"
   ,"platformSwitcher": "Switcher"
   ,"platformWorkbench": "Workbench"

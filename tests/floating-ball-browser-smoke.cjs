@@ -120,11 +120,12 @@ async function main() {
             plugins.forEach((a,i)=>config.actions[surface].push({actionId:a.id,enabled:true,firstLayer:false,order:100+i}));
             const host=document.createElement('div'); document.body.appendChild(host);
             if(surface==='sidebar') host.style.cssText='position:absolute;left:40px;top:20px;width:184px;height:260px;border:1px solid var(--b3-border-color);';
-            const state={executions:[],positions:[],switcher:0,managed:0,host,config}; let panel;
+            const state={executions:[],positions:[],flicks:[],switcher:0,managed:0,host,config}; let panel;
             const controller=f.createFloatingBallUi({document,surface,host,observeHost:false,halfHide:false,idleDelayMs:60000,
                 position:config.position[surface],snap:config.behavior.snap,hideOnScroll:false,
                 resolveBounds:surface==='sidebar'?()=>host.getBoundingClientRect():undefined,
                 onOpenSwitcher:()=>state.switcher++,onOpenMore:()=>panel.openMore(),
+                onFlickAction:(direction)=>state.flicks.push(direction),
                 onPositionChange:p=>state.positions.push(p),onActionTarget:target=>target.click()});
             const root=controller.mount(); panel=f.createFloatingBallPanelController({document,container:root,surface,config,
                 actions:[...f.getBuiltinQuickActions(),...plugins],resolveSupport:()=> 'supported',
@@ -139,7 +140,7 @@ async function main() {
             return {state:s.controller.getState(),ball:rect(s.root.querySelector('.sw-fab-trigger')),bounds,
                 targets:buttons.map(n=>({id:n.dataset.actionId,...rect(n),visibility:getComputedStyle(n).visibility,
                     color:getComputedStyle(n).color,background:getComputedStyle(n).backgroundColor})),
-                executions:s.executions,positions:s.positions,switcher:s.switcher};
+                executions:s.executions,positions:s.positions,flicks:s.flicks,switcher:s.switcher};
         };`);
         const mount = async (options) => { await evaluate(`window.__mount(${JSON.stringify(options)})`); await settle(); };
         const beginDrag = async () => {
@@ -267,6 +268,24 @@ async function main() {
         await screenshot("mobile-visual-viewport");
         await command("Emulation.setPageScaleFactor",{pageScaleFactor:1});
         console.log("PASS visual viewport: real zoom shrink repositions ball within visible bounds"); assertions++;
+
+        // A mobile quick swipe crosses the drag slop before pointerup.  It
+        // must still dispatch one direction and restore the parked position;
+        // otherwise the first move is mistaken for a partial reposition.
+        await metrics(390,844); await mount({surface:"mobile",edge:"right",yRatio:0.5}); await settle();
+        const flickBefore = await evaluate(`(()=>{const r=window.__current.root.querySelector('.sw-fab-trigger').getBoundingClientRect();
+            return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height/2)};})()`);
+        await command("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:flickBefore.x,y:flickBefore.y}]});
+        await command("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:flickBefore.x,y:flickBefore.y-40}]});
+        await command("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); await settle();
+        const flickAfter = await evaluate("window.__measure()");
+        assert.deepEqual(flickAfter.flicks,["up"],"quick mobile swipe must dispatch one upward action");
+        assert.equal(flickAfter.positions.length,0,"quick mobile swipe must not persist a drag position");
+        const flickBall = await evaluate(`(()=>{const r=window.__current.root.querySelector('.sw-fab-trigger').getBoundingClientRect();
+            return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height/2)};})()`);
+        assert.ok(Math.abs(flickBall.x-flickBefore.x)<=1&&Math.abs(flickBall.y-flickBefore.y)<=1,
+            "quick mobile swipe must restore the parked ball position");
+        console.log("PASS mobile quick flick: direction dispatch, no partial reposition, parked position restored"); assertions++;
 
         // T-6778/T-6779 侧滑所有权验收：在页面里装一个"宿主侧滑状态机"模拟器
         // （document bubble 监听，注册相位与 SiYuan mobile/index.ts:241-243 完全一致），

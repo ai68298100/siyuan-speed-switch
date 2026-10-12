@@ -12,11 +12,12 @@
     --sw-r54-line-soft: color-mix(in srgb, var(--b3-border-color) 56%, transparent);
     --sw-r54-radius-card: 16px;
     --sw-r54-radius-control: 12px;
-    --sw-r54-space-1: 4px;
-    --sw-r54-space-2: 8px;
-    --sw-r54-space-3: 12px;
-    --sw-r54-space-4: 16px;
-    --sw-r54-space-5: 24px;
+    // R54 names remain compatibility aliases; the shared spacing scale owns values.
+    --sw-r54-space-1: var(--sw-space-xs, 4px);
+    --sw-r54-space-2: var(--sw-space-md, 8px);
+    --sw-r54-space-3: var(--sw-space-lg, 12px);
+    --sw-r54-space-4: var(--sw-space-xl, 16px);
+    --sw-r54-space-5: var(--sw-space-2xl, 24px);
     --sw-r54-shadow-card: 0 1px 2px color-mix(in srgb, #29304c 5%, transparent),
         0 8px 24px color-mix(in srgb, #29304c 7%, transparent);
 }
@@ -64,7 +65,7 @@
 
     .sw__dock-item {
         min-height: 46px;
-        margin: 2px 8px;
+        margin: 2px var(--sw-space-md, 8px);
         border-radius: var(--sw-r54-radius-control);
     }
 
@@ -136,6 +137,45 @@
         min-height: 220px;
         border-radius: var(--sw-r54-radius-card);
         background: var(--sw-r54-surface);
+    }
+
+    .sw-home__empty--unavailable {
+        display: flex;
+        min-height: 220px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--sw-r54-space-2);
+        padding: var(--sw-r54-space-5) var(--sw-r54-space-4);
+        text-align: center;
+
+        > h2 {
+            margin: 0;
+            color: var(--b3-theme-on-background);
+            font-size: 14px;
+            font-weight: var(--sw-weight-emphasis, 650);
+            line-height: var(--sw-leading-ui, 1.4);
+        }
+        p { max-width: 42em; margin: 0; }
+        .sw-home__empty-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: var(--sw-r54-space-2);
+            margin-top: var(--sw-r54-space-2);
+        }
+    }
+
+    .sw-home__body--unavailable { display: flex; flex-direction: column; }
+    .sw-home__grid--unavailable {
+        flex: 1 0 auto;
+        align-content: stretch;
+        grid-template-rows: minmax(220px, 1fr);
+        grid-auto-rows: minmax(96px, auto);
+    }
+    .sw-home__cell--unavailable {
+        min-height: 96px;
     }
 }
 

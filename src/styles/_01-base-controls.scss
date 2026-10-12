@@ -10,20 +10,20 @@
 .sw-setting__docks {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 6px 8px;
+    gap: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
     width: 100%;
 
     .sw-setting__dock-item {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--sw-space-md, 8px);
         min-width: 0;
         min-height: var(--sw-control-h);
-        padding: 4px 8px;
+        padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
         border: 1px solid var(--b3-border-color);
         border-radius: 6px;
         background: var(--b3-theme-surface);
-        font-size: 13px;
+        font-size: var(--sw-font-md, 13px);
         color: var(--b3-theme-on-background);
         cursor: pointer;
 
@@ -44,7 +44,7 @@
 .sw-setting__document-set-form {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--sw-space-md, 8px);
     margin-bottom: 10px;
 
     .b3-text-field {
@@ -55,9 +55,9 @@
 
 .sw-setting__document-sets {
     display: grid;
-    gap: 6px;
+    gap: var(--sw-space-sm, 6px);
     color: var(--b3-theme-on-surface-light);
-    font-size: 13px;
+    font-size: var(--sw-font-md, 13px);
 }
 
 .sw-setting__document-set {
@@ -66,7 +66,7 @@
     justify-content: space-between;
     gap: 10px;
     min-height: 42px;
-    padding: 6px 8px;
+    padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
     border: 1px solid var(--b3-border-color);
     border-radius: 6px;
     background: var(--b3-theme-surface);
@@ -86,14 +86,14 @@
 
     span {
         color: var(--b3-theme-on-surface-light);
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
     }
 }
 
 .sw-setting__document-set-actions {
     display: flex;
     flex: 0 0 auto;
-    gap: 4px;
+    gap: var(--sw-space-xs, 4px);
 }
 
 @media (max-width: 420px) {
@@ -219,12 +219,12 @@
 .sw-setting__quick-header {
     display: grid;
     grid-template-columns: minmax(72px, 1fr) 92px minmax(156px, 1.4fr) 84px 42px;
-    gap: 8px;
+    gap: var(--sw-space-md, 8px);
     align-items: center;
     min-height: var(--sw-control-h-md);
     padding: 0 2px;
     color: var(--b3-theme-on-surface-light);
-    font-size: 12px;
+    font-size: var(--sw-font-sm, 12px);
     white-space: nowrap;
 
     > span {
@@ -234,26 +234,26 @@
 
 .sw-setting__quick-transfer {
     display: flex;
-    gap: 8px;
+    gap: var(--sw-space-md, 8px);
     padding-top: 10px;
 }
 
 .sw-setting__quick-add-tip {
     flex: 1 1 100%;
     color: var(--b3-theme-on-surface-light);
-    font-size: 12px;
+    font-size: var(--sw-font-sm, 12px);
 }
 
 .sw-setting__quick-action--add {
     align-items: center;
-    gap: 8px;
+    gap: var(--sw-space-md, 8px);
     padding: 10px 0 4px;
 
     .b3-button {
         flex: none;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
 
         svg {
             width: var(--sw-icon-xs, 14px);
@@ -269,13 +269,13 @@
     justify-content: space-between;
     min-height: 30px;
     color: var(--b3-theme-on-background);
-    font-size: 13px;
+    font-size: var(--sw-font-md, 13px);
     cursor: grab;
 
     &:not(.sw-setting__quick-action--add) {
         display: grid;
         grid-template-columns: minmax(72px, 1fr) 92px minmax(156px, 1.4fr) 84px 42px;
-        gap: 8px;
+        gap: var(--sw-space-md, 8px);
     }
 
     &.is-dragging {
@@ -297,11 +297,11 @@
         display: inline-flex;
         align-items: center;
         justify-content: flex-start;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
         width: 92px;
         min-width: 72px;
         height: 30px;
-        padding: 0 8px;
+        padding: 0 var(--sw-space-md, 8px);
         overflow: hidden;
         color: var(--b3-theme-on-background);
 
@@ -338,10 +338,10 @@
     .sw-setting__quick-targets {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
         justify-content: center;
         margin: 0;
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
     }
 
     .sw-setting__quick-target {
@@ -373,7 +373,7 @@
         border: 1px solid var(--b3-border-color);
         border-radius: 50%;
         color: var(--b3-theme-on-surface-light);
-        font-size: 10px;
+        font-size: var(--sw-font-2xs, 10px);
     }
 
     .sw-setting__quick-controls {
@@ -397,7 +397,7 @@
 
 .sw-setting__quick-picker {
     width: 100%;
-    margin-top: 6px;
+    margin-top: var(--sw-space-sm, 6px);
     padding: 10px;
     box-sizing: border-box;
     border: 1px solid var(--b3-border-color);
@@ -408,7 +408,7 @@
 .sw-setting__quick-picker-search {
     width: 100%;
     min-width: 0;
-    margin-bottom: 8px;
+    margin-bottom: var(--sw-space-md, 8px);
 }
 
 .sw-setting__quick-picker-results {
@@ -421,10 +421,10 @@
 }
 
 .sw-setting__quick-picker-heading {
-    margin-bottom: 6px;
+    margin-bottom: var(--sw-space-sm, 6px);
     color: var(--b3-theme-on-surface-light);
     font-size: var(--sw-font-xs, 11px);
-    font-weight: 600;
+    font-weight: var(--sw-weight-semibold, 600);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -432,23 +432,23 @@
 .sw-setting__quick-picker-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    gap: var(--sw-space-sm, 6px);
 }
 
 .sw-setting__quick-picker-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--sw-space-md, 8px);
     min-width: 0;
     min-height: 42px;
-    padding: 6px 8px;
+    padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
     box-sizing: border-box;
     border: 1px solid var(--b3-border-color);
     border-radius: 6px;
     background: var(--b3-theme-background);
     color: var(--b3-theme-on-background);
     font-family: inherit;
-    font-size: 12px;
+    font-size: var(--sw-font-sm, 12px);
     line-height: 1.25;
     cursor: pointer;
     text-align: left;
@@ -469,7 +469,7 @@
     justify-content: center;
     width: var(--sw-icon-md, 20px);
     height: var(--sw-icon-md, 20px);
-    font-size: 17px;
+    font-size: var(--sw-font-xl, 17px);
 
     svg {
         width: var(--sw-icon-md, 18px);
@@ -502,14 +502,14 @@
 .sw-setting__quick-picker-label {
     display: block;
     min-width: 0;
-    font-size: 12px;
+    font-size: var(--sw-font-sm, 12px);
     line-height: 1.3;
 }
 
 .sw-setting__quick-picker-secondary,
 .sw-setting__quick-picker-empty {
     color: var(--b3-theme-on-surface-light);
-    font-size: 10px;
+    font-size: var(--sw-font-2xs, 10px);
 }
 
 .sw-setting__quick-picker-empty {
@@ -524,7 +524,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 12px;
+    padding: var(--sw-space-lg, 12px);
     box-sizing: border-box;
     // T-7200：遮罩统一走 --sw-overlay-* token，与其他模态浮层同一材质层级。
     background: var(--sw-overlay-scrim, rgba(0, 0, 0, 0.28));
@@ -540,7 +540,7 @@
     flex-direction: column;
     width: min(520px, 100%);
     max-height: min(620px, 82vh);
-    padding: 12px;
+    padding: var(--sw-space-lg, 12px);
     box-sizing: border-box;
     border: 1px solid var(--b3-border-color);
     border-radius: 8px;
@@ -552,7 +552,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--sw-space-md, 8px);
     min-height: 32px;
     color: var(--b3-theme-on-background);
 }
@@ -571,14 +571,14 @@
 .sw-quick-icon-picker__search {
     width: 100%;
     min-width: 0;
-    margin: 8px 0;
+    margin: var(--sw-space-md, 8px) 0;
 }
 
 .sw-quick-icon-picker__custom-row {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--sw-space-md, 8px);
     min-width: 0;
 }
 
@@ -617,7 +617,7 @@
 .sw-quick-icon-picker__grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
-    gap: 6px;
+    gap: var(--sw-space-sm, 6px);
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -663,7 +663,7 @@
     }
 
     .sw-setting__quick-action {
-        gap: 8px;
+        gap: var(--sw-space-md, 8px);
 
         &:not(.sw-setting__quick-action--add) {
             display: grid;
@@ -689,7 +689,7 @@
         .sw-setting__quick-targets {
             grid-column: 1 / -1;
             justify-content: flex-start;
-            gap: 12px;
+            gap: var(--sw-space-lg, 12px);
             padding: 2px 0;
         }
 

@@ -1178,6 +1178,15 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                             renderStore();
                             return;
                         }
+                        // 目录卡第一次获得焦点时与鼠标点击保持同一语义：先选中
+                        // 并打开详情，再由详情中的主动作负责添加/配置。此前这里
+                        // 直接查找详情按钮，未选中卡没有对应节点，Enter 会静默无效。
+                        if (storeSelectedModule !== moduleId) {
+                            storeSelectedModule = moduleId;
+                            if (device === "mobile") root.dataset.detailOpen = "true";
+                            renderStore();
+                            return;
+                        }
                         const detailAdd = detailPane.querySelector<HTMLButtonElement>(`.sw-home-store__add[data-module-id="${moduleId}"]`);
                         if (detailAdd && !detailAdd.disabled) detailAdd.click();
                     });

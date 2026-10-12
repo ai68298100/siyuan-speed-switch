@@ -1,6 +1,23 @@
 # GitHub 仓库状态与设置审计
 
-日期：2026-10-07。范围：公开仓库元数据、分支与标签、Actions、Release、issue 入口和仓库内协作配置。远端查询默认只读；本文件末尾单独记录本轮已获授权并成功应用的低风险设置。
+首轮审计日期：2026-10-07；当前复核：2026-10-13。范围：公开仓库元数据、分支与标签、Actions、Release、issue 入口和仓库内协作配置。远端查询默认只读；本文件末尾单独记录已获授权并成功应用的低风险设置。
+
+## 当前复核（2026-10-13）
+
+GitHub 远端事实已重新读取，下面的首轮表格保留为历史快照，不再代表当前分支状态：
+
+| 项目 | 当前事实 | 证据 |
+| --- | --- | --- |
+| 默认分支 | `main` | `gh repo view ... --json defaultBranchRef` 返回 `main` |
+| 最新正式 Release | `v0.47.0`，2026-10-11，非草稿、非预发布 | `gh release view v0.47.0`；资产 `package.zip` 588,082 bytes，SHA-256 `fdc752b86dd82ae569db0776c2591abcc7c08154d7353417840dd7af91286443` |
+| GitHub About | 描述为 `Local-first SiYuan navigation and work-context platform: switcher, workbench, snippet lab, and floating-ball actions.`；homepage 为空 | `gh api repos/ai68298100/siyuan-speed-switch` |
+| Topics | `plugin`、`siyuan`、`siyuan-note`、`siyuan-plugin`、`snippet-studio`、`speed-switch`、`tab-switcher`、`unified-workspace`、`workbench` | `gh api ... --jq .topics`；与四入口定位一致，`package.json` 关键词覆盖核心词 |
+| 最新云端检查 | CI `38151084260` 成功；Release `38149534664` 成功 | `gh run list --repo ai68298100/siyuan-speed-switch --limit 5` |
+| 本地候选 | `v0.47.1` 的 `package.json`、`plugin.json`、中英文 README 与双语 changelog 已对齐；候选仍未 push | 本地发布就绪快照与工作树状态；不把候选写成正式 Release |
+
+本次只更新仓库内事实记录和 README 的 18 个持久化 key 说明，没有写入 GitHub About、Topics 或 homepage，也没有 push；About 描述与 `package.json` 已一致，homepage 仍留空属于待维护者决定的外部元数据项。
+
+## 首轮审计快照（2026-10-07）
 
 ## 已核对的远端事实
 

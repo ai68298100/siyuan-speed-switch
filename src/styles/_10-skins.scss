@@ -153,18 +153,18 @@ body[data-sw-skin="paper"] {
 body[data-sw-density="compact"] {
   :is(.speed-switch, .sw-home, .sw-settings-dialog) {
     .sw__card {
-      padding-top: 4px;
-      padding-bottom: 4px;
+      padding-top: var(--sw-space-xs, 4px);
+      padding-bottom: var(--sw-space-xs, 4px);
     }
     .sw__scroll {
-      gap: 6px;
+      gap: var(--sw-space-sm, 6px);
     }
     .sw__group {
-      gap: 4px;
+      gap: var(--sw-space-xs, 4px);
     }
     .sw__doc-item {
-      padding-top: 6px;
-      padding-bottom: 6px;
+      padding-top: var(--sw-space-sm, 6px);
+      padding-bottom: var(--sw-space-sm, 6px);
     }
   }
 }

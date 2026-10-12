@@ -12,13 +12,13 @@
 
 .speed-switch .sw__mobile-toolbar {
     flex-wrap: wrap;
-    row-gap: 6px;
+    row-gap: var(--sw-space-sm, 6px);
 
     .sw__toolbar-row2 {
         flex: 0 0 100%;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
         min-width: 0;
         overflow-x: auto;
         overscroll-behavior-x: contain;
@@ -31,7 +31,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
     }
 
     // 行2 条目恢复文字标签（覆盖旧版"手机端隐藏历史文字"规则）
@@ -52,7 +52,7 @@
     .sw__settings-btn {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: var(--sw-space-xs, 4px);
         height: 36px;
         padding: 0 10px;
         border: 1px solid var(--b3-border-color);
@@ -122,7 +122,7 @@
         max-width: 100%;
         min-height: 44px;
         height: auto;
-        padding: 6px 8px;
+        padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
         background: transparent;
         border-right: none;
         border-bottom: 1px solid var(--b3-border-color);
@@ -133,7 +133,7 @@
     .sw-settings .b3-dialog__header {
         flex: none;
         min-height: 44px;
-        padding-block: 4px;
+        padding-block: var(--sw-space-xs, 4px);
     }
 
     .sw-settings .b3-dialog__header .b3-dialog__title {
@@ -150,7 +150,7 @@
     min-width: 200px;
     max-height: 60vh;
     overflow: auto;
-    padding: 6px;
+    padding: var(--sw-space-sm, 6px);
     background: var(--b3-theme-surface);
     border: 1px solid var(--b3-border-color);
     border-radius: var(--sw-radius-card);
@@ -183,7 +183,7 @@
         border-radius: 8px;
         background: transparent;
         color: var(--b3-theme-on-background);
-        font-size: 13px;
+        font-size: var(--sw-font-md, 13px);
         text-align: left;
         cursor: pointer;
 
@@ -219,7 +219,7 @@
     grid-template-columns: repeat(12, 1fr);
     grid-auto-rows: 40px;
     grid-auto-flow: dense;
-    gap: 12px;
+    gap: var(--sw-space-lg, 12px);
     align-items: stretch;
 }
 
@@ -247,8 +247,8 @@
     padding: 8px 10px;
 
     .sw__home-module-list .sw__home-module-item-action {
-        padding: 4px 6px;
-        font-size: 12px;
+        padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
+        font-size: var(--sw-font-sm, 12px);
     }
 }
 
@@ -265,14 +265,14 @@
     flex: none;
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: var(--sw-space-xs, 4px);
     margin: 0;
-    padding: 6px 8px;
+    padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
     border-top: 1px dashed var(--b3-border-color);
 
     .sw-home__tool {
         padding: 2px 8px;
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
     }
 }
 
@@ -283,31 +283,31 @@
 .sw-home-config__icon svg { width: var(--sw-icon-md, 18px); height: 18px; }
 .sw-home-config__intro-copy, .sw-home-config__field { min-width: 0; }
 .sw-home-config__title { margin: 0; font-size: 14px; }
-.sw-home-config__description, .sw-home-config__hint { color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); line-height: 1.4; }
-.sw-home-config__description { margin: 4px 0; }
-.sw-home-config__id { color: var(--b3-theme-on-surface-light); font-size: 10px; }
-.sw-home-config__meta { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 0 2px; }
-.sw-home-config__chip { padding: 2px 6px; border-radius: 999px; background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: 10px; }
-.sw-home-config__fields { display: grid; gap: 8px; padding: 10px 0 14px; }
-.sw-home-config__section { display: grid; gap: 8px; padding: 10px 10px; border: 1px solid var(--b3-border-color); border-radius: var(--sw-radius-control, 10px); background: var(--b3-theme-surface); }
+.sw-home-config__description, .sw-home-config__hint { color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); line-height: var(--sw-leading-ui, 1.4); }
+.sw-home-config__description { margin: var(--sw-space-xs, 4px) 0; }
+.sw-home-config__id { color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-2xs, 10px); }
+.sw-home-config__meta { display: flex; flex-wrap: wrap; gap: var(--sw-space-xs, 4px); padding: 8px 0 2px; }
+.sw-home-config__chip { padding: 2px 6px; border-radius: 999px; background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-2xs, 10px); }
+.sw-home-config__fields { display: grid; gap: var(--sw-space-md, 8px); padding: 10px 0 14px; }
+.sw-home-config__section { display: grid; gap: var(--sw-space-md, 8px); padding: 10px 10px; border: 1px solid var(--b3-border-color); border-radius: var(--sw-radius-control, 10px); background: var(--b3-theme-surface); }
 .sw-home-config__section-title { margin: 0; color: var(--b3-theme-primary); font-size: var(--sw-font-xs, 11px); }
-.sw-home-config__field { display: flex; flex-direction: column; gap: 4px; }
-.sw-home-config__database-results { display: grid; gap: 4px; max-height: 180px; overflow: auto; }
-.sw-home-config__database-selection { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; padding: 4px 8px; border-radius: var(--sw-radius-md, 8px); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); overflow-wrap: anywhere; }
+.sw-home-config__field { display: flex; flex-direction: column; gap: var(--sw-space-xs, 4px); }
+.sw-home-config__database-results { display: grid; gap: var(--sw-space-xs, 4px); max-height: 180px; overflow: auto; }
+.sw-home-config__database-selection { display: flex; align-items: center; justify-content: space-between; gap: var(--sw-space-md, 8px); min-height: 28px; padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px); border-radius: var(--sw-radius-md, 8px); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); overflow-wrap: anywhere; }
 .sw-home-config__database-selection > span { min-width: 0; }
 .sw-home-config__database-clear { flex: none; }
 .sw-home-config__database-option { justify-content: flex-start; text-align: left; min-height: var(--sw-control-h); }
-.sw-home-config__database-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-height: 190px; overflow: auto; padding: 8px; border: 1px solid var(--b3-border-color); border-radius: 8px; }
-.sw-home-config__database-column { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.sw-home-config__database-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sw-space-sm, 6px); max-height: 190px; overflow: auto; padding: var(--sw-space-md, 8px); border: 1px solid var(--b3-border-color); border-radius: 8px; }
+.sw-home-config__database-column { display: flex; align-items: center; gap: var(--sw-space-sm, 6px); min-width: 0; overflow-wrap: anywhere; }
 .sw__home-module[data-module-id="database-table"] .sw__home-module-item-action { white-space: normal; }
 .sw__home-module[data-module-id="database-table"] .sw__home-module-item-secondary { display: block; margin-top: 2px; line-height: 1.35; overflow-wrap: anywhere; }
-.sw-home-config__secret { display: flex; align-items: stretch; gap: 6px; }
+.sw-home-config__secret { display: flex; align-items: stretch; gap: var(--sw-space-sm, 6px); }
 .sw-home-config__secret .b3-text-field { min-width: 0; }
 .sw-home-config__secret-toggle { flex: none; min-width: 56px; }
-.sw-home-config__label { font-size: 12px; }
+.sw-home-config__label { font-size: var(--sw-font-sm, 12px); }
 .sw-home-config__hint { min-height: 1.2em; margin: 0; }
-.sw-home-config__actions { position: sticky; bottom: 0; z-index: 1; display: flex; align-items: center; gap: 6px; margin-inline: -14px; padding: 8px 14px 10px; border-top: 1px solid var(--b3-border-color); background: var(--b3-theme-background); }
-.sw-home-config__summary { min-width: 0; margin-right: auto; color: var(--b3-theme-on-surface-light); font-size: 10px; }
+.sw-home-config__actions { position: sticky; bottom: 0; z-index: 1; display: flex; align-items: center; gap: var(--sw-space-sm, 6px); margin-inline: -14px; padding: 8px 14px 10px; border-top: 1px solid var(--b3-border-color); background: var(--b3-theme-background); }
+.sw-home-config__summary { min-width: 0; margin-right: auto; color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-2xs, 10px); }
 .sw-home-config[data-changed="true"] .sw-home-config__summary { color: var(--b3-theme-primary); }
 @media (max-width: 520px) { .sw-home-config__actions { flex-wrap: wrap; } .sw-home-config__summary { flex-basis: 100%; } .sw-home-config__actions .b3-button { min-height: 40px; } }
 
@@ -343,30 +343,30 @@
 }
 
 .sw-home-store[data-density="compact"] .sw-home-store__card {
-    padding-block: 8px;
-    gap: 8px;
+    padding-block: var(--sw-space-md, 8px);
+    gap: var(--sw-space-md, 8px);
 }
 .sw-home-store[data-density="compact"] .sw-home-store__preview { min-height: 72px; }
 .sw-home-store[data-density="compact"] .sw-home-store__group-description { display: none; }
-.sw-home-store[data-density="compact"] .sw-home-store__source-chip { padding-inline: 6px; font-size: 10px; }
+.sw-home-store[data-density="compact"] .sw-home-store__source-chip { padding-inline: var(--sw-space-sm, 6px); font-size: var(--sw-font-2xs, 10px); }
 .sw-home-store__source-chip.is-recommended { color: var(--b3-theme-primary); background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); }
 .sw-home-store__source-chip.is-added { color: var(--b3-theme-success); background: color-mix(in srgb, var(--b3-theme-success) 12%, transparent); }
-.sw-home-store__source-chip.is-dependency { color: var(--b3-theme-warning); background: color-mix(in srgb, var(--b3-theme-warning) 14%, transparent); font-weight: 600; }
+.sw-home-store__source-chip.is-dependency { color: var(--b3-theme-warning); background: color-mix(in srgb, var(--b3-theme-warning) 14%, transparent); font-weight: var(--sw-weight-semibold, 600); }
 .sw-home-store__dependency-link { color: var(--b3-theme-primary); font-size: var(--sw-font-xs, 11px); text-decoration: underline; text-underline-offset: 2px; }
-.sw-home-store__search { position: sticky; top: 0; z-index: 3; background: var(--b3-theme-background); padding-block: 4px; }
+.sw-home-store__search { position: sticky; top: 0; z-index: 3; background: var(--b3-theme-background); padding-block: var(--sw-space-xs, 4px); }
 // （T-6280 第十五批去重）card 的减弱动效覆盖原先在此与下方 4944 分支的分组规则各写一份，
 // 完全被后者包含，已删；现仅保留 card+tab 的分组覆盖。
 
 .sw-home-store__section {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--sw-space-md, 8px);
     margin: 18px 0 10px;
     padding: 8px 10px;
     border-radius: 10px;
     background: color-mix(in srgb, var(--b3-theme-primary) 6%, transparent);
-    font-size: 13px;
-    font-weight: 650;
+    font-size: var(--sw-font-md, 13px);
+    font-weight: var(--sw-weight-emphasis, 650);
     color: var(--b3-theme-on-surface);
 
     &:first-child { margin-top: 0; }
@@ -375,7 +375,7 @@
 .sw-home-store__grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 12px;
+    gap: var(--sw-space-lg, 12px);
     overscroll-behavior: contain;
     isolation: isolate;
 }
@@ -387,17 +387,17 @@
 .sw-home-store[data-view-mode="compact"] .sw-home-store__grid,
 .sw-home-store__grid[data-view-mode="compact"] {
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-    gap: 8px;
+    gap: var(--sw-space-md, 8px);
 }
 .sw-home-store__select {
     align-self: flex-end;
     min-height: 32px;
-    padding-inline: 8px;
+    padding-inline: var(--sw-space-md, 8px);
     opacity: .78;
 }
 .sw-home-store__select[aria-pressed="true"] {
     color: var(--b3-theme-primary);
-    font-weight: 650;
+    font-weight: var(--sw-weight-emphasis, 650);
     opacity: 1;
 }
 .sw-home-store__clear-selection:disabled { opacity: .52; cursor: default; }
@@ -443,9 +443,9 @@
     &[data-status-tone="success"] { border-top-color: color-mix(in srgb, #3b9861 65%, var(--b3-border-color)); }
     &[data-status-tone="warning"] { border-top-color: color-mix(in srgb, var(--b3-theme-warning) 65%, var(--b3-border-color)); }
     &[data-status-tone="info"] { border-top-color: color-mix(in srgb, var(--b3-theme-primary) 65%, var(--b3-border-color)); }
-    &[data-integration-tone="network"] .sw-home-store__source-chip.is-online { font-weight: 600; }
-    &[data-integration-tone="local"] .sw-home-store__source-chip.is-local { font-weight: 600; }
-    &[data-integration-tone="offline"] .sw-home-store__source-chip.is-offline { font-weight: 600; }
+    &[data-integration-tone="network"] .sw-home-store__source-chip.is-online { font-weight: var(--sw-weight-semibold, 600); }
+    &[data-integration-tone="local"] .sw-home-store__source-chip.is-local { font-weight: var(--sw-weight-semibold, 600); }
+    &[data-integration-tone="offline"] .sw-home-store__source-chip.is-offline { font-weight: var(--sw-weight-semibold, 600); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -526,7 +526,7 @@
         display: block;
         min-width: 0;
         max-width: 100%;
-        font-size: 13px;
+        font-size: var(--sw-font-md, 13px);
         overflow-wrap: anywhere;
         text-wrap: balance;
         text-wrap: pretty;
@@ -534,21 +534,21 @@
         font-size-adjust: from-font;
         letter-spacing: -0.01em;
         line-height: 1.35;
-        font-weight: 650;
+        font-weight: var(--sw-weight-emphasis, 650);
     }
 
     > div { min-width: 0; }
 
     .sw-home-store__availability {
         display: inline-block;
-        margin-left: 4px;
+        margin-left: var(--sw-space-xs, 4px);
         padding: 1px 6px;
         border-radius: 999px;
         background: color-mix(in srgb, var(--b3-theme-primary) 14%, transparent);
         color: var(--b3-theme-primary);
-        font-size: 10px;
+        font-size: var(--sw-font-2xs, 10px);
         font-style: normal;
-        font-weight: 500;
+        font-weight: var(--sw-weight-medium, 500);
         vertical-align: 1px;
     }
 
@@ -563,7 +563,7 @@
         max-width: 100%;
         margin-top: 2px;
         color: var(--b3-theme-on-surface-light);
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
@@ -576,7 +576,7 @@
 
     .sw-home-store__support {
         display: block;
-        margin-top: 4px;
+        margin-top: var(--sw-space-xs, 4px);
         color: var(--b3-theme-on-surface-light);
         font-size: var(--sw-font-xs, 11px);
         opacity: .86;
@@ -589,8 +589,8 @@
     border: 1px solid color-mix(in srgb, var(--b3-border-color) 78%, transparent);
     border-radius: 999px;
     color: var(--b3-theme-on-surface-light);
-    font-size: 10px;
-    font-weight: 600;
+    font-size: var(--sw-font-2xs, 10px);
+    font-weight: var(--sw-weight-semibold, 600);
     line-height: 1.25;
     white-space: nowrap;
 
@@ -604,7 +604,7 @@
     box-sizing: border-box;
     min-width: 0;
     max-width: 100%;
-    margin-top: 4px;
+    margin-top: var(--sw-space-xs, 4px);
     color: var(--b3-theme-on-surface-light);
     font-size: var(--sw-font-xs, 11px);
     // 同块内更早还有一条 font-weight: 500，但会被下面的 550（可变字体的细粒度
@@ -622,7 +622,7 @@
 .sw-home-store__sizes {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: var(--sw-space-sm, 6px);
     align-items: center;
     margin-top: auto;
     min-width: 0;
@@ -642,7 +642,7 @@
     border-radius: 8px;
     background: transparent;
     color: var(--b3-theme-on-background);
-    font-size: 12px;
+    font-size: var(--sw-font-sm, 12px);
     cursor: pointer;
     // 同其余店内交互控件（add/configure/remove/group-toggle/…）一致：去掉移动端
     // 双击缩放延迟。此前缺这条，旧门禁靠 `__size` 前缀匹配 `__sizes` 的文本假绿
@@ -682,7 +682,7 @@
     min-height: 28px;
     margin-left: auto;
     min-width: 88px;
-    font-weight: 600;
+    font-weight: var(--sw-weight-semibold, 600);
     white-space: nowrap;
     touch-action: manipulation;
 
@@ -702,7 +702,7 @@
 
 .sw-home-store__configure {
     min-height: 28px;
-    padding-inline: 8px;
+    padding-inline: var(--sw-space-md, 8px);
     white-space: nowrap;
     touch-action: manipulation;
 
@@ -715,7 +715,7 @@
 
 .sw-home-store__remove {
     min-height: 28px;
-    padding-inline: 8px;
+    padding-inline: var(--sw-space-md, 8px);
     color: var(--b3-theme-error, var(--b3-theme-warning));
     white-space: nowrap;
     touch-action: manipulation;

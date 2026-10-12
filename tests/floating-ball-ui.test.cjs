@@ -119,6 +119,59 @@ test("floating ball keeps a tap as a switcher click and suppresses the synthetic
     dom.window.close();
 });
 
+test("mobile quick directional swipe resolves after drag slop and suppresses reposition", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const flicks = [];
+    let moves = 0;
+    let opened = 0;
+    const {controller, trigger} = mount(dom.window.document, {
+        onFlickAction: (direction) => flicks.push(direction),
+        onPositionChange: () => { moves += 1; },
+        onOpenSwitcher: () => { opened += 1; },
+    });
+    const parked = controller.getPosition();
+
+    // The first move crosses the slop and puts the controller in `dragging`.
+    // A directional shortcut must still win at pointerup when no action target
+    // is under the release point.
+    trigger.dispatchEvent(pointerEvent(dom.window, "pointerdown", {clientX: 100, clientY: 120}));
+    trigger.dispatchEvent(pointerEvent(dom.window, "pointermove", {clientX: 100, clientY: 80}));
+    assert.equal(controller.getState(), "dragging");
+    trigger.dispatchEvent(pointerEvent(dom.window, "pointerup", {clientX: 100, clientY: 80}));
+
+    assert.deepEqual(flicks, ["up"]);
+    assert.deepEqual(controller.getPosition(), parked, "flick must not persist a drag position");
+    assert.equal(moves, 0);
+    assert.equal(controller.getState(), "docked");
+    trigger.click();
+    assert.equal(opened, 0, "the synthetic click after a flick must be consumed");
+
+    controller.destroy();
+    dom.window.close();
+});
+
+test("mobile slow drag remains a reposition gesture", async () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const flicks = [];
+    let moves = 0;
+    const {controller, trigger} = mount(dom.window.document, {
+        onFlickAction: (direction) => flicks.push(direction),
+        onPositionChange: () => { moves += 1; },
+    });
+    const parked = controller.getPosition();
+
+    trigger.dispatchEvent(pointerEvent(dom.window, "pointerdown", {clientX: 100, clientY: 120}));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    trigger.dispatchEvent(pointerEvent(dom.window, "pointermove", {clientX: 100, clientY: 90}));
+    trigger.dispatchEvent(pointerEvent(dom.window, "pointerup", {clientX: 100, clientY: 90}));
+
+    assert.deepEqual(flicks, []);
+    assert.equal(moves, 1);
+    assert.notDeepEqual(controller.getPosition(), parked, "a slow drag must save its new position");
+    controller.destroy();
+    dom.window.close();
+});
+
 test("suspend blocks activation and destroy releases observers and listeners", async () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     let opened = 0;

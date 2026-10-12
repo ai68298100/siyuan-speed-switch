@@ -37,7 +37,7 @@ test("mobile settings explain the legacy FAB migration in both locales", () => {
 });
 
 test("mobile range control stays usable in narrow settings panels", () => {
-    assert.ok(styles.includes(".sw-settings__range-number {\n        display: flex;\n        align-items: center;\n        gap: 8px;\n        min-width: 240px;"));
-    assert.ok(styles.includes(".sw-settings__range-number { min-width: 0; width: 100%; gap: 6px; }"));
+    assert.ok(styles.includes(".sw-settings__range-number {\n        display: flex;\n        align-items: center;\n        gap: var(--sw-space-md, 8px);\n        min-width: 240px;"));
+    assert.ok(styles.includes(".sw-settings__range-number { min-width: 0; width: 100%; gap: var(--sw-space-sm, 6px); }"));
     assert.ok(styles.includes(".sw-settings__range-number .sw-settings__range-value { flex-basis: 62px; width: 62px; min-height: 40px; }"));
 });

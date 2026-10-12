@@ -170,11 +170,11 @@ test("parses the real stylesheet and pins the D-395 injection target", () => {
     assert.equal(declaresIn(css, ".sw-home-store__card-head strong", /display: grid/), false);
     // 注释不得被当成声明——用真实文件里的 D-364 靶点证明：这两个块里各有一条行注释
     // 写着被覆盖掉的旧值（status 的 "font-weight: 500"、group 的 "font-weight: 600"），
-    // 真实声明是 550 / 650。若解析器漏剥注释，下面两句会翻成 true（门禁读注释）。
+    // 真实声明是 550 / token(650)。若解析器漏剥注释，下面两句会翻成 true（门禁读注释）。
     assert.equal(declaresIn(css, ".sw-home-store__status", /font-weight: 500/), false);
     assert.equal(declaresIn(css, ".sw-home-store__status", /font-weight: 550/), true);
     assert.equal(declaresIn(css, ".sw-home-store__group", /font-weight: 600/), false);
-    assert.equal(declaresIn(css, ".sw-home-store__group", /font-weight: 650/), true);
+    assert.equal(declaresIn(css, ".sw-home-store__group", /font-weight:\s*var\(--sw-weight-emphasis,\s*650\)/), true);
     // 真实靶点二：`.sw-home-store__summary` 有两条同名规则（基础规则 + `@media (max-width: 560px)`
     // 覆盖），后者会让"删掉基础声明"的注入失效——所以宽度断言必须带 {topLevel: true}。
     assert.equal(findRules(css, ".sw-home-store__summary").length, 2);

@@ -877,6 +877,12 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     editorBar.append(editorLead, draftUndoButton, draftRedoButton, findToggleButton, chooseButton, snippetStoreButton, importButton, newButton, copyButton);
     const editor = node("textarea", "sw-studio__editor");
     editor.setAttribute("aria-label", t("snippetCode"));
+    // 冲突对话框销毁后宿主 Dialog 可能把焦点放回 body；关闭冲突层的
+    // 所有出口都回到仍可编辑的草稿区，避免键盘用户失去上下文。
+    const focusEditor = () => {
+        if (disposed || !editor.isConnected) return;
+        try { editor.focus({preventScroll: true}); } catch (_) { editor.focus(); }
+    };
     const editorFrame = node("div", "sw-studio__editor-frame");
     const lineNumbers = node("div", "sw-studio__line-numbers");
     editorFrame.append(lineNumbers, editor);
@@ -1999,9 +2005,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         }
         const actions = node("div", "sw-studio__conflict-actions");
         const continueButton = node("button", "b3-button b3-button--text", t("snippetConflictContinue"));
-        continueButton.addEventListener("click", () => { dialog.destroy(); try { editor.focus({preventScroll: true}); } catch (_) { editor.focus(); } });
+        continueButton.addEventListener("click", () => { dialog.destroy(); focusEditor(); });
         const cancelButton = node("button", "b3-button b3-button--text", t("cancel"));
-        cancelButton.addEventListener("click", () => { dialog.destroy(); try { editor.focus({preventScroll: true}); } catch (_) { editor.focus(); } });
+        cancelButton.addEventListener("click", () => { dialog.destroy(); focusEditor(); });
         const copyButton = node("button", "b3-button b3-button--text", t("snippetConflictCopy"));
         copyButton.addEventListener("click", async () => {
             copyButton.disabled = true;
@@ -2019,6 +2025,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 // 摘除）。此处曾调用未定义的局部 render() 抛 ReferenceError，被本层
                 // catch 捕获后把已成功写入误报成失败——刷新失败路径只属于 store.mutate。
                 if (pickerRefresh) pickerRefresh();
+                focusEditor();
             } catch (error) {
                 copyButton.disabled = false;
                 if (!disposed) setStatus(errorText(error), "error");
@@ -2037,8 +2044,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             dialog.destroy();
             if (latestEntry) {
                 choose(latestEntry, latestEntry);
+                focusEditor();
             } else {
-                void load(true);
+                void load(true).finally(() => focusEditor());
             }
         });
         actions.append(continueButton, copyButton, reloadButton, cancelButton);

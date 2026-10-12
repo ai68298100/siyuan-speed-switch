@@ -14,9 +14,9 @@ const base={topLevel: true};
 // 所有"声明了 font-weight 的规则"，供整文件不变式使用（含非空自检，防集合为空时恒真）。
 const weightRules=parseRules(css).filter((rule)=>/font-weight:/.test(rule.declarations));
 
-test('title weight is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head strong',/font-weight: 650/,base)));
+test('title weight is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head strong',/font-weight:\s*var\(--sw-weight-emphasis,\s*650\)/,base)));
 test('status weight is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__status',/font-weight: 550/,base)));
-test('group weight is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__group',/font-weight: 650/,base)));
+test('group weight is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__group',/font-weight:\s*var\(--sw-weight-emphasis,\s*650\)/,base)));
 test('summary weight is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__summary',/font-weight: 450/,base)));
 test('source weight is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__source-chip',/font-weight: 550/,base)));
 test('availability weight is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__availability',/font-weight: 550/,base)));
@@ -40,7 +40,7 @@ test('summary weight is lighter',()=>assert.equal(declaresIn(css,'.sw-home-store
 test('weight uses numeric values',()=>{
     assert.ok(weightRules.length>0,'审计面塌缩：没有任何声明 font-weight 的规则');
     for(const rule of weightRules){
-        assert.match(rule.declarations,/font-weight: \d+/);
+        assert.match(rule.declarations,/font-weight:\s*(?:\d+|var\(--sw-weight-[\w-]+,\s*\d+\))/);
         assert.doesNotMatch(rule.declarations,/font-weight:\s*(?:normal|bold|bolder|lighter)\b/);
     }
 });
@@ -65,4 +65,4 @@ test('weight remains card scoped',()=>assert.ok(css.includes('sw-home-store__car
 test('weight remains status scoped',()=>assert.ok(css.includes('sw-home-store__status')));
 test('weight remains source scoped',()=>assert.ok(css.includes('sw-home-store__source-chip')));
 test('weight remains summary scoped',()=>assert.ok(css.includes('sw-home-store__summary')));
-test('font weight contract deterministic',()=>assert.ok(css.includes('font-weight: 650')&&css.includes('font-weight: 450')));
+test('font weight contract deterministic',()=>assert.ok(css.includes('font-weight: var(--sw-weight-emphasis, 650)')&&css.includes('font-weight: 450')));

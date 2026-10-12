@@ -57,6 +57,21 @@ test('T-7228 surface navigation labels expose purpose and current state', () => 
         '删除当前状态播报后门禁必须失败');
 });
 
+test('T-7243 shared chrome renders the R5 brand identity layer', () => {
+    const source = readSourceText(path.join(root, 'src', 'index.ts'));
+    assert.match(source, /brandMark\.className = "sw-platform-header__brand-mark"/);
+    assert.match(source, /brandCopy\.className = "sw-platform-header__brand-copy"/);
+    assert.match(source, /brandSubtitle\.className = "sw-platform-header__brand-subtitle"/);
+    assert.match(source, /brandCopy\.append\(brandName, brandSubtitle\)/);
+    assert.match(source, /brand\.append\(brandMark, brandCopy\)/);
+    const missingMark = source.replace('brand.append(brandMark, brandCopy);', 'brand.append(brandCopy);');
+    assert.doesNotMatch(missingMark, /brand\.append\(brandMark, brandCopy\)/,
+        'removing the brand mark must fail the R5 identity contract');
+    const missingSubtitle = source.replace('brandCopy.append(brandName, brandSubtitle);', 'brandCopy.append(brandName);');
+    assert.doesNotMatch(missingSubtitle, /brandCopy\.append\(brandName, brandSubtitle\)/,
+        'removing the brand subtitle must fail the R5 identity contract');
+});
+
 test('T-7232 close hint and close button stay in one right-side group', () => {
     const source = readSourceText(path.join(root, 'src', 'index.ts'));
     assert.match(source, /closeGroup\.appendChild\(closeHint\)/);

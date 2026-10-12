@@ -591,8 +591,14 @@ export type PlatformSurface = "switcher" | "workbench" | "studio";
 // T-6869：一次跨表面打开的上下文（entry/objectId/query 有界，见 platform-surface-model）。
 // T-7012：focusSource 是关闭/返回后恢复焦点的描述符（object:<id> / search-input）。
 export type PlatformSurfaceContext = {entry: string; objectKind?: string; objectId?: string; query?: string; focusSource?: string};
+/** Optional context supplied to a registered home-module reader. */
+export interface HomeModuleReadOptions {
+    size?: "xs" | "small" | "medium" | "tall" | "wide" | "large" | "full" | string;
+    signal?: AbortSignal | null;
+}
 export interface PlatformSurfaceLabels {
     platformName: string;
+    platformSubtitle: string;
     contextLabel: string;
     surfaces: Record<PlatformSurface, string>;
     hints: Record<PlatformSurface, string>;
@@ -625,6 +631,7 @@ function normalizePlatformText(value: unknown, fallback: string): string {
 export function resolvePlatformSurfaceLabels(i18n: Record<string, string> = {}): PlatformSurfaceLabels {
     return {
         platformName: normalizePlatformText(i18n.platformName, "小驴雷切"),
+        platformSubtitle: normalizePlatformText(i18n.platformSubtitle, "工作上下文平台"),
         contextLabel: normalizePlatformText(i18n.platformContext, "工作上下文"),
         surfaces: {
             switcher: normalizePlatformText(i18n.platformSwitcher, normalizePlatformText(i18n.switchTabs, "切换器")),
@@ -658,10 +665,20 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
     header.setAttribute("aria-label", options.labels.platformName);
     const brand = doc.createElement("div");
     brand.className = "sw-platform-header__brand";
+    const brandMark = doc.createElement("span");
+    brandMark.className = "sw-platform-header__brand-mark";
+    brandMark.setAttribute("aria-hidden", "true");
+    brandMark.textContent = "驴";
+    const brandCopy = doc.createElement("span");
+    brandCopy.className = "sw-platform-header__brand-copy";
     const brandName = doc.createElement("strong");
     brandName.className = "sw-platform-header__brand-name";
     brandName.textContent = options.labels.platformName;
-    brand.appendChild(brandName);
+    const brandSubtitle = doc.createElement("span");
+    brandSubtitle.className = "sw-platform-header__brand-subtitle";
+    brandSubtitle.textContent = options.labels.platformSubtitle;
+    brandCopy.append(brandName, brandSubtitle);
+    brand.append(brandMark, brandCopy);
 
     const nav = doc.createElement("nav");
     nav.className = "sw-platform-surface-nav";
@@ -4035,6 +4052,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     public getPlatformSurfaceLabels(): PlatformSurfaceLabels {
         return resolvePlatformSurfaceLabels({
             platformName: this.i18n.platformName,
+            platformSubtitle: this.i18n.platformSubtitle,
             platformContext: this.i18n.platformContext,
             platformSwitcher: this.i18n.platformSwitcher,
             platformWorkbench: this.i18n.platformWorkbench,
@@ -5406,7 +5424,7 @@ const updatedMap: {[rootId: string]: string} = {};
         clickCommand?: string;
         configSchema?: Array<Record<string, unknown>>;
         refreshOn?: Array<"switch-protyle" | "loaded-protyle" | "destroy-protyle">;
-        read: (config: Record<string, unknown>, device: string) => unknown | Promise<unknown>;
+        read: (config: Record<string, unknown>, device: "desktop" | "sidebar" | "mobile", options?: HomeModuleReadOptions) => unknown | Promise<unknown>;
         readOnly?: boolean;
         open?: () => void;
     }): () => void {

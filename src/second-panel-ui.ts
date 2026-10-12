@@ -353,6 +353,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 const inst = byId.get(entry.instanceId);
                 if (inst) cells.push({inst, layout: entry});
             });
+            const hasAvailableCell = cells.some(({inst}) => defs.has(inst.moduleId));
 
             // 秒开（D-382）：工具栏/问候/网格在离屏 fragment 中装配，一次挂载避免多轮重排
             const mountFragment = document.createDocumentFragment();
@@ -413,7 +414,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 }
             }
             // 一键强制刷新全部组件（绕过 3s 缓存与失败退避）；空面板时无意义，隐藏
-            if (cells.length > 0) {
+            if (hasAvailableCell) {
                 const refreshAllButton = document.createElement("button");
                 refreshAllButton.type = "button";
                 refreshAllButton.className = "b3-button b3-button--text sw-home__refresh";
@@ -530,8 +531,39 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
 
             const body = document.createElement("div");
             body.className = "sw-home__body";
+            if (cells.length > 0 && !hasAvailableCell) body.classList.add("sw-home__body--unavailable");
             const grid = document.createElement("div");
             grid.className = "sw-home__grid";
+            if (cells.length > 0 && !hasAvailableCell) {
+                grid.classList.add("sw-home__grid--unavailable");
+                const unavailableEmpty = document.createElement("div");
+                unavailableEmpty.className = "sw-home__empty sw-home__empty--unavailable";
+                unavailableEmpty.setAttribute("role", "group");
+                unavailableEmpty.setAttribute("aria-label", this.i18n.homeEmptyUnavailable);
+                const unavailableTitle = document.createElement("h2");
+                unavailableTitle.className = "sw-home__empty-title";
+                unavailableTitle.textContent = this.i18n.homeEmptyUnavailable;
+                const unavailableText = document.createElement("p");
+                unavailableText.textContent = this.i18n.homeEmptyUnavailableDetail || "";
+                const unavailableActions = document.createElement("div");
+                unavailableActions.className = "sw-home__empty-actions";
+                const openStore = document.createElement("button");
+                openStore.type = "button";
+                openStore.className = "b3-button b3-button--primary sw-home__empty-store";
+                openStore.textContent = this.i18n.homeEmptyOpenStore;
+                openStore.addEventListener("click", () => openHomeWidgetStore.call(this, device, renderPanel));
+                unavailableActions.appendChild(openStore);
+                if (!editing) {
+                    const editLayout = document.createElement("button");
+                    editLayout.type = "button";
+                    editLayout.className = "b3-button b3-button--text sw-home__empty-edit";
+                    editLayout.textContent = this.i18n.homeEditLayout;
+                    editLayout.addEventListener("click", () => editToggle.click());
+                    unavailableActions.appendChild(editLayout);
+                }
+                unavailableEmpty.append(unavailableTitle, unavailableText, unavailableActions);
+                grid.appendChild(unavailableEmpty);
+            }
             // T-6969 Slice 3：编辑态抖动 chrome 的作用域类
             grid.classList.toggle("sw-home__grid--editing", editing);
             if (cells.length === 0) {
@@ -677,7 +709,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     const ghost = document.createElement("div");
                     ghost.className = "sw-home__cell sw-home__cell--unavailable";
                     ghost.dataset.instanceId = inst.instanceId;
-                    ghost.style.gridColumn = `span min(${layout.w || 4}, 12)`;
+                    ghost.style.setProperty("--sw-home-span", String(Math.min(12, Math.max(1, Number(layout.w) || 4))));
+                    if (!this.isMobile) ghost.style.gridRow = `span ${Math.max(1, Number(layout.h) || 1)}`;
                     const ghostTitle = document.createElement("strong");
                     ghostTitle.className = "sw-home__unavailable-title";
                     ghostTitle.textContent = this.i18n.homeCellUnavailableTitle || this.i18n.homeCellUnavailable;
@@ -697,7 +730,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         });
                         ghost.appendChild(ghostRemove);
                     }
-                    mountFragment.appendChild(ghost);
+                    grid.appendChild(ghost);
                     return;
                 }
                 // 型号迁移与解析：旧宽度档就近映射，再限定到该模块声明的型号集合
@@ -724,7 +757,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 cell.dataset.size = sizeKey;
                 cell.dataset.moduleId = inst.moduleId;
                 cell.dataset.swObjectId = inst.instanceId;
-                cell.style.gridColumn = this.isMobile ? "1 / -1" : `span ${Math.min(12, preset.w)}`;
+                cell.style.setProperty("--sw-home-span", String(Math.min(12, preset.w)));
                 cell.style.gridRow = this.isMobile ? "auto" : `span ${Math.max(1, preset.h)}`;
                 // 强调色：按 moduleId 稳定散列到调色板，iPad 小组件的多彩感
                 if (homePalette === "auto") {

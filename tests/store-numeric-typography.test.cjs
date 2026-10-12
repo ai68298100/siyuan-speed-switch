@@ -50,7 +50,7 @@ test('numeric style preserves high contrast',()=>assert.ok(css.includes('forced-
 test('numeric style preserves reduced motion',()=>assert.ok(css.includes('prefers-reduced-motion: reduce')));
 test('status style remains bounded',()=>assert.ok(css.includes('font-size: var(--sw-font-xs, 11px)')));
 test('summary style remains bounded',()=>assert.ok(css.includes('font-size: var(--sw-font-xs, 11px)')));
-test('source labels remain bounded',()=>assert.ok(css.includes('font-size: 10px')));
+test('source labels remain bounded',()=>assert.ok(declaresIn(css,'.sw-home-store__source-chip',/font-size:\s*var\(--sw-font-2xs,\s*10px\)/,base)));
 test('numeric style keeps flexible width',()=>{
     assertManagedCovered();
     for(const rule of managedRules){

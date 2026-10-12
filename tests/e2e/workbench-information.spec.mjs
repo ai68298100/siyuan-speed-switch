@@ -81,3 +81,62 @@ test("workbench keeps actions compact and exposes loading, failure and recovery"
     await root.locator(".sw-home__add").click();
     await expect(page.locator(".sw-home-store")).toBeVisible();
 });
+
+test("workbench explains unavailable saved widgets and offers a nearby store action", async ({page}) => {
+    await openApp(page);
+    await page.evaluate(() => {
+        const plugin = window.siyuan.ws.app.plugins.find(item => item.name === "siyuan-speed-switch");
+        plugin.getSettings = () => ({homeSizeMode: "fullscreen", panelSizeMode: "fullscreen"});
+        plugin.getHomeState = () => ({schemaVersion: 1,
+            instances: [{instanceId: "e2e-unavailable", moduleId: "e2e-unavailable", enabled: true, config: {}}],
+            layouts: {desktop: [{instanceId: "e2e-unavailable", x: 0, y: 0, w: 4, h: 1, size: "small"}]}});
+        plugin.commands.find(item => item.langKey === "secondPanel").callback();
+    });
+
+    const root = page.locator(".sw-home");
+    const empty = root.locator(".sw-home__empty--unavailable");
+    await expect(empty).toBeVisible();
+    await expect(empty.locator("h2")).toHaveText(/widgets are unavailable|组件暂不可用/i);
+    await expect(empty).toContainText(/saved layout is preserved|布局会保留/);
+    const emptyHeight = await empty.evaluate((element) => Math.round(element.getBoundingClientRect().height));
+    expect(emptyHeight).toBeGreaterThanOrEqual(300);
+    await expect(root.locator(".sw-home__body .sw-home__grid > .sw-home__cell--unavailable")).toHaveCount(1);
+    await expect(root.locator(".sw-home__refresh")).toHaveCount(0);
+    await page.screenshot({path: artifactPath("workbench-unavailable-wide.png")});
+    await page.setViewportSize({width: 520, height: 720});
+    const compactLayout = await empty.evaluate((element) => {
+        const surface = element.closest(".sw-home");
+        const bounds = element.getBoundingClientRect();
+        const ghost = surface?.querySelector(".sw-home__cell--unavailable");
+        const ghostBounds = ghost?.getBoundingClientRect();
+        const ghostTextFits = ghost && ghostBounds
+            ? Array.from(ghost.querySelectorAll("strong, p"), (node) => {
+                const rect = node.getBoundingClientRect();
+                return rect.top >= ghostBounds.top - 1 && rect.bottom <= ghostBounds.bottom + 1;
+            }).every(Boolean)
+            : false;
+        const buttonsFit = Array.from(element.querySelectorAll("button"), (button) => {
+            const rect = button.getBoundingClientRect();
+            return rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1;
+        }).every(Boolean);
+        const workArea = surface?.querySelector(".sw-home__grid")?.getBoundingClientRect();
+        return {
+            overflow: Boolean(surface && surface.scrollWidth > surface.clientWidth + 1),
+            buttonsFit,
+            ghostFillsWorkArea: Boolean(ghostBounds && workArea && ghostBounds.width >= workArea.width * 0.9),
+            ghostTextFits,
+        };
+    });
+    expect(compactLayout.overflow).toBe(false);
+    expect(compactLayout.buttonsFit).toBe(true);
+    expect(compactLayout.ghostFillsWorkArea).toBe(true);
+    expect(compactLayout.ghostTextFits).toBe(true);
+    await page.screenshot({path: artifactPath("workbench-unavailable-compact.png")});
+    await page.setViewportSize({width: 1440, height: 900});
+    await empty.locator("button.sw-home__empty-edit").click();
+    await expect(root.locator('.sw-home__bar button[data-home-action="edit"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(root.locator(".sw-home__cell--unavailable .sw-home__tool")).toBeVisible();
+    await empty.locator("button.sw-home__empty-store").click();
+    await expect(page.locator(".sw-home-store")).toBeVisible();
+    await expect(root.locator(".sw-home__cell--unavailable")).toHaveCount(1);
+});

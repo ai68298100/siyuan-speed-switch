@@ -17,6 +17,11 @@
 在提供方的 `onload()` 中查找小驴雷切，注册一个有界 `read`，并在 `onunload()` 中注销。下面的代码只展示协议边界，`readSummary` 应使用提供方自己的缓存和查询层：
 
 ```ts
+type HomeModuleReadOptions = {
+    size?: "xs" | "small" | "medium" | "tall" | "wide" | "large" | "full" | string;
+    signal?: AbortSignal | null;
+};
+
 type SpeedSwitch = {
     registerHomeModule?: (options: Record<string, unknown>) => (() => void) | {unregister?: () => void} | undefined;
     getHomeModules?: (device?: "desktop" | "sidebar" | "mobile") => Array<{moduleId?: string}>;
@@ -46,9 +51,9 @@ export default class MyPlugin extends Plugin {
                 collection: "摘要",
                 order: 1,
             },
-            read: async (config, device) => ({
+            read: async (config, device, options?: HomeModuleReadOptions) => ({
                 title: device === "sidebar" ? "摘要" : "最近摘要",
-                items: await readSummary(config, device),
+                items: await readSummary(config, device, options),
             }),
             open: () => this.openPluginPage(),
         });
@@ -86,11 +91,11 @@ function normalizeUnregister(handle: unknown): () => void {
 | `supportedDevices` | `desktop`、`sidebar`、`mobile` 的子集；未声明的表面不会出现。 |
 | `sizes` | `xs`、`small`、`medium`、`tall`、`wide`、`large`、`full` 的子集；省略时回退 `medium`，非法值会被丢弃。 |
 | `description` | 商店卡片说明，最多 96 字。 |
-| `read(config, device, options)` | 必填，返回快照；`device` 区分表面，第三参可读取当前 `options.size`。请尽快返回小对象。 |
+| `read(config, device, options)` | 必填，返回快照；`device` 区分表面，第三参 `HomeModuleReadOptions` 可读取当前 `options.size`，并将 `options.signal` 传给可取消请求。请尽快返回小对象。 |
 | `open` / `clickCommand` | 可选失败出口。`open` 是函数；`clickCommand` 是 `插件名::命令 key`。二者都应指向提供方自己的可用入口。 |
 | `source` | 可选来源身份：`pluginId`、`name` 至少一个；还可填 `icon`、`version`、`homepage`、`collection`、`order`。来源用于商店聚合，版本和主页当前会透传但不显示。 |
 | `protocolVersion` | 可选填 `2`，表示使用 v2 的命令、配置和刷新声明。 |
-| `configSchema` | 最多 8 个字段，类型为 `text`、`number`、`select`、`notebook`、`date`、`document`；日期使用 `YYYY-MM-DD`，文档值只能是 block ID。 |
+| `configSchema` | 面板表单最多 12 个字段，类型为 `text`、`number`、`select`、`notebook`、`date`、`document`、`favorite-group`、`textarea`、`secret`、`database`、`database-columns`；Agent 只读投影最多 8 个字段。日期使用 `YYYY-MM-DD`，文档与数据库值只能是 block ID。 |
 | `refreshOn` | 仅支持 `switch-protyle`、`loaded-protyle`、`destroy-protyle`；宿主防抖 500ms。自定义插件事件不会跨插件传播。 |
 
 `read` 只能返回 `{title?, items: [{label, value?, href?, command?}]}`。`label` 最多 256 字，平台最多保留 24 条；建议每次返回不超过 12 条，并按尺寸和表面裁剪。宿主提供单次 800ms 超时、3 秒快照缓存和失败退避；超时或异常会进入错误态，不会拖垮其他组件。不要在 `read` 中全库扫描、构造任意 HTML 或把正文、令牌、异常对象写进快照。
@@ -141,6 +146,21 @@ function normalizeUnregister(handle: unknown): () => void {
 - 真实宿主中检查键盘可达、焦点、暗色主题、窄侧栏、移动单列和长标题；Chromium 夹具通过不等于真实思源人工验收。
 
 ## 当前生态边界与未承诺事项
+
+## 可选家族入口（面向用户）
+
+这些入口不会把完整的家族插件内容库复制进小驴雷切；雷切只展示已经注册的只读组件或快捷动作。安装后看不到入口时，先确认对应插件已启用，再重新打开组件商店或刷新面板。
+
+| 家族/入口 | 当前状态 | 用户需要做什么 | 失效与恢复 |
+| --- | --- | --- | --- |
+| 小驴打卡 | 已有雷切桥接组件；真实提供方注册后可接管同一 moduleId | 安装并启用小驴打卡，确认其公开生态 API 可用 | 提供方停用时保留布局并显示不可用；重新注册后原位恢复 |
+| 思源剪藏·剪藏待读 | 已定义 `clipped-unread` 协议入口；无提供方时只显示 blocked 占位 | 安装并启用支持该 moduleId 的剪藏插件 | 不会把普通“剪藏”标签误当作数据；注销后保留实例，用户可在商店显式清理 |
+| Calendar | 已有协议接入示例与目录登记 | 安装支持协议的 Calendar 版本并按其说明启用 | 注册未完成时显示需安装/不可用，不伪造 ready；重载后按 moduleId 恢复 |
+| 小驴人脉 | 规划中的可选 provider，支持版本和真实入口待单独核验 | 暂不按“已支持”安装或宣传 | 等提供方工作区与真实宿主证据齐备后再更新状态 |
+| 小驴拾遗 | 规划中的可选 provider，待提供方自注册 | 暂不按“已支持”安装或宣传 | 未注册时不创建幽灵卡片；后续接入遵循同一卸载保留语义 |
+| Task Horizon 手机入口 | 依赖配套插件补丁、Android 与上游交付 | 仅在配套版本和设备证据齐备后使用 | 雷切单独升级不会替配套插件创建入口；缺失时安全跳过 |
+
+“已登记”“协议示例”和“已接入”是三个不同事实：本表只把有生产桥接或协议证据的项目写成已登记，不把外部插件、账号、集市版本或 Android 通过当作本仓库的完成证明。
 
 仓库中的 [组件协议](widget-protocol.md)、[生命周期 ADR](adr/0103-third-party-module-lifecycle.md) 和 [注册顺序 ADR](adr/0113-provider-registration-order-and-retry.md) 是当前可核对的实现依据。`clipped-unread`、`siyuan-checkin` 等名称在仓库中有协议或桥接示例，但这不等于对应外部插件已在用户环境安装或已发布集市版本。
 

@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {declaresIn} = require('./css-block-scan.cjs');
 
 const root = path.resolve(__dirname, '..');
 const storeUiSource = readSourceText(path.join(root, 'src', 'home-store-ui.ts'));
@@ -42,17 +43,23 @@ test('brand widget audit keeps at least ten scoped candidates without claiming f
 });
 
 test('mobile component panel is explicitly single-column', () => {
-    const source = readSourceText(path.join(root, 'src', 'index.ts'));
     const panelSource = readSourceText(path.join(root, 'src', 'second-panel-ui.ts'));
     // R4 重构（D-376）：设置页“主页”分节的构建在 settings-sections.ts。
     const sections = readSourceText(path.join(root, 'src', 'settings-sections.ts'));
     const styles = readSourceText(path.join(root, 'src', 'index.scss'));
     assert.match(panelSource, /this\.isMobile \? resolveMobileHomeSize\(supported\)/);
-    assert.match(panelSource, /this\.isMobile \? "1 \/ -1"/);
+    assert.match(panelSource, /cell\.style\.setProperty\("--sw-home-span", String\(Math\.min\(12, preset\.w\)\)\)/);
+    assert.match(panelSource, /cell\.style\.gridRow = this\.isMobile \? "auto" :/);
     assert.match(storeUiSource,/device === "mobile" \? \[resolveMobileHomeSize\(declaredSizes\)\]/);
     assert.match(sections, /mobileHomePanelFixed/);
-    assert.match(styles, /\.sw-home--mobile \.sw-home__grid[\s\S]*grid-template-columns: 1fr !important/);
-    assert.match(styles, /\.sw-home--mobile \.sw-home__cell[\s\S]*grid-row: auto !important/);
-    assert.match(styles, /\.sw-home--mobile \.sw-home__cell[\s\S]*min-height: 44px/);
-    assert.match(styles, /touch-action: manipulation/);
+    assert.equal(declaresIn(styles, '.sw-home--mobile .sw-home__grid', /grid-template-columns:\s*1fr !important/, {topLevel: true}), true);
+    assert.equal(declaresIn(styles, '.sw-home--mobile .sw-home__grid', /grid-auto-rows:\s*auto !important/, {topLevel: true}), true);
+    assert.equal(declaresIn(styles, '.sw-home--mobile .sw-home__cell', /grid-column:\s*1 \/ -1 !important/, {topLevel: true}), true);
+    assert.equal(declaresIn(styles, '.sw-home--mobile .sw-home__cell', /grid-row:\s*auto !important/, {topLevel: true}), true);
+    assert.equal(declaresIn(styles, '.sw-home--mobile .sw-home__cell', /min-height:\s*112px/, {topLevel: true}), true);
+    for (const control of ['.sw__home-module-toggle', '.sw__home-module-retry', '.sw__home-module-item-action', '.sw-home__tool', '.sw-home__open']) {
+        const selector = `.sw-home--mobile .sw-home__cell ${control}`;
+        assert.equal(declaresIn(styles, selector, /min-height:\s*44px/, {topLevel: true}), true, selector);
+        assert.equal(declaresIn(styles, selector, /touch-action:\s*manipulation/, {topLevel: true}), true, selector);
+    }
 });

@@ -29,7 +29,8 @@ test('lifecycle: uninstalled providers render an honest unavailable cell', () =>
     assert.match(panelSource, /if \(!def\) \{\s*\n\s*const ghost = document\.createElement\("div"\);\s*\n\s*ghost\.className = "sw-home__cell sw-home__cell--unavailable";/,
         'provider 缺定义必须渲染不可用占位而非静默消失');
     assert.match(panelSource, /ghostLabel\.textContent = this\.i18n\.homeCellUnavailable;/, '占位必须给诚实文案');
-    assert.match(panelSource, /layout\.w \|\| 4/, '占位必须沿用布局宽度（重装后原位恢复）');
+    assert.match(panelSource, /Math\.min\(12, Math\.max\(1, Number\(layout\.w\) \|\| 4\)\)/,
+        '占位必须沿用并限制保存的布局宽度（重装后原位恢复）');
     assert.match(panelSource, /ghostRemove\.textContent = this\.i18n\.homeRemove;/, '编辑态占位必须提供移除出口');
     for (const key of ['homeCellUnavailable', 'homeConfigSaveFailed', 'homeConfigSaveMissed']) {
         assert.ok(zh[key] && en[key], `i18n 键 ${key} 必须双语齐备`);

@@ -25,8 +25,23 @@ test('conflict wiring: disabled copy goes through the create pipeline with a uni
 
 test('conflict wiring: reload is read-only and continue/cancel keep the local draft', () => {
     assert.match(uiSource, /snippetConflictReload/, '必须提供放弃并重载出口');
-    assert.match(uiSource, /if \(latestEntry\) \{\s*\n\s*choose\(latestEntry, latestEntry\);\s*\n\s*\} else \{\s*\n\s*void load\(true\);/, '重载只读重取，不写入');
+    assert.match(uiSource, /if \(latestEntry\) \{\s*\n\s*choose\(latestEntry, latestEntry\);\s*\n\s*focusEditor\(\);\s*\n\s*\} else \{\s*\n\s*void load\(true\)\.finally\(\(\) => focusEditor\(\)\);/, '重载只读重取，不写入且完成后回焦');
     assert.ok(uiSource.includes('snippetConflictContinue'), '必须保留继续编辑出口');
+});
+
+test('conflict wiring: every close path restores editor focus after Dialog teardown', () => {
+    assert.match(uiSource, /const focusEditor = \(\) => \{[\s\S]*?editor\.focus\(\{preventScroll: true\}\)/,
+        '冲突层必须提供可复用的编辑器回焦助手');
+    assert.match(uiSource, /continueButton\.addEventListener\("click", \(\) => \{ dialog\.destroy\(\); focusEditor\(\); \}\)/,
+        '继续编辑关闭冲突层后必须回焦编辑器');
+    assert.match(uiSource, /cancelButton\.addEventListener\("click", \(\) => \{ dialog\.destroy\(\); focusEditor\(\); \}\)/,
+        '取消关闭冲突层后必须回焦编辑器');
+    assert.match(uiSource, /if \(pickerRefresh\) pickerRefresh\(\);\s*\n\s*focusEditor\(\);/,
+        '保存副本成功关闭冲突层后必须回焦编辑器');
+    assert.match(uiSource, /choose\(latestEntry, latestEntry\);\s*\n\s*focusEditor\(\);/,
+        '重载已有版本后必须回焦编辑器');
+    assert.match(uiSource, /void load\(true\)\.finally\(\(\) => focusEditor\(\)\);/,
+        '重载需等待异步读取结束后回焦编辑器');
 });
 
 // T-7044：副本保存成功后曾调用未定义的局部 render()（openPicker 私有），抛出的

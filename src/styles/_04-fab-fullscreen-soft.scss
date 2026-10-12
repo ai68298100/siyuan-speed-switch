@@ -130,7 +130,7 @@
     .sw-fab-target-caption {
         position: absolute;
         box-sizing: border-box;
-        padding: 4px 8px;
+        padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -138,7 +138,7 @@
         background: var(--b3-theme-surface);
         color: var(--b3-theme-on-surface);
         box-shadow: var(--sw-shadow-sm);
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
         line-height: 20px;
         text-align: center;
         pointer-events: none;
@@ -185,7 +185,7 @@
         inset: 0;
         z-index: 1;
         pointer-events: none;
-        font-size: 13px;
+        font-size: var(--sw-font-md, 13px);
         color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
 
         button {
@@ -199,7 +199,7 @@
         display: flex;
         flex-direction: column;
         align-items: stretch;
-        gap: 8px;
+        gap: var(--sw-space-md, 8px);
         min-width: 44px;
         transform: translateY(-50%);
         opacity: 1;
@@ -226,7 +226,7 @@
         flex: none;
         align-items: center;
         justify-content: flex-start;
-        gap: 8px;
+        gap: var(--sw-space-md, 8px);
         min-width: 44px;
         min-height: 44px;
         padding: 6px 10px;
@@ -307,7 +307,7 @@
             .sw__floating-ball-action-label { display: none; }
         }
 
-        .sw__floating-ball-first-layer { gap: 6px; }
+        .sw__floating-ball-first-layer { gap: var(--sw-space-sm, 6px); }
 
         // Keep the drawer inside a narrow dock; the controller refreshes the
         // host width variable on divider and viewport changes.
@@ -353,7 +353,7 @@
         max-height: min(70vh, 520px);
         overflow: auto;
         overscroll-behavior: contain;
-        padding: 8px;
+        padding: var(--sw-space-md, 8px);
         border: 1px solid color-mix(in srgb, var(--b3-border-color) 70%, transparent);
         border-radius: 16px;
         background: var(--b3-theme-surface, var(--b3-theme-background));
@@ -377,10 +377,10 @@
         align-items: center;
         justify-content: space-between;
         min-height: 36px;
-        padding: 0 4px 6px 8px;
+        padding: 0 var(--sw-space-xs, 4px) var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
         color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
         font-size: 14px;
-        font-weight: 600;
+        font-weight: var(--sw-weight-semibold, 600);
     }
 
     .sw__floating-ball-more-close {
@@ -409,7 +409,7 @@
     .sw__floating-ball-more-list {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: var(--sw-space-xs, 4px);
 
         .sw__floating-ball-action {
             width: 100%;
@@ -536,7 +536,7 @@
 .speed-switch .sw__dock.sw__dock--collapsed {
     width: 52px;
     min-width: 52px;
-    padding: 12px 6px;
+    padding: var(--sw-space-lg, 12px) var(--sw-space-sm, 6px);
     overflow: visible;
 
     .sw__dock-toggle { margin-inline: auto; }
@@ -557,7 +557,7 @@
 
 .speed-switch:not(.sw__mobile) .sw__meta {
     min-height: var(--sw-control-h);
-    padding-block: 4px;
+    padding-block: var(--sw-space-xs, 4px);
 }
 
 .sw-second-panel {
@@ -565,7 +565,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
     height: 100%;
-    padding: 16px;
+    padding: var(--sw-space-xl, 16px);
     overflow: auto;
     background: var(--sw-page-bg, var(--b3-theme-background));
     box-sizing: border-box;
@@ -583,8 +583,8 @@
     h3 {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin: 0 0 8px;
+        gap: var(--sw-space-md, 8px);
+        margin: 0 0 var(--sw-space-md, 8px);
         font-size: 14px;
 
         svg { width: var(--sw-icon-sm, 16px); height: 16px; }
@@ -595,7 +595,7 @@
     display: block;
     width: 100%;
     min-height: var(--sw-control-h);
-    padding: 6px 8px;
+    padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
     overflow: hidden;
     border: 0;
     border-radius: var(--sw-radius-control, 10px);
@@ -627,12 +627,12 @@
     border-radius: 12px;
     background: var(--sw-accent-soft, var(--b3-theme-surface-lighter));
     color: var(--b3-theme-on-background);
-    font-size: 12px;
+    font-size: var(--sw-font-sm, 12px);
     line-height: 1.55;
 
-    > p { margin: 6px 0; }
-    ol { margin: 6px 0; padding-left: 20px; }
-    li + li { margin-top: 4px; }
+    > p { margin: var(--sw-space-sm, 6px) 0; }
+    ol { margin: var(--sw-space-sm, 6px) 0; padding-left: 20px; }
+    li + li { margin-top: var(--sw-space-xs, 4px); }
     .sw-document-set-guide__note { color: var(--b3-theme-on-surface-light); }
 }
 
@@ -649,7 +649,7 @@
     }
 
     .speed-switch.sw__mobile .sw__mobile-toolbar {
-        padding-right: 8px;
+        padding-right: var(--sw-space-md, 8px);
 
         .sw__search-wrap { flex-basis: 84px; }
         .sw__mobile-close-btn {
@@ -682,7 +682,7 @@
         max-width: 100%;
         min-height: 48px;
         height: auto;
-        padding: 6px 8px;
+        padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
         overflow-x: auto;
         overflow-y: hidden;
         box-sizing: border-box;
@@ -690,11 +690,11 @@
 
     .sw-settings .sw-settings__tab {
         min-height: 36px;
-        padding: 8px 12px;
+        padding: var(--sw-space-md, 8px) var(--sw-space-lg, 12px);
         white-space: nowrap;
     }
 
-    .sw-second-panel { grid-template-columns: 1fr; padding: 12px; }
+    .sw-second-panel { grid-template-columns: 1fr; padding: var(--sw-space-lg, 12px); }
 }
 
 .sw__home-module-meta {
@@ -702,8 +702,8 @@
     max-width: 42%;
     overflow: hidden;
     color: var(--b3-theme-on-surface-light);
-    font-size: 10px;
-    font-weight: 400;
+    font-size: var(--sw-font-2xs, 10px);
+    font-weight: var(--sw-weight-regular, 400);
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -847,8 +847,8 @@
     .sw__dock-label {
         margin: 2px 8px 8px;
         color: var(--b3-theme-on-surface-light);
-        font-size: 10px;
-        font-weight: 600;
+        font-size: var(--sw-font-2xs, 10px);
+        font-weight: var(--sw-weight-semibold, 600);
         letter-spacing: .08em;
         text-transform: uppercase;
     }
@@ -873,7 +873,7 @@
             background: var(--sw-accent-soft);
             border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 22%, transparent);
             color: var(--b3-theme-primary, var(--sw-accent-fallback));
-            font-weight: 600;
+            font-weight: var(--sw-weight-semibold, 600);
         }
     }
 
@@ -886,7 +886,7 @@
         margin: 6px 4px 10px;
         color: var(--b3-theme-on-surface-light);
         font-size: var(--sw-font-xs, 11px);
-        font-weight: 600;
+        font-weight: var(--sw-weight-semibold, 600);
         letter-spacing: .06em;
     }
 
@@ -913,18 +913,18 @@
 
     .sw__meta {
         min-height: 42px;
-        padding: 8px 12px;
+        padding: var(--sw-space-md, 8px) var(--sw-space-lg, 12px);
         background: color-mix(in srgb, var(--b3-theme-surface) 94%, var(--sw-accent-soft));
     }
 
     .sw__doc-results {
         margin-top: 18px;
 
-        .sw__doc-grid { gap: 12px; }
+        .sw__doc-grid { gap: var(--sw-space-lg, 12px); }
 
         .sw__doc-item {
             min-height: 84px;
-            padding: 12px;
+            padding: var(--sw-space-lg, 12px);
             background: var(--b3-theme-surface);
 
             &:hover {

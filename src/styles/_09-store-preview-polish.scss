@@ -13,7 +13,7 @@
     grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
     gap: 10px;
     margin: 0;
-    padding: 4px 0 0;
+    padding: var(--sw-space-xs, 4px) 0 0;
     list-style: none;
 }
 
@@ -26,7 +26,7 @@
 .sw__home-media-action {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--sw-space-sm, 6px);
     width: 100%;
     min-width: 0;
     padding: 0;
@@ -69,9 +69,9 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
 }
-.sw__home-media-secondary { color: var(--b3-theme-on-surface-light); font-size: 10px; }
-.sw__home-media-item.is-source .sw__home-media-action { display: block; padding: 2px 0; color: var(--b3-theme-on-surface-light); font-size: 10px; }
-.sw__home-media-item.is-source .sw__home-media-title { font-size: 10px; font-weight: 500; }
+.sw__home-media-secondary { color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-2xs, 10px); }
+.sw__home-media-item.is-source .sw__home-media-action { display: block; padding: 2px 0; color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-2xs, 10px); }
+.sw__home-media-item.is-source .sw__home-media-title { font-size: var(--sw-font-2xs, 10px); font-weight: var(--sw-weight-medium, 500); }
 
 @media (max-width: 560px) {
     .sw__home-media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -89,8 +89,8 @@
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 6px;
-        margin: 0 0 8px;
+        gap: var(--sw-space-sm, 6px);
+        margin: 0 0 var(--sw-space-md, 8px);
         padding: 6px 2px 8px;
         min-width: 0;
         border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 60%, transparent);
@@ -106,7 +106,7 @@
         align-items: center;
         max-width: 100%;
         min-width: 0;
-        padding: 4px 8px;
+        padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
         border: 1px solid var(--b3-border-color);
         border-radius: 999px;
         overflow-wrap: anywhere;
@@ -127,7 +127,7 @@
     &__body {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: var(--sw-space-md, 8px);
         min-width: 0;
         min-height: 0;
         overflow-wrap: anywhere;
@@ -154,7 +154,7 @@
 .sw-home .sw-home__cell .sw__home-module-fold {
     min-height: 22px;
     min-width: 22px;
-    padding: 0 4px;
+    padding: 0 var(--sw-space-xs, 4px);
     font-size: 0;
 
     svg { width: 12px; height: 12px; }
@@ -175,8 +175,8 @@
 }
 
 @media (max-width: 560px) {
-    .sw-store-preview__meta { font-size: 10px; gap: 4px; }
-    .sw-store-preview__meta-chip { padding: 4px 6px; }
+    .sw-store-preview__meta { font-size: var(--sw-font-2xs, 10px); gap: var(--sw-space-xs, 4px); }
+    .sw-store-preview__meta-chip { padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px); }
 }
 
 @media (forced-colors: active) {
@@ -188,8 +188,8 @@
     display: grid;
     grid-template-columns: 28px minmax(0, 1fr) auto 28px;
     align-items: center;
-    gap: 4px;
-    margin: 0 0 6px;
+    gap: var(--sw-space-xs, 4px);
+    margin: 0 0 var(--sw-space-sm, 6px);
 
     button {
         display: inline-flex;
@@ -202,7 +202,7 @@
         border-radius: 999px;
         background: transparent;
         color: var(--sw-home-accent, var(--b3-theme-primary));
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
         line-height: 1;
 
         &:hover { background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 11%, transparent); }
@@ -219,7 +219,7 @@
     overflow: hidden;
     color: var(--b3-theme-on-background);
     font-size: 14px;
-    font-weight: 700;
+    font-weight: var(--sw-weight-bold, 700);
     letter-spacing: -0.02em;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -251,8 +251,8 @@
 
 .sw__home-calendar-head {
     color: var(--b3-theme-on-surface-light);
-    font-size: 10px;
-    font-weight: 650;
+    font-size: var(--sw-font-2xs, 10px);
+    font-weight: var(--sw-weight-emphasis, 650);
     letter-spacing: 0.03em;
 
     &:nth-child(6),
@@ -377,10 +377,10 @@
 
     .sw__home-module-icon { background: rgba(255, 255, 255, 0.18); color: #fff; }
     .sw__home-module-context { opacity: 0.82; }
-    .sw__home-stat { padding-block: 8px 12px; }
+    .sw__home-stat { padding-block: var(--sw-space-md, 8px) var(--sw-space-lg, 12px); }
     .sw__home-stat-value { font-size: clamp(34px, 5vw, 52px); font-weight: 520; letter-spacing: -0.055em; }
     .sw__home-stat-label { opacity: 0.88; }
-    .sw__home-module-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .sw__home-module-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sw-space-sm, 6px); }
     .sw__home-module-item {
         min-width: 0;
         border-radius: 10px;
@@ -394,7 +394,7 @@
         align-items: center;
         gap: 2px;
         width: 100%;
-        padding: 8px 4px;
+        padding: var(--sw-space-md, 8px) var(--sw-space-xs, 4px);
         border-left: 0;
         color: #fff;
         text-align: center;
@@ -402,8 +402,8 @@
         &::before { display: none; }
     }
     .sw__home-module-item-label { overflow: hidden; font-size: var(--sw-font-xs, 11px); text-overflow: ellipsis; white-space: nowrap; }
-    .sw__home-module-item-secondary { color: rgba(255, 255, 255, 0.72); font-size: 10px; white-space: nowrap; }
-    .sw__home-module-item.has-link .sw__home-module-item-action { align-items: flex-start; padding-block: 4px 0; opacity: 0.72; font-size: 10px; }
+    .sw__home-module-item-secondary { color: rgba(255, 255, 255, 0.72); font-size: var(--sw-font-2xs, 10px); white-space: nowrap; }
+    .sw__home-module-item.has-link .sw__home-module-item-action { align-items: flex-start; padding-block: var(--sw-space-xs, 4px) 0; opacity: 0.72; font-size: var(--sw-font-2xs, 10px); }
     .sw__home-module-toggle { color: #fff; border-color: rgba(255, 255, 255, 0.35); }
 }
 
@@ -427,7 +427,7 @@
 // stat hero 数字在面板格子里更醒目
 .sw-home__cell .sw__home-stat-value {
     font-size: 1.4em;
-    font-weight: 700;
+    font-weight: var(--sw-weight-bold, 700);
     letter-spacing: -0.02em;
 }
 
@@ -469,7 +469,7 @@
 .sw__home-weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+    gap: var(--sw-space-xs, 4px);
     align-items: center;
 }
 
@@ -501,7 +501,7 @@
     }
 
     &-label {
-        font-size: 10px;
+        font-size: var(--sw-font-2xs, 10px);
         opacity: 0.65;
     }
 }

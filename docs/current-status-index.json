@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-11",
-  "currentTask": "T-7141",
+  "updated": "2026-10-13",
+  "currentTask": "T-7159",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7141",
+  "nextLocalTask": "T-7144",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -86,7 +86,12 @@
     "T-7234",
     "T-7236",
     "T-7238",
-    "T-7242"
+    "T-7242",
+    "T-7243",
+    "T-7244",
+    "T-7245",
+    "T-7246",
+    "T-7247"
   ],
   "tasks": [
     {
@@ -695,7 +700,7 @@
     {
       "id": "T-7141",
       "title": "全平台焦点与动态播报审计",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "conditional",
@@ -708,17 +713,28 @@
       ],
       "evidence": [
         "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0173-t7141-focus-live-feedback.md",
+        ".artifacts/t7141-a11y-audit.txt",
+        "src/home-controller.js",
+        "src/snippet-studio-ui.js",
+        "src/doc-search-ui.ts",
+        "tests/home-controller.test.cjs",
+        "tests/doc-preview-behavior.test.cjs",
+        "tests/snippet-conflict-wiring.test.cjs",
         "docs/product-review-2026-10-06.md",
         "src/platform-dom.js",
         "src/mobile-switcher-ui.ts",
-        "docs/desktop-acceptance-matrix.md"
+        "docs/desktop-acceptance-matrix.md",
+        ".artifacts/T-7141-negative-probe.log",
+        ".artifacts/T-7141-full-tests.log",
+        ".artifacts/T-7141-verify-release.log"
       ],
       "next": "T-7142"
     },
     {
       "id": "T-7142",
       "title": "手机高频操作和手势的可理解性",
-      "status": "planned",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "conditional",
@@ -728,9 +744,15 @@
         "docs/product-review-2026-10-06.md",
         "src/platform-dom.js",
         "src/mobile-switcher-ui.ts",
-        "docs/desktop-acceptance-matrix.md"
+        "docs/desktop-acceptance-matrix.md",
+        "src/floating-ball-ui.ts",
+        "tests/floating-ball-ui.test.cjs",
+        "tests/floating-ball-browser-smoke.cjs",
+        "docs/adr/0174-t7142-mobile-flick-after-slop.md",
+        ".artifacts/T-7142-negative-probe.log",
+        ".artifacts/T-7142-verify-release.log"
       ],
-      "next": "T-7139"
+      "next": "T-7146"
     },
     {
       "id": "T-7143",
@@ -805,7 +827,7 @@
     {
       "id": "T-7146",
       "title": "provider 接入与可选家族入口的用户/作者说明",
-      "status": "planned",
+      "status": "completed",
       "priority": "P2",
       "owner": "local",
       "workType": "deliverable",
@@ -816,7 +838,10 @@
         "src/home-model.js",
         "src/home-store-ui.ts",
         "src/snippet-studio-ui.js",
-        "docs/widget-protocol.md"
+        "docs/widget-protocol.md",
+        "docs/provider-integration-guide-2026-10-06.md",
+        "docs/adr/0175-provider-docs-and-family-entry-boundary.md",
+        "src/index.ts"
       ],
       "next": "T-7149"
     },
@@ -1008,8 +1033,8 @@
         "tests/home-config-notebook-retry-behavior.test.cjs",
         "tests/notebook-failure-contract.test.cjs",
         "docs/adr/0159-topbar-r5-and-notebook-retry-v0467.md",
-        "docs/dev-plan-2026-10-06.md"
-      ,"docs/release-readiness.md",
+        "docs/dev-plan-2026-10-06.md",
+        "docs/release-readiness.md",
         "ROADMAP.md"
       ],
       "next": "T-7144"
@@ -2435,6 +2460,128 @@
         "src/index.scss",
         "tests/r54-surface-adapter-contract.test.cjs",
         "docs/adr/0167-r54-surface-adapter-v0470.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7247"
+    },
+    {
+      "id": "T-7247",
+      "title": "跨主要样式模块收敛精确既有刻度",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7246"
+      ],
+      "evidence": [
+        ".artifacts/t7247-candidate-audit.cjs",
+        ".artifacts/t7247-migrate-exact-tiers.cjs",
+        ".artifacts/token-audit-t7247-before.json",
+        ".artifacts/token-audit-t7247-candidates.json",
+        ".artifacts/token-audit-t7247-after.json",
+        ".artifacts/t7247-style-before.json",
+        ".artifacts/t7247-style-after.json",
+        "docs/adr/0172-exact-existing-tier-migration.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/t7247-contract-negative-probes.cjs",
+        ".artifacts/T-7247-verify-release-final.log"
+      ],
+      "next": "T-7141"
+    },
+    {
+      "id": "T-7243",
+      "title": "R5 原型界面落地与 v0.47.1 本地候选",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7242"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "src/home-store-ui.ts",
+        "src/second-panel-ui.ts",
+        "src/styles/_platform-shell.scss",
+        "src/styles/_12-r54-surface-adapter.scss",
+        "src/i18n/zh-CN.json",
+        "src/i18n/en.json",
+        "tests/switcher-feedback-contract.test.cjs",
+        "tests/e2e/store-inline-preview.spec.mjs",
+        "tests/e2e/workbench-information.spec.mjs",
+        "tests/e2e/panel-header-layout.spec.mjs",
+        "tests/e2e/surface-close.spec.mjs",
+        "docs/adr/0168-r5-brand-identity-v0471.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7141"
+    },
+    {
+      "id": "T-7244",
+      "title": "共享外壳语义排版变量第一批收敛",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7243"
+      ],
+      "evidence": [
+        "src/styles/_00-tokens.scss",
+        "src/styles/_platform-shell.scss",
+        "src/styles/_11-ui-polish.scss",
+        "src/styles/_12-r54-surface-adapter.scss",
+        "scripts/ui-token-audit.cjs",
+        ".artifacts/t7244-style-after.json",
+        "docs/adr/0169-semantic-typography-token-migration.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7245"
+    },
+    {
+      "id": "T-7245",
+      "title": "精确分类 E2E 正常关停日志",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7243"
+      ],
+      "evidence": [
+        "scripts/e2e/lib.mjs",
+        "tests/e2e-kernel-log.test.cjs",
+        ".artifacts/T-7245-kernel-log/audit-summary.md",
+        "docs/adr/0170-graceful-e2e-shutdown-log-classification.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7246"
+    },
+    {
+      "id": "T-7246",
+      "title": "精确间距与字号 token 第二批迁移",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7244"
+      ],
+      "evidence": [
+        "scripts/ui-token-audit.cjs",
+        "src/styles/_01-base-controls.scss",
+        "src/styles/_02-settings.scss",
+        "src/styles/_03-switcher-mobile.scss",
+        "src/styles/_05-settings-widgets.scss",
+        "src/styles/_06-widgets-store.scss",
+        ".artifacts/token-audit-t7246-before.json",
+        ".artifacts/token-audit-t7246-after.json",
+        ".artifacts/t7246-style-after.json",
+        ".artifacts/T-7246-full-tests-final.log",
+        ".artifacts/T-7246-verify-release-final.log",
+        ".artifacts/t7244-negative-probes.cjs",
+        "docs/adr/0171-exact-gap-and-font-size-token-batch.md",
         "docs/dev-plan-2026-10-06.md"
       ],
       "next": "T-7243"

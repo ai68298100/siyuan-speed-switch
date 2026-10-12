@@ -40,7 +40,12 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
 // ------------------------------------------------------------
 .speed-switch,
 .sw-fab-root,
-.sw-settings {
+.sw-settings,
+.sw-settings-dialog,
+.sw-home,
+.sw-studio,
+.sw-platform-shell,
+.sw-platform-surface {
     --sw-font-2xs: 10px;  // 徽标/角标下限（10px 以下仅限登记豁免）
     --sw-font-xs: 11px;   // 元信息/时间戳/识别行
     --sw-font-sm: 12px;   // 辅助说明/状态行
@@ -48,6 +53,17 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     --sw-font-lg: 15px;   // 小标题
     --sw-font-xl: 17px;   // 标题
     --sw-font-2xl: 20px;  // 大数字/英雄位
+
+    // T-7244：文本排版语义。图标盒子、品牌专用字重不套用正文刻度。
+    --sw-leading-compact: 1.2;  // 单行元信息/键位说明
+    --sw-leading-ui: 1.4;       // 状态说明/紧凑标题
+    --sw-leading-body: 1.5;     // 正文/表单说明
+    --sw-leading-reading: 1.6;  // 多行预览摘要
+    --sw-weight-regular: 400;   // 正文
+    --sw-weight-medium: 500;    // 元信息
+    --sw-weight-semibold: 600; // 上下文对象/小标题
+    --sw-weight-emphasis: 650; // 当前项/组件标题
+    --sw-weight-bold: 700;     // 导航标题
 
     // T-7200：模态浮层遮罩与底部 sheet 材质。遮罩取蓝灰暗调（明暗主题通用），
     // scrim-strong 供不支持 backdrop-filter 的引擎加深补偿（见各浮层 @supports not 块）。
@@ -95,4 +111,5 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     --sw-space-md: 8px;
     --sw-space-lg: 12px;
     --sw-space-xl: 16px;
+    --sw-space-2xl: 24px;
 }

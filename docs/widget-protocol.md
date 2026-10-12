@@ -38,7 +38,7 @@ export default class MyPlugin extends Plugin {
         });
 
         // 3. 插件卸载时注销，面板会安全跳过已卸载的组件
-        this.addUnload(() => unregister.unregister());
+        this.addUnload(() => unregister());
     }
 }
 ```
@@ -61,17 +61,17 @@ export function ensureRegister(open?: () => void): boolean {
         return false;
     }
     const unregister = switcher.registerHomeModule(buildOptions(open));
-    // 注册失败时宿主返回 no-op 句柄；用列表核验兜住，失败继续重试
+    // 注册失败时宿主返回 no-op 函数；用列表核验兜住，失败继续重试
     const listed = switcher.getHomeModules?.("desktop")?.some((m) => m.moduleId === MODULE_ID);
-    if (listed === false) { unregister.unregister?.(); return ensureRegister(open); }
+    if (listed === false) { unregister?.(); return ensureRegister(open); }
     return true;
 }
 // onload 调 ensureRegister()；addUnload 里 clearTimeout + unregister
 ```
 
-要点：①重试**必须有界**（到顶放弃并打日志），不要无限轮询拖慢宿主；②`registerHomeModule` 失败时返回的是 no-op 句柄而非异常，用 `getHomeModules()` 核验是否真的注册成功；③卸载时同时清定时器与注册，保证禁用/重载干净。
+要点：①重试**必须有界**（到顶放弃并打日志），不要无限轮询拖慢宿主；②`registerHomeModule` 失败时返回的是 no-op 函数而非异常，用 `getHomeModules()` 核验是否真的注册成功；③卸载时同时清定时器与注册，保证禁用/重载干净。
 
-当一个 provider 提供多个组件时，把一轮注册当作一个小事务处理：先注册全部定义，再用 `getHomeModules("desktop")` 核验全部 `moduleId`；缺任何一个就调用本轮已有注销句柄清理，并按同一退避序列重试。只有完整核验通过后才触发自己的 `onRegistered` 或把 provider 标记为 ready。注册返回值兼容函数句柄、带 `unregister()` 的对象和旧宿主的空值；空值只能归一化为幂等 no-op，不能在存在列表 API 时当作注册成功的证据。没有列表 API 的旧宿主只能接受“未知”结果，provider 不应据此宣称完成了可见性验证。
+当一个 provider 提供多个组件时，把一轮注册当作一个小事务处理：先注册全部定义，再用 `getHomeModules("desktop")` 核验全部 `moduleId`；缺任何一个就调用本轮已有注销句柄清理，并按同一退避序列重试。只有完整核验通过后才触发自己的 `onRegistered` 或把 provider 标记为 ready。当前宿主返回一个幂等函数；为兼容旧宿主，多组件模板也可归一化为带 `unregister()` 的对象或空值。空值只能归一化为 no-op，不能在存在列表 API 时当作注册成功的证据。没有列表 API 的旧宿主只能接受“未知”结果，provider 不应据此宣称完成了可见性验证。
 
 ## 字段说明
 
@@ -104,7 +104,7 @@ export function ensureRegister(open?: () => void): boolean {
 
 > **词汇边界（ADR 0101）**：`sizes` 仅接受上表七档词；S/M/L/X 等字母简写不适用于协议声明（它们只是设计文档的审查速记）。缺省与回退：未声明 `sizes` 视为 `["medium"]`；声明中非法值被宿主归一化安全丢弃，运行时回退 medium / 首个支持档。
 
-组件在不同型号下的 `read` 调用签名相同：`read(config, device, options)`，第三参 `options.size` 携带当前型号（如 `"xs"/"medium"`，未知为空串）。适配器可按尺寸裁剪条目数实现渐进披露（小尺寸少列）；不关心尺寸时忽略即可。列表内容超出门槛时面板在格子内滚动，无需自行适配高度。
+组件在不同型号下的 `read` 调用签名相同：`read(config, device, options)`，第三参 `options.size` 携带当前型号（如 `"xs"/"medium"`，未知为空串），`options.signal` 在切换、关闭或超时取消时可用。TypeScript 提供方可使用 `HomeModuleReadOptions` 类型；适配器可按尺寸裁剪条目数实现渐进披露（小尺寸少列）；不关心尺寸时忽略即可。列表内容超出门槛时面板在格子内滚动，无需自行适配高度。
 
 ## 跨表面布局（桌面 / 侧栏 / 手机端）
 
@@ -113,7 +113,7 @@ export function ensureRegister(open?: () => void): boolean {
 - **配置全局共享，布局按表面独立**：用户添加的组件实例（含 `configSchema` 配置）只保存一份；摆放位置按 `desktop` / `sidebar` / `mobile` 三份布局各自持久化（每表面最多 64 个实例条目）。用户在桌面摆好的布局不会影响手机端。
 - **`supportedDevices` 决定可出现表面**：组件只在声明的表面出现在商店与"添加组件"列表中；未声明 `mobile` 的组件在手机端完全不可见，其手机布局也不会存在。
 - **手机端单列全宽**：手机画布自动把每个组件强制为全宽单列堆叠（网格坐标 `x=0, w=12`，忽略拖拽位置），因此桌面端窄尺寸型号在手机端只是"变宽"，不会布局破碎。`sizes` 里声明的高/宽型号仍影响卡片高度。
-- **`device` 参数区分表面**：`read(config, device)` 的第二参为 `"desktop"` / `"sidebar"` / `"mobile"`，可据此裁剪内容（如手机端少列、侧栏精简）。侧栏宽度有限，建议同一组件在侧栏返回比桌面更少的条目。
+- **`device` 参数区分表面**：`read(config, device, options)` 的第二参为 `"desktop"` / `"sidebar"` / `"mobile"`，可据此裁剪内容（如手机端少列、侧栏精简）。侧栏宽度有限，建议同一组件在侧栏返回比桌面更少的条目。
 - **布局清理语义**：用户删除组件实例时，三个表面的布局条目同时清理；provider 卸载期间实例与布局**均保留**（见下文"生命周期与失效恢复"），重新注册后原布局原样恢复。
 - **外部组件侧栏可用性**：自带网络缓存的外部生活组件（天气/节假日/每日放送等）声明了 `["desktop", "sidebar"]`；第三方插件组件默认只在注册声明的表面上出现。
 
@@ -163,7 +163,7 @@ configSchema: [
 ],
 ```
 
-- 最多 8 个字段；`type` 支持 `text` / `number` / `select` / `notebook` / `date` / `document`；日期字段使用严格的 `YYYY-MM-DD`，文档字段只接受思源 block ID；
+- 面板表单最多 12 个字段；`type` 支持 `text` / `number` / `select` / `notebook` / `date` / `document` / `favorite-group` / `textarea` / `secret` / `database` / `database-columns`。Agent 只读发现最多投影 8 个字段；日期字段使用严格的 `YYYY-MM-DD`，文档与数据库字段只接受思源 block ID；
 - 用户配置持久化在面板实例上，`read(config)` 每次都会收到最新值。
 
 ### 4. `refreshOn`（自动刷新时机）
@@ -186,7 +186,7 @@ refreshOn: ["switch-protyle", "loaded-protyle", "destroy-protyle"],
 
 - 省略 `moduleId` 可先发现当前端可查询组件的 `moduleId`、标题、描述和尺寸型号；
 - 传入 `moduleId` 可读取该组件的有界快照；
-- 可选传入 `config` 查询配置型组件，配置最多 16 个字段，每个字段仅接受有界字符串、数字或布尔值；
+- 可选传入 `config` 查询配置型组件，Agent 最多读取 8 个字段，每个字段仅接受有界字符串、数字或布尔值；
 - 发现和读取均为只读操作，不会修改笔记、页签或组件配置持久化状态。
 
 组件注册时声明的 `description`、`sizes`、`protocolVersion`、`configSchema` 和 `refreshOn` 会经过宿主归一化后用于商店和 Agent 发现，非法或超限字段会被安全丢弃。

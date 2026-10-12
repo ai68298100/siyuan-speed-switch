@@ -41,3 +41,27 @@ test("组件商店桌面全屏并在目录选择后直接显示实时预览", as
         await expect(store.locator(".sw-home-store__live-preview .sw-store-preview")).toHaveAttribute("aria-busy", "false", {timeout: 10000});
     }
 });
+
+test("组件商店目录项首次按 Enter 会选中并打开对应详情", async ({page}) => {
+    await openApp(page);
+    await page.evaluate(() => {
+        const plugin = window.siyuan.ws.app.plugins.find((item) => item?.name === "siyuan-speed-switch");
+        plugin.openPlatformSurface("workbench");
+    });
+    await page.locator(".sw-home").waitFor({state: "visible"});
+    await page.locator(".sw-home__add").click();
+
+    const store = page.locator(".sw-home-store");
+    const cards = store.locator(".sw-home-store__catalog .sw-home-store__card[data-module-id]");
+    await expect(cards.nth(1)).toBeVisible({timeout: 10000});
+    const target = cards.nth(1);
+    const targetId = await target.getAttribute("data-module-id");
+    const targetTitle = await target.locator(".sw-home-store__card-head strong").innerText();
+    await target.focus();
+    await page.keyboard.press("Enter");
+
+    await expect(store).toHaveAttribute("data-selected-module", targetId || "");
+    await expect(store.locator(".sw-home-store__detail .sw-home-store__detail-head strong"))
+        .toContainText(targetTitle.trim());
+    await expect(store.locator(".sw-home-store__live-preview")).toHaveCount(1);
+});

@@ -1,15 +1,52 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.47.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.47.1-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **当前稳定版：v0.47.0（2026-10-11）**<br>
+> **最近正式版：v0.47.0（2026-10-11）** · **本地候选版：v0.47.1（本地门禁已通过，尚未发布）**<br>
 > [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.0) · [发布前检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡、小驴常用为内测版，功能仍在持续开发与验证中；欢迎加入 QQ 群 **871707735** 反馈 Bug、提交需求。
 
-## 本次更新（v0.47.0 · 2026-10-11）
+## 本次更新（v0.47.1 · 2026-10-12）
+
+本地候选版继续把 R5 顶栏原型落到生产界面，把工作台全组件不可用态改为完整恢复面板，并收口键盘选择、重试回焦、冲突回焦和预览播报。
+
+新增：共享顶栏品牌识别层
+
+- 增加主题色品牌标记、产品名和“工作上下文平台”副标题，桌面、侧栏和移动端使用同一套身份层级。
+- 中英文界面使用对应本地化文案。
+
+优化：窄容器顶栏层级
+
+- 560px 容器隐藏副标题并收紧标记，保留导航、设置和关闭空间。
+- 保留现有表面路由、当前态、Esc 关闭和焦点恢复语义。
+
+新增：工作台不可用组件恢复入口
+
+- 已保存布局中的组件全部暂不可用时，保留原布局并说明原因，在空态内提供直达组件商店的操作。
+- 失效占位进入主体滚动网格；恢复面板提供添加组件和编辑清理。
+
+优化：组件商店键盘选择反馈
+
+- 目录卡首次通过 Enter/空格激活时先打开对应详情；再次激活才执行详情主动作，和鼠标选择路径一致。
+
+修复：焦点与预览播报连续性
+
+- 工作台重试、片段冲突关闭/重载和保存副本后恢复编辑器焦点；第一面板预览完成状态提供可读播报。
+
+修复：移动端悬浮球快滑判定
+
+- 修复首次移动越过触摸斜坡后被误当拖动；快滑恢复原停靠位置并消费合成点击，慢拖和动作拖放保持原语义。
+
+优化：共享排版刻度继续收敛
+
+- 将 298 条间距、17 条字号、34 条行高和 134 条字重声明迁移到已有共享变量，保留原数值回退，便于后续统一调整。
+- 覆盖率分别由 29.73%/80.27%/5.98%/7.98% 提升到 55.94%/84.86%/35.04%/90.18%；双主题和多宽度 Chromium 30 个场景、480 个元素的计算样式与几何差异仍为 0。
+- expanded CSS 增加 12,238 bytes，本批只改善维护一致性，不宣称加载或包体性能收益。
+
+## 上一版本更新（v0.47.0 · 2026-10-11）
 
 本版参考小驴闪卡 R54、小驴打卡以及小驴人脉/小驴管家的重构方向，统一三面板的画布、工作面和窄容器体验。
 
@@ -31,6 +68,9 @@
 
 - 修正不同历史样式叠加造成的卡片材质、面板间距和移动/窄容器主滚动区不一致问题。
 
+<details>
+<summary>较早版本更新（v0.46.9 及更早，点击展开）</summary>
+
 ## 上一版本更新（v0.46.9 · 2026-10-11）
 
 本版完成真实内核 E2E 收口，修复短窗口预览遮挡、手机设置窄屏触控与索引时序误报。
@@ -49,9 +89,6 @@
 
 - 创建文档后等待思源搜索索引就绪，避免把宿主异步延迟误报为插件无结果。
 - 保留旧快照的刷新失败显示为 stale，并保留原内容和 Retry 操作。
-
-<details>
-<summary>历史更新（v0.46.8 及更早，点击展开）</summary>
 
 ## 上一版本更新（v0.46.8 · 2026-10-10）
 
@@ -406,12 +443,12 @@
 | 编排层 | `registerSwitcherRefresh` / SearchSession / 动作执行器 | 视图刷新广播、独立异步状态、共享命令路由 |
 | 导航服务层 | 页签 / 收藏 / 搜索 / 快捷入口 / 日记 / 面板 | 排序、去重、批量操作和渐进式功能组合 |
 | 思源集成层 | `getAllTabs` / MobileTabs / 内核 API / Dock / 插件命令 | 统一封装宿主能力和第三方插件边界 |
-| 持久化层 | `loadData` / `saveDataDebounced` / `storage-migration.js` | 15 个校验后的 storage key（12 个托管迁移 + 2 个检视型 + 1 个版本戳）、防抖写入、卸载前 flush、只读迁移演练、配置导入导出 |
+| 持久化层 | `loadData` / `saveDataDebounced` / `storage-migration.js` | 18 个校验后的 storage key（15 个已处理迁移 + 2 个检视型 + 1 个版本戳）、防抖写入、卸载前 flush、只读迁移演练、配置导入导出 |
 | 基础设施层 | `util.js` / `search-session.js` / `quick-actions.js` / 类型与常量 | 零宿主依赖纯函数、类型、边界值、日志和自动化测试 |
 
 **性能隔离**：已开页签切换只依赖本地状态；全库请求、缩略图补全和第三方动作都是可失败的附加层。每个搜索界面拥有独立请求序号、取消控制器、定时器和缓存，销毁时集中释放。
 
-**数据边界**：15 个 storage key 分项保存（清单见 `src/constants.ts` 的 `PERSISTENT_KEYS`，逐 key 迁移与容量边界见 [`docs/storage-compatibility-matrix.md`](docs/storage-compatibility-matrix.md)）。收藏最多 512 条、置顶最多 64 条、收藏分组最多 64 个；加载和写入都会去重、裁剪并安全回写。可重新查询的搜索结果和临时界面状态不写入插件数据。
+**数据边界**：18 个 storage key 分项保存（清单见 `src/constants.ts` 的 `PERSISTENT_KEYS`，逐 key 迁移与容量边界见 [`docs/storage-compatibility-matrix.md`](docs/storage-compatibility-matrix.md)）。收藏最多 512 条、置顶最多 64 条、收藏分组最多 64 个；加载和写入都会去重、裁剪并安全回写。可重新查询的搜索结果和临时界面状态不写入插件数据。
 
 **组件面板开放协议**：第三方插件可以通过 `registerHomeModule` 注册只读、按端隔离的组件，出现在组件面板的组件商店里（支持尺寸型号声明、描述、失败跳转回调）。完整接入指南见 [`docs/widget-protocol.md`](docs/widget-protocol.md)。插件不会自动改变默认切换器首页，也不会保存外部函数引用；调用方卸载时应执行注册返回的清理函数和控制器 `dispose()`。
 
@@ -517,7 +554,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.47.0`（2026-10-11；本版完成 R54 三面板视觉适配与工作面重构；Release 资产已同步至 GitHub）。
+当前版本为 `v0.47.1`（本地候选，自动发布门禁已通过但尚未发布；包含 R5 品牌识别、工作台不可用态恢复面板和组件商店键盘选择反馈）；GitHub 最近正式版仍为 `v0.47.0`。
 
 <details>
 <summary>历史更新日志（点击展开）</summary>
@@ -707,28 +744,7 @@ pnpm verify:release
 - **性能基准升硬门禁**：四类基准连续三版稳定后正式升格——过滤基准改 CPU 时间度量并无条件断言（15/48/20ms 预算），大库聚合 40ms 病理线在 CI 一并强制执行；病理回退在任何环境精确拦截。
 - **存储迁移矩阵全面演练**：12 个托管 key × 5 类损坏输入确定性降级且过消毒不动点；v0.23.5 老载荷（无版本戳）升级模拟逐键存活。
 
-### v0.26.0（2026-09-21）
-
-- **发布合规（F7 收口）**：`plugin.json` 新增 `publish.resources`，对包内 4 个 docs 资产逐文件声明（适配上游发布模式资源新规）；新增包资源契约门禁，任何非标准随包文件未声明即失败。
-- **文档对齐**：英文 README 与中文版 15 章节 1:1 对齐（组件目录表、Agent 能力表、设置表同步），完整英文历史迁移至 `docs/CHANGELOG.en-US.md`；中文 README 修复重复行并补全目录。
-- **质量门禁**：大库聚合基准改 CPU 时间度量并重校准为 40ms 病理线（满载跑全量套件不再假红）；新增 `aggregateSearchResults` 复杂度倍增门禁；商店分组折叠 aria 契约与零匹配空态行为验证（专项 B4 收口）。
-- **体积**：package.zip 376583 bytes（英文 README 精简约 6.5 KiB），512 KiB 归档上限内余量充足。
-
-### v0.25.0（2026-09-20）
-
-- **本地页签过滤查询语法**：空格多词 AND、`-排除词`、`"短语"` 整体匹配；排除词同时作用于聚合后的全库卡片。
-- **世界时钟离线城市表扩至 217 城**：`cities` 直接支持中文名（`cities` 填「上海,东京」即可），配置表单原生 datalist 自动补全。
-- **可访问性**：reduced-motion 覆盖设置弹窗与移动切换器根容器；城市表全量 IANA 合法性门禁。
-
-### v0.24.0（2026-09-20）
-
-- **智能体执行链上线**：新增 `workspace-plan`（只读生成 ≤8 步动作计划）与 `execute-workspace-plan`（整份计划一次宿主确认后按序执行并返回回执）双能力；确认、超时与取消由思源宿主确认卡承担（`actionEffects` 声明），自建审批管线 6 模块整体撤除。
-- **受控动作灰度开关**：设置新增「智能体受控动作」总开关，关闭后受控写入/批量动作与执行链一并停用，只读能力保留。
-- **存储版本治理**：持久化 key 扩至 15 个——新增存储版本戳（识别降级/未知版本）与 RSS 已读状态（有界 200 条）；RSS 订阅组件新增「只看未读」。
-- **组件二轮增量**：写作打卡支持每周 n/m 口径与豁免休息日；笔记统计可选写作强度分；近期写作活跃度新增年历网格视图（53 周分页 + 色阶图例）。
-- **生态与配置**：DailyHot 支持基址+路由选择器（经同一 URL 白名单校验）；世界时钟城市字段直接支持中文名（内置 110 城离线表）。
-- **兼容与工程**：最低版本升至思源 3.8.0（ADR 0064）；新增四类性能基准、可访问性基线与对比度双主题采样门禁；ActivityWatch 支持桶选择。
-
+完整历史已迁移至 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)；英文版本见 [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md)。
 </details>
 
 ## 致谢

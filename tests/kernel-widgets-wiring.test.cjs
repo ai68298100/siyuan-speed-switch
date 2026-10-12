@@ -1086,8 +1086,8 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
         'kbd hints slot must right-align in the context bar');
     assert.ok(declaresIn(shell, '.sw-platform-seg', /border-radius:\s*var\(--sw-radius-control, 10px\)/),
         'segmented control container must exist');
-    assert.ok(declaresIn(shell, '.sw-platform-seg__item.is-active', /font-weight:\s*600/),
-        'segmented active item must be styled');
+    assert.ok(declaresIn(shell, '.sw-platform-seg__item.is-active', /font-weight:\s*var\(--sw-weight-semibold,\s*600\)/),
+        'segmented active item must use the shared semibold token with a 600 fallback');
     assert.ok(declaresIn(shell, '.sw-platform-action--pill', /border-radius:\s*var\(--sw-platform-radius-pill\)/),
         'pill action modifier must exist');
     assert.ok(declaresIn(shell, '.sw-platform-action--soft', /background:\s*var\(--sw-platform-accent-soft\)/),
@@ -1254,8 +1254,8 @@ test('quick capture segmented targets, pill save and honest kbd hints (T-6875 RZ
     // （修复真实缺陷：该类此前从无任何 CSS 规则，激活目标不可辨识）。
     assert.ok(declaresIn(captureScss, '.sw-quick-capture__targets', /border-radius:\s*var\(--sw-radius-control, 10px\)/),
         'targets container must render as a segmented control');
-    assert.ok(declaresIn(captureScss, '.sw-quick-capture__targets .sw__target--active', /font-weight:\s*600/),
-        'the active target must be visually distinct');
+    assert.ok(declaresIn(captureScss, '.sw-quick-capture__targets .sw__target--active', /font-weight:\s*var\(--sw-weight-semibold,\s*600\)/),
+        'the active target must use the shared semibold token and remain visually distinct');
     // 保存按钮：专用类承载主色胶囊皮肤（保留既有 T-6818 结构锚点）。
     assert.match(indexSource, /save\.className = "b3-button b3-button--outline sw-quick-capture__save";/,
         'the save button must carry its dedicated skin class');
@@ -1337,7 +1337,7 @@ test('mobile stacked quick-action bar and converged sheet language (T-6876 RZ-6)
         'mobile quick actions must stack icon over label');
     const stacked = mobileBar.slice(mobileBar.indexOf('flex-direction: column') - 200, mobileBar.indexOf('flex-direction: column') + 700);
     assert.match(stacked, /min-height:\s*44px/, 'stacked buttons must keep the 44px touch target');
-    assert.match(stacked, /font-size:\s*10px/, 'stacked labels must shrink to the caption scale');
+    assert.match(stacked, /font-size:\s*var\(--sw-font-2xs,\s*10px\)/, 'stacked labels must use the caption token and keep its 10px fallback');
     // 收敛项：移动 sheet 的抓手/顶圆角/安全区与移动图标边界既有实现已覆盖，锁定防回退。
     assert.ok(declaresIn(readSourceText(path.join(__dirname, '..', 'src', 'styles', '_05-settings-widgets.scss')),
         '.sw__mobile-sheet', /border-radius:\s*16px 16px 0 0/), 'sheets keep the 16px top radius');

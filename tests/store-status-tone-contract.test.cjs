@@ -1,4 +1,4 @@
-const {readSourceText}=require('./source-scan.cjs');const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const root=path.resolve(__dirname,'..');const source=readSourceText(path.join(root,'src','index.ts'));const storeUiSource=readSourceText(path.join(root,'src','home-store-ui.ts'));const css=readSourceText(path.join(root,'src','index.scss'));
+const {readSourceText}=require('./source-scan.cjs');const {declaresIn}=require('./css-block-scan.cjs');const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const root=path.resolve(__dirname,'..');const source=readSourceText(path.join(root,'src','index.ts'));const storeUiSource=readSourceText(path.join(root,'src','home-store-ui.ts'));const css=readSourceText(path.join(root,'src','index.scss'));const base={topLevel: true};
 test('card status tone dataset wired',()=>assert.match(storeUiSource,/card\.dataset\.statusTone = resolveHomeStoreStatusTone/));
 test('card integration tone dataset wired',()=>assert.match(storeUiSource,/card\.dataset\.integrationTone = resolveHomeStoreIntegrationTone/));
 test('status tone model imported',()=>assert.match(source,/resolveHomeStoreStatusTone/));
@@ -12,9 +12,9 @@ test('offline chip emphasis',()=>assert.match(css,/data-integration-tone="offlin
 test('success uses top border',()=>assert.match(css,/status-tone="success"[^}]*border-top-color/));
 test('warning uses top border',()=>assert.match(css,/status-tone="warning"[^}]*border-top-color/));
 test('info uses top border',()=>assert.match(css,/status-tone="info"[^}]*border-top-color/));
-test('network chip is bold',()=>assert.match(css,/is-online \{ font-weight: 600/));
-test('local chip is bold',()=>assert.match(css,/is-local \{ font-weight: 600/));
-test('offline chip is bold',()=>assert.match(css,/is-offline \{ font-weight: 600/));
+test('network chip is bold',()=>assert.ok(declaresIn(css,'.sw-home-store__card[data-integration-tone="network"] .sw-home-store__source-chip.is-online',/font-weight:\s*var\(--sw-weight-semibold,\s*600\)/,base)));
+test('local chip is bold',()=>assert.ok(declaresIn(css,'.sw-home-store__card[data-integration-tone="local"] .sw-home-store__source-chip.is-local',/font-weight:\s*var\(--sw-weight-semibold,\s*600\)/,base)));
+test('offline chip is bold',()=>assert.ok(declaresIn(css,'.sw-home-store__card[data-integration-tone="offline"] .sw-home-store__source-chip.is-offline',/font-weight:\s*var\(--sw-weight-semibold,\s*600\)/,base)));
 test('dataset status set after added',()=>assert.match(storeUiSource,/card\.dataset\.added = added \? "true" : "false";\s*card\.dataset\.statusTone/));
 test('dataset integration set after status',()=>assert.match(storeUiSource,/statusTone = resolveHomeStoreStatusTone\(card\.dataset\);\s*card\.dataset\.integrationTone/));
 test('status tone remains data attribute',()=>assert.match(storeUiSource,/dataset\.statusTone/));

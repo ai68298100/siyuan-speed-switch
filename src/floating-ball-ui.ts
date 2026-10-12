@@ -664,17 +664,35 @@ export class FloatingBallUi implements FloatingBallUiController {
         };
         const onPointerUp = (event: PointerEvent) => {
             if (this.activePointerId !== event.pointerId) return;
+            const wasDragging = this.state === "dragging" || this.state === "targeting";
+            // A mobile quick swipe crosses the drag slop on its first move, so
+            // the state is already `dragging` by pointerup. Resolve the drop
+            // target before classifying it: an intentional action target must
+            // win over the directional shortcut, while a fast movement that
+            // never targets an action can still be recognized as a flick.
+            const dropTargetIndex = wasDragging
+                ? hitTestFloatingBallActions(this.dragTargets, event.clientX, event.clientY, 8)
+                : -1;
             // P6-B/T-6886：docked 状态下快滑 = 四向动作分发（速度+方向双判定）。
             // 触发后抑制合成 click，避免再打开切换器。
-            if (this.surface === "mobile" && this.state === "docked" && this.flingSamples.length >= 2) {
+            // The first move necessarily enters `dragging`; keep the original
+            // docked-only meaning by excluding an actual action drop, not by
+            // requiring the state to remain docked until pointerup.
+            if (this.surface === "mobile"
+                && this.flingSamples.length >= 2
+                && (!wasDragging || dropTargetIndex < 0)) {
                 const first = this.flingSamples[0];
                 const last = this.flingSamples[this.flingSamples.length - 1];
                 const dt = Math.max(1, last.t - first.t);
                 const direction = classifyFlickDirection(last.x - first.x, last.y - first.y, dt);
                 if (direction) {
                     this.flingSamples = [];
+                    // The first move may already have updated the provisional
+                    // drag position before the flick is classified. Restore
+                    // the parked position so a shortcut never leaves a
+                    // half-applied reposition behind.
+                    this.cancelPointer(true);
                     this.suppressClick = true;
-                    this.cancelPointer(false);
                     if (direction === "up" && !this.options.onFlickAction) {
                         this.setState("more");
                         this.options.onOpenMore?.();
@@ -689,11 +707,9 @@ export class FloatingBallUi implements FloatingBallUiController {
                 this.cancelPointer(true);
                 return;
             }
-            const wasDragging = this.state === "dragging" || this.state === "targeting";
             let target: HTMLButtonElement | undefined;
             if (wasDragging) {
-                const index = hitTestFloatingBallActions(this.dragTargets, event.clientX, event.clientY, 8);
-                target = this.dragButtons[index];
+                target = this.dragButtons[dropTargetIndex];
                 this.position = target ? {...this.positionAtPointerStart} : this.positionFromPointer(event.clientX, event.clientY);
                 event.preventDefault();
             }

@@ -232,7 +232,32 @@ export async function stopKernel({client, child}, lines) {
 }
 
 export function kernelErrorLines(lines) {
-    return (lines || []).filter((line) => /^\s*(E |\[E\]|PANIC|F \[)/.test(line) && !/lock: another process is using|workspace is being locked/i.test(line));
+    const source = lines || [];
+    const ignored = new Set();
+    let exitSeen = false;
+    let closingHttp = false;
+    let closingErrors = [];
+    // T-7245: cmux logs server closure at E level. Ignore only the complete, ordered
+    // graceful-exit sequence; identical text during normal operation remains an error.
+    for (let index = 0; index < source.length; index++) {
+        const line = source[index];
+        if (/^\s*I \d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} conf\.go:\d+: exited kernel\s*$/.test(line)) {
+            exitSeen = true;
+            closingHttp = false;
+            closingErrors = [];
+        } else if (/^\s*I \d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} operation_watchdog\.go:\d+: operation \[exit kernel servers\], stage \[close HTTP server\] started\s*$/.test(line)) {
+            closingHttp = exitSeen;
+            closingErrors = [];
+        } else if (/^\s*I \d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} operation_watchdog\.go:\d+: operation \[exit kernel servers\], stage \[close HTTP server\] finished(?:, elapsed \[[^\]\r\n]+\], total \[[^\]\r\n]+\])?\s*$/.test(line)) {
+            if (closingHttp) closingErrors.forEach((errorIndex) => ignored.add(errorIndex));
+            exitSeen = false;
+            closingHttp = false;
+            closingErrors = [];
+        } else if (closingHttp && /^\s*E \d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} cmux\.go:\d+: multiplexed HTTPS server error: mux: server closed\s*$/.test(line)) {
+            closingErrors.push(index);
+        }
+    }
+    return source.filter((line, index) => !ignored.has(index) && /^\s*(E |\[E\]|PANIC|F \[)/.test(line) && !/lock: another process is using|workspace is being locked/i.test(line));
 }
 
 /**

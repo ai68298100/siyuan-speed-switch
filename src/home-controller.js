@@ -171,8 +171,22 @@ function createHomeModuleController(options = {}) {
             pendingScrollTop = null;
         }
         if (pendingFocusKey) {
-            const focusTarget = Array.from(element.querySelectorAll("[data-focus-key]"))
-                .find((candidate) => candidate.dataset.focusKey === pendingFocusKey);
+            let focusTarget = Array.from(element.querySelectorAll("[data-focus-key]"))
+                .find((candidate) => candidate.dataset.focusKey === pendingFocusKey && candidate.disabled !== true);
+            // Retry is rendered only in the error view, so the same key cannot
+            // survive a successful replacement. Move focus into the recovered
+            // content instead of leaving keyboard users on document.body.
+            if (!focusTarget && pendingFocusKey === "retry" && view.status === "ready") {
+                focusTarget = element.querySelector(
+                    ".sw__home-module-item-action:not([disabled]), "
+                    + ".sw__home-media-action:not([disabled]), "
+                    + ".sw__home-tag-tree-action:not([disabled])",
+                );
+                if (!focusTarget) {
+                    element.tabIndex = -1;
+                    focusTarget = element;
+                }
+            }
             if (focusTarget && typeof focusTarget.focus === "function") {
                 try {
                     focusTarget.focus({preventScroll: true});

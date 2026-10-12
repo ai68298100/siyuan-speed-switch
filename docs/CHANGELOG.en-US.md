@@ -5,6 +5,16 @@
 
 ## Changelog (full history)
 
+### v0.47.1 (2026-10-12)
+
+- **Added shared top-bar brand identity**: brought the R5 theme-colored mark, product name, and localized platform subtitle to all three production surfaces; compact containers hide the subtitle and reduce the mark size.
+- **Added an unavailable-widget recovery surface**: when all saved widgets are unavailable, the layout is preserved with clear status, direct store and edit-to-remove actions, and unavailable placeholders in the main scroll area.
+- **Improved widget-store keyboard selection**: the first Enter/Space activation selects and opens the matching detail; the second invokes its primary action, matching pointer interaction.
+- **Improved shared typography tiers**: migrated 298 spacing, 17 font-size, 34 line-height, and 134 font-weight declarations to existing tokens while retaining fallbacks; coverage moved from 29.73%/80.27%/5.98%/7.98% to 55.94%/84.86%/35.04%/90.18%.
+- **Fixed mobile floating-ball flick classification**: the first move crossing touch slop still dispatches the directional action, restores the parked position, and consumes the synthetic click; slow drags and action drops keep their semantics.
+- **Fixed focus continuity and preview announcements**: retry, snippet-conflict close/reload, and copy-success paths return focus to the editor; the first-panel preview announces its ready state without making the full body a live region.
+- **Verification**: full suite **8666/8666**; typography-token, mobile-flick, and negative contract probes passed; 30 Chromium scenarios across themes and widths measured 480 elements with **zero** computed-style or geometry differences; TypeScript, reproducible build, and all release gates passed. Expanded CSS grew by 12,238 bytes, so this batch makes no performance claim.
+
 ### v0.47.0 (2026-10-11)
 
 - **Added an R54 three-surface visual adapter**: brought the R54-inspired canvas, white work surfaces, hairline borders, radii, spacing, and restrained elevation to the switcher, workbench, widget store, and snippet studio, informed by the other Little Lv plugins.

@@ -1547,6 +1547,11 @@ function setDocPreviewStatus(pane: HTMLElement, state: "loading" | "ready" | "er
         header.querySelector(".sw-platform-status")?.remove();
         const badge = createPlatformStatus(header.ownerDocument || document, state, label);
         badge.classList.add("sw__doc-preview-status");
+        // 正文会在同一窗格内异步替换，状态徽标提供短小且唯一的播报回执；
+        // 正文保持普通内容区，避免读屏重复朗读整篇预览。
+        badge.setAttribute("role", "status");
+        badge.setAttribute("aria-live", "polite");
+        badge.setAttribute("aria-atomic", "true");
         header.appendChild(badge);
     }
 

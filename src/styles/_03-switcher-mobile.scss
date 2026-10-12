@@ -6,7 +6,7 @@
     }
 
     .sw-journal-prompt__sel {
-        margin-top: 4px;
+        margin-top: var(--sw-space-xs, 4px);
     }
 }
 
@@ -109,7 +109,7 @@
         display: flex;
         flex-wrap: nowrap;
         align-items: center;
-        gap: 8px;
+        gap: var(--sw-space-md, 8px);
         min-height: 52px;
         box-sizing: border-box;
         padding: 10px 12px;
@@ -202,13 +202,13 @@
                         justify-content: center;
                         min-width: 13px;
                         height: 13px;
-                        padding: 0 4px;
+                        padding: 0 var(--sw-space-xs, 4px);
                         border: 2px solid var(--b3-theme-surface);
                         border-radius: 999px;
                         background: var(--b3-theme-primary);
                         color: var(--b3-theme-on-primary);
-                        font-size: 10px;
-                        font-weight: 600;
+                        font-size: var(--sw-font-2xs, 10px);
+                        font-weight: var(--sw-weight-semibold, 600);
                         line-height: 1;
                         pointer-events: none;
                     }
@@ -226,12 +226,12 @@
             flex: 0 1 auto;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: var(--sw-space-sm, 6px);
             min-width: 0;
 
             .sw__select-label {
                 flex: none;
-                font-size: 12px;
+                font-size: var(--sw-font-sm, 12px);
                 color: var(--b3-theme-on-surface-light);
                 white-space: nowrap;
             }
@@ -256,16 +256,16 @@
             .sw__fav-trigger {
                 display: flex;
                 align-items: center;
-                gap: 4px;
+                gap: var(--sw-space-xs, 4px);
                 height: 32px;
-                padding: 0 8px;
+                padding: 0 var(--sw-space-md, 8px);
                 min-width: 96px;
                 border: 1px solid var(--b3-border-color);
                 background: var(--sw-control-bg);
                 color: var(--b3-theme-on-background);
                 border-radius: var(--sw-radius-control);
                 cursor: pointer;
-                font-size: 12px;
+                font-size: var(--sw-font-sm, 12px);
 
                 svg {
                     width: 13px;
@@ -283,11 +283,11 @@
                 .sw__fav-badge {
                     flex: none;
                     min-width: 15px;
-                    padding: 0 4px;
+                    padding: 0 var(--sw-space-xs, 4px);
                     border-radius: 8px;
                     background: var(--b3-theme-primary);
                     color: var(--b3-theme-on-primary);
-                    font-size: 10px;
+                    font-size: var(--sw-font-2xs, 10px);
                     line-height: 15px;
                     text-align: center;
                 }
@@ -314,7 +314,7 @@
                 max-height: min(60dvh, 480px);
                 min-height: 200px;
                 overflow: auto;
-                padding: 4px;
+                padding: var(--sw-space-xs, 4px);
                 background: var(--b3-theme-surface);
                 border: 1px solid var(--b3-border-color);
                 border-radius: 8px;
@@ -325,7 +325,7 @@
                     padding: 18px 10px;
                     border-radius: calc(var(--sw-radius-card) - 2px);
                     background: color-mix(in srgb, var(--b3-theme-background) 44%, transparent);
-                    font-size: 12px;
+                    font-size: var(--sw-font-sm, 12px);
                     color: var(--b3-theme-on-surface-light);
                     text-align: center;
                 }
@@ -337,15 +337,15 @@
                 .sw__fav-group-head {
                     display: flex;
                     align-items: center;
-                    gap: 6px;
+                    gap: var(--sw-space-sm, 6px);
                     width: 100%;
-                    padding: 6px 8px;
+                    padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
                     border: none;
                     background: transparent;
                     border-radius: 4px;
                     color: var(--b3-theme-on-surface);
-                    font-size: 12px;
-                    font-weight: 600;
+                    font-size: var(--sw-font-sm, 12px);
+                    font-weight: var(--sw-weight-semibold, 600);
                     cursor: pointer;
 
                     .sw__fav-arrow {
@@ -366,12 +366,12 @@
 
                     .sw__fav-count {
                         flex: none;
-                        font-size: 10px;
-                        font-weight: 400;
+                        font-size: var(--sw-font-2xs, 10px);
+                        font-weight: var(--sw-weight-regular, 400);
                         color: var(--b3-theme-on-surface-light);
                         background: var(--b3-theme-surface-lighter, var(--b3-theme-background));
                         border-radius: 8px;
-                        padding: 0 6px;
+                        padding: 0 var(--sw-space-sm, 6px);
                         line-height: 15px;
                     }
 
@@ -394,14 +394,14 @@
                 .sw__fav-item {
                     display: flex;
                     align-items: center;
-                    gap: 6px;
+                    gap: var(--sw-space-sm, 6px);
                     width: 100%;
-                    padding: 6px 8px 6px 24px;
+                    padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px) var(--sw-space-sm, 6px) var(--sw-space-2xl, 24px);
                     border: none;
                     background: transparent;
                     border-radius: 4px;
                     color: var(--b3-theme-on-background);
-                    font-size: 12px;
+                    font-size: var(--sw-font-sm, 12px);
                     cursor: pointer;
                     text-align: left;
 
@@ -432,7 +432,7 @@
 
                 // 无分组时的平铺列表：不缩进
                 .sw__fav-items--flat .sw__fav-item {
-                    padding-left: 8px;
+                    padding-left: var(--sw-space-md, 8px);
                 }
 
                 // 折叠状态：隐藏组内项，箭头转向
@@ -551,7 +551,7 @@
 
         .sw__dock-item {
             justify-content: center;
-            padding: 8px 0;
+            padding: var(--sw-space-md, 8px) 0;
             border-radius: 6px;
         }
 
@@ -561,7 +561,7 @@
     }
 
     .sw__dock-label {
-        margin: 0 0 6px;
+        margin: 0 0 var(--sw-space-sm, 6px);
         font-size: var(--sw-font-xs, 11px);
         letter-spacing: 0.05em;
         color: var(--b3-theme-on-surface-light);
@@ -570,14 +570,14 @@
     .sw__dock-item {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--sw-space-md, 8px);
         width: 100%;
-        padding: 6px 6px;
+        padding: var(--sw-space-sm, 6px) var(--sw-space-sm, 6px);
         border: none;
         background: transparent;
         color: var(--b3-theme-on-background);
-        font-size: 13px;
-        line-height: 1.4;
+        font-size: var(--sw-font-md, 13px);
+        line-height: var(--sw-leading-ui, 1.4);
         text-align: left;
         cursor: pointer;
         transition: color $sw-dur-fast;
@@ -615,8 +615,8 @@
             background: var(--b3-theme-surface);
             box-shadow: var(--b3-dialog-shadow);
             color: var(--b3-theme-on-background);
-            font-size: 12px;
-            line-height: 1.4;
+            font-size: var(--sw-font-sm, 12px);
+            line-height: var(--sw-leading-ui, 1.4);
             white-space: nowrap;
             pointer-events: none;
             z-index: 10;
@@ -712,25 +712,25 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
         min-height: 132px;
         padding: 48px 16px;
         border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
         border-radius: var(--sw-radius-card);
         background: color-mix(in srgb, var(--b3-theme-surface) 72%, var(--b3-theme-background));
-        font-size: 13px;
+        font-size: var(--sw-font-md, 13px);
         color: var(--b3-theme-on-surface-light);
         text-align: center;
 
-        .sw__empty-message { display: grid; gap: 6px; }
+        .sw__empty-message { display: grid; gap: var(--sw-space-sm, 6px); }
 
         .sw__empty-title {
-            font-weight: 600;
+            font-weight: var(--sw-weight-semibold, 600);
             color: var(--b3-theme-on-surface);
         }
 
         .sw__empty-sub {
-            font-size: 12px;
+            font-size: var(--sw-font-sm, 12px);
             color: var(--b3-theme-on-surface-light);
             opacity: 0.8;
         }
@@ -745,16 +745,16 @@
     .sw__group-header {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
         width: 100%;
-        margin: 0 0 8px;
-        padding: 4px 6px;
+        margin: 0 0 var(--sw-space-md, 8px);
+        padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
         border: none;
         border-radius: 8px;
         background: transparent;
         color: var(--b3-theme-on-surface);
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--sw-font-sm, 12px);
+        font-weight: var(--sw-weight-semibold, 600);
         text-align: left;
         cursor: pointer;
         transition: background-color $sw-dur-fast;
@@ -790,12 +790,12 @@
         .sw__group-count {
             flex: none;
             min-width: 20px;
-            padding: 0 6px;
+            padding: 0 var(--sw-space-sm, 6px);
             border-radius: 8px;
             background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
             color: var(--b3-theme-on-surface-light);
             font-size: var(--sw-font-xs, 11px);
-            font-weight: 500;
+            font-weight: var(--sw-weight-medium, 500);
             line-height: 18px;
             text-align: center;
         }
@@ -808,7 +808,7 @@
     .sw__window-label {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--sw-space-md, 8px);
         margin: 4px 2px 8px;
         font-size: var(--sw-font-xs, 11px);
         letter-spacing: 0.05em;
@@ -818,8 +818,8 @@
             min-width: 0;
             overflow: hidden;
             color: var(--b3-theme-on-surface-light);
-            font-size: 11px;
-            font-weight: 400;
+            font-size: var(--sw-font-xs, 11px);
+            font-weight: var(--sw-weight-regular, 400);
             letter-spacing: 0;
             line-height: 1.35;
             text-overflow: ellipsis;
@@ -840,18 +840,18 @@
     .sw__search-chips {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
         margin: 8px 2px 4px;
     }
 
     .sw__search-chip {
         min-height: 30px;
-        padding: 4px 12px;
+        padding: var(--sw-space-xs, 4px) var(--sw-space-lg, 12px);
         border: 1px solid var(--b3-border-color);
         border-radius: 999px;
         background: var(--b3-theme-surface);
         color: var(--b3-theme-on-background);
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
         cursor: pointer;
 
         &:hover { border-color: color-mix(in srgb, var(--b3-theme-primary) 36%, var(--b3-border-color)); }
@@ -881,13 +881,13 @@
         display: flex;
         flex-direction: column;
         gap: 10px;
-        margin-top: 16px;
+        margin-top: var(--sw-space-xl, 16px);
         min-width: 0;
     }
 
     // ==================== 零词条工作台（T-6807） ====================
     .sw__workbench {
-        margin-top: 16px;
+        margin-top: var(--sw-space-xl, 16px);
         min-width: 0;
     }
 
@@ -901,17 +901,17 @@
     .sw__workbench-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
     }
 
     .sw__workbench-chip {
         min-height: 32px;
-        padding: 4px 12px;
+        padding: var(--sw-space-xs, 4px) var(--sw-space-lg, 12px);
         border: 1px solid var(--b3-border-color);
         border-radius: 999px;
         background: var(--b3-theme-surface);
         color: var(--b3-theme-on-background);
-        font-size: 13px;
+        font-size: var(--sw-font-md, 13px);
         cursor: pointer;
 
         &:hover {
@@ -923,7 +923,7 @@
     .sw__workbench-entries {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: var(--sw-space-xs, 4px);
 
         .sw__doc-item { min-height: 44px; padding: 8px 10px; }
     }
@@ -932,8 +932,8 @@
     .sw__unified {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        margin-top: 16px;
+        gap: var(--sw-space-lg, 12px);
+        margin-top: var(--sw-space-xl, 16px);
         min-width: 0;
 
         // 分区间距由容器 gap 统一，抵消分区自带的 margin-top
@@ -944,8 +944,8 @@
     .sw__command-list {
         display: flex;
         flex-direction: column;
-        gap: 6px;
-        margin-top: 16px;
+        gap: var(--sw-space-sm, 6px);
+        margin-top: var(--sw-space-xl, 16px);
         min-width: 0;
 
         .sw__command-item {
@@ -954,12 +954,12 @@
             gap: 10px;
             width: 100%;
             min-height: 40px;
-            padding: 8px 12px;
+            padding: var(--sw-space-md, 8px) var(--sw-space-lg, 12px);
             border: 1px solid var(--b3-border-color);
             border-radius: 8px;
             background: var(--b3-theme-surface);
             color: var(--b3-theme-on-background);
-            font-size: 13px;
+            font-size: var(--sw-font-md, 13px);
             text-align: left;
             cursor: pointer;
 
@@ -995,14 +995,14 @@
 
     // ==================== T-6911：命令模式分组与折叠组头（T-6846） ====================
     .sw__command-group {
-        margin-top: 12px;
+        margin-top: var(--sw-space-lg, 12px);
         min-width: 0;
     }
 
     .sw__command-group-toggle {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
         cursor: pointer;
         user-select: none;
         border-radius: 6px;
@@ -1033,8 +1033,8 @@
     .sw__command-group-list {
         display: flex;
         flex-direction: column;
-        gap: 6px;
-        margin-top: 6px;
+        gap: var(--sw-space-sm, 6px);
+        margin-top: var(--sw-space-sm, 6px);
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1044,31 +1044,31 @@
     .sw__tab-preview,
     .sw__doc-results,
     .sw__unified-section {
-        margin-top: 16px;
+        margin-top: var(--sw-space-xl, 16px);
         min-width: 0;
 
         .sw__doc-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
             grid-auto-rows: 1fr;
-            gap: 12px;
+            gap: var(--sw-space-lg, 12px);
         }
 
         .sw__doc-item {
             display: grid;
             grid-template-columns: 32px minmax(0, 1fr);
             align-items: center;
-            gap: 12px;
+            gap: var(--sw-space-lg, 12px);
             width: 100%;
             min-width: 0;
             min-height: 84px;
-            padding: 12px;
+            padding: var(--sw-space-lg, 12px);
             border: 1px solid var(--b3-border-color);
             background: var(--b3-theme-surface);
             color: var(--b3-theme-on-background);
             text-align: left;
             font-family: inherit;
-            font-size: 13px;
+            font-size: var(--sw-font-md, 13px);
             letter-spacing: 0;
             cursor: pointer;
             border-radius: 10px;
@@ -1116,7 +1116,7 @@
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
-                gap: 6px;
+                gap: var(--sw-space-sm, 6px);
                 min-width: 0;
             }
 
@@ -1127,7 +1127,7 @@
                 -webkit-line-clamp: 2;
                 line-clamp: 2;
                 line-height: 1.45;
-                font-weight: 600;
+                font-weight: var(--sw-weight-semibold, 600);
                 overflow-wrap: anywhere;
 
                 // T-6834 关键词高亮：审查轮 P-B 加强对比——主色底 30% + 命中字着主色，
@@ -1144,7 +1144,7 @@
                 align-self: flex-start;
                 color: var(--b3-theme-primary);
                 font-size: var(--sw-font-xs, 11px);
-                line-height: 1.2;
+                line-height: var(--sw-leading-compact, 1.2);
                 opacity: .86;
             }
 
@@ -1153,13 +1153,13 @@
                 align-items: center;
                 min-height: 18px;
                 max-width: 100%;
-                padding: 0 6px;
+                padding: 0 var(--sw-space-sm, 6px);
                 overflow: hidden;
                 border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 28%, transparent);
                 border-radius: 999px;
                 color: var(--b3-theme-primary);
-                font-size: 10px;
-                line-height: 1.2;
+                font-size: var(--sw-font-2xs, 10px);
+                line-height: var(--sw-leading-compact, 1.2);
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
@@ -1170,8 +1170,8 @@
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
-                font-size: 12px;
-                line-height: 1.4;
+                font-size: var(--sw-font-sm, 12px);
+                line-height: var(--sw-leading-ui, 1.4);
                 color: var(--b3-theme-on-surface-light);
             }
 
@@ -1183,8 +1183,8 @@
                 -webkit-line-clamp: 2;
                 line-clamp: 2;
                 color: var(--b3-theme-on-surface-light);
-                font-size: 12px;
-                line-height: 1.5;
+                font-size: var(--sw-font-sm, 12px);
+                line-height: var(--sw-leading-body, 1.5);
                 overflow-wrap: anywhere;
 
                 // T-6835 片段行关键词高亮：比标题更轻，仅着色不加底
@@ -1193,7 +1193,7 @@
                     border-radius: 2px;
                     background: transparent;
                     color: var(--b3-theme-primary);
-                    font-weight: 600;
+                    font-weight: var(--sw-weight-semibold, 600);
                 }
             }
         }
@@ -1254,7 +1254,7 @@
                     flex: none;
                     display: flex;
                     align-items: center;
-                    gap: 8px;
+                    gap: var(--sw-space-md, 8px);
                     margin-bottom: 14px;
                     padding-bottom: 10px;
                     border-bottom: 1px solid var(--b3-border-color);
@@ -1283,7 +1283,7 @@
                         background: transparent;
                         color: var(--b3-theme-on-surface-light);
                         font-size: var(--sw-font-2xs, 10px);
-                        line-height: 1.5;
+                        line-height: var(--sw-leading-body, 1.5);
                         cursor: pointer;
 
                         &:hover {
@@ -1319,8 +1319,8 @@
 
                 .sw__doc-preview-hint {
                     color: var(--b3-theme-on-surface-light);
-                    font-size: 12px;
-                    line-height: 1.5;
+                    font-size: var(--sw-font-sm, 12px);
+                    line-height: var(--sw-leading-body, 1.5);
                 }
 
                 // T-6950：预览内查找条——按需展开；计数 tabular；命中主色软底、当前命中加深
@@ -1328,7 +1328,7 @@
                     flex: none;
                     display: flex;
                     align-items: center;
-                    gap: 6px;
+                    gap: var(--sw-space-sm, 6px);
                     margin-bottom: 10px;
 
                     &[hidden] { display: none; }
@@ -1337,7 +1337,7 @@
                         flex: 1;
                         min-width: 0;
                         height: var(--sw-control-h-md);
-                        padding: 0 8px;
+                        padding: 0 var(--sw-space-md, 8px);
                         border: 1px solid var(--b3-border-color);
                         border-radius: var(--sw-radius-sm, 6px);
                         background: var(--b3-theme-background);
@@ -1368,7 +1368,7 @@
                         background: transparent;
                         color: var(--b3-theme-on-surface-light);
                         font-size: var(--sw-font-xs, 11px);
-                        line-height: 1.5;
+                        line-height: var(--sw-leading-body, 1.5);
                         cursor: pointer;
 
                         &:hover {
@@ -1396,38 +1396,38 @@
                 .sw__doc-preview-title {
                     margin: 0 0 14px;
                     color: var(--b3-theme-on-background);
-                    font-size: 15px;
-                    font-weight: 650;
+                    font-size: var(--sw-font-lg, 15px);
+                    font-weight: var(--sw-weight-emphasis, 650);
                     line-height: 1.45;
                     overflow-wrap: anywhere;
                 }
 
                 .sw__doc-preview-section + .sw__doc-preview-section {
-                    margin-top: 16px;
+                    margin-top: var(--sw-space-xl, 16px);
                     padding-top: 14px;
                     border-top: 1px solid var(--b3-border-color);
                 }
 
                 .sw__doc-preview-section-title {
-                    margin: 0 0 8px;
+                    margin: 0 0 var(--sw-space-md, 8px);
                     color: var(--b3-theme-on-surface-light);
                     font-size: var(--sw-font-xs, 11px);
-                    font-weight: 600;
-                    line-height: 1.4;
+                    font-weight: var(--sw-weight-semibold, 600);
+                    line-height: var(--sw-leading-ui, 1.4);
                 }
 
                 .sw__doc-preview-outline {
                     display: grid;
-                    gap: 4px;
+                    gap: var(--sw-space-xs, 4px);
                     margin: 0;
                     padding: 0;
                     list-style: none;
                 }
 
                 .sw__doc-preview-heading {
-                    font-size: 12px;
-                    font-weight: 500;
-                    line-height: 1.6;
+                    font-size: var(--sw-font-sm, 12px);
+                    font-weight: var(--sw-weight-medium, 500);
+                    line-height: var(--sw-leading-reading, 1.6);
                     overflow: hidden;
                     text-overflow: ellipsis;
                     white-space: nowrap;
@@ -1437,7 +1437,7 @@
                 .sw__doc-preview-content-list {
                     margin: 0 0 10px;
                     color: var(--b3-theme-on-background);
-                    font-size: 13px;
+                    font-size: var(--sw-font-md, 13px);
                     line-height: 1.7;
                     overflow-wrap: anywhere;
                 }
@@ -1446,8 +1446,8 @@
                 .sw__doc-preview-content-list:last-child { margin-bottom: 0; }
 
                 .sw__doc-preview-block--heading {
-                    margin-top: 12px;
-                    font-weight: 650;
+                    margin-top: var(--sw-space-lg, 12px);
+                    font-weight: var(--sw-weight-emphasis, 650);
                 }
 
                 .sw__doc-preview-block--quote {
@@ -1457,7 +1457,7 @@
                 }
 
                 .sw__doc-preview-block--code {
-                    padding: 8px;
+                    padding: var(--sw-space-md, 8px);
                     border: 1px solid var(--b3-border-color);
                     border-radius: 4px;
                     background: var(--b3-theme-background);
@@ -1473,13 +1473,13 @@
                 .sw__doc-preview-task {
                     display: flex;
                     align-items: flex-start;
-                    gap: 8px;
+                    gap: var(--sw-space-md, 8px);
                     margin-left: -18px;
                     list-style: none;
 
                     input {
                         flex: none;
-                        margin: 4px 0 0;
+                        margin: var(--sw-space-xs, 4px) 0 0;
                         accent-color: var(--b3-theme-primary);
                     }
 
@@ -1496,14 +1496,14 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: var(--sw-space-sm, 6px);
             min-height: 76px;
-            padding: 12px;
+            padding: var(--sw-space-lg, 12px);
             border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
             border-radius: var(--sw-radius-card);
             background: color-mix(in srgb, var(--b3-theme-surface) 76%, var(--b3-theme-background));
             color: var(--b3-theme-on-surface-light);
-            font-size: 12px;
+            font-size: var(--sw-font-sm, 12px);
             text-align: center;
 
             svg {
@@ -1513,26 +1513,26 @@
 
             .sw__doc-status-copy {
                 display: grid;
-                gap: 4px;
+                gap: var(--sw-space-xs, 4px);
                 max-width: 440px;
             }
 
             .sw__doc-status-title {
                 color: currentColor;
-                font-size: 12px;
-                font-weight: 600;
+                font-size: var(--sw-font-sm, 12px);
+                font-weight: var(--sw-weight-semibold, 600);
             }
 
             .sw__doc-status-hint {
                 color: var(--b3-theme-on-surface-light);
-                line-height: 1.5;
+                line-height: var(--sw-leading-body, 1.5);
             }
 
             .sw__doc-status-skeleton {
                 display: grid;
-                gap: 6px;
+                gap: var(--sw-space-sm, 6px);
                 width: min(100%, 280px);
-                margin-top: 4px;
+                margin-top: var(--sw-space-xs, 4px);
             }
 
             .sw__doc-status-skeleton-line {
@@ -1566,7 +1566,7 @@
         .sw__doc-retry {
             width: 100%;
             min-height: 32px;
-            margin-top: 8px;
+            margin-top: var(--sw-space-md, 8px);
             border: 1px solid color-mix(in srgb, var(--b3-theme-error) 38%, var(--b3-border-color));
             border-radius: var(--sw-radius-control);
             color: var(--b3-theme-error);
@@ -1585,11 +1585,11 @@
             justify-content: center;
             width: 100%;
             min-height: 32px;
-            margin-top: 8px;
+            margin-top: var(--sw-space-md, 8px);
             border: 1px solid var(--b3-border-color);
             border-radius: var(--sw-radius-control);
             color: var(--b3-theme-primary);
-            font-size: 12px;
+            font-size: var(--sw-font-sm, 12px);
 
             &:hover,
             &:focus-visible {
@@ -1621,7 +1621,7 @@
     .sw__home-module-header {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--sw-space-md, 8px);
         min-height: 38px;
         padding: 8px 10px;
         border-bottom: 1px solid var(--b3-border-color);
@@ -1634,8 +1634,8 @@
         margin: 0;
         overflow: hidden;
         color: var(--b3-theme-on-background);
-        font-size: 13px;
-        font-weight: 600;
+        font-size: var(--sw-font-md, 13px);
+        font-weight: var(--sw-weight-semibold, 600);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -1644,7 +1644,7 @@
     .sw__home-module-retry {
         flex: none;
         min-height: 28px;
-        padding: 0 8px;
+        padding: 0 var(--sw-space-md, 8px);
         border-radius: var(--sw-radius-control);
         font-size: var(--sw-font-xs, 11px);
 
@@ -1655,14 +1655,14 @@
         }
     }
 
-    .sw__home-module-body { min-width: 0; padding: 6px; }
+    .sw__home-module-body { min-width: 0; padding: var(--sw-space-sm, 6px); }
     .sw__home-module-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
     .sw__home-module-item { min-width: 0; }
     .sw__home-module-item-action {
         display: block;
         width: 100%;
         min-height: 32px;
-        padding: 6px 8px;
+        padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
         overflow: hidden;
         border: 1px solid transparent;
         border-radius: var(--sw-radius-control);
@@ -1670,7 +1670,7 @@
         color: var(--b3-theme-on-background);
         cursor: pointer;
         font: inherit;
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
         text-align: left;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1692,9 +1692,9 @@
         justify-content: center;
         min-height: 54px;
         margin: 0;
-        padding: 8px;
+        padding: var(--sw-space-md, 8px);
         color: var(--b3-theme-on-surface-light);
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
         text-align: center;
 
         &--error { color: var(--sw-platform-error, var(--b3-theme-error)); } // T-7205 平台语义色
@@ -1720,7 +1720,7 @@
         border: 1px dashed var(--b3-border-color);
         border-radius: var(--sw-radius-card);
         color: var(--b3-theme-on-surface-light);
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
         text-align: center;
     }
 
@@ -1745,27 +1745,27 @@
     .sw__history-trigger {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: var(--sw-space-xs, 4px);
         height: 32px;
-        padding: 0 8px;
+        padding: 0 var(--sw-space-md, 8px);
         min-width: 96px;
         border: 1px solid var(--b3-border-color);
         background: var(--sw-control-bg);
         color: var(--b3-theme-on-background);
         border-radius: var(--sw-radius-control);
         cursor: pointer;
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
 
         svg { width: 13px; height: 13px; flex: none; color: var(--b3-theme-on-surface-light); }
         .sw__history-trigger-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .sw__history-badge {
             flex: none;
             min-width: 15px;
-            padding: 0 4px;
+            padding: 0 var(--sw-space-xs, 4px);
             border-radius: 8px;
             background: var(--b3-theme-primary);
             color: var(--b3-theme-on-primary);
-            font-size: 10px;
+            font-size: var(--sw-font-2xs, 10px);
             line-height: 15px;
             text-align: center;
         }
@@ -1781,26 +1781,26 @@
         max-height: min(60dvh, 480px);
         min-height: 200px;
         overflow: auto;
-        padding: 4px;
+        padding: var(--sw-space-xs, 4px);
         background: var(--b3-theme-surface);
         border: 1px solid var(--b3-border-color);
         border-radius: var(--sw-radius-card);
         box-shadow: var(--b3-dialog-shadow), var(--sw-card-shadow);
     }
 
-    .sw__history-empty { padding: 14px 10px; color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; }
+    .sw__history-empty { padding: 14px 10px; color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-sm, 12px); text-align: center; }
     .sw__history-section-title {
-        padding: 8px 8px 4px;
+        padding: var(--sw-space-md, 8px) var(--sw-space-md, 8px) var(--sw-space-xs, 4px);
         color: var(--b3-theme-on-surface-light);
-        font-size: 10px;
-        font-weight: 600;
+        font-size: var(--sw-font-2xs, 10px);
+        font-weight: var(--sw-weight-semibold, 600);
         letter-spacing: .04em;
         text-transform: uppercase;
     }
     .sw__history-clear {
         display: block;
         width: 100%;
-        padding: 6px 8px;
+        padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
         border: 0;
         border-bottom: 1px solid var(--b3-border-color);
         background: transparent;
@@ -1813,10 +1813,10 @@
     .sw__history-item {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--sw-space-md, 8px);
         width: 100%;
         min-width: 0;
-        padding: 8px 8px;
+        padding: var(--sw-space-md, 8px) var(--sw-space-md, 8px);
         border: 0;
         border-radius: var(--sw-radius-sm, 6px);
         background: transparent;
@@ -1830,8 +1830,8 @@
         &--closed > svg { color: var(--b3-theme-primary); }
         > svg { width: var(--sw-icon-xs, 14px); height: 14px; flex: none; color: var(--b3-theme-on-surface-light); }
         .sw__history-copy { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
-        .sw__history-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-        .sw__history-meta { color: var(--b3-theme-on-surface-light); font-size: 10px; }
+        .sw__history-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--sw-font-sm, 12px); }
+        .sw__history-meta { color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-2xs, 10px); }
     }
 
     // 桌面端快捷入口：固定在内容区底部，不压缩中央卡片的横向宽度
@@ -1840,9 +1840,9 @@
         flex: none;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
         min-height: 46px;
-        padding: 6px 12px;
+        padding: var(--sw-space-sm, 6px) var(--sw-space-lg, 12px);
         border-top: 1px solid var(--b3-border-color);
         background: color-mix(in srgb, var(--b3-theme-surface) 88%, var(--b3-theme-background));
         overflow-x: auto;
@@ -1878,10 +1878,10 @@
         flex: none;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
         min-width: 58px;
         height: 32px;
-        padding: 0 8px;
+        padding: 0 var(--sw-space-md, 8px);
         border: 1px solid transparent;
         border-radius: 8px;
         background: transparent;
@@ -1902,7 +1902,7 @@
         justify-content: center;
         width: var(--sw-icon-sm, 16px);
         height: 16px;
-        font-size: 15px;
+        font-size: var(--sw-font-lg, 15px);
 
         svg {
             width: var(--sw-icon-sm, 16px);
@@ -1922,7 +1922,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
     }
 
     .sw__quick-action--collapse {
@@ -1932,8 +1932,8 @@
 
     &.sw--quick-rail {
         .sw__toolbar {
-            gap: 6px;
-            padding-inline: 8px;
+            gap: var(--sw-space-sm, 6px);
+            padding-inline: var(--sw-space-md, 8px);
 
             .sw__search-wrap {
                 flex-basis: 140px;
@@ -1995,7 +1995,7 @@
         width: 34px;
         max-width: 34px;
         align-items: center;
-        padding: 4px;
+        padding: var(--sw-space-xs, 4px);
     }
 
     .sw__quick-rail .sw__quick-action--collapse {
@@ -2015,8 +2015,8 @@
     &.sw__mobile {
         .sw__quick-actions {
             min-height: 42px;
-            padding: 6px 8px;
-            gap: 4px;
+            padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
+            gap: var(--sw-space-xs, 4px);
         }
 
         .sw__quick-action {
@@ -2028,10 +2028,10 @@
             min-width: 52px;
             min-height: 44px;
             height: auto;
-            padding: 4px 8px;
+            padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
 
             .sw__quick-action-label {
-                font-size: 10px;
+                font-size: var(--sw-font-2xs, 10px);
             }
 
             .sw__quick-action-icon,
@@ -2051,7 +2051,7 @@
     .sw__grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 12px;
+        gap: var(--sw-space-lg, 12px);
     }
 
     // 卡片：极简细边框，hover 轻微上浮+阴影；当前页签仅主色细边框（无底色填充）
@@ -2128,9 +2128,9 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: var(--sw-space-sm, 6px);
             background: color-mix(in srgb, var(--b3-theme-surface) 72%, var(--b3-theme-background));
-            font-size: 12px;
+            font-size: var(--sw-font-sm, 12px);
             color: var(--b3-theme-on-surface-light);
 
             .sw__spin {
@@ -2173,9 +2173,9 @@
         align-items: center;
         justify-content: center;
         text-align: center;
-        font-size: 12px;
+        font-size: var(--sw-font-sm, 12px);
         color: var(--b3-theme-on-surface-light);
-        padding: 8px;
+        padding: var(--sw-space-md, 8px);
         box-sizing: border-box;
         overflow: hidden;
     }
@@ -2184,9 +2184,9 @@
     .sw__meta {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--sw-space-sm, 6px);
         padding: 6px 10px;
-        font-size: 13px;
+        font-size: var(--sw-font-md, 13px);
         color: var(--b3-theme-on-background);
         min-width: 0;
 
@@ -2195,7 +2195,7 @@
             flex: none;
             margin-left: auto;
             font-size: var(--sw-font-xs, 11px);
-            font-weight: 600;
+            font-weight: var(--sw-weight-semibold, 600);
             color: var(--b3-theme-on-surface-light);
             white-space: nowrap;
 
@@ -2210,8 +2210,8 @@
             border-radius: 999px;
             background: color-mix(in srgb, var(--b3-theme-primary) 12%, var(--b3-theme-surface));
             color: var(--b3-theme-primary);
-            font-size: 10px;
-            font-weight: 600;
+            font-size: var(--sw-font-2xs, 10px);
+            font-weight: var(--sw-weight-semibold, 600);
             white-space: nowrap;
         }
 
@@ -2393,9 +2393,9 @@
             .sw__mobile-toolbar {
                 // 两行结构：行1 搜索+排序+关闭，行2 收藏/最近/设置芯片（见 .sw__toolbar-row2）
                 flex-wrap: wrap;
-                row-gap: 6px;
+                row-gap: var(--sw-space-sm, 6px);
                 padding: 8px 10px;
-                gap: 4px;
+                gap: var(--sw-space-xs, 4px);
 
                 .sw__search-wrap {
                     flex: 1 1 128px;
@@ -2414,7 +2414,7 @@
                     background: var(--sw-control-bg);
                     color: var(--b3-theme-on-background);
                     border-radius: var(--sw-radius-control);
-                    font-size: 12px;
+                    font-size: var(--sw-font-sm, 12px);
                 }
 
                 .sw__sort-btn {
@@ -2622,8 +2622,8 @@
 
                 .sw__meta {
                     padding: 4px 114px 4px 8px;
-                    font-size: 12px;
-                    gap: 4px;
+                    font-size: var(--sw-font-sm, 12px);
+                    gap: var(--sw-space-xs, 4px);
 
                     // 手机窄卡保留改动语义，用色点避免与底栏三枚操作键争宽。
                     .sw__changed-badge {
@@ -2641,7 +2641,7 @@
                         height: 12px;
                     }
                     .sw__icon.sw__icon-emoji {
-                        font-size: 12px;
+                        font-size: var(--sw-font-sm, 12px);
                     }
                 }
             }
@@ -2673,16 +2673,16 @@
     right: 4px;
     min-width: 16px;
     height: 16px;
-    padding: 0 4px;
+    padding: 0 var(--sw-space-xs, 4px);
     border: 1px solid var(--b3-border-color);
     border-radius: var(--sw-radius-sm, 6px);
     background: var(--b3-theme-surface);
     color: var(--b3-theme-on-surface);
     font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
-    font-size: 10px;
+    font-size: var(--sw-font-2xs, 10px);
     line-height: 14px;
     text-align: center;
-    font-weight: 600;
+    font-weight: var(--sw-weight-semibold, 600);
     pointer-events: none;
     box-shadow: var(--sw-shadow-xs);
     z-index: 1;
@@ -2701,16 +2701,16 @@
     right: 2px;
     min-width: 14px;
     height: 14px;
-    padding: 0 4px;
+    padding: 0 var(--sw-space-xs, 4px);
     border: 1px solid var(--b3-border-color);
     border-radius: 4px;
     background: var(--b3-theme-surface);
     color: var(--b3-theme-on-surface);
     font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
-    font-size: 10px;
+    font-size: var(--sw-font-2xs, 10px);
     line-height: 12px;
     text-align: center;
-    font-weight: 600;
+    font-weight: var(--sw-weight-semibold, 600);
     pointer-events: none;
     box-shadow: var(--sw-shadow-xs);
     z-index: 1;
@@ -2723,7 +2723,7 @@
   border-top: 1px solid var(--b3-border-color);
   max-height: 240px;
   overflow-y: auto;
-  padding: 8px 12px;
+  padding: var(--sw-space-md, 8px) var(--sw-space-lg, 12px);
   flex-shrink: 0;
   background: color-mix(in srgb, var(--b3-theme-surface) 96%, var(--b3-theme-primary) 4%);
 
@@ -2734,10 +2734,10 @@
 .sw__workbench-related--loading {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sw-space-md, 8px);
   padding: 8px 2px;
   color: var(--b3-theme-on-surface-light);
-  font-size: 12px;
+  font-size: var(--sw-font-sm, 12px);
 
   &::before {
     content: "";

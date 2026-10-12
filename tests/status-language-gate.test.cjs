@@ -53,5 +53,9 @@ test('status badges carry the dot as a second channel', () => {
     const shell = read('_platform-shell.scss');
     assert.match(shell, /\.sw-platform-status::before \{[\s\S]*?background: currentColor;/, '平台原语必须有 currentColor 色点');
     const studio = read('_snippet-studio.scss');
-    assert.match(studio, /&__state-badge[\s\S]{0,400}?&::before \{ content: "";[\s\S]{0,200}?background: currentColor;/, '片段状态徽标必须有同构色点');
+    const badgeStart = studio.indexOf('&__state-badge {');
+    const badgeEnd = studio.indexOf('\n    }', badgeStart);
+    assert.ok(badgeStart >= 0 && badgeEnd > badgeStart, '片段状态徽标规则必须存在');
+    const badge = studio.slice(badgeStart, badgeEnd);
+    assert.match(badge, /&::before \{[\s\S]*?background: currentColor;/, '片段状态徽标必须有同构色点');
 });

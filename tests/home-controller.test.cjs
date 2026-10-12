@@ -257,6 +257,28 @@ test("home controller drops focus key when the focused item disappears", async (
     controller.dispose();
 });
 
+test("home controller moves focus into recovered content after retry", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    let attempts = 0;
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "retry-focus", title: "Retry focus"},
+        read: async () => attempts++ === 0
+            ? {ok: false, reason: "timeout"}
+            : {ok: true, snapshot: {items: [{label: "Recovered", value: "recovered"}]}},
+    });
+    await controller.refresh();
+    const retry = container.querySelector(".sw__home-module-retry");
+    assert.ok(retry, "error view should expose a retry action");
+    retry.focus();
+    retry.click();
+    await new Promise((resolve) => dom.window.setTimeout(resolve, 0));
+    assert.equal(dom.window.document.activeElement?.dataset.focusKey, "recovered");
+    controller.dispose();
+});
+
 test("home controller preserves transient scroll position across async replacement", async () => {
     const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
     const container = dom.window.document.querySelector("#mount");

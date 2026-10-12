@@ -84,7 +84,7 @@ test('store remove action records operation', () => assert.match(storeUiSource, 
 test('store remove action keeps tooltip', () => assert.match(storeUiSource,/removeButton\.title = removeButton\.getAttribute\("aria-label"\)/));
 test('store size row cannot shrink below content', () => assert.ok(declaresIn(css, '.sw-home-store__sizes', /min-width: 0/, base)));
 test('store add action has a minimum width', () => assert.ok(declaresIn(css, '.sw-home-store__add', /min-width: 88px/, base)));
-test('store add action has stronger emphasis', () => assert.ok(declaresIn(css, '.sw-home-store__add', /font-weight: 600/, base)));
+test('store add action has stronger emphasis', () => assert.ok(declaresIn(css, '.sw-home-store__add', /font-weight:\s*var\(--sw-weight-semibold,\s*600\)/, base)));
 test('store selected size has a data-state ring', () => assert.ok(declaresIn(css, /(^| )\.sw-home-store__size\[data-selected="true"]$/, /box-shadow/, base)));
 test('store add action focus keeps a visible ring', () => assert.ok(declaresIn(css, '.sw-home-store__add:focus-visible', /box-shadow: var\(--sw-focus-ring/, base)));
 test('store configure action preserves labels', () => assert.ok(declaresIn(css, '.sw-home-store__configure', /white-space: nowrap/, base)));

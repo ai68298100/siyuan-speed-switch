@@ -57,8 +57,8 @@ test('T-7232 sidebar keeps actions above a full-width surface navigation row', (
     const sidebarHeader = '.sw--sidebar > .sw-platform-chrome .sw-platform-header';
     assert.equal(declaresIn(css, sidebarHeader, /grid-template-areas:\s*"actions" "nav"/, base), true);
     assert.equal(declaresIn(css, '.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__icon', /display:\s*none/, {atRule: /container sw-platform/}), true);
-    assert.equal(declaresIn(css, '.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item', /padding-inline:\s*4px/, {atRule: /container sw-platform/}), true);
-    const withoutSidebarPadding = css.replace('padding-inline: 4px;', 'padding-inline: 6px;');
-    assert.equal(declaresIn(withoutSidebarPadding, '.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item', /padding-inline:\s*4px/, {atRule: /container sw-platform/}), false,
+    assert.equal(declaresIn(css, '.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item', /padding-inline:\s*var\(--sw-space-xs,\s*4px\)/, {atRule: /container sw-platform/}), true);
+    const withoutSidebarPadding = css.replace('padding-inline: var(--sw-space-xs, 4px);', 'padding-inline: var(--sw-space-xs, 6px);');
+    assert.equal(declaresIn(withoutSidebarPadding, '.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item', /padding-inline:\s*var\(--sw-space-xs,\s*4px\)/, {atRule: /container sw-platform/}), false,
         'sidebar container padding deletion must fail');
 });

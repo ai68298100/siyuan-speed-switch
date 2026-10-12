@@ -33,14 +33,15 @@ const managedRules=parseRules(css).filter((rule)=>rule.atDepth===0
 const lh145Rules=parseRules(css).filter((rule)=>/line-height: 1\.45/.test(rule.declarations));
 
 test('title line height is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head strong',/line-height: 1\.35/,base)));
+test('workbench hint uses the shared reading line-height token with its original fallback',()=>assert.ok(declaresIn(css,'.sw-home .sw-home__hint',/line-height:\s*var\(--sw-leading-reading,\s*1\.6\)/,base)));
 test('description line height is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head span',/line-height: 1\.45/,base)));
 test('status line height is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__status',/line-height: 1\.35/,base)));
 test('group line height is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__group',/line-height: 1\.35/,base)));
 test('summary line height is defined',()=>assert.ok(declaresIn(css,'.sw-home-store__summary',/line-height: 1\.45/,base)));
-test('title retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head strong',/font-size: 13px/,base)));
-test('description retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head span',/font-size: 12px/,base)));
+test('title retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head strong',/font-size:\s*var\(--sw-font-md,\s*13px\)/,base)));
+test('description retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__card-head span',/font-size:\s*var\(--sw-font-sm,\s*12px\)/,base)));
 test('status retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__status',/font-size:\s*var\(--sw-font-xs,\s*11px\)/,base)));
-test('group retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__group',/font-size: 12px/,base)));
+test('group retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__group',/font-size:\s*var\(--sw-font-sm,\s*12px\)/,base)));
 test('summary retains font size',()=>assert.ok(declaresIn(css,'.sw-home-store__summary',/font-size:\s*var\(--sw-font-xs,\s*11px\)/,base)));
 test('line height uses unitless values',()=>{
     assert.equal(managedRules.length,MANAGED.length,'审计面塌缩：受管块应有 5 条基础规则');
