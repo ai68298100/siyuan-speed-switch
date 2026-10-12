@@ -4,14 +4,14 @@
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Latest stable release: v0.47.0 (2026-10-11)** · **Local candidate: v0.47.1 (local gates passed; not released)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.0) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Latest stable release: v0.47.1 (2026-10-12)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.1) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
 > **Beta notice**: 小驴考试, 小驴管家, 小驴闪卡, and 小驴常用 are beta plugins under active development and validation. Join QQ group **871707735** for bug reports and feature requests.
 
 ## What's New In v0.47.1 (2026-10-12)
 
-This local candidate brings more of the R5 prototype into production, turns the all-unavailable workbench state into a full recovery surface, and closes keyboard selection, retry focus, conflict focus, and preview announcements.
+This release brings more of the R5 prototype into production, turns the all-unavailable workbench state into a full recovery surface, and closes keyboard selection, retry focus, conflict focus, and preview announcements.
 
 Added: Shared top-bar brand identity
 
@@ -551,7 +551,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.47.1` (local candidate; automated release gates passed, but it is not released yet. It adds the R5 brand identity, an unavailable-widget recovery surface, and reliable widget-store keyboard selection.) The latest stable GitHub release remains `v0.47.0`.
+The current version is `v0.47.1` (released; it adds the R5 brand identity, an unavailable-widget recovery surface, and reliable widget-store keyboard selection).
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>

@@ -91,7 +91,8 @@
     "T-7244",
     "T-7245",
     "T-7246",
-    "T-7247"
+    "T-7247",
+    "T-7248"
   ],
   "tasks": [
     {
@@ -2585,6 +2586,29 @@
         "docs/dev-plan-2026-10-06.md"
       ],
       "next": "T-7243"
+    },
+    {
+      "id": "T-7248",
+      "title": "v0.47.1 小版本发布与资产回读",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "release",
+      "dependsOn": [
+        "T-7247"
+      ],
+      "evidence": [
+        "README.md",
+        "README.en-US.md",
+        "ROADMAP.md",
+        "docs/release-readiness.md",
+        "docs/dev-plan-2026-10-06.md",
+        "docs/current-status-index.json",
+        "package.json",
+        "plugin.json",
+        "package.zip"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
