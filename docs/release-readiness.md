@@ -20,7 +20,7 @@ Current build: `dist/index.js` 1124601 bytes; `dist/index.css` 380134 bytes; `pa
 
 本轮 v0.47.0 已发布：tag 指向提交 `0f5a22bd45e3488cacf1acf7329604116ef89d1a`；Release workflow `38149534664` 与 main CI `38148799791` 均成功；远端 `package.zip` 为 **588082 bytes**，SHA-256 `fdc752b86dd82ae569db0776c2591abcc7c08154d7353417840dd7af91286443`，下载地址为 https://github.com/ai68298100/siyuan-speed-switch/releases/download/v0.47.0/package.zip。本机 Windows 构建为 588096 bytes，差异 14 bytes，在跨平台 1KiB 漂移门内。
 
-本轮 v0.47.1 已发布：tag 指向提交 `9bafb0d0664acb3a0b12083692d298d1d562b209`；Release workflow `38290503309` 与 main CI `38290468665` 均成功；远端 `package.zip` 为 **589640 bytes**，SHA-256 `5D9A893F25E682969ED2D0A4AC2FE5A2263B41CFD473B227989D5E27EE82E3B3`，下载地址为 https://github.com/ai68298100/siyuan-speed-switch/releases/download/v0.47.1/package.zip。本机 Windows 构建同为 589640 bytes，README 与资源条目逐项一致。
+本轮 v0.47.1 已发布：tag 指向提交 `23040aae337c7a29a98b5cd65da508c2957e797b`；Release workflow `38291700122` 与 main CI `38291670674` 均成功；远端 `package.zip` 为 **589640 bytes**，SHA-256 `9D14960D14ECC2D2B5838AF8C1180E9DECEBBC413D8061A90991A10957A065F9`，下载地址为 https://github.com/ai68298100/siyuan-speed-switch/releases/download/v0.47.1/package.zip。本机 Windows 构建同为 589640 bytes，README 与资源条目逐项一致。
 
 历史发布窗口：v0.33.0 已完成 tag、推送和 Release workflow；v0.36.0~v0.42.0 已发布；v0.43.0 已完成 tag、推送和 Release workflow（证据见下）；本轮 v0.43.1 目标=紧急修复（九批攒版：057609b、b113073、34be685、b448ec1、15fdf0a、f2f8096、c453026、3fb6304、f91b915）。
 本轮 GitHub 发布：`v0.43.2` 标签指向 `e9a36e0`（v0.43.1 修复批 + 入口可发现性/数字角标/关闭钮修正 + 面板互切真实点击冒烟入链；首次 tag 指向 8abfda7 因 prepare 漏改根目录 README 徽标被 T-6744b 门禁精确红拦截——根目录文件不在 src/ 扫描范围，须纳入 prepare 检查单——移 tag 重发后 Release workflow 全绿）；`v0.43.0` 标签指向 `5b6d32c`（prepare 提交）；main 已推至远端（d8ad3be..5b6d32c，10 个提交，走 127.0.0.1:7897 代理）；Release workflow 由 tag 推送触发并自动创建 Release。发版门禁（本机 verify:release 全链）：tsc、可复现双构建、完整测试 6535/6535、release/quality/integration 三审计、四套冒烟全绿；首轮抓到 zip 快照漂移（CHANGELOG 属 publish.resources 声明文档，增长进 zip：550,613→551,952），经 `pnpm run readiness:snapshot` 回写后全链复绿。CI/Release 编号未留痕（本机无 gh CLI），Release 页：https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.43.0 。
@@ -43,7 +43,7 @@ Current build: `dist/index.js` 1124601 bytes; `dist/index.css` 380134 bytes; `pa
 | 集市同步欠账（D9/T-6306） | 待用户动作 | 思源集市自 **v0.26.0** 起未同步，欠账版本清单：v0.26.0、v0.27.0、v0.27.1、v0.28.0、v0.28.1、v0.28.2、v0.28.3、v0.29.0、v0.29.1、v0.30.0、v0.30.1、v0.31.0、v0.32.0、v0.33.0、v0.34.0、v0.35.0、v0.36.0、v0.37.0、v0.38.0、v0.39.0、v0.40.0、v0.41.0、v0.42.0、v0.43.0、v0.43.1、v0.43.2、v0.44.0、v0.44.1、v0.45.0、v0.46.0、v0.46.1、v0.46.2、v0.46.3、v0.46.4、v0.46.5、v0.46.6、v0.46.8、v0.46.9、v0.47.0；处置=待用户在下一次集市更新窗口使用当前最新 Release 资产一次性补同步（集市按最新版覆盖即可，无需逐版提交），此后集市同步进每次发版检查单 |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
 | Android 真机验收 | 后置 | 按 D-042；当前环境无 `adb`、`java` 与设备 |
-| GitHub 发布动作 | 已通过 | `v0.47.1` tag 已推送，Release workflow `38290503309` 与 main CI `38290468665` 成功；远端 `package.zip` 589640 bytes，SHA-256 `5D9A893F25E682969ED2D0A4AC2FE5A2263B41CFD473B227989D5E27EE82E3B3`，本机 Windows 构建同为 589640 bytes，包内 README 与资源条目逐项一致 |
+| GitHub 发布动作 | 已通过 | `v0.47.1` tag 已推送，Release workflow `38291700122` 与 main CI `38291670674` 成功；远端 `package.zip` 589640 bytes，SHA-256 `9D14960D14ECC2D2B5838AF8C1180E9DECEBBC413D8061A90991A10957A065F9`，本机 Windows 构建同为 589640 bytes，包内 README 与资源条目逐项一致 |
 
 ## 建议发布顺序
 
