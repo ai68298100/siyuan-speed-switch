@@ -36,7 +36,7 @@ Current build: `dist/index.js` 1142426 bytes; `dist/index.css` 386730 bytes; `pa
 | 生产产物与包体 | 已通过候选门禁 | 当前工作树 package.zip 591328 bytes，低于 591872-byte 发布门禁 544 bytes；GitHub v0.47.2 Release 资产同为 591328 bytes，SHA-256 为 `4dd06093a3951fe5c20fb4f6bb55ae0f3b63e58237f4acebb59e256b4434fbce`。README 历史索引压缩前候选 596562 bytes，减量过程可由构建复现。 |
 | 集市图标规范 | 已通过 | `icon.png` 160x160、18376 bytes，符合思源官方「推荐 160x160、不超过 20 KB」规范（此前 256x256、44720 bytes 超标 2.2 倍）；`preview.png` 53.1 KiB 亦在 200 KB 内 |
 | 归档可复现性 | 已通过 | `pnpm run repro:audit` 连续执行两次生产构建，并对 `dist/index.js`、`dist/index.css`、`package.zip` 做字节数与 SHA-256 比对，当前 3/3 一致；ZIP 条目时间戳 = 发版提交时间（SOURCE_DATE_EPOCH 模式，T-6474：1980 纪元曾致集市安装的文件 mtime 比云同步索引旧、版本被同步回滚） |
-| 版本元数据 | 已发布 | `0.47.2` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；main 提交 `02326e91`、tag `v0.47.2`、Release 与资产已回读。 |
+| 版本元数据 | 已发布 | `0.47.2` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；tag `v0.47.2` 指向 `02326e91`，main 已推进至 `8b0926bf`、Release 与资产已回读。 |
 | 旧版本元数据（v0.44.1） | 已归档 | `0.44.1` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；发布批覆盖 v0.44.0 后九批+（T-7054 组件视觉重构九批次、片段实验室五批 5→26、长按拖拽 T-7068、第三方生态链 T-7069~7072、fast-uri 安全修复） |
 | 旧版本元数据（v0.44.0） | 已归档 | `0.44.0` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；发布批覆盖 v0.43.2 后七批（审计缺陷×4、模块可见性、双栏预览、片段回收站） |
 | 旧版本元数据（v0.43.2） | 已归档 | `0.43.2` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；发布批覆盖 v0.42.0 后九批（商店 S2、三面板尺寸统一、设置深化、面板状态批、预览链、悬浮球、验收矩阵） |
@@ -57,3 +57,4 @@ Current build: `dist/index.js` 1142426 bytes; `dist/index.css` 386730 bytes; `pa
 本轮发布收口：`v0.47.0` 已完成 T-7242，并完成 gh 推送、tag 和 Release 资产回读；上一轮 `v0.46.9` 的发布回执见上方。
 
 历史发布回执保留：`v0.23.5` 及更早版本的 tag、Release 与资产核验记录见仓库历史。
+
