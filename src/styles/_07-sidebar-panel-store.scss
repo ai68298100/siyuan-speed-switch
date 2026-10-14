@@ -154,7 +154,7 @@
     text-align: center;
 
     .b3-button {
-        padding: 2px var(--sw-space-md, 8px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
         font-size: var(--sw-font-sm, 12px);
     }
 }

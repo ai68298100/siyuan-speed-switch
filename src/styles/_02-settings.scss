@@ -187,7 +187,7 @@
         .sw-setting__fav-controls {
             display: inline-flex;
             flex: none;
-            gap: 2px;
+            gap: var(--sw-space-2xs, 2px);
         }
 
         .sw-setting__fav-control {
@@ -418,7 +418,7 @@
     }
 
     .sw-settings__search-chip {
-        padding: 2px 10px;
+        padding: var(--sw-space-2xs, 2px) 10px;
         border: 1px solid var(--b3-border-color);
         border-radius: 999px;
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
@@ -503,7 +503,7 @@
 
         .sw-settings__search-option-desc {
             display: block;
-            margin-top: 2px;
+            margin-top: var(--sw-space-2xs, 2px);
             overflow: hidden;
             color: var(--b3-theme-on-surface-light);
             font-size: var(--sw-font-xs, 11px);
@@ -520,7 +520,7 @@
 
     // ===== T-7004 存储页：分组标题、用量进度条、schema 健康与缓存管理 =====
     .sw-settings__storage-group {
-        margin: 10px 0 2px;
+        margin: 10px 0 var(--sw-space-2xs, 2px);
         color: var(--b3-theme-on-surface-light);
         font-size: var(--sw-font-xs, 11px);
         letter-spacing: .04em;
@@ -658,7 +658,7 @@
     // T-6872（RZ-2）：标签页内分组卡片——组标题（小号大写字距弱化）+ 组卡片
     // （组内行的 hairline 分隔与 hover 提亮沿用条目自身规则，只收敛内边距到卡片内）。
     .sw-settings__group-title {
-        margin: 14px 2px var(--sw-space-md, 8px);
+        margin: 14px var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
         font-size: var(--sw-font-xs, 11px);
         font-weight: var(--sw-weight-bold, 700);
         letter-spacing: .08em;
@@ -666,7 +666,7 @@
         color: var(--b3-theme-on-surface-light);
 
         &:first-child {
-            margin-top: 2px;
+            margin-top: var(--sw-space-2xs, 2px);
         }
     }
 
@@ -1193,7 +1193,7 @@
         // T-7015（F3 收口）：当前场景「当前」徽标——状态用文字而非按钮表达
         .sw-floating-ball-settings__preset-current {
             flex: none;
-            padding: 2px var(--sw-space-md, 8px);
+            padding: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
             border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 32%, transparent);
             border-radius: 999px;
             background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
@@ -1202,7 +1202,7 @@
             line-height: var(--sw-leading-body, 1.5);
         }
 
-        .b3-button { flex: 0 0 auto; min-height: 32px; padding: 2px var(--sw-space-md, 8px); }
+        .b3-button { flex: 0 0 auto; min-height: 32px; padding: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px); }
     }
 
     button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
@@ -1375,7 +1375,7 @@
         display: inline-flex;
         grid-column: 4;
         grid-row: 1;
-        gap: 2px;
+        gap: var(--sw-space-2xs, 2px);
     }
 
     &__metadata {
@@ -1461,7 +1461,7 @@
 
 .sw-quick-icon-picker__cat {
     min-height: 28px;
-    padding: 2px var(--sw-space-lg, 12px);
+    padding: var(--sw-space-2xs, 2px) var(--sw-space-lg, 12px);
     border: 1px solid var(--b3-border-color);
     border-radius: 999px;
     background: var(--b3-theme-surface);
@@ -1478,7 +1478,7 @@
 
 .sw-quick-icon-picker__group-title {
     grid-column: 1 / -1;
-    margin: var(--sw-space-sm, 6px) 2px 2px;
+    margin: var(--sw-space-sm, 6px) var(--sw-space-2xs, 2px) var(--sw-space-2xs, 2px);
     font-size: var(--sw-font-xs, 11px);
     letter-spacing: 0.05em;
     color: var(--b3-theme-on-surface-light);
@@ -1493,7 +1493,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--sw-space-xs, 4px);
-    margin: var(--sw-space-sm, 6px) 0 2px;
+    margin: var(--sw-space-sm, 6px) 0 var(--sw-space-2xs, 2px);
     padding: var(--sw-space-md, 8px) 10px;
     border: 1px solid var(--b3-border-color);
     border-radius: $sw-radius-md;
@@ -1519,7 +1519,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: var(--sw-space-xs, 4px) 2px var(--sw-space-md, 8px);
+    padding: var(--sw-space-xs, 4px) var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
 }
 
 .sw-doc-set-diff__meta {
@@ -1529,7 +1529,7 @@
 }
 
 .sw-doc-set-diff__group {
-    margin: var(--sw-space-xs, 4px) 2px var(--sw-space-xs, 4px);
+    margin: var(--sw-space-xs, 4px) var(--sw-space-2xs, 2px) var(--sw-space-xs, 4px);
     padding-left: 10px;
     border-left: 3px solid var(--b3-border-color);
     font-size: var(--sw-font-xs, 11px);

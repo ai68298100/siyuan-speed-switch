@@ -74,7 +74,7 @@
 
 .sw-setting__document-set-copy {
     display: grid;
-    gap: 2px;
+    gap: var(--sw-space-2xs, 2px);
     min-width: 0;
 
     strong {
@@ -212,7 +212,7 @@
 .sw-setting__quick-actions {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--sw-space-2xs, 2px);
     width: 100%;
 }
 
@@ -222,7 +222,7 @@
     gap: var(--sw-space-md, 8px);
     align-items: center;
     min-height: var(--sw-control-h-md);
-    padding: 0 2px;
+    padding: 0 var(--sw-space-2xs, 2px);
     color: var(--b3-theme-on-surface-light);
     font-size: var(--sw-font-sm, 12px);
     white-space: nowrap;
@@ -347,7 +347,7 @@
     .sw-setting__quick-target {
         display: inline-flex;
         align-items: center;
-        gap: 2px;
+        gap: var(--sw-space-2xs, 2px);
         color: var(--b3-theme-on-surface-light);
         white-space: nowrap;
 
@@ -690,7 +690,7 @@
             grid-column: 1 / -1;
             justify-content: flex-start;
             gap: var(--sw-space-lg, 12px);
-            padding: 2px 0;
+            padding: var(--sw-space-2xs, 2px) 0;
         }
 
         .sw-setting__quick-controls {

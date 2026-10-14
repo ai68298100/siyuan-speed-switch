@@ -717,7 +717,7 @@
     .sw-studio__metadata > summary,
     .sw-studio__gist > summary {
         min-height: 32px;
-        padding: var(--sw-space-xs, 4px) 2px;
+        padding: var(--sw-space-xs, 4px) var(--sw-space-2xs, 2px);
         color: var(--b3-theme-on-surface);
         font-size: var(--sw-font-xs, 11px);
         font-weight: var(--sw-weight-emphasis, 650);
@@ -1104,7 +1104,7 @@
             flex: 0 0 auto;
             min-height: 14px;
             max-height: 14px;
-            margin: 2px 0 0;
+            margin: var(--sw-space-2xs, 2px) 0 0;
             line-height: 1.3;
             overflow: hidden;
             text-overflow: ellipsis;

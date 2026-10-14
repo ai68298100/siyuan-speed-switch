@@ -5,7 +5,10 @@
 
 ## Changelog (full history)
 
-### v0.47.1 (2026-10-12)
+### v0.47.2 (2026-10-14)
+
+- **Added the compact 2px spacing tier**: introduced `--sw-space-2xs` and migrated 97 declarations / 99 top-level components; spacing coverage moved from 69.09% to 73.73%, with zero computed-style or geometry differences across 30 Chromium scenarios and 480 elements.
+- **Fixed the release archive budget**: compacted README history indexes while keeping the complete bilingual changelogs; package.zip fell from 596562 B to 591332 B, below the 591872 B gate.
 
 - **Added shared top-bar brand identity**: brought the R5 theme-colored mark, product name, and localized platform subtitle to all three production surfaces; compact containers hide the subtitle and reduce the mark size.
 - **Added an unavailable-widget recovery surface**: when all saved widgets are unavailable, the layout is preserved with clear status, direct store and edit-to-remove actions, and unavailable placeholders in the main scroll area.

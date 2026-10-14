@@ -7,7 +7,7 @@ const {readSourceFile} = require('./source-scan.cjs');
 const root = path.resolve(__dirname, '..');
 const styleDir = path.join(root, 'src', 'styles');
 const tiers = new Map([
-    ['4px', '--sw-space-xs'], ['6px', '--sw-space-sm'], ['8px', '--sw-space-md'],
+    ['2px', '--sw-space-2xs'], ['4px', '--sw-space-xs'], ['6px', '--sw-space-sm'], ['8px', '--sw-space-md'],
     ['12px', '--sw-space-lg'], ['16px', '--sw-space-xl'], ['24px', '--sw-space-2xl'],
 ]);
 const spacingProperty = /^(?:gap|row-gap|column-gap|padding(?:-(?:top|right|bottom|left|inline|block|inline-start|inline-end|block-start|block-end))?|margin(?:-(?:top|right|bottom|left|inline|block|inline-start|inline-end|block-start|block-end))?)$/;

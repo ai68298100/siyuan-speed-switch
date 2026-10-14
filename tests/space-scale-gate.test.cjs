@@ -31,10 +31,10 @@ test('space tiers are defined on the shared block', () => {
     const block = tokens.slice(tokens.indexOf('.speed-switch'), tokens.indexOf('--sw-space-xs'));
     assert.match(block, /\.sw-fab-root/, '共享块必须覆盖 .sw-fab-root（T-7201）');
     assert.match(block, /\.sw-settings/, '共享块必须覆盖 .sw-settings（T-7201）');
-    for (const token of ['--sw-space-xs: #{$sw-space-xs}', '--sw-space-sm: #{$sw-space-sm}', '--sw-space-md: #{$sw-space-md}', '--sw-space-lg: #{$sw-space-lg}', '--sw-space-xl: #{$sw-space-xl}', '--sw-space-2xl: #{$sw-space-2xl}']) {
+    for (const token of ['--sw-space-2xs: #{$sw-space-2xs}', '--sw-space-xs: #{$sw-space-xs}', '--sw-space-sm: #{$sw-space-sm}', '--sw-space-md: #{$sw-space-md}', '--sw-space-lg: #{$sw-space-lg}', '--sw-space-xl: #{$sw-space-xl}', '--sw-space-2xl: #{$sw-space-2xl}']) {
         assert.ok(tokens.includes(token), `密度档 ${token} 必须定义`);
     }
-    for (const tier of ['$sw-space-xs: 4px', '$sw-space-sm: 6px', '$sw-space-md: 8px', '$sw-space-lg: 12px', '$sw-space-xl: 16px', '$sw-space-2xl: 24px']) {
+    for (const tier of ['$sw-space-2xs: 2px', '$sw-space-xs: 4px', '$sw-space-sm: 6px', '$sw-space-md: 8px', '$sw-space-lg: 12px', '$sw-space-xl: 16px', '$sw-space-2xl: 24px']) {
         assert.ok(tokens.includes(tier), `编译期间距来源 ${tier} 必须定义`);
     }
 });

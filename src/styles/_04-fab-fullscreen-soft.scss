@@ -496,7 +496,7 @@
     justify-content: center;
     width: 38px;
     height: 38px;
-    margin-left: 2px;
+    margin-left: var(--sw-space-2xs, 2px);
     padding: 0;
     border: none;
     border-radius: $sw-radius-md;
@@ -845,7 +845,7 @@
     }
 
     .sw__dock-label {
-        margin: 2px var(--sw-space-md, 8px) var(--sw-space-md, 8px);
+        margin: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px) var(--sw-space-md, 8px);
         color: var(--b3-theme-on-surface-light);
         font-size: var(--sw-font-2xs, 10px);
         font-weight: var(--sw-weight-semibold, 600);
@@ -855,7 +855,7 @@
 
     .sw__dock-item {
         min-height: 36px;
-        margin: 2px 0;
+        margin: var(--sw-space-2xs, 2px) 0;
         padding: var(--sw-space-md, 8px) 10px;
         border: 1px solid transparent;
         border-radius: 10px;

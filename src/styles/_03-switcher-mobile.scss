@@ -331,7 +331,7 @@
                 }
 
                 .sw__fav-group + .sw__fav-group {
-                    margin-top: 2px;
+                    margin-top: var(--sw-space-2xs, 2px);
                 }
 
                 .sw__fav-group-head {
@@ -388,7 +388,7 @@
                 .sw__fav-items {
                     display: flex;
                     flex-direction: column;
-                    padding-bottom: 2px;
+                    padding-bottom: var(--sw-space-2xs, 2px);
                 }
 
                 .sw__fav-item {
@@ -809,7 +809,7 @@
         display: flex;
         align-items: center;
         gap: var(--sw-space-md, 8px);
-        margin: var(--sw-space-xs, 4px) 2px var(--sw-space-md, 8px);
+        margin: var(--sw-space-xs, 4px) var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
         font-size: var(--sw-font-xs, 11px);
         letter-spacing: 0.05em;
         color: var(--b3-theme-on-surface-light);
@@ -841,7 +841,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: var(--sw-space-sm, 6px);
-        margin: var(--sw-space-md, 8px) 2px var(--sw-space-xs, 4px);
+        margin: var(--sw-space-md, 8px) var(--sw-space-2xs, 2px) var(--sw-space-xs, 4px);
     }
 
     .sw__search-chip {
@@ -892,7 +892,7 @@
     }
 
     .sw__workbench-row-label {
-        margin: var(--sw-space-md, 8px) 2px var(--sw-space-xs, 4px);
+        margin: var(--sw-space-md, 8px) var(--sw-space-2xs, 2px) var(--sw-space-xs, 4px);
         font-size: var(--sw-font-xs, 11px);
         letter-spacing: 0.05em;
         color: var(--b3-theme-on-surface-light);
@@ -1266,7 +1266,7 @@
                         flex: none;
                         margin-left: auto;
                         min-height: var(--sw-control-h-sm);
-                        padding: 2px var(--sw-space-md, 8px);
+                        padding: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
                         font-size: var(--sw-font-2xs, 10px);
                     }
 
@@ -1656,7 +1656,7 @@
     }
 
     .sw__home-module-body { min-width: 0; padding: var(--sw-space-sm, 6px); }
-    .sw__home-module-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+    .sw__home-module-list { display: grid; gap: var(--sw-space-2xs, 2px); margin: 0; padding: 0; list-style: none; }
     .sw__home-module-item { min-width: 0; }
     .sw__home-module-item-action {
         display: block;
@@ -1851,7 +1851,7 @@
         &:focus-visible { outline: none; box-shadow: inset var(--sw-focus-ring); }
         &--closed > svg { color: var(--b3-theme-primary); }
         > svg { width: var(--sw-icon-xs, 14px); height: 14px; flex: none; color: var(--b3-theme-on-surface-light); }
-        .sw__history-copy { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+        .sw__history-copy { display: flex; flex-direction: column; min-width: 0; gap: var(--sw-space-2xs, 2px); }
         .sw__history-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--sw-font-sm, 12px); }
         .sw__history-meta { color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-2xs, 10px); }
     }
@@ -1992,7 +1992,7 @@
 
     .sw__quick-actions--collapsed {
         min-height: 30px;
-        padding-block: 2px;
+        padding-block: var(--sw-space-2xs, 2px);
         justify-content: flex-end;
         overflow: hidden;
 
@@ -2046,7 +2046,7 @@
             // （移动端标准底部导航模式；44px 命中区不降级）。
             flex-direction: column;
             justify-content: center;
-            gap: 2px;
+            gap: var(--sw-space-2xs, 2px);
             min-width: 52px;
             min-height: 44px;
             height: auto;
@@ -2431,7 +2431,7 @@
                     max-width: 40vw;
                     height: 32px;
                     min-width: 0;
-                    padding: 0 2px;
+                    padding: 0 var(--sw-space-2xs, 2px);
                     border: 1px solid var(--b3-border-color);
                     background: var(--sw-control-bg);
                     color: var(--b3-theme-on-background);
@@ -2757,7 +2757,7 @@
   display: flex;
   align-items: center;
   gap: var(--sw-space-md, 8px);
-  padding: var(--sw-space-md, 8px) 2px;
+  padding: var(--sw-space-md, 8px) var(--sw-space-2xs, 2px);
   color: var(--b3-theme-on-surface-light);
   font-size: var(--sw-font-sm, 12px);
 

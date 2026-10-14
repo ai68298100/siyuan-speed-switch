@@ -355,7 +355,7 @@
 }
 
 .sw-platform-surface-nav__icon { flex: 0 0 18px; width: 18px; height: 18px; pointer-events: none; }
-.sw-platform-surface-nav__copy { display: grid; min-width: 0; gap: 2px; text-align: left; pointer-events: none; }
+.sw-platform-surface-nav__copy { display: grid; min-width: 0; gap: var(--sw-space-2xs, 2px); text-align: left; pointer-events: none; }
 .sw-platform-surface-nav__label { overflow: hidden; color: inherit; font-size: var(--sw-font-sm, 12px); font-weight: var(--sw-weight-bold, 700); text-overflow: ellipsis; }
 .sw-platform-surface-nav__hint { overflow: hidden; color: var(--sw-platform-text-muted); font-size: var(--sw-font-2xs, 10px); font-weight: var(--sw-weight-regular, 400); text-overflow: ellipsis; }
 .sw-platform-surface-nav__item.is-active .sw-platform-surface-nav__hint { color: color-mix(in srgb, var(--sw-platform-accent) 72%, var(--sw-platform-text-muted)); }
@@ -561,7 +561,7 @@
 .sw-platform-seg {
     display: inline-flex;
     align-items: stretch;
-    gap: 2px;
+    gap: var(--sw-space-2xs, 2px);
     max-width: 100%;
     padding: var(--sw-space-xs, 4px);
     border: 1px solid var(--sw-platform-line);
@@ -665,7 +665,7 @@
     // 真机反馈（T-6970）：分段项 nowrap，皮肤选择这类长标签（融合主题（默认）/苹果风格 · 液态玻璃）
     // 在手机宽度下互相挤压溢出、文字重叠。窄容器允许整项换行（flex-wrap），放不下的分段
     // 落到第二行；宽容器（桌面 >640px）保持单行不受影响。
-    .sw-platform-seg { flex-wrap: wrap; row-gap: 2px; }
+    .sw-platform-seg { flex-wrap: wrap; row-gap: var(--sw-space-2xs, 2px); }
 }
 
 @container sw-platform (max-width: 560px) {

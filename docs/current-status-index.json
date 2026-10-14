@@ -103,7 +103,15 @@
     "T-7256",
     "T-7257",
     "T-7258",
-    "T-7259"
+    "T-7259",
+    "T-7260",
+    "T-7261",
+    "T-7262",
+    "T-7263",
+    "T-7264",
+    "T-7265",
+    "T-7266",
+    "T-7267"
   ],
   "tasks": [
     {
@@ -3045,14 +3053,55 @@
         "docs/adr/0192-exact-spacing-shorthand-migration.md",
         "docs/dev-plan-2026-10-06.md"
       ],
+      "next": "T-7267"
+    },
+    {
+      "id": "T-7267",
+      "title": "2px 复合间距刻度精确迁移",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7266"
+      ],
+      "evidence": [
+        "src/styles/_00-tokens.scss",
+        "src/styles/_01-base-controls.scss",
+        "src/styles/_02-settings.scss",
+        "src/styles/_03-switcher-mobile.scss",
+        "src/styles/_04-fab-fullscreen-soft.scss",
+        "src/styles/_05-settings-widgets.scss",
+        "src/styles/_06-widgets-store.scss",
+        "src/styles/_07-sidebar-panel-store.scss",
+        "src/styles/_08-home-store-cards.scss",
+        "src/styles/_09-store-preview-polish.scss",
+        "src/styles/_11-ui-polish.scss",
+        "src/styles/_12-r54-surface-adapter.scss",
+        "src/styles/_floating-ball-more.scss",
+        "src/styles/_platform-shell.scss",
+        "src/styles/_snippet-studio.scss",
+        "tests/spacing-token-migration.test.cjs",
+        "tests/space-scale-gate.test.cjs",
+        "tests/store-mobile-layout-contract.test.cjs",
+        "tests/store-mobile-external-contract.test.cjs",
+        "tests/store-ui-polish.test.cjs",
+        ".artifacts/t7267-spacing2-migration.json",
+        ".artifacts/t7267-token-audit-after.json",
+        ".artifacts/t7267-style-compare.json",
+        ".artifacts/t7267-negative-spacing2-probe.log",
+        ".artifacts/t7267-build.log",
+        "docs/adr/0193-exact-2px-spacing-tier-migration.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
       "next": "T-7144"
     }
   ],
   "global": {
     "jsRunner": "blocked",
-    "release": "published",
+    "release": "candidate",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "blocked: 596423 bytes exceeds 591872-byte repository budget by 4551 bytes; requires measured reduction before release"
+    "packageBudget": "passed: 591332 bytes is below the 591872-byte repository budget by 540 bytes after reproducible README history reduction"
   }
 }

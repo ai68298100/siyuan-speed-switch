@@ -24,7 +24,7 @@
     &__targets {
         display: inline-flex;
         align-items: stretch;
-        gap: 2px;
+        gap: var(--sw-space-2xs, 2px);
         align-self: flex-start;
         max-width: 100%;
         padding: var(--sw-space-xs, 4px);
@@ -103,12 +103,12 @@
 
     .sw__home-module-header {
         min-height: 30px;
-        padding: 2px 2px var(--sw-space-xs, 4px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-2xs, 2px) var(--sw-space-xs, 4px);
         border-bottom: none;
         background: transparent;
     }
 
-    .sw__home-module-body { padding: 0 2px var(--sw-space-xs, 4px); }
+    .sw__home-module-body { padding: 0 var(--sw-space-2xs, 2px) var(--sw-space-xs, 4px); }
 }
 
 // ==================== 商店卡片预览与分组头 ====================
@@ -131,7 +131,7 @@
         &.p-hero {
             width: 44%;
             height: 16px;
-            margin-bottom: 2px;
+            margin-bottom: var(--sw-space-2xs, 2px);
             background: color-mix(in srgb, var(--b3-theme-primary) 38%, transparent);
         }
 
@@ -209,7 +209,7 @@
     align-items: center;
     justify-content: space-between;
     margin: var(--sw-space-xl, 16px) 0 var(--sw-space-md, 8px);
-    padding: 0 2px;
+    padding: 0 var(--sw-space-2xs, 2px);
     color: var(--b3-theme-on-surface-light);
     font-size: var(--sw-font-sm, 12px);
     // 同块内更早的 font-weight: 600 会被下面的 650 完全覆盖，从未生效（D-364）。
@@ -259,7 +259,7 @@
 // 它是网格里的整行元素，靠 grid-column 占满一行，不与卡片抢列。
 .sw-home-store__provider {
     grid-column: 1 / -1;
-    margin: var(--sw-space-md, 8px) 0 2px;
+    margin: var(--sw-space-md, 8px) 0 var(--sw-space-2xs, 2px);
     box-sizing: border-box;
     min-width: 0;
     max-width: 100%;
@@ -318,7 +318,7 @@
 }
 
 .sw-home-store__summary {
-    margin: var(--sw-space-md, 8px) 0 2px;
+    margin: var(--sw-space-md, 8px) 0 var(--sw-space-2xs, 2px);
     box-sizing: border-box;
     color: var(--b3-theme-on-surface-light);
     font-size: var(--sw-font-xs, 11px);
@@ -367,7 +367,7 @@
     display: inline-flex;
     align-items: center;
     max-width: 100%;
-    padding: 2px var(--sw-space-sm, 6px);
+    padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
     border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
     border-radius: 999px;
     color: var(--b3-theme-on-surface-light);
@@ -421,7 +421,7 @@
     }
     .sw__home-module-item-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 620; }
     .sw__home-module-item-secondary { grid-column: 3; color: #5745b2; font-variant-numeric: tabular-nums; }
-    .sw__home-item-bar { grid-row: 2; height: 5px; margin: 0 var(--sw-space-md, 8px) 2px 35px; border-radius: 999px; background: rgba(101, 82, 197, 0.11); }
+    .sw__home-item-bar { grid-row: 2; height: 5px; margin: 0 var(--sw-space-md, 8px) var(--sw-space-2xs, 2px) 35px; border-radius: 999px; background: rgba(101, 82, 197, 0.11); }
     .sw__home-item-bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6552c5, #9182ea); }
 }
 
@@ -552,8 +552,8 @@
     display: grid;
     grid-auto-flow: column;
     grid-template-rows: repeat(7, 1fr);
-    gap: 2px;
-    padding: 2px 0;
+    gap: var(--sw-space-2xs, 2px);
+    padding: var(--sw-space-2xs, 2px) 0;
     overflow-x: auto;
 
     .sw__home-heatmap-cell {
@@ -709,7 +709,7 @@
 }
 
 .sw-home-store__detail-note {
-    margin: 10px 2px 0;
+    margin: 10px var(--sw-space-2xs, 2px) 0;
     color: var(--b3-theme-on-surface-light);
     font-size: var(--sw-font-sm, 12px);
     line-height: 1.55;
@@ -791,7 +791,7 @@
     display: grid;
     grid-template-columns: 64px minmax(0, 1fr);
     gap: var(--sw-space-md, 8px);
-    padding: 2px 0;
+    padding: var(--sw-space-2xs, 2px) 0;
 
     dt { margin: 0; color: var(--b3-theme-on-surface-light); white-space: nowrap; }
     dd {

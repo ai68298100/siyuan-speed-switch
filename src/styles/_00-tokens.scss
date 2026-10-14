@@ -33,6 +33,7 @@ $sw-z-base: 0;
 $sw-z-raised: 1;
 $sw-radius-sm: 6px;
 $sw-radius-md: 8px;
+$sw-space-2xs: 2px;
 $sw-space-xs: 4px;
 $sw-space-sm: 6px;
 $sw-space-md: 8px;
@@ -117,6 +118,7 @@ $sw-space-2xl: 24px;
 
     // T-7207：间距密度刻度（消费方：侧栏 compact 与密度系统）。值与偶数节奏一致；
     // 新间距优先消费档位，字面只允许作为回退参数出现。
+    --sw-space-2xs: #{$sw-space-2xs};
     --sw-space-xs: #{$sw-space-xs};
     --sw-space-sm: #{$sw-space-sm};
     --sw-space-md: #{$sw-space-md};

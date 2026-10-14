@@ -65,7 +65,7 @@
 
     .sw__dock-item {
         min-height: 46px;
-        margin: 2px var(--sw-space-md, 8px);
+        margin: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
         border-radius: var(--sw-r54-radius-control);
     }
 

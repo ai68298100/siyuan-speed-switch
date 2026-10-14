@@ -30,7 +30,7 @@
     .sw__floating-ball-more-row {
         display: flex;
         align-items: center;
-        gap: 2px;
+        gap: var(--sw-space-2xs, 2px);
         min-width: 0;
     }
 
@@ -68,7 +68,7 @@
         min-width: 0;
         width: auto;
         column-gap: var(--sw-space-md, 8px);
-        row-gap: 2px;
+        row-gap: var(--sw-space-2xs, 2px);
         text-align: start;
 
         .sw__floating-ball-action-icon {

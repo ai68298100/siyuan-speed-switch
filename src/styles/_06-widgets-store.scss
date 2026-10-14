@@ -110,8 +110,8 @@
     .sw-home-store__card:hover { transform: none; }
 
     .sw-home-store__tabs {
-        gap: 2px;
-        padding-bottom: 2px;
+        gap: var(--sw-space-2xs, 2px);
+        padding-bottom: var(--sw-space-2xs, 2px);
         overscroll-behavior-x: contain;
     }
 
@@ -157,7 +157,7 @@
     box-shadow: var(--b3-dialog-shadow);
 
     .sw__sort-menu-section {
-        margin: var(--sw-space-sm, 6px) var(--sw-space-sm, 6px) 2px;
+        margin: var(--sw-space-sm, 6px) var(--sw-space-sm, 6px) var(--sw-space-2xs, 2px);
         color: var(--b3-theme-on-surface-light);
         font-size: var(--sw-font-xs, 11px);
         letter-spacing: 0.05em;
@@ -271,7 +271,7 @@
     border-top: 1px dashed var(--b3-border-color);
 
     .sw-home__tool {
-        padding: 2px var(--sw-space-md, 8px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
         font-size: var(--sw-font-sm, 12px);
     }
 }
@@ -286,8 +286,8 @@
 .sw-home-config__description, .sw-home-config__hint { color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-xs, 11px); line-height: var(--sw-leading-ui, 1.4); }
 .sw-home-config__description { margin: var(--sw-space-xs, 4px) 0; }
 .sw-home-config__id { color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-2xs, 10px); }
-.sw-home-config__meta { display: flex; flex-wrap: wrap; gap: var(--sw-space-xs, 4px); padding: var(--sw-space-md, 8px) 0 2px; }
-.sw-home-config__chip { padding: 2px var(--sw-space-sm, 6px); border-radius: 999px; background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-2xs, 10px); }
+.sw-home-config__meta { display: flex; flex-wrap: wrap; gap: var(--sw-space-xs, 4px); padding: var(--sw-space-md, 8px) 0 var(--sw-space-2xs, 2px); }
+.sw-home-config__chip { padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px); border-radius: 999px; background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-2xs, 10px); }
 .sw-home-config__fields { display: grid; gap: var(--sw-space-md, 8px); padding: 10px 0 14px; }
 .sw-home-config__section { display: grid; gap: var(--sw-space-md, 8px); padding: 10px 10px; border: 1px solid var(--b3-border-color); border-radius: var(--sw-radius-control, 10px); background: var(--b3-theme-surface); }
 .sw-home-config__section-title { margin: 0; color: var(--b3-theme-primary); font-size: var(--sw-font-xs, 11px); }
@@ -300,7 +300,7 @@
 .sw-home-config__database-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sw-space-sm, 6px); max-height: 190px; overflow: auto; padding: var(--sw-space-md, 8px); border: 1px solid var(--b3-border-color); border-radius: $sw-radius-md; }
 .sw-home-config__database-column { display: flex; align-items: center; gap: var(--sw-space-sm, 6px); min-width: 0; overflow-wrap: anywhere; }
 .sw__home-module[data-module-id="database-table"] .sw__home-module-item-action { white-space: normal; }
-.sw__home-module[data-module-id="database-table"] .sw__home-module-item-secondary { display: block; margin-top: 2px; line-height: 1.35; overflow-wrap: anywhere; }
+.sw__home-module[data-module-id="database-table"] .sw__home-module-item-secondary { display: block; margin-top: var(--sw-space-2xs, 2px); line-height: 1.35; overflow-wrap: anywhere; }
 .sw-home-config__secret { display: flex; align-items: stretch; gap: var(--sw-space-sm, 6px); }
 .sw-home-config__secret .b3-text-field { min-width: 0; }
 .sw-home-config__secret-toggle { flex: none; min-width: 56px; }
@@ -561,7 +561,7 @@
         display: block;
         min-width: 0;
         max-width: 100%;
-        margin-top: 2px;
+        margin-top: var(--sw-space-2xs, 2px);
         color: var(--b3-theme-on-surface-light);
         font-size: var(--sw-font-sm, 12px);
         display: -webkit-box;
@@ -585,7 +585,7 @@
 
 .sw__home-source-health {
     flex: none;
-    padding: 2px var(--sw-space-sm, 6px);
+    padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
     border: 1px solid color-mix(in srgb, var(--b3-border-color) 78%, transparent);
     border-radius: 999px;
     color: var(--b3-theme-on-surface-light);
@@ -626,7 +626,7 @@
     align-items: center;
     margin-top: auto;
     min-width: 0;
-    padding-top: 2px;
+    padding-top: var(--sw-space-2xs, 2px);
 }
 
 .sw-home-store__choose-size {

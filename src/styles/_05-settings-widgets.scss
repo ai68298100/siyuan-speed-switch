@@ -693,7 +693,7 @@
     .sw-home__receipt-details {
         flex: none;
         margin-left: auto;
-        padding: 2px var(--sw-space-md, 8px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
         font-size: var(--sw-font-xs, 11px);
     }
     font-size: var(--sw-font-sm, 12px);
@@ -715,7 +715,7 @@
         top: 8px;
         right: 10px;
         z-index: 1;
-        padding: 2px var(--sw-space-md, 8px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
         border: 1px solid color-mix(in srgb, var(--b3-theme-error, #d23f31) 40%, transparent);
         border-radius: $sw-radius-sm;
         background: var(--b3-theme-surface);
@@ -739,7 +739,7 @@
         right: 10px;
         z-index: 1;
         max-width: calc(100% - 20px);
-        padding: 2px var(--sw-space-md, 8px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
         overflow: hidden;
         border: 1px solid color-mix(in srgb, var(--sw-platform-warning, var(--b3-theme-warning, #b7761d)) 40%, transparent);
         border-radius: $sw-radius-sm;
@@ -822,14 +822,14 @@
     border-top: 1px dashed var(--b3-border-color);
 
     .sw-home__tool {
-        padding: 2px var(--sw-space-md, 8px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
         font-size: var(--sw-font-sm, 12px);
     }
 }
 
 .sw-home__open {
     margin-top: var(--sw-space-md, 8px);
-    padding: 2px 10px;
+    padding: var(--sw-space-2xs, 2px) 10px;
     font-size: var(--sw-font-sm, 12px);
 }
 
@@ -983,7 +983,7 @@
 .sw__home-module-status--empty,
 .sw__home-module-status--error {
     min-height: 54px;
-    padding: var(--sw-space-sm, 6px) 2px;
+    padding: var(--sw-space-sm, 6px) var(--sw-space-2xs, 2px);
 }
 
 .sw__home-module-refreshing {
@@ -997,7 +997,7 @@
     display: grid;
     gap: var(--sw-space-md, 8px);
     min-height: 54px;
-    padding: var(--sw-space-sm, 6px) 2px;
+    padding: var(--sw-space-sm, 6px) var(--sw-space-2xs, 2px);
 }
 
 .sw__home-loading-skeleton-line {
@@ -1030,7 +1030,7 @@
 }
 
 .sw__home-module-retry {
-    padding: 2px 10px;
+    padding: var(--sw-space-2xs, 2px) 10px;
     font-size: var(--sw-font-sm, 12px);
 }
 
@@ -1169,7 +1169,7 @@
         background: var(--b3-theme-surface-lighter);
         font-size: var(--sw-font-sm, 12px);
     }
-    &__dependency-badge { border-radius: 999px; padding: 2px var(--sw-space-sm, 6px); color: var(--b3-theme-on-primary); background: var(--b3-theme-primary); white-space: nowrap; }
+    &__dependency-badge { border-radius: 999px; padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px); color: var(--b3-theme-on-primary); background: var(--b3-theme-primary); white-space: nowrap; }
     &__dependency-item.is-optional &__dependency-badge { color: var(--b3-theme-on-surface); background: var(--b3-theme-surface); }
     &__dependency-setup { min-width: 0; color: var(--b3-theme-on-surface-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     &__dependency-item a { color: var(--b3-theme-primary); white-space: nowrap; }
@@ -1203,7 +1203,7 @@
 
     &__section h3 { margin: 0 0 var(--sw-space-sm, 6px); font-size: 14px; }
     &__section ol { display: grid; gap: var(--sw-space-xs, 4px); margin: 0; padding-inline-start: 22px; }
-    &__section li { padding-inline-start: 2px; }
+    &__section li { padding-inline-start: var(--sw-space-2xs, 2px); }
     &__close { justify-self: end; min-height: 40px; }
 }
 
@@ -1252,11 +1252,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--sw-space-lg, 12px);
-    padding: var(--sw-space-xs, 4px) 2px var(--sw-space-md, 8px);
+    padding: var(--sw-space-xs, 4px) var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
 }
 
 .sw-home-health__group {
-    margin: var(--sw-space-sm, 6px) 2px var(--sw-space-sm, 6px);
+    margin: var(--sw-space-sm, 6px) var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
     padding-left: 10px;
     border-left: 3px solid var(--b3-border-color);
     font-size: var(--sw-font-xs, 11px);
@@ -1285,7 +1285,7 @@
     .sw-home-health__name { display: block; font-size: var(--sw-font-md, 13px); font-weight: var(--sw-weight-semibold, 600); }
     .sw-home-health__meta {
         display: block;
-        margin-top: 2px;
+        margin-top: var(--sw-space-2xs, 2px);
         color: var(--b3-theme-on-surface-light);
         font-size: var(--sw-font-xs, 11px);
         font-variant-numeric: tabular-nums;
@@ -1563,7 +1563,7 @@
 
 // T-7054 A 批次：日进度条（local-time 组件）+ 世界时钟昼夜指示器
 .sw-home__cell .sw__home-day-progress {
-    margin: var(--sw-space-md, 8px) var(--sw-space-xs, 4px) 2px;
+    margin: var(--sw-space-md, 8px) var(--sw-space-xs, 4px) var(--sw-space-2xs, 2px);
 }
 
 .sw-home__cell .sw__home-day-progress-bar {
@@ -1600,7 +1600,7 @@
 .sw-home__cell .sw__home-stat-milestone {
     display: inline-block;
     margin-top: var(--sw-space-sm, 6px);
-    padding: 2px 10px;
+    padding: var(--sw-space-2xs, 2px) 10px;
     border-radius: 12px;
     font-size: var(--sw-font-xs, 11px);
     font-weight: var(--sw-weight-semibold, 600);

@@ -1,32 +1,29 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.47.1-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.47.2-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Latest stable release: v0.47.1 (2026-10-12)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.1) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Latest stable release: v0.47.2 (2026-10-14)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.2) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
 > **Beta notice**: 小驴考试, 小驴管家, 小驴闪卡, and 小驴常用 are beta plugins under active development and validation. Join QQ group **871707735** for bug reports and feature requests.
 
-## What's New In v0.47.1 (2026-10-12)
+## What's New In v0.47.2 (2026-10-14)
 
-This release brings more of the R5 prototype into production, turns the all-unavailable workbench state into a full recovery surface, and closes keyboard selection, retry focus, conflict focus, and preview announcements.
+This release brings more of the R5 prototype into production, completes the compact spacing-token pass, and reduces the release archive before publishing.
 
 Added: Shared top-bar brand identity
 
 - Added a theme-colored brand mark, product name, and localized “Work context platform” subtitle across desktop, sidebar, and mobile surfaces.
-- The brand mark remains decorative for assistive technology.
 
 Improved: Compact top-bar hierarchy
 
 - The subtitle hides and the mark shrinks inside 560px containers, preserving space for navigation, settings, and close controls.
-- Existing surface routing, current-state, Escape close, and focus restoration semantics remain intact.
 
 Added: Workbench recovery for unavailable widgets
 
 - When every widget in a saved layout is unavailable, the workbench preserves the layout, explains the state, and offers a direct route to the widget store.
-- Unavailable placeholders now live in the scrollable work area; the recovery surface offers add-widget and edit-to-remove paths.
 
 Improved: Widget-store keyboard selection feedback
 
@@ -44,163 +41,25 @@ Improved: Continued convergence of shared typography tiers
 
 - Migrated 298 spacing, 17 font-size, 34 line-height, and 134 font-weight declarations to existing shared variables while retaining numeric fallbacks.
 - Coverage moved from 29.73%/80.27%/5.98%/7.98% to 55.94%/84.86%/35.04%/90.18%; 30 Chromium scenarios across both themes and multiple widths measured 480 elements with zero computed-style or geometry differences.
-- Expanded CSS grew by 12,238 bytes, so this batch improves maintenance consistency rather than claiming a loading or bundle-size gain.
+
+Improved: Compact 2px spacing tier
+
+- Added the smallest shared spacing token and migrated 97 declarations / 99 top-level components; coverage moved from 69.09% to 73.73%, with zero computed-style or geometry differences across 30 Chromium scenarios and 480 elements.
+
+Fixed: Release archive and history footprint
+
+- Compacted README history indexes while keeping the complete bilingual changelogs; package.zip fell from 596562 B to 591332 B and is below the 591872 B release gate before verification.
 
 ## Previous release updates (v0.47.0 · 2026-10-11)
 
-This release brings the R54-inspired canvas, work-surface, hierarchy, and compact-container rules to all three LvSpeed Switch surfaces.
-
-Added: R54 three-surface visual adapter
-
-- Added scoped visual tokens for the switcher, workbench, widget store, and snippet studio, aligning surfaces, borders, radii, spacing, and restrained elevation.
-- Added real surface-container handling for the 760px and 560px compact layouts.
-
-Added: R54 visual contract and negative verification
-
-- Added contracts for material, primary/secondary hierarchy, touch targets, and compact-container behavior, including deletion probes that fail when a required declaration is removed.
-
-Improved: Three-surface work hierarchy
-
-- The switcher now reads as a continuous search and preview workspace; the workbench and store share a calm catalog/detail hierarchy; the snippet editor is the primary work surface with preview and AI as supporting surfaces.
-- Existing production data, APIs, states, close behavior, and focus restoration remain the source of truth; prototype demo data is not copied into production.
-
-Fixed: Inconsistent compact-surface material and scrolling
-
-- Normalized card material, surface spacing, and compact/mobile scroll ownership across historical style layers.
+The R54 three-surface adapter, compact layout, and work-surface hierarchy are recorded in the [complete changelog](./docs/CHANGELOG.en-US.md).
 
 <details>
-<summary>Older release updates (v0.46.9 and earlier)</summary>
+<summary>Older release updates (v0.47.0 and earlier)</summary>
 
-## Previous release updates (v0.46.9 · 2026-10-11)
+The full itemized history is maintained in the [complete English changelog](./docs/CHANGELOG.en-US.md). This compact index keeps the README focused while preserving the release trail:
 
-This release closes the real-kernel E2E loop with bounded previews, reliable mobile settings geometry, and honest stale-state feedback.
-
-Added: Real-kernel E2E release evidence
-
-- Completed the three-surface, settings, mobile-layout, widget-store, and snippet flows in an isolated SiYuan `3.8.7-alpha.6` backend run with exit code 0.
-- Added assertions for preview boundaries, mobile touch targets, retained stale state, and search-index readiness.
-
-Improved: Preview and mobile settings layout
-
-- The third-panel preview section owns its overflow boundary, so short windows no longer cover the details below it.
-- Mobile settings tabs keep a 44px touch target and the search bar aligns with panel padding without horizontal overflow.
-
-Fixed: Mobile timing and workbench state regression
-
-- Mobile E2E waits for the host search index after creating documents instead of treating indexing latency as an empty result.
-- A failed refresh with retained content is reported as stale and keeps the existing content and Retry action.
-
-## Previous release updates (v0.46.8 · 2026-10-10)
-
-Added: Compact top-bar containers and snippet focus continuity
-
-- Custom narrow panels now respond to the real `.sw-platform` container width, keeping navigation, settings, and close controls reachable.
-- The snippet picker restores focus to the actual opener, including the widget-store entry, instead of returning to an unrelated button.
-
-Added: Full UI interaction regression gates
-
-- Covers top-bar, 245px sidebar, store, configuration, and snippet-picker entry conditions, button states, empty/error feedback, and disposal races.
-- Adds deletion-injection checks so contracts fail when a required declaration or guard is removed.
-
-Improved: Top-bar hierarchy and touch targets
-
-- Preserved the current-surface underline; sidebar and mobile navigation stay on their own row, while fine-pointer short windows may compact close controls and coarse pointers retain touch targets.
-- Sidebar navigation continues to consume density tokens, removing odd spacing fragments while keeping labels and close actions reachable.
-
-Fixed: Notebook configuration failure feedback
-
-- Notebook request failures now show an explicit failure state and retry action instead of an empty list; successful retries restore options, the previous value, and button state, while late responses after disposal are ignored.
-
-## Previous release updates (v0.46.7 · 2026-10-09)
-
-Added: R5 platform top-bar prototype and real sidebar coverage
-
-- Added one top-bar prototype covering desktop, a real 245px sidebar, and a 360px mobile surface, including navigation, settings, close, and current-state rules.
-- Added a real 245px sidebar browser smoke that checks complete labels, no horizontal overflow, close anchoring, target sizes, and coordinate clicks.
-
-Improved: Top-bar current state and compact layout
-
-- Restored the current-surface underline; sidebar and mobile layouts place navigation on their own row while keeping settings and close reachable on the right.
-- Fixed prototype examples to use their real container widths and aligned feedback copy with production close and switch semantics.
-
-Fixed: Notebook configuration failure feedback
-
-- Separated request failure from an empty list, added retry UI, restored options and the previous value after success, and ignored late responses after disposal.
-
-## Previous release updates (v0.46.6 · 2026-10-09)
-
-Added: Quick snippet enable/disable
-
-- The persistent snippet list and picker catalog now expose sibling Enable/Disable actions for native snippets with visible state and failure receipts.
-
-Improved: Second-panel and widget-store hierarchy
-
-- Restored card radius, shadow, and glass depth in the workbench; the store detail pane now presents one title, factual metadata, live preview, and action area instead of a duplicate card.
-- Cleared stale accessibility references during redraw and kept the same hierarchy in desktop and mobile detail sheets.
-
-Fixed: Snippet toggling and older-host compatibility
-
-- Quick toggles reuse whole-list write/readback confirmation and the dirty-draft guard; hosts without master flags no longer turn confirmed writes into false errors.
-## What's New In v0.46.5 (2026-10-09)
-
-Added: Segmented surface navigation in the top bar
-
-- Added icons, purpose hints, and current-state feedback for the switcher, workbench, and snippet lab in one continuous segmented control.
-
-Improved: Top-bar hit areas and instant feedback
-
-- Kept visible borders and fills by default; hover, focus, and pressed states respond immediately. The close button is 36px on desktop and keeps a 44px touch target on coarse pointers.
-- Icons and labels no longer compete with button events; mouse, touch, keyboard, and screen-reader semantics are explicit.
-
-Fixed: Unresponsive hover and repeated mouse movement
-
-- Fixed unstable hit testing caused by host button skins, hint nodes, and transparent boundaries so the top-bar controls can be hovered and clicked continuously.
-
-## What's New In v0.46.4 (2026-10-09)
-
-Added: Full-path boundary regression guards
-
-- Added contracts and deletion-injection checks for empty dialogs, preserved search scenes, floating-menu positioning, saved-search notebook scopes, and settings diff dialogs.
-
-Improved: Continuous first- and second-panel workflows
-
-- Group redraws now replay the active search/filter; sort menus reposition on viewport changes; malformed host roots consistently destroy empty shells while preserving existing focus recovery.
-- Saved searches retain their notebook scope while the host notebook list is unavailable and reuse the option when the list returns.
-
-Fixed: Display copy and factual alignment
-
-- Fixed HTML entities appearing in favorite-group titles and added failure exits for settings, diff, template, and host-list dialogs.
-- Corrected the Chinese and English descriptions of path filtering and widget readiness, including level-by-level browsing, capability fallback, and external dependencies.
-
-## What's New In v0.46.3 (2026-10-09)
-
-Added: Full-path interaction regression guards
-
-- Added style and lifecycle contracts for platform chrome, mobile sheets, search metadata, stale states, and snippet previews, with deletion-injection checks for critical declarations.
-
-Improved: Three-panel controls and state feedback
-
-- Restored settings, close, and Esc hint feedback across desktop and touch layouts, with a unified 44px mobile close hit area.
-- Restored first-panel source/scope metadata, second-panel stale-cache status, and bounded scrolling for third-panel store/Gist previews.
-
-Fixed: Store copy and malformed dialog cleanup
-
-- Removed hardcoded Chinese labels from the English store flow and fixed malformed separators and dependency copy.
-- Destroyed empty store dialogs after host/theme mutation and restored focus to the trigger control.
-
-## Previous release (v0.46.1 · 2026-10-09)
-
-Fixed: Miniflux category credential handling
-
-- Fixed category discovery when a pasted token contains leading or trailing whitespace by sending the validated normalized token.
-
-Fixed: Mobile group action failure feedback
-
-- Fixed silent host rejections and unhandled Promise rejections during group actions; failures now show feedback and restore the action state.
-
-Improved: Settings switch accessibility and click behavior
-
-- Module visibility and dock switches now support full-row clicks and expose accessible names to screen readers.
+- v0.46.9: real-kernel E2E, bounded third-panel preview, mobile settings, and stale-state feedback.
 
 </details>
 
@@ -551,7 +410,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.47.1` (released; it adds the R5 brand identity, an unavailable-widget recovery surface, and reliable widget-store keyboard selection).
+The current version is `v0.47.2` (released; it adds the R5 brand identity, an unavailable-widget recovery surface, and reliable widget-store keyboard selection).
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>
@@ -745,3 +604,4 @@ This plugin’s interaction research and implementation draw on [TCOTC/snippets]
 ## License
 
 [MIT](./LICENSE)
+
