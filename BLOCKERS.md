@@ -1,6 +1,6 @@
 # 阻塞
 
-<!-- Current engineering blockers: none -->
+<!-- Current engineering blockers: B-012 -->
 
 - B-012（工程）T-7263 当前候选 package.zip 为 596337 bytes，超过 578 KiB（591872 bytes）仓库门禁 4465 bytes；需通过可复现的代码/资源减量后再进入发布门禁，暂不放宽预算。
 
