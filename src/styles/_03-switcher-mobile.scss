@@ -112,7 +112,7 @@
         gap: var(--sw-space-md, 8px);
         min-height: 52px;
         box-sizing: border-box;
-        padding: 10px 12px;
+        padding: 10px var(--sw-space-lg, 12px);
         border-bottom: 1px solid var(--b3-border-color);
         background: var(--b3-theme-surface);
         background: color-mix(in srgb, var(--b3-theme-surface) 94%, var(--b3-theme-background));
@@ -168,7 +168,7 @@
                 height: 28px;
                 padding: 0;
                 border: 0;
-                border-radius: 6px;
+                border-radius: $sw-radius-sm;
                 background: transparent;
                 color: var(--b3-theme-on-surface-light);
                 cursor: pointer;
@@ -284,7 +284,7 @@
                     flex: none;
                     min-width: 15px;
                     padding: 0 var(--sw-space-xs, 4px);
-                    border-radius: 8px;
+                    border-radius: $sw-radius-md;
                     background: var(--b3-theme-primary);
                     color: var(--b3-theme-on-primary);
                     font-size: var(--sw-font-2xs, 10px);
@@ -317,7 +317,7 @@
                 padding: var(--sw-space-xs, 4px);
                 background: var(--b3-theme-surface);
                 border: 1px solid var(--b3-border-color);
-                border-radius: 8px;
+                border-radius: $sw-radius-md;
                 box-shadow: var(--b3-dialog-shadow);
 
                 .sw__fav-empty {
@@ -370,7 +370,7 @@
                         font-weight: var(--sw-weight-regular, 400);
                         color: var(--b3-theme-on-surface-light);
                         background: var(--b3-theme-surface-lighter, var(--b3-theme-background));
-                        border-radius: 8px;
+                        border-radius: $sw-radius-md;
                         padding: 0 var(--sw-space-sm, 6px);
                         line-height: 15px;
                     }
@@ -502,7 +502,7 @@
         flex: none;
         width: 156px;
         overflow: auto;
-        padding: 10px 8px 10px 12px;
+        padding: 10px var(--sw-space-md, 8px) 10px var(--sw-space-lg, 12px);
     }
 
     // 折叠 ⇄ 完整 切换按钮：置于列表顶部，弱化为图标按钮
@@ -512,7 +512,7 @@
         justify-content: center;
         width: 24px;
         height: 24px;
-        margin: 0 0 6px auto;
+        margin: 0 0 var(--sw-space-sm, 6px) auto;
         padding: 0;
         border: none;
         border-radius: 4px;
@@ -537,12 +537,12 @@
     // 折叠模式：44px 图标条
     .sw__dock--collapsed {
         width: 44px;
-        padding: 10px 4px;
+        padding: 10px var(--sw-space-xs, 4px);
         // 允许 hover 浮层向右伸出，不被裁剪
         overflow: visible;
 
         .sw__dock-toggle {
-            margin: 0 auto 8px;
+            margin: 0 auto var(--sw-space-md, 8px);
         }
 
         .sw__dock-label {
@@ -552,7 +552,7 @@
         .sw__dock-item {
             justify-content: center;
             padding: var(--sw-space-md, 8px) 0;
-            border-radius: 6px;
+            border-radius: $sw-radius-sm;
         }
 
         .sw__dock-title {
@@ -609,7 +609,7 @@
             left: calc(100% + 8px);
             top: 50%;
             transform: translateY(-50%);
-            padding: 4px 10px;
+            padding: var(--sw-space-xs, 4px) 10px;
             border: 1px solid var(--b3-border-color);
             border-radius: 4px;
             background: var(--b3-theme-surface);
@@ -651,7 +651,7 @@
     .sw__scroll {
         flex: 1;
         overflow: auto;
-        padding: 10px 12px 16px;
+        padding: 10px var(--sw-space-lg, 12px) var(--sw-space-xl, 16px);
         outline: none;
 
         &::-webkit-scrollbar {
@@ -714,7 +714,7 @@
         justify-content: center;
         gap: var(--sw-space-sm, 6px);
         min-height: 132px;
-        padding: 48px 16px;
+        padding: 48px var(--sw-space-xl, 16px);
         border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
         border-radius: var(--sw-radius-card);
         background: color-mix(in srgb, var(--b3-theme-surface) 72%, var(--b3-theme-background));
@@ -750,7 +750,7 @@
         margin: 0 0 var(--sw-space-md, 8px);
         padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
         border: none;
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
         background: transparent;
         color: var(--b3-theme-on-surface);
         font-size: var(--sw-font-sm, 12px);
@@ -791,7 +791,7 @@
             flex: none;
             min-width: 20px;
             padding: 0 var(--sw-space-sm, 6px);
-            border-radius: 8px;
+            border-radius: $sw-radius-md;
             background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
             color: var(--b3-theme-on-surface-light);
             font-size: var(--sw-font-xs, 11px);
@@ -809,7 +809,7 @@
         display: flex;
         align-items: center;
         gap: var(--sw-space-md, 8px);
-        margin: 4px 2px 8px;
+        margin: var(--sw-space-xs, 4px) 2px var(--sw-space-md, 8px);
         font-size: var(--sw-font-xs, 11px);
         letter-spacing: 0.05em;
         color: var(--b3-theme-on-surface-light);
@@ -841,7 +841,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: var(--sw-space-sm, 6px);
-        margin: 8px 2px 4px;
+        margin: var(--sw-space-md, 8px) 2px var(--sw-space-xs, 4px);
     }
 
     .sw__search-chip {
@@ -892,7 +892,7 @@
     }
 
     .sw__workbench-row-label {
-        margin: 8px 2px 4px;
+        margin: var(--sw-space-md, 8px) 2px var(--sw-space-xs, 4px);
         font-size: var(--sw-font-xs, 11px);
         letter-spacing: 0.05em;
         color: var(--b3-theme-on-surface-light);
@@ -925,7 +925,7 @@
         flex-direction: column;
         gap: var(--sw-space-xs, 4px);
 
-        .sw__doc-item { min-height: 44px; padding: 8px 10px; }
+        .sw__doc-item { min-height: 44px; padding: var(--sw-space-md, 8px) 10px; }
     }
 
     // ==================== 全库文档搜索结果 / 统一索引分区（T-6799） ====================
@@ -956,7 +956,7 @@
             min-height: 40px;
             padding: var(--sw-space-md, 8px) var(--sw-space-lg, 12px);
             border: 1px solid var(--b3-border-color);
-            border-radius: 8px;
+            border-radius: $sw-radius-md;
             background: var(--b3-theme-surface);
             color: var(--b3-theme-on-background);
             font-size: var(--sw-font-md, 13px);
@@ -1005,7 +1005,7 @@
         gap: var(--sw-space-sm, 6px);
         cursor: pointer;
         user-select: none;
-        border-radius: 6px;
+        border-radius: $sw-radius-sm;
         min-height: 28px;
 
         &::before {
@@ -1101,7 +1101,7 @@
                 justify-content: center;
                 width: 32px;
                 height: 32px;
-                border-radius: 8px;
+                border-radius: $sw-radius-md;
                 background: var(--b3-list-hover);
                 color: var(--b3-theme-primary);
 
@@ -1231,10 +1231,10 @@
                 min-width: 0;
                 height: min(60vh, 560px, calc(100cqh - 48px));
                 overflow: hidden;
-                padding: 14px 16px 16px;
+                padding: 14px var(--sw-space-xl, 16px) var(--sw-space-xl, 16px);
                 border: 1px solid var(--b3-border-color);
                 background: var(--b3-theme-surface);
-                border-radius: 8px;
+                border-radius: $sw-radius-md;
 
                 &:focus-within {
                     outline: 2px solid var(--b3-theme-primary);
@@ -1266,7 +1266,7 @@
                         flex: none;
                         margin-left: auto;
                         min-height: var(--sw-control-h-sm);
-                        padding: 2px 8px;
+                        padding: 2px var(--sw-space-md, 8px);
                         font-size: var(--sw-font-2xs, 10px);
                     }
 
@@ -1277,7 +1277,7 @@
                         flex: none;
                         order: 1;
                         min-height: var(--sw-control-h-sm);
-                        padding: 1px 8px;
+                        padding: 1px var(--sw-space-md, 8px);
                         border: 1px solid var(--b3-border-color);
                         border-radius: var(--sw-radius-sm, 6px);
                         background: transparent;
@@ -1362,9 +1362,9 @@
                     button {
                         flex: none;
                         min-height: 24px;
-                        padding: 1px 8px;
+                        padding: 1px var(--sw-space-md, 8px);
                         border: 1px solid var(--b3-border-color);
-                        border-radius: 6px;
+                        border-radius: $sw-radius-sm;
                         background: transparent;
                         color: var(--b3-theme-on-surface-light);
                         font-size: var(--sw-font-xs, 11px);
@@ -1623,7 +1623,7 @@
         align-items: center;
         gap: var(--sw-space-md, 8px);
         min-height: 38px;
-        padding: 8px 10px;
+        padding: var(--sw-space-md, 8px) 10px;
         border-bottom: 1px solid var(--b3-border-color);
         background: color-mix(in srgb, var(--b3-theme-surface) 86%, var(--b3-theme-background));
     }
@@ -1716,7 +1716,7 @@
         grid-column: 1 / -1;
         min-height: 54px;
         margin: 0;
-        padding: 18px 12px;
+        padding: 18px var(--sw-space-lg, 12px);
         border: 1px dashed var(--b3-border-color);
         border-radius: var(--sw-radius-card);
         color: var(--b3-theme-on-surface-light);
@@ -1762,7 +1762,7 @@
             flex: none;
             min-width: 15px;
             padding: 0 var(--sw-space-xs, 4px);
-            border-radius: 8px;
+            border-radius: $sw-radius-md;
             background: var(--b3-theme-primary);
             color: var(--b3-theme-on-primary);
             font-size: var(--sw-font-2xs, 10px);
@@ -1883,7 +1883,7 @@
         flex-direction: column;
         align-items: stretch;
         justify-content: flex-start;
-        padding: 10px 8px;
+        padding: 10px var(--sw-space-md, 8px);
         border-top: none;
         border-left: 1px solid var(--b3-border-color);
         overflow-x: hidden;
@@ -1905,7 +1905,7 @@
         height: 32px;
         padding: 0 var(--sw-space-md, 8px);
         border: 1px solid transparent;
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
         background: transparent;
         color: var(--b3-theme-on-surface);
         cursor: pointer;
@@ -2207,7 +2207,7 @@
         display: flex;
         align-items: center;
         gap: var(--sw-space-sm, 6px);
-        padding: 6px 10px;
+        padding: var(--sw-space-sm, 6px) 10px;
         font-size: var(--sw-font-md, 13px);
         color: var(--b3-theme-on-background);
         min-width: 0;
@@ -2228,7 +2228,7 @@
 
         .sw__changed-badge {
             flex: none;
-            padding: 1px 6px;
+            padding: 1px var(--sw-space-sm, 6px);
             border-radius: 999px;
             background: color-mix(in srgb, var(--b3-theme-primary) 12%, var(--b3-theme-surface));
             color: var(--b3-theme-primary);
@@ -2416,7 +2416,7 @@
                 // 两行结构：行1 搜索+排序+关闭，行2 收藏/最近/设置芯片（见 .sw__toolbar-row2）
                 flex-wrap: wrap;
                 row-gap: var(--sw-space-sm, 6px);
-                padding: 8px 10px;
+                padding: var(--sw-space-md, 8px) 10px;
                 gap: var(--sw-space-xs, 4px);
 
                 .sw__search-wrap {
@@ -2515,7 +2515,7 @@
 
             // 手机端卡片：缩略图更紧凑，卡片间距更小
             .sw__mobile-card {
-                border-radius: 8px;
+                border-radius: $sw-radius-md;
                 border: 1px solid var(--b3-border-color);
                 overflow: hidden;
                 cursor: pointer;
@@ -2570,7 +2570,7 @@
                 -webkit-backdrop-filter: none;
                 backdrop-filter: none;
                 border: none;
-                border-radius: 6px;
+                border-radius: $sw-radius-sm;
                 color: var(--b3-theme-on-surface-light);
                 z-index: 2;
                 cursor: pointer;
@@ -2643,7 +2643,7 @@
                 }
 
                 .sw__meta {
-                    padding: 4px 114px 4px 8px;
+                    padding: var(--sw-space-xs, 4px) 114px var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
                     font-size: var(--sw-font-sm, 12px);
                     gap: var(--sw-space-xs, 4px);
 
@@ -2670,7 +2670,7 @@
 
             // 手机端滚动区：减少内边距
             .sw__scroll {
-                padding: 8px 10px 12px;
+                padding: var(--sw-space-md, 8px) 10px var(--sw-space-lg, 12px);
             }
     }
 }
@@ -2757,7 +2757,7 @@
   display: flex;
   align-items: center;
   gap: var(--sw-space-md, 8px);
-  padding: 8px 2px;
+  padding: var(--sw-space-md, 8px) 2px;
   color: var(--b3-theme-on-surface-light);
   font-size: var(--sw-font-sm, 12px);
 

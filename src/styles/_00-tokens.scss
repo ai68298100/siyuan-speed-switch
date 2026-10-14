@@ -31,6 +31,14 @@ $sw-ease: cubic-bezier(0.32, 0.72, 0, 1);
 $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
 $sw-z-base: 0;
 $sw-z-raised: 1;
+$sw-radius-sm: 6px;
+$sw-radius-md: 8px;
+$sw-space-xs: 4px;
+$sw-space-sm: 6px;
+$sw-space-md: 8px;
+$sw-space-lg: 12px;
+$sw-space-xl: 16px;
+$sw-space-2xl: 24px;
 
 // ------------------------------------------------------------
 // 字号刻度（T-7206）。CSS 自定义属性、挂插件根容器——
@@ -80,8 +88,8 @@ $sw-z-raised: 1;
     // 碎片档 5/7/9/11px 已退役就近归档（门禁见 tests/radius-scale-gate.test.cjs）；
     // 2/3/4px 微件档保留（checkbox/kbd 内芯等视觉敏感场景）。
     --sw-radius-xs: 4px;   // 微件
-    --sw-radius-sm: 6px;   // 小件（chip/行内块）
-    --sw-radius-md: 8px;   // 紧凑控件
+    --sw-radius-sm: #{$sw-radius-sm};   // 小件（chip/行内块）
+    --sw-radius-md: #{$sw-radius-md};   // 紧凑控件
     --sw-radius-lg: 12px;  // 中件/分区
 
     // T-7198：elevation 阴影三档（蓝灰调，与 --sw-card/float/sheet-shadow 同族分层）。
@@ -109,10 +117,10 @@ $sw-z-raised: 1;
 
     // T-7207：间距密度刻度（消费方：侧栏 compact 与密度系统）。值与偶数节奏一致；
     // 新间距优先消费档位，字面只允许作为回退参数出现。
-    --sw-space-xs: 4px;
-    --sw-space-sm: 6px;
-    --sw-space-md: 8px;
-    --sw-space-lg: 12px;
-    --sw-space-xl: 16px;
-    --sw-space-2xl: 24px;
+    --sw-space-xs: #{$sw-space-xs};
+    --sw-space-sm: #{$sw-space-sm};
+    --sw-space-md: #{$sw-space-md};
+    --sw-space-lg: #{$sw-space-lg};
+    --sw-space-xl: #{$sw-space-xl};
+    --sw-space-2xl: #{$sw-space-2xl};
 }

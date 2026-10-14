@@ -45,7 +45,7 @@
     .sw-setting__fav-section {
         min-width: 0;
         border: 1px solid var(--b3-border-color);
-        border-radius: 6px;
+        border-radius: $sw-radius-sm;
         overflow: hidden;
     }
 
@@ -306,7 +306,7 @@
 
     .sw-settings__tab {
         flex: none;
-        padding: 8px 10px;
+        padding: var(--sw-space-md, 8px) 10px;
         border: none;
         border-radius: var(--sw-radius-md, 8px);
         background: transparent;
@@ -353,7 +353,7 @@
         position: sticky;
         top: 0;
         z-index: 2;
-        margin: -14px -18px 12px;
+        margin: -14px -18px var(--sw-space-lg, 12px);
         padding: 10px 18px;
         background: var(--b3-theme-background);
         // T-7199：分隔线与标签栏同语言（border-color 弱化）。
@@ -457,9 +457,9 @@
     .sw-settings__search-option {
         display: block;
         width: 100%;
-        padding: 8px 10px;
+        padding: var(--sw-space-md, 8px) 10px;
         border: none;
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
         background: transparent;
         color: var(--b3-theme-on-background);
         text-align: left;
@@ -513,7 +513,7 @@
     }
 
     .sw-settings__search-note {
-        padding: 8px 10px;
+        padding: var(--sw-space-md, 8px) 10px;
         color: var(--b3-theme-on-surface-light);
         font-size: var(--sw-font-sm, 12px);
     }
@@ -658,7 +658,7 @@
     // T-6872（RZ-2）：标签页内分组卡片——组标题（小号大写字距弱化）+ 组卡片
     // （组内行的 hairline 分隔与 hover 提亮沿用条目自身规则，只收敛内边距到卡片内）。
     .sw-settings__group-title {
-        margin: 14px 2px 8px;
+        margin: 14px 2px var(--sw-space-md, 8px);
         font-size: var(--sw-font-xs, 11px);
         font-weight: var(--sw-weight-bold, 700);
         letter-spacing: .08em;
@@ -796,7 +796,7 @@
             min-height: 0;
             // Keep the final setting row above Android gesture bars and any
             // host bottom overlay.  The desktop rule remains compact.
-            padding: 10px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+            padding: 10px var(--sw-space-lg, 12px) calc(16px + env(safe-area-inset-bottom, 0px));
             box-sizing: border-box;
         }
 
@@ -1099,7 +1099,7 @@
         align-items: center;
         gap: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
         min-height: 44px;
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
 
         > .sw-settings__item-title, > .sw-settings__hint, > select { grid-column: 1 / -1; }
         > .sw-settings__hint { margin: 0; }
@@ -1128,7 +1128,7 @@
         &.is-toggle > input { grid-column: 2; grid-row: 1; }
     }
     &__value {
-        padding: 1px 8px;
+        padding: 1px var(--sw-space-md, 8px);
         border-radius: 999px;
         background: var(--sw-accent-soft, var(--b3-theme-surface-lighter));
         color: var(--b3-theme-primary);
@@ -1138,7 +1138,7 @@
     &__advanced { padding-block: var(--sw-space-md, 8px); }
     &__advanced > summary {
         min-height: 44px;
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
         color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
         cursor: pointer;
         font-weight: var(--sw-weight-semibold, 600);
@@ -1174,7 +1174,7 @@
         gap: var(--sw-space-md, 8px);
         min-height: 40px;
         padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
         background: var(--b3-theme-background-light);
 
         &.is-current {
@@ -1193,7 +1193,7 @@
         // T-7015（F3 收口）：当前场景「当前」徽标——状态用文字而非按钮表达
         .sw-floating-ball-settings__preset-current {
             flex: none;
-            padding: 2px 8px;
+            padding: 2px var(--sw-space-md, 8px);
             border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 32%, transparent);
             border-radius: 999px;
             background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
@@ -1202,7 +1202,7 @@
             line-height: var(--sw-leading-body, 1.5);
         }
 
-        .b3-button { flex: 0 0 auto; min-height: 32px; padding: 2px 8px; }
+        .b3-button { flex: 0 0 auto; min-height: 32px; padding: 2px var(--sw-space-md, 8px); }
     }
 
     button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
@@ -1236,7 +1236,7 @@
         align-items: center;
         justify-content: space-between;
         gap: var(--sw-space-lg, 12px);
-        padding: 10px 12px;
+        padding: 10px var(--sw-space-lg, 12px);
         border: 1px solid var(--b3-border-color);
         border-radius: 10px;
     }
@@ -1278,7 +1278,7 @@
         grid-template-columns: minmax(0, 1fr);
         gap: var(--sw-space-xs, 4px);
         padding: var(--sw-space-md, 8px);
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
         background: var(--b3-theme-background-light);
 
         > .b3-select { width: 100%; min-width: 0; }
@@ -1320,7 +1320,7 @@
         min-height: 38px;
         padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
         border: 1px solid transparent;
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
         background: var(--b3-theme-background-light);
         transition: border-color $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease;
 
@@ -1461,7 +1461,7 @@
 
 .sw-quick-icon-picker__cat {
     min-height: 28px;
-    padding: 2px 12px;
+    padding: 2px var(--sw-space-lg, 12px);
     border: 1px solid var(--b3-border-color);
     border-radius: 999px;
     background: var(--b3-theme-surface);
@@ -1478,7 +1478,7 @@
 
 .sw-quick-icon-picker__group-title {
     grid-column: 1 / -1;
-    margin: 6px 2px 2px;
+    margin: var(--sw-space-sm, 6px) 2px 2px;
     font-size: var(--sw-font-xs, 11px);
     letter-spacing: 0.05em;
     color: var(--b3-theme-on-surface-light);
@@ -1493,10 +1493,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--sw-space-xs, 4px);
-    margin: 6px 0 2px;
-    padding: 8px 10px;
+    margin: var(--sw-space-sm, 6px) 0 2px;
+    padding: var(--sw-space-md, 8px) 10px;
     border: 1px solid var(--b3-border-color);
-    border-radius: 8px;
+    border-radius: $sw-radius-md;
     max-height: 220px;
     overflow: auto;
 }
@@ -1519,7 +1519,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 4px 2px 8px;
+    padding: var(--sw-space-xs, 4px) 2px var(--sw-space-md, 8px);
 }
 
 .sw-doc-set-diff__meta {
@@ -1529,7 +1529,7 @@
 }
 
 .sw-doc-set-diff__group {
-    margin: 4px 2px 4px;
+    margin: var(--sw-space-xs, 4px) 2px var(--sw-space-xs, 4px);
     padding-left: 10px;
     border-left: 3px solid var(--b3-border-color);
     font-size: var(--sw-font-xs, 11px);
@@ -1544,9 +1544,9 @@
 }
 
 .sw-doc-set-diff__line {
-    padding: 6px 10px;
+    padding: var(--sw-space-sm, 6px) 10px;
     border: 1px solid var(--b3-border-color);
-    border-radius: 8px;
+    border-radius: $sw-radius-md;
     font-size: var(--sw-font-sm, 12px);
     overflow-wrap: anywhere;
 }

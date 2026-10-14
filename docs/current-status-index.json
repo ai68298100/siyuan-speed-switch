@@ -2971,6 +2971,80 @@
         "docs/adr/0190-shared-layer-token-boundary.md",
         "docs/dev-plan-2026-10-06.md"
       ],
+      "next": "T-7265"
+    },
+    {
+      "id": "T-7265",
+      "title": "共享圆角刻度第二批收敛",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7264"
+      ],
+      "evidence": [
+        "src/styles/_00-tokens.scss",
+        "src/styles/_01-base-controls.scss",
+        "src/styles/_02-settings.scss",
+        "src/styles/_03-switcher-mobile.scss",
+        "src/styles/_04-fab-fullscreen-soft.scss",
+        "src/styles/_05-settings-widgets.scss",
+        "src/styles/_06-widgets-store.scss",
+        "src/styles/_07-sidebar-panel-store.scss",
+        "src/styles/_08-home-store-cards.scss",
+        "src/styles/_09-store-preview-polish.scss",
+        "src/styles/_platform-shell.scss",
+        "src/styles/_snippet-studio.scss",
+        "tests/radius-scale-gate.test.cjs",
+        "tests/store-ui-polish.test.cjs",
+        ".artifacts/token-audit-t7265-before.json",
+        ".artifacts/token-audit-t7265-after.json",
+        ".artifacts/t7265-negative-radius-probe.log",
+        "docs/adr/0191-shared-radius-compile-time-tiers.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7266"
+    },
+    {
+      "id": "T-7266",
+      "title": "复合间距刻度精确迁移",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7265"
+      ],
+      "evidence": [
+        "src/styles/_00-tokens.scss",
+        "src/styles/_01-base-controls.scss",
+        "src/styles/_02-settings.scss",
+        "src/styles/_03-switcher-mobile.scss",
+        "src/styles/_04-fab-fullscreen-soft.scss",
+        "src/styles/_05-settings-widgets.scss",
+        "src/styles/_06-widgets-store.scss",
+        "src/styles/_07-sidebar-panel-store.scss",
+        "src/styles/_08-home-store-cards.scss",
+        "src/styles/_09-store-preview-polish.scss",
+        "src/styles/_floating-ball-more.scss",
+        "src/styles/_platform-shell.scss",
+        "src/styles/_snippet-studio.scss",
+        "tests/spacing-token-migration.test.cjs",
+        "tests/space-scale-gate.test.cjs",
+        "tests/store-mobile-layout-contract.test.cjs",
+        "tests/store-mobile-external-contract.test.cjs",
+        "tests/store-ui-polish.test.cjs",
+        ".artifacts/token-audit-t7265-after.json",
+        ".artifacts/token-audit-t7266-after.json",
+        ".artifacts/t7266-spacing-candidates.json",
+        ".artifacts/t7266-spacing-migration.json",
+        ".artifacts/t7266-style-compare.json",
+        ".artifacts/t7266-negative-spacing-probe.log",
+        ".artifacts/t7266-build.log",
+        "docs/adr/0192-exact-spacing-shorthand-migration.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
       "next": "T-7144"
     }
   ],
@@ -2979,6 +3053,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "blocked: 596337 bytes exceeds 591872-byte repository budget by 4465 bytes; requires measured reduction before release"
+    "packageBudget": "blocked: 596423 bytes exceeds 591872-byte repository budget by 4551 bytes; requires measured reduction before release"
   }
 }

@@ -12,7 +12,7 @@
         min-width: 0;
         min-height: 44px;
         margin: 0 0 var(--sw-space-md, 8px);
-        padding: 8px 10px;
+        padding: var(--sw-space-md, 8px) 10px;
         border: 1px solid var(--b3-border-color);
         border-radius: 10px;
         background: var(--b3-theme-background);

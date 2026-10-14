@@ -36,7 +36,7 @@ const mobileSwitcherSource = readSourceText('src/mobile-switcher-ui.ts');
 //（原 mobile 手写截块已删除——T-6280 收口批）
 
 test('mobile store media query exists', () => assert.match(css, /@media \(max-width: 560px\)/));
-test('mobile store keeps compact padding', () => assert.ok(declaresIn(css, '.sw-home-store', /padding: 10px 12px 14px/, narrow)));
+test('mobile store keeps compact padding', () => assert.ok(declaresIn(css, '.sw-home-store', /padding: 10px var\(--sw-space-lg,\s*12px\) 14px/, narrow)));
 test('mobile search wraps controls', () => assert.ok(declaresIn(css, '.sw-home-store__search', /flex-wrap: wrap/, narrow)));
 test('mobile search keeps gap', () => assert.ok(declaresIn(css, '.sw-home-store__search', /gap:\s*var\(--sw-space-md,\s*8px\)/, narrow)));
 test('mobile search input keeps flexible width', () => assert.ok(declaresIn(css, '.sw-home-store__search input', /flex: 1 1 calc\(100% - 40px\)/, narrow)));
@@ -55,7 +55,7 @@ test('mobile tabs contain inline overscroll', () => assert.ok(declaresIn(css, '.
 test('mobile tabs use momentum scrolling', () => assert.ok(declaresIn(css, '.sw-home-store__tabs', /-webkit-overflow-scrolling: touch/, narrow)));
 test('mobile tabs keep thin scrollbar', () => assert.ok(declaresIn(css, '.sw-home-store__tabs', /scrollbar-width: thin/, narrow)));
 test('mobile tabs keep touch height', () => assert.ok(declaresIn(css, '.sw-home-store__tab', /min-height: 36px/, narrow)));
-test('mobile tabs preserve horizontal padding', () => assert.ok(declaresIn(css, '.sw-home-store__tab', /padding-inline: 12px/, narrow)));
+test('mobile tabs preserve horizontal padding', () => assert.ok(declaresIn(css, '.sw-home-store__tab', /padding-inline: var\(--sw-space-lg,\s*12px\)/, narrow)));
 test('mobile summary shares bounded width rule', () => assert.ok(declaresIn(css, '.sw-home-store__summary', /max-width: 100%/, narrow)));
 test('mobile cards fill row width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /width: 100%/, narrow)));
 test('mobile cards cap row width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /max-width: 100%/, narrow)));

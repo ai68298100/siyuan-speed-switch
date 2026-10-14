@@ -56,11 +56,11 @@
     .speed-switch {
         .sw__toolbar {
             min-height: 54px;
-            padding: 8px 10px;
+            padding: var(--sw-space-md, 8px) 10px;
         }
 
         .sw__scroll {
-            padding: 12px 10px calc(16px + env(safe-area-inset-bottom, 0px));
+            padding: var(--sw-space-lg, 12px) 10px calc(16px + env(safe-area-inset-bottom, 0px));
         }
 
         .sw__mobile-card {
@@ -69,7 +69,7 @@
 
             .sw__meta {
                 min-height: 36px;
-                padding: 4px 114px 4px 10px;
+                padding: var(--sw-space-xs, 4px) 114px var(--sw-space-xs, 4px) 10px;
             }
         }
 
@@ -78,7 +78,7 @@
 
     .sw-settings {
         .sw-settings__tabs { padding: var(--sw-space-md, 8px) var(--sw-space-sm, 6px); }
-        .sw-settings__panels { padding: 12px 14px calc(18px + env(safe-area-inset-bottom, 0px)); }
+        .sw-settings__panels { padding: var(--sw-space-lg, 12px) 14px calc(18px + env(safe-area-inset-bottom, 0px)); }
         .sw-settings__item { margin-inline: -6px; padding-inline: var(--sw-space-md, 8px); }
     }
 }
@@ -193,7 +193,7 @@
     max-height: min(70dvh, 520px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 8px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: var(--sw-space-md, 8px) 0 calc(10px + env(safe-area-inset-bottom, 0px));
     border-radius: 16px 16px 0 0;
     background: var(--b3-theme-surface);
     box-shadow: 0 -4px 24px rgba(0, 0, 0, .18);
@@ -208,14 +208,14 @@
 .sw__mobile-sort-sheet .sw__mobile-sheet-handle {
     width: 36px;
     height: 4px;
-    margin: 0 auto 6px;
+    margin: 0 auto var(--sw-space-sm, 6px);
     border-radius: 2px;
     background: var(--b3-theme-on-surface-light);
     opacity: .3;
 }
 
 .sw__mobile-sort-sheet .sw__mobile-sheet-title {
-    padding: 8px 16px 10px;
+    padding: var(--sw-space-md, 8px) var(--sw-space-xl, 16px) 10px;
     color: var(--b3-theme-on-background);
     font-size: var(--sw-font-lg, 15px);
     font-weight: var(--sw-weight-semibold, 600);
@@ -269,7 +269,7 @@
         height: var(--sw-control-h-sm, 20px);
         padding: 0 var(--sw-space-sm, 6px);
         border: 1px solid var(--b3-border-color);
-        border-radius: 6px;
+        border-radius: $sw-radius-sm;
         background: var(--b3-theme-background);
         font-family: var(--b3-font-family-code, ui-monospace, monospace);
         font-size: var(--sw-font-2xs, 10px);
@@ -309,7 +309,7 @@
         border-radius: 2px;
         background: var(--b3-theme-on-surface-light);
         opacity: 0.3;
-        margin: 8px auto 4px;
+        margin: var(--sw-space-md, 8px) auto var(--sw-space-xs, 4px);
     }
 
     .sw__mobile-sheet-title {
@@ -319,7 +319,7 @@
         justify-content: center;
         min-height: 52px;
         flex: none;
-        padding: 8px 56px 6px;
+        padding: var(--sw-space-md, 8px) 56px var(--sw-space-sm, 6px);
         font-size: var(--sw-font-lg, 15px);
         font-weight: var(--sw-weight-semibold, 600);
         color: var(--b3-theme-on-background);
@@ -343,7 +343,7 @@
             padding: 0;
             transform: translateY(-50%);
             border: 1px solid transparent;
-            border-radius: 8px;
+            border-radius: $sw-radius-md;
             background: transparent;
             color: var(--b3-theme-on-surface-light);
 
@@ -363,7 +363,7 @@
         flex: 1;
         overflow: auto;
         // 底部内边距叠加安全区，避免最后一项被 iPhone 手势条 / 安卓导航栏遮挡
-        padding: 4px 0 calc(12px + env(safe-area-inset-bottom, 0px));
+        padding: var(--sw-space-xs, 4px) 0 calc(12px + env(safe-area-inset-bottom, 0px));
         -webkit-overflow-scrolling: touch;
     }
 
@@ -403,7 +403,7 @@
         padding: 0;
         border: none;
         background: transparent;
-        border-radius: 6px;
+        border-radius: $sw-radius-sm;
         color: var(--b3-theme-on-surface-light);
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
@@ -423,7 +423,7 @@
         flex: none;
         min-width: 16px;
         padding: 0 var(--sw-space-xs, 4px);
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
         background: var(--b3-theme-surface-lighter, var(--b3-theme-background));
         font-size: var(--sw-font-2xs, 10px);
         line-height: 16px;
@@ -441,7 +441,7 @@
         align-items: center;
         gap: 10px;
         width: 100%;
-        padding: 10px 16px;
+        padding: 10px var(--sw-space-xl, 16px);
         border: none;
         background: transparent;
         color: var(--b3-theme-on-background);
@@ -482,7 +482,7 @@
 
     .sw__mobile-sheet-empty {
         min-height: 96px;
-        padding: 28px 16px;
+        padding: 28px var(--sw-space-xl, 16px);
         border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
         border-radius: var(--sw-radius-card);
         background: color-mix(in srgb, var(--b3-theme-surface) 76%, var(--b3-theme-background));
@@ -560,7 +560,7 @@
     align-items: center;
     gap: var(--sw-space-sm, 6px);
     max-width: 200px;
-    padding: 4px 10px;
+    padding: var(--sw-space-xs, 4px) 10px;
     font-size: var(--sw-font-md, 13px);
 
     svg { flex: none; width: var(--sw-icon-xs, 14px); height: 14px; }
@@ -572,7 +572,7 @@
 }
 
 .sw__mobile-sheet-section {
-    margin: 10px 16px 4px;
+    margin: 10px var(--sw-space-xl, 16px) var(--sw-space-xs, 4px);
     color: var(--b3-theme-on-surface-light);
     font-size: var(--sw-font-xs, 11px);
     letter-spacing: 0.05em;
@@ -599,7 +599,7 @@
         inset: 8px 16px auto auto;
         z-index: 5;
         padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
-        border-radius: 6px;
+        border-radius: $sw-radius-sm;
         color: var(--b3-theme-on-surface-light);
         background: color-mix(in srgb, var(--b3-theme-surface) 92%, transparent);
         font-size: var(--sw-font-xs, 11px);
@@ -625,7 +625,7 @@
 // 移动端补齐底栏形态：通栏、实底、上边框与安全区高度。
 .sw-home--mobile .sw-home__quick-actions {
     margin: 10px -16px -12px;
-    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+    padding: var(--sw-space-sm, 6px) 10px calc(6px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--b3-border-color);
     background: var(--b3-theme-surface);
 }
@@ -684,7 +684,7 @@
     gap: 10px;
     flex: none;
     min-height: 32px;
-    padding: 6px 18px;
+    padding: var(--sw-space-sm, 6px) 18px;
     border-top: 1px solid var(--b3-border-color);
     background: var(--b3-theme-surface);
     color: var(--b3-theme-on-surface-light);
@@ -693,7 +693,7 @@
     .sw-home__receipt-details {
         flex: none;
         margin-left: auto;
-        padding: 2px 8px;
+        padding: 2px var(--sw-space-md, 8px);
         font-size: var(--sw-font-xs, 11px);
     }
     font-size: var(--sw-font-sm, 12px);
@@ -715,9 +715,9 @@
         top: 8px;
         right: 10px;
         z-index: 1;
-        padding: 2px 8px;
+        padding: 2px var(--sw-space-md, 8px);
         border: 1px solid color-mix(in srgb, var(--b3-theme-error, #d23f31) 40%, transparent);
-        border-radius: 6px;
+        border-radius: $sw-radius-sm;
         background: var(--b3-theme-surface);
         color: var(--b3-theme-error, #d23f31);
         font-size: var(--sw-font-2xs, 10px);
@@ -739,10 +739,10 @@
         right: 10px;
         z-index: 1;
         max-width: calc(100% - 20px);
-        padding: 2px 8px;
+        padding: 2px var(--sw-space-md, 8px);
         overflow: hidden;
         border: 1px solid color-mix(in srgb, var(--sw-platform-warning, var(--b3-theme-warning, #b7761d)) 40%, transparent);
-        border-radius: 6px;
+        border-radius: $sw-radius-sm;
         background: var(--b3-theme-surface);
         color: var(--sw-platform-warning, var(--b3-theme-warning, #b7761d));
         font-size: var(--sw-font-2xs, 10px);
@@ -783,7 +783,7 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    padding: 8px 10px;
+    padding: var(--sw-space-md, 8px) 10px;
     border-radius: var(--sw-radius-card, 20px);
     border: 0.5px solid color-mix(in srgb, var(--b3-theme-background) 60%, var(--b3-border-color));
     background: color-mix(in srgb, var(--b3-theme-surface) 88%, transparent);
@@ -822,7 +822,7 @@
     border-top: 1px dashed var(--b3-border-color);
 
     .sw-home__tool {
-        padding: 2px 8px;
+        padding: 2px var(--sw-space-md, 8px);
         font-size: var(--sw-font-sm, 12px);
     }
 }
@@ -835,7 +835,7 @@
 
 .sw-home__empty {
     grid-column: 1 / -1;
-    padding: 48px 16px;
+    padding: 48px var(--sw-space-xl, 16px);
     border: 1px dashed var(--b3-border-color);
     border-radius: var(--sw-radius-card, 14px);
     color: var(--b3-theme-on-surface-light);
@@ -911,7 +911,7 @@
 
     .sw__home-module-toggle {
         flex: none;
-        padding: 1px 8px;
+        padding: 1px var(--sw-space-md, 8px);
         font-size: var(--sw-font-sm, 12px);
     }
 }
@@ -930,7 +930,7 @@
         width: 100%;
         padding: var(--sw-space-sm, 6px) var(--sw-space-sm, 6px);
         border: none;
-        border-radius: 6px;
+        border-radius: $sw-radius-sm;
         background: transparent;
         color: var(--b3-theme-on-background);
         font-size: var(--sw-font-md, 13px);
@@ -983,7 +983,7 @@
 .sw__home-module-status--empty,
 .sw__home-module-status--error {
     min-height: 54px;
-    padding: 6px 2px;
+    padding: var(--sw-space-sm, 6px) 2px;
 }
 
 .sw__home-module-refreshing {
@@ -997,7 +997,7 @@
     display: grid;
     gap: var(--sw-space-md, 8px);
     min-height: 54px;
-    padding: 6px 2px;
+    padding: var(--sw-space-sm, 6px) 2px;
 }
 
 .sw__home-loading-skeleton-line {
@@ -1136,7 +1136,7 @@
         min-width: 106px;
         max-width: 132px;
         height: 32px;
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
         margin-bottom: var(--sw-space-xs, 4px);
     }
 }
@@ -1156,7 +1156,7 @@
     &__link { display: inline-flex; margin-bottom: var(--sw-space-lg, 12px); }
     &__note { margin: 0; color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-sm, 12px); }
 
-    &__dependency-title { margin: 18px 0 6px; font-size: var(--sw-font-lg, 15px); }
+    &__dependency-title { margin: 18px 0 var(--sw-space-sm, 6px); font-size: var(--sw-font-lg, 15px); }
     &__dependency-summary { margin: 0 0 var(--sw-space-md, 8px); color: var(--b3-theme-on-surface-light); font-size: var(--sw-font-sm, 12px); }
     &__dependency-list { list-style: none; margin: 0 0 var(--sw-space-lg, 12px); padding: 0; display: grid; gap: var(--sw-space-sm, 6px); }
     &__dependency-item {
@@ -1164,12 +1164,12 @@
         grid-template-columns: minmax(110px, auto) auto 1fr auto;
         align-items: center;
         gap: var(--sw-space-md, 8px);
-        padding: 8px 10px;
-        border-radius: 8px;
+        padding: var(--sw-space-md, 8px) 10px;
+        border-radius: $sw-radius-md;
         background: var(--b3-theme-surface-lighter);
         font-size: var(--sw-font-sm, 12px);
     }
-    &__dependency-badge { border-radius: 999px; padding: 2px 6px; color: var(--b3-theme-on-primary); background: var(--b3-theme-primary); white-space: nowrap; }
+    &__dependency-badge { border-radius: 999px; padding: 2px var(--sw-space-sm, 6px); color: var(--b3-theme-on-primary); background: var(--b3-theme-primary); white-space: nowrap; }
     &__dependency-item.is-optional &__dependency-badge { color: var(--b3-theme-on-surface); background: var(--b3-theme-surface); }
     &__dependency-setup { min-width: 0; color: var(--b3-theme-on-surface-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     &__dependency-item a { color: var(--b3-theme-primary); white-space: nowrap; }
@@ -1190,7 +1190,7 @@
 
     &__section {
         min-width: 0;
-        padding: 12px 14px;
+        padding: var(--sw-space-lg, 12px) 14px;
         border: 1px solid var(--sw-platform-line, var(--b3-border-color));
         border-radius: var(--sw-platform-radius-md, 12px);
         background: var(--sw-platform-surface, var(--b3-theme-surface));
@@ -1226,14 +1226,14 @@
     .sw-home-store-guide__dependency-item { grid-template-columns: minmax(100px, auto) auto; }
     .sw-home-store-guide__dependency-setup { grid-column: 1 / -1; white-space: normal; }
     .sw-platform-guide { gap: var(--sw-space-md, 8px); padding: var(--sw-space-lg, 12px); }
-    .sw-platform-guide__section { padding: 10px 12px; }
+    .sw-platform-guide__section { padding: 10px var(--sw-space-lg, 12px); }
     .sw__empty-actions { justify-content: flex-start; }
     .sw__empty-action { min-height: 44px; }
 }
 
 .sw-settings__mobile-home-note {
     margin: 0 0 var(--sw-space-lg, 12px);
-    padding: 10px 12px;
+    padding: 10px var(--sw-space-lg, 12px);
     border-radius: 10px;
     background: color-mix(in srgb, var(--b3-theme-primary) 8%, transparent);
     color: var(--b3-theme-on-surface-light);
@@ -1252,11 +1252,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--sw-space-lg, 12px);
-    padding: 4px 2px 8px;
+    padding: var(--sw-space-xs, 4px) 2px var(--sw-space-md, 8px);
 }
 
 .sw-home-health__group {
-    margin: 6px 2px 6px;
+    margin: var(--sw-space-sm, 6px) 2px var(--sw-space-sm, 6px);
     padding-left: 10px;
     border-left: 3px solid var(--b3-border-color);
     font-size: var(--sw-font-xs, 11px);
@@ -1274,9 +1274,9 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 10px;
+    padding: var(--sw-space-md, 8px) 10px;
     border: 1px solid var(--b3-border-color);
-    border-radius: 8px;
+    border-radius: $sw-radius-md;
     margin-bottom: var(--sw-space-sm, 6px);
 
     &--failed { border-color: color-mix(in srgb, var(--b3-theme-error) 34%, transparent); }
@@ -1563,7 +1563,7 @@
 
 // T-7054 A 批次：日进度条（local-time 组件）+ 世界时钟昼夜指示器
 .sw-home__cell .sw__home-day-progress {
-    margin: 8px 4px 2px;
+    margin: var(--sw-space-md, 8px) var(--sw-space-xs, 4px) 2px;
 }
 
 .sw-home__cell .sw__home-day-progress-bar {

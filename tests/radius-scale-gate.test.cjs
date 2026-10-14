@@ -68,9 +68,29 @@ test('no radii beyond the frozen scale', () => {
     }
 });
 
+function directSharedTierRadii(source) {
+    return findRadiusValues(source).filter((value) => ['6px', '8px', '6px 6px 0 0'].includes(value));
+}
+
+test('detector self-check: direct shared-tier radii are caught', () => {
+    assert.deepEqual(directSharedTierRadii('.x { border-radius: 6px; } .y { border-radius: 8px; }'), ['6px', '8px']);
+});
+
+test('shared radius tiers use compile-time tokens in production styles', () => {
+    const files = fs.readdirSync(styleDir).filter((f) => f.endsWith('.scss'));
+    for (const f of files) {
+        const direct = directSharedTierRadii(read(f));
+        assert.deepEqual(direct, [], `${f}: 6px/8px shared radius tiers must use $sw-radius-sm/md`);
+    }
+});
+
 test('radius tokens are defined on the plugin root in _00-tokens', () => {
     const tokens = read('_00-tokens.scss');
     for (const token of ['--sw-radius-xs', '--sw-radius-sm', '--sw-radius-md', '--sw-radius-lg']) {
         assert.ok(tokens.includes(`${token}:`), `圆角 token ${token} 必须在 _00-tokens.scss 定义`);
     }
+    assert.match(tokens, /\$sw-radius-sm:\s*6px;/);
+    assert.match(tokens, /\$sw-radius-md:\s*8px;/);
+    assert.match(tokens, /--sw-radius-sm:\s*#\{\$sw-radius-sm\};/);
+    assert.match(tokens, /--sw-radius-md:\s*#\{\$sw-radius-md\};/);
 });

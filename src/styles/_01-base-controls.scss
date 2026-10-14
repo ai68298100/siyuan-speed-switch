@@ -21,7 +21,7 @@
         min-height: var(--sw-control-h);
         padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
         border: 1px solid var(--b3-border-color);
-        border-radius: 6px;
+        border-radius: $sw-radius-sm;
         background: var(--b3-theme-surface);
         font-size: var(--sw-font-md, 13px);
         color: var(--b3-theme-on-background);
@@ -68,7 +68,7 @@
     min-height: 42px;
     padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
     border: 1px solid var(--b3-border-color);
-    border-radius: 6px;
+    border-radius: $sw-radius-sm;
     background: var(--b3-theme-surface);
 }
 
@@ -247,7 +247,7 @@
 .sw-setting__quick-action--add {
     align-items: center;
     gap: var(--sw-space-md, 8px);
-    padding: 10px 0 4px;
+    padding: 10px 0 var(--sw-space-xs, 4px);
 
     .b3-button {
         flex: none;
@@ -401,7 +401,7 @@
     padding: 10px;
     box-sizing: border-box;
     border: 1px solid var(--b3-border-color);
-    border-radius: 6px;
+    border-radius: $sw-radius-sm;
     background: var(--b3-theme-surface);
 }
 
@@ -444,7 +444,7 @@
     padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
     box-sizing: border-box;
     border: 1px solid var(--b3-border-color);
-    border-radius: 6px;
+    border-radius: $sw-radius-sm;
     background: var(--b3-theme-background);
     color: var(--b3-theme-on-background);
     font-family: inherit;
@@ -513,7 +513,7 @@
 }
 
 .sw-setting__quick-picker-empty {
-    padding: 20px 8px;
+    padding: 20px var(--sw-space-md, 8px);
     text-align: center;
 }
 
@@ -543,7 +543,7 @@
     padding: var(--sw-space-lg, 12px);
     box-sizing: border-box;
     border: 1px solid var(--b3-border-color);
-    border-radius: 8px;
+    border-radius: $sw-radius-md;
     background: var(--b3-theme-surface);
     box-shadow: var(--b3-dialog-shadow);
 }
@@ -601,7 +601,7 @@
 }
 
 .sw-quick-icon-picker__hint {
-    margin: 6px 0 10px;
+    margin: var(--sw-space-sm, 6px) 0 10px;
     color: var(--b3-theme-on-surface-light);
 }
 
@@ -633,7 +633,7 @@
     min-height: 42px;
     padding: 0;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: $sw-radius-sm;
     background: transparent;
     color: var(--b3-theme-on-background);
     cursor: pointer;
@@ -670,7 +670,7 @@
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             padding: 10px;
             border: 1px solid var(--b3-border-color);
-            border-radius: 6px;
+            border-radius: $sw-radius-sm;
             background: var(--b3-theme-surface);
             cursor: default;
         }

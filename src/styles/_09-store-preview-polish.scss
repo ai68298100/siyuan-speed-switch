@@ -91,7 +91,7 @@
         align-items: center;
         gap: var(--sw-space-sm, 6px);
         margin: 0 0 var(--sw-space-md, 8px);
-        padding: 6px 2px 8px;
+        padding: var(--sw-space-sm, 6px) 2px var(--sw-space-md, 8px);
         min-width: 0;
         border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 60%, transparent);
         background: color-mix(in srgb, var(--b3-theme-surface) 92%, transparent);
@@ -131,7 +131,7 @@
         min-width: 0;
         min-height: 0;
         overflow-wrap: anywhere;
-        padding: 4px 2px 8px;
+        padding: var(--sw-space-xs, 4px) 2px var(--sw-space-md, 8px);
 
         .sw__home-module {
             border: 1px solid var(--b3-border-color);
@@ -197,7 +197,7 @@
         justify-content: center;
         min-width: var(--sw-control-h-md);
         min-height: var(--sw-control-h-md);
-        padding: 2px 8px;
+        padding: 2px var(--sw-space-md, 8px);
         border: 0;
         border-radius: 999px;
         background: transparent;
@@ -232,7 +232,7 @@
     grid-template-columns: repeat(7, minmax(0, 1fr));
     grid-template-rows: 18px repeat(6, minmax(20px, 1fr));
     flex: 1;
-    gap: 2px 4px;
+    gap: 2px var(--sw-space-xs, 4px);
     align-items: stretch;
     width: 100%;
     min-height: 140px;
@@ -265,7 +265,7 @@
     min-height: 20px;
     padding: 1px;
     border: 0;
-    border-radius: 8px;
+    border-radius: $sw-radius-md;
     background: transparent;
     color: var(--b3-theme-on-background);
 

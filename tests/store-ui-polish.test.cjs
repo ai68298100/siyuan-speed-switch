@@ -19,7 +19,10 @@ test('store search row has sort control class', () => assert.match(css, /\.sw-ho
 test('sort control has bounded minimum width', () => assert.match(css, /min-width: 106px/));
 test('sort control has bounded maximum width', () => assert.match(css, /max-width: 132px/));
 test('sort control has compact height', () => assert.match(css, /height: 32px/));
-test('sort control has rounded corners', () => assert.match(css, /border-radius: 8px/));
+test('sort control uses the shared medium radius token', () => assert.equal(
+    declaresIn(css, '.sw-home-store__filter-bar .sw-home-store__sort', /border-radius:\s*\$sw-radius-md/, base),
+    true,
+));
 // 断言绑定动效令牌而非具体字面量：既守住"卡片边框有过渡"，又不会在调整
 // 档位/曲线时误报。令牌定义见 src/index.scss 顶部（D-362）。
 test('store cards animate border changes', () => assert.match(css, /transition: border-color \$sw-dur-\w+ \$sw-ease/));

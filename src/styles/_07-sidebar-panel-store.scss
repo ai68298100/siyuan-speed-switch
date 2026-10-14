@@ -52,7 +52,7 @@
     flex-direction: column;
     justify-content: center;
     gap: 14px;
-    padding: 16px 18px;
+    padding: var(--sw-space-xl, 16px) 18px;
 
     .sw-ai-confirm__detail {
         margin: 0;
@@ -129,8 +129,8 @@
 
 .sw-home-store__require {
     margin: 10px 0 0;
-    padding: 4px 10px;
-    border-radius: 8px;
+    padding: var(--sw-space-xs, 4px) 10px;
+    border-radius: $sw-radius-md;
     background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
     color: var(--b3-theme-on-surface-light);
     font-size: var(--sw-font-sm, 12px);
@@ -154,7 +154,7 @@
     text-align: center;
 
     .b3-button {
-        padding: 2px 8px;
+        padding: 2px var(--sw-space-md, 8px);
         font-size: var(--sw-font-sm, 12px);
     }
 }
@@ -180,7 +180,7 @@
     .sw__home-module-icon {
         width: 28px;
         height: 28px;
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -206,7 +206,7 @@
 .sw__home-module-list .sw__home-module-item-action {
     position: relative;
     padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px) var(--sw-space-sm, 6px) var(--sw-space-xl, 16px);
-    border-radius: 8px;
+    border-radius: $sw-radius-md;
     line-height: 1.45;
 
     &::before {
@@ -248,7 +248,7 @@
 .sw-home__cell[data-module-id="tags"] {
     .sw__home-module-list { display: flex; flex-wrap: wrap; gap: var(--sw-space-sm, 6px); }
     .sw__home-module-item { border: 0; }
-    .sw__home-module-item-action { min-height: 28px; padding: 4px 10px; border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 22%, var(--b3-border-color)); border-radius: 999px; background: color-mix(in srgb, var(--b3-theme-primary) 7%, transparent); }
+    .sw__home-module-item-action { min-height: 28px; padding: var(--sw-space-xs, 4px) 10px; border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 22%, var(--b3-border-color)); border-radius: 999px; background: color-mix(in srgb, var(--b3-theme-primary) 7%, transparent); }
     .sw__home-module-item-secondary { margin-inline-start: var(--sw-space-xs, 4px); font-size: var(--sw-font-2xs, 10px); }
 }
 
@@ -316,7 +316,7 @@
 
 // 紧凑密度：小号组件
 .sw-home .sw-home__cell[data-size="xs"] .sw__home-module-list .sw__home-module-item-action {
-    padding: 4px 6px 4px 14px;
+    padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px) var(--sw-space-xs, 4px) 14px;
     font-size: var(--sw-font-sm, 12px);
 }
 
@@ -406,7 +406,7 @@
         &:focus-visible {
             outline: 2px solid var(--b3-theme-primary);
             outline-offset: -2px;
-            border-radius: 6px 6px 0 0;
+            border-radius: $sw-radius-sm $sw-radius-sm 0 0;
         }
 
         &.is-active {

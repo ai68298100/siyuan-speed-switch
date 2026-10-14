@@ -134,7 +134,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        border-radius: 8px;
+        border-radius: $sw-radius-md;
         background: var(--b3-theme-surface);
         color: var(--b3-theme-on-surface);
         box-shadow: var(--sw-shadow-sm);
@@ -229,7 +229,7 @@
         gap: var(--sw-space-md, 8px);
         min-width: 44px;
         min-height: 44px;
-        padding: 6px 10px;
+        padding: var(--sw-space-sm, 6px) 10px;
         border: 1px solid color-mix(in srgb, var(--b3-border-color) 64%, transparent);
         border-radius: 12px;
         background: var(--b3-theme-surface, var(--b3-theme-background));
@@ -425,7 +425,7 @@
 
     .sw__floating-ball-more-empty {
         margin: 0;
-        padding: 18px 8px;
+        padding: 18px var(--sw-space-md, 8px);
         color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
         text-align: center;
     }
@@ -499,7 +499,7 @@
     margin-left: 2px;
     padding: 0;
     border: none;
-    border-radius: 8px;
+    border-radius: $sw-radius-md;
     background: transparent;
     color: var(--b3-theme-on-surface);
     cursor: pointer;
@@ -615,14 +615,14 @@
 
 .sw-second-panel__empty {
     margin: 0;
-    padding: 18px 8px;
+    padding: 18px var(--sw-space-md, 8px);
     color: var(--b3-theme-on-surface-light);
     text-align: center;
 }
 
 .sw-document-set-guide {
     margin-bottom: 14px;
-    padding: 12px 14px;
+    padding: var(--sw-space-lg, 12px) 14px;
     border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 20%, var(--b3-border-color));
     border-radius: 12px;
     background: var(--sw-accent-soft, var(--b3-theme-surface-lighter));
@@ -845,7 +845,7 @@
     }
 
     .sw__dock-label {
-        margin: 2px 8px 8px;
+        margin: 2px var(--sw-space-md, 8px) var(--sw-space-md, 8px);
         color: var(--b3-theme-on-surface-light);
         font-size: var(--sw-font-2xs, 10px);
         font-weight: var(--sw-weight-semibold, 600);
@@ -856,7 +856,7 @@
     .sw__dock-item {
         min-height: 36px;
         margin: 2px 0;
-        padding: 8px 10px;
+        padding: var(--sw-space-md, 8px) 10px;
         border: 1px solid transparent;
         border-radius: 10px;
         color: var(--b3-theme-on-surface);
@@ -878,12 +878,12 @@
     }
 
     .sw__scroll {
-        padding: 16px 16px 20px;
+        padding: var(--sw-space-xl, 16px) var(--sw-space-xl, 16px) 20px;
         background: var(--sw-page-bg);
     }
 
     .sw__window-label {
-        margin: 6px 4px 10px;
+        margin: var(--sw-space-sm, 6px) var(--sw-space-xs, 4px) 10px;
         color: var(--b3-theme-on-surface-light);
         font-size: var(--sw-font-xs, 11px);
         font-weight: var(--sw-weight-semibold, 600);
@@ -962,14 +962,14 @@
 
     .sw__home-module-header {
         min-height: 44px;
-        padding: 10px 12px;
+        padding: 10px var(--sw-space-lg, 12px);
         border-bottom-color: color-mix(in srgb, var(--b3-border-color) 58%, transparent);
         background: color-mix(in srgb, var(--b3-theme-surface) 84%, var(--sw-accent-soft));
     }
 
     .sw__home-module-item-action {
         min-height: 36px;
-        padding: 8px 10px;
+        padding: var(--sw-space-md, 8px) 10px;
         border-radius: 10px;
 
         &:hover,
@@ -982,7 +982,7 @@
     .sw__quick-actions,
     .sw__quick-rail {
         min-height: 52px;
-        padding: 8px 14px;
+        padding: var(--sw-space-md, 8px) 14px;
         border-top-color: color-mix(in srgb, var(--b3-border-color) 60%, transparent);
         background: color-mix(in srgb, var(--b3-theme-surface) 78%, var(--sw-page-bg));
     }
