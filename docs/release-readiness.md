@@ -4,7 +4,7 @@
 
 Current build: `dist/index.js` 1142426 bytes; `dist/index.css` 386730 bytes; `package.zip` 591328 bytes (当前工作树快照；T-7267 迁移完成时实测候选为 596562 bytes；插件元数据为 0.47.2；上一版 GitHub v0.47.1 资产为 589640 bytes；`icon.png` 160x160、18376 bytes)。
 
-评估日期：2026-10-14（T-7267 完成 2px 复合间距 token 迁移；README 历史索引压缩后 package.zip 591332 bytes，低于 591872-byte 门禁 540 bytes；版本候选为 0.47.2，发布前门禁继续复核）。
+评估日期：2026-10-14（T-7267 完成 2px 复合间距 token 迁移；README 历史索引压缩后 package.zip 591332 bytes，低于 591872-byte 门禁 540 bytes；版本 0.47.2 已发布，Release 与 CI 回读通过）。
 
 历史发布回执（v0.46.2）：标签指向 `d72fca9ff4942abc70d86eac2e8400e7956949ea`；远端 `package.zip` 下载端点返回 HTTP 200，资产大小 **571709 bytes**。Release 页面：[v0.46.2](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.2)。后续 v0.46.3～v0.47.0 回执按时间顺序列于下方。
 
@@ -33,17 +33,17 @@ Current build: `dist/index.js` 1142426 bytes; `dist/index.css` 386730 bytes; `pa
 | --- | --- | --- |
 | TypeScript、自动测试、UI smoke | 已通过 | T-7247 后 `pnpm verify:release` 全链通过；T-7142 收口后重新执行完整测试 **8666/8666**，TypeScript、release/current-status/compatibility/desktop/quality/integration 检查及 UI smoke 均通过；悬浮球 Chromium smoke **25** 场景（含真实 CDP touch 快滑）、surface-switch 坐标点击通过。T-7244/T-7246/T-7247 样式迁移前后 Chromium 30 场景/480 元素 computed style 与几何差异为 0；T-7245 正常关停日志分类 7/7；T-7247 八项 fallback 负向探针精确失败并逐字节恢复；T-7141 焦点回收/预览播报定向审计 40/40；T-7142 快滑删除式负向验证通过；T-7146 provider 文档对账与 TypeScript 读取上下文定向检查通过。expanded CSS 增加 12238 bytes，不将变量迁移宣传为性能优化。历史证据链：T-6348~T-6454 完成 58 个组件深度优化，其中 51 个组件完成完整评分卡；T-6476~T-6663 完成宿主契约化、生命周期收口与发布审计。完整最新日志见 `.artifacts/T-7142-verify-release-final.log`，前一轮日志见 `.artifacts/T-7141-verify-release.log`，样式迁移历史日志见 `.artifacts/T-7247-verify-release-final.log`。真实 Android/桌面证据仍按 B-004/B-005 后置 |
 | 组件来源体系（ADR 0057） | 已通过 | 协议 v2.4 的 `source` 白名单、7 个小驴打卡桥接组件（含 v0.23.4 原生桥接的打卡摘要 `checkin-summary`）、商店按来源插件成组与待安装区按 provider 聚合、**组内卡片按 `source.order` 升序**（同序按组件 id，映射不完整时回退原序）；负向验证 5/5（精确 FAIL + 兄弟不波及 + md5 还原）；perf 自检改 best-of-N 重测后另补 2/2 负向验证（等规模夹具重测 3 次仍 FAIL、预算回退仍 FAIL） |
-| 生产产物与包体 | 已通过候选门禁 | 当前工作树 package.zip 591332 bytes，低于 591872-byte 发布门禁 540 bytes；README 历史索引压缩前候选 596562 bytes，减量过程可由构建复现。 |
+| 生产产物与包体 | 已通过候选门禁 | 当前工作树 package.zip 591328 bytes，低于 591872-byte 发布门禁 544 bytes；GitHub v0.47.2 Release 资产同为 591328 bytes，SHA-256 为 `4dd06093a3951fe5c20fb4f6bb55ae0f3b63e58237f4acebb59e256b4434fbce`。README 历史索引压缩前候选 596562 bytes，减量过程可由构建复现。 |
 | 集市图标规范 | 已通过 | `icon.png` 160x160、18376 bytes，符合思源官方「推荐 160x160、不超过 20 KB」规范（此前 256x256、44720 bytes 超标 2.2 倍）；`preview.png` 53.1 KiB 亦在 200 KB 内 |
 | 归档可复现性 | 已通过 | `pnpm run repro:audit` 连续执行两次生产构建，并对 `dist/index.js`、`dist/index.css`、`package.zip` 做字节数与 SHA-256 比对，当前 3/3 一致；ZIP 条目时间戳 = 发版提交时间（SOURCE_DATE_EPOCH 模式，T-6474：1980 纪元曾致集市安装的文件 mtime 比云同步索引旧、版本被同步回滚） |
-| 版本元数据 | 候选一致 | `0.47.2` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；发布后需回读 main、tag、Release 与资产。 |
+| 版本元数据 | 已发布 | `0.47.2` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；main 提交 `02326e91`、tag `v0.47.2`、Release 与资产已回读。 |
 | 旧版本元数据（v0.44.1） | 已归档 | `0.44.1` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；发布批覆盖 v0.44.0 后九批+（T-7054 组件视觉重构九批次、片段实验室五批 5→26、长按拖拽 T-7068、第三方生态链 T-7069~7072、fast-uri 安全修复） |
 | 旧版本元数据（v0.44.0） | 已归档 | `0.44.0` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；发布批覆盖 v0.43.2 后七批（审计缺陷×4、模块可见性、双栏预览、片段回收站） |
 | 旧版本元数据（v0.43.2） | 已归档 | `0.43.2` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；发布批覆盖 v0.42.0 后九批（商店 S2、三面板尺寸统一、设置深化、面板状态批、预览链、悬浮球、验收矩阵） |
 | 集市同步欠账（D9/T-6306） | 待用户动作 | 思源集市自 **v0.26.0** 起未同步，欠账版本清单：v0.26.0、v0.27.0、v0.27.1、v0.28.0、v0.28.1、v0.28.2、v0.28.3、v0.29.0、v0.29.1、v0.30.0、v0.30.1、v0.31.0、v0.32.0、v0.33.0、v0.34.0、v0.35.0、v0.36.0、v0.37.0、v0.38.0、v0.39.0、v0.40.0、v0.41.0、v0.42.0、v0.43.0、v0.43.1、v0.43.2、v0.44.0、v0.44.1、v0.45.0、v0.46.0、v0.46.1、v0.46.2、v0.46.3、v0.46.4、v0.46.5、v0.46.6、v0.46.8、v0.46.9、v0.47.0；处置=待用户在下一次集市更新窗口使用当前最新 Release 资产一次性补同步（集市按最新版覆盖即可，无需逐版提交），此后集市同步进每次发版检查单 |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
 | Android 真机验收 | 后置 | 按 D-042；当前环境无 `adb`、`java` 与设备 |
-| GitHub 发布动作 | 已通过 | `v0.47.1` tag 已推送，Release workflow `38291700122` 与 main CI `38291670674` 成功；远端 `package.zip` 589640 bytes，SHA-256 `9D14960D14ECC2D2B5838AF8C1180E9DECEBBC413D8061A90991A10957A065F9`，本机 Windows 构建同为 589640 bytes，包内 README 与资源条目逐项一致 |
+| GitHub 发布动作 | 已通过 | `v0.47.2` tag 已推送；Release workflow `38548620212` 与 main CI `38548572335` 成功；远端 `package.zip` 591328 bytes，SHA-256 `4dd06093a3951fe5c20fb4f6bb55ae0f3b63e58237f4acebb59e256b4434fbce`，Release 页面：https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.2 |
 
 ## 建议发布顺序
 

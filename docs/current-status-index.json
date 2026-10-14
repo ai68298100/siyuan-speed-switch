@@ -3099,7 +3099,7 @@
   ],
   "global": {
     "jsRunner": "blocked",
-    "release": "candidate",
+    "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
     "packageBudget": "passed: 591332 bytes is below the 591872-byte repository budget by 540 bytes after reproducible README history reduction"
