@@ -1,6 +1,6 @@
 # 阻塞
 
-<!-- Current engineering blockers: B-012 -->
+<!-- Current engineering blockers: none -->
 
 - B-012（工程）已解除（2026-10-14）：README 历史索引压缩后，生产构建 package.zip 为 591332 bytes，低于 591872-byte（578 KiB）发布门禁 540 bytes；预算保持不变。
 
@@ -32,3 +32,4 @@
 - B-006（环境，非工程阻塞；2026-10-04 已完成本地在线复核）浏览器直连 `https://api.bgm.tv/calendar` 返回 200，真实思源 3.8.6 WebView E2E 加载 4 个节目及官方封面（`1061×1500`），健康回执 `1/1 widgets healthy`。同机思源 `forwardProxy` 仍可能因出口超时失败，故 T-7100 改为精确 Bangumi 端点直连优先、代理兜底；外部长期可用性仍受网络环境影响，不阻塞自动化门禁。
 - B-007（环境，非工程阻塞）开发机未运行 ActivityWatch，`127.0.0.1:5600/api/0/info` 两秒只读探测不可达；本轮已覆盖官方 Query 契约、固定 loopback 路由、思源代理、聚合响应和缓存自动测试，真实应用用时仍需在已安装 ActivityWatch 的桌面宿主补验。
 - [x] T-7079（历史工程记录，原 B-008，**2026-10-03 已解决**）`pnpm.overrides` 已从 `package.json` 迁移到 `pnpm-workspace.yaml`；pnpm 11.4.0 不再发出忽略配置警告，锁文件解析为 `fast-uri@4.2.1`，并由依赖覆盖契约及两组负向注入验证持续守护。当前 B-008 唯一指 Gist 真实账号环境验收。
+
