@@ -51,6 +51,8 @@
   "settingsShort": "Settings",
   "homeEditLayout": "Edit layout",
   "homeDone": "Done",
+  "homeEditShortcutHint": "Shortcut: Ctrl/Cmd+B to edit layout",
+  "homeDoneShortcutHint": "Shortcut: Esc to finish editing",
   "homeEditingHint": "Editing layout — drag cards to rearrange; changes save instantly",
   "homeUndo": "Undo",
   "homeRedo": "Redo",
@@ -117,6 +119,9 @@
   "quickCaptureEmpty": "Please enter something",
   "quickCaptureDone": "Appended to today's journal",
   "quickCaptureFailed": "Append failed, please retry",
+  "quickCaptureUnknown": "The request was sent, but the result could not be confirmed. Check the target document; this dialog is locked to prevent a duplicate append.",
+  "quickCapturePending": "Result needs verification",
+  "quickCaptureUnknown": "The request was sent, but the result could not be confirmed. Check the target document before retrying.",
   "homeClippedUnread": "Clipped to read",
   "homeDescClippedUnread": "Provided by a clipping plugin that supports the clipped-unread protocol; ordinary tags are not treated as clipping data",
   "homeClippedProviderMissing": "Install and enable a clipping plugin that supports the clipped-unread protocol",
@@ -831,6 +836,8 @@
   "notebookLoadFailed": "Failed to load notebooks",
   "journalNoNotebook": "No available notebooks. Create or open one in SiYuan first.",
   "journalFailed": "Failed to open the journal. Check the default notebook setting.",
+  "journalResultUnknown": "The journal creation request was sent, but its result could not be confirmed. Check today's journal before retrying.",
+  "kernelPermissionDenied": "The SiYuan session or permission is unavailable. Restore access in SiYuan, then retry.",
   "openDocFailed": "Failed to open the document. Please try again later.",
   "closeTabFailed": "Failed to close the tab. Please try again later.",
   "favNeedActivate": "This tab is not fully loaded. Switch to it first, then favorite it.",
@@ -1140,6 +1147,9 @@
   ,"unifiedDocSetDocs": "docs"
   ,"historyChangedOnly": "Show changed only"
   ,"historyChangedEmpty": "No documents changed within the window"
+  ,"historyChangedLoadFailed": "Changed records could not be loaded. The filter was turned off."
+  ,"historyChangedRetry": "Retry loading changed records"
+  ,"historyChangedShowAll": "Show all recent records"
   ,"syncNowCompleted": "Sync completed"
   ,"syncNowFailed": "Sync failed: kernel unreachable, cloud sync not configured, or read-only mode"
   ,"secFloatingBall": "Floating ball"
@@ -1342,6 +1352,7 @@
   ,"clearOpenHistory": "Clear history"
   ,"clearClosedHistory": "Clear recently closed"
   ,"clearOpenHistoryConfirm": "Clear all recent documents?"
+  ,"clearClosedHistoryConfirm": "Clear recently closed records? They cannot be restored from here afterward."
   ,"historyOpen": "Open"
   ,"historyClosed": "Closed · click to reopen"
   ,"historyOpenSection": "Recently opened"
@@ -1349,6 +1360,8 @@
   ,"historyOpenAction": "Open"
   ,"historyRemove": "Remove record"
   ,"historyInvalid": "This history entry is no longer available"
+ ,"historySyncFailed": "Recent records could not be synced. Showing local records."
+ ,"historySyncRetry": "Retry syncing recent records"
   ,"snippetStudioOpen": "Open snippet studio"
   ,"snippetStudioTitle": "Code snippet studio"
   ,"snippetExperimental": "Experimental"
@@ -1368,7 +1381,8 @@
   ,"homeConfigSaveMissed": "This module was removed from another entry; the edit was not saved — cancel or reopen."
   ,"homeEmptyNoSource": "No widget sources available: install widgets or enable providers to compose here."
   ,"homeEmptyRecommended": "Recommended widgets"
-  ,"homeEmptyRestoreDefault": "Restore default layout"
+  ,"homeEmptyRestoreDefault": "Add selected defaults"
+  ,"homeRestoreDefaultHint": "Add only missing selected widgets and keep the current layout."
   ,"homeEmptyTierHint": "Default material and size per widget come from its catalog declaration; adjust size and position in edit mode."
   ,"homeEmptyRecommendedConfirm": "Add “{x}” ({availability}) to the end of this workbench while keeping the existing layout?"
   ,"homeEmptyRestoreConfirm": "Add {count} selected default widgets while keeping the current {existing} layout items?"
@@ -1560,6 +1574,13 @@
   ,"snippetGistStale": "The snippet or Gist changed; read it again and review."
   ,"snippetGistFailed": "Gist request failed. Check the URL, token gist permission, and network before retrying."
   ,"snippetGistPending": "The remote write may have landed; check GitHub before publishing again."
+  ,"snippetGistUnknownNotice": "The previous Gist write has an unknown result. Your draft is preserved, and create/update are locked until you verify it on GitHub."
+  ,"snippetGistRecovery": "Unlock after checking"
+  ,"snippetGistRecoveryTitle": "Verify the Gist write"
+  ,"snippetGistRecoveryMessage": "Check the previous operation on GitHub first. Unlock only after confirming it did not create or update the Gist. If it actually succeeded, submitting again may create a duplicate Gist or overwrite content again."
+  ,"snippetGistRecoveryConfirm": "Checked: it did not succeed; unlock"
+  ,"snippetGistRecoveryCancel": "Keep locked"
+  ,"snippetGistRecoveryUnlocked": "Unlocked. Before submitting again, make sure the previous operation did not take effect, or you may create a duplicate Gist or overwrite content."
   ,"snippetAllTypes": "All types"
   ,"snippetAllCategories": "All categories"
   ,"snippetCategory": "Category"

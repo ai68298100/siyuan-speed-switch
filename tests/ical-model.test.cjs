@@ -68,6 +68,21 @@ test('ical date parsing rejects malformed values', () => {
     assert.equal(parseIcalDateValue("drop table"), null);
     assert.equal(parseIcalDateValue(""), null);
 });
+test('ical date parsing rejects impossible dates and times instead of normalizing them', () => {
+    for (const value of ["20260230", "20261301", "20260431", "20260917T250000Z", "20260917T126000Z", "20260917T125960Z"]) {
+        assert.equal(parseIcalDateValue(value), null, value);
+    }
+    assert.equal(parseIcalDateValue("20240229"), Date.UTC(2024, 1, 29));
+    assert.equal(parseIcalDateValue("20260917T235959Z"), Date.UTC(2026, 8, 17, 23, 59, 59));
+});
+test('ical parser skips events containing impossible calendar dates or times', () => {
+    const result = parseIcsEvents(icsOf(
+        vevent("20260230T090000Z", "20260230T100000Z", "无效日期"),
+        vevent("20260917T250000Z", "20260917T260000Z", "无效时间"),
+        vevent("20260918T090000Z", "20260918T100000Z", "有效事件"),
+    ));
+    assert.deepEqual(result.events.map((event) => event.summary), ["有效事件"]);
+});
 
 // ---------- 折行展开 ----------
 test('ical unfolding joins continuation lines', () => {

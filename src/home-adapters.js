@@ -204,21 +204,48 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
     const run = (async () => {
     let timeoutHandle = null;
     let abortHandler = null;
+    let requestController = null;
+    // A timeout used to reject only the bridge promise.  That left provider
+    // work running in the background and allowed a late provider callback to
+    // consume resources or mutate its own state.  Give readers a derived
+    // signal so the deadline also reaches the underlying adapter.  Keep
+    // legacy signal-shaped objects intact when they cannot be linked; they do
+    // not expose an abort contract that we could safely extend.
+    const canDeriveSignal = typeof AbortController === "function"
+        && (!signal || typeof signal.addEventListener === "function");
+    let requestSignal = signal;
+    if (canDeriveSignal) {
+        requestController = new AbortController();
+        requestSignal = requestController.signal;
+        if (signal?.aborted) requestController.abort();
+    }
     try {
         const timeout = Number.isFinite(options.timeoutMs) ? Math.max(1, options.timeoutMs) : adapter.timeoutMs;
         const timeoutPromise = new Promise((_, reject) => {
-            timeoutHandle = setTimeout(() => reject(new Error("timeout")), timeout);
+            timeoutHandle = setTimeout(() => {
+                // Queue the timeout outcome before abort listeners can settle
+                // the provider promise, so cancellation cannot turn an
+                // expired deadline into a successful result.
+                reject(new Error("timeout"));
+                if (requestController) requestController.abort();
+            }, timeout);
         });
         if (signal?.aborted) throw new Error("aborted");
         const abortPromise = signal && typeof signal.addEventListener === "function" ? new Promise((_, reject) => {
-            abortHandler = () => reject(new Error("aborted"));
+            abortHandler = () => {
+                // Preserve cancellation as the caller-visible outcome even
+                // when the provider resolves its own promise from the derived
+                // signal's abort callback.
+                reject(new Error("aborted"));
+                if (requestController) requestController.abort();
+            };
             signal.addEventListener("abort", abortHandler, {once: true});
         }) : null;
         const value = await Promise.race([
             // 尺寸感知接口（协议 v2.3）：第三参携带当前型号，适配器可按尺寸裁剪内容
             Promise.resolve(adapter.read(normalizedConfig, device, {
                 size: typeof options.size === "string" ? options.size.slice(0, 16) : "",
-                signal,
+                signal: requestSignal,
             })),
             timeoutPromise,
             ...(abortPromise ? [abortPromise] : []),

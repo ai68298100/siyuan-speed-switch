@@ -97,3 +97,26 @@ test('T-7228 hit-layer declarations remain guarded by negative probes', () => {
     assert.doesNotMatch(missingTouchAction, /touch-action:\s*manipulation;/,
         '删除顶栏触控语义后门禁必须失败');
 });
+
+test('T-7255 sort trigger and fullscreen action expose the current state', () => {
+    const source = readSourceText(path.join(root, 'src', 'index.ts'));
+    const sortStart = source.indexOf('private bindSortTriggerMenu(');
+    const sortEnd = source.indexOf('private applySearch(', sortStart);
+    assert.ok(sortStart >= 0 && sortEnd > sortStart, '测试夹具必须找到排序浮层方法边界');
+    const sort = source.slice(sortStart, sortEnd);
+    assert.match(sort, /trigger\.setAttribute\("aria-haspopup", "menu"\);/);
+    assert.match(sort, /trigger\.setAttribute\("aria-expanded", "false"\);/);
+    assert.match(sort, /trigger\.setAttribute\("aria-expanded", "true"\);/);
+    const missingOpenState = sort.replace('trigger.setAttribute("aria-expanded", "true");', '/* injected violation */');
+    assert.doesNotMatch(missingOpenState, /trigger\.setAttribute\("aria-expanded", "true"\);/,
+        '删除排序浮层打开状态后门禁必须失败');
+    const fullscreenStart = source.indexOf('private bindSwitcherFullscreenToggle(');
+    const fullscreenEnd = source.indexOf('private bindSwitcherToolbarActions(', fullscreenStart);
+    assert.ok(fullscreenStart >= 0 && fullscreenEnd > fullscreenStart, '测试夹具必须找到全屏切换方法边界');
+    const fullscreen = source.slice(fullscreenStart, fullscreenEnd);
+    assert.match(fullscreen, /fsBtn\?\.setAttribute\("title", this\.i18n\.exitFullscreen\);/);
+    assert.match(fullscreen, /fsBtn\?\.setAttribute\("title", this\.i18n\.enterFullscreen\);/);
+    const missingExitTitle = fullscreen.replace('fsBtn?.setAttribute("title", this.i18n.exitFullscreen);', '/* injected violation */');
+    assert.doesNotMatch(missingExitTitle, /fsBtn\?\.setAttribute\("title", this\.i18n\.exitFullscreen\);/,
+        '删除全屏退出提示同步后门禁必须失败');
+});

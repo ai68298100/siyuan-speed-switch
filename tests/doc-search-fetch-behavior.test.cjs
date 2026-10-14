@@ -13,8 +13,12 @@ const {normalizeTitleSearchDocuments} = require("../src/search-model.js");
 const uiSource = readSourceFile("src/doc-search-ui.ts");
 const sourceFile = ts.createSourceFile("doc-search-ui.ts", uiSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 const fnDecl = sourceFile.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === "runDocSearchFetch");
+const boundedDecl = sourceFile.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === "boundedSearchRequest");
 assert.ok(fnDecl, "runDocSearchFetch must exist in src/doc-search-ui.ts");
-const fnText = fnDecl.getText(sourceFile).replace(/^export\s+/, "");
+assert.ok(boundedDecl, "boundedSearchRequest must exist in src/doc-search-ui.ts");
+const scopeDecl = sourceFile.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === "docSearchRequestScope");
+assert.ok(scopeDecl, "docSearchRequestScope must exist in src/doc-search-ui.ts");
+const fnText = [scopeDecl, boundedDecl, fnDecl].map((node) => node.getText(sourceFile).replace(/^export\s+/, "")).join("\n");
 const compiled = ts.transpileModule(fnText, {
     // 无 fileName：带 .js 后缀会让 TS 保留泛型标注（new Set<string>() 原样输出），
     // 产物不是合法 JS。
@@ -22,13 +26,16 @@ const compiled = ts.transpileModule(fnText, {
 }).outputText;
 
 function makeRunner(overrides = {}) {
-    return new Function(
+    const fetchImpl = overrides.fetch || (async () => ({ok: true, status: 200, json: async () => ({data: []})}));
+    const runner = new Function(
+        "docSearchSurfaceRequestIds", "nextDocSearchSurfaceRequestId",
         "getDocSearchSession", "renderDocResults", "updateDocSearchHealth", "disposeDocSearchSession",
         "runOpenedDocumentContentSearch", "runFullTextSearchFallback", "filterDocSearchResults", "canUseTitleSearch",
         "buildSearchCacheKey", "cacheSearchResult", "DOC_SEARCH_FETCH_LIMIT", "logger", "fetch",
         "normalizeTitleSearchDocuments",
         `${compiled}\nreturn runDocSearchFetch;`,
     )(
+        new WeakMap(), 0,
         overrides.getDocSearchSession || function (scrollElement) {
             let session = this.docSearchState.sessions.get(scrollElement);
             if (!session) {
@@ -64,12 +71,19 @@ function makeRunner(overrides = {}) {
         overrides.cacheSearchResult || cacheSearchResult,
         overrides.DOC_SEARCH_FETCH_LIMIT || 24,
         overrides.logger || {warn() {}},
-        overrides.fetch || (async () => ({ok: true, json: async () => ({data: []})})),
+        fetchImpl,
         overrides.normalizeTitleSearchDocuments || normalizeTitleSearchDocuments,
     );
+    runner.requestKernelJsonOutcome = async (url, body, options = {}) => {
+        try {
+            const response = await fetchImpl(url, {method: "POST", body: JSON.stringify(body), signal: options.signal});
+            return response?.ok === true ? {ok: true, value: await response.json()} : {ok: false, error: {kind: "http"}};
+        } catch (_) { return {ok: false, error: {kind: "network"}}; }
+    };
+    return runner;
 }
 
-function makeHost() {
+function makeHost(requestKernelJsonOutcome = async () => ({ok: true, value: {data: []}})) {
     return {
         docSearchState: {sessions: new WeakMap()},
         filterCardsCalls: 0,
@@ -84,6 +98,7 @@ function makeHost() {
             this.filterCardsCalls += 1;
             return 2;
         },
+        requestKernelJsonOutcome,
     };
 }
 
@@ -107,7 +122,7 @@ test("fetch: current version from the reordered signature reaches the kernel end
             return titleResponse([{path: "/20260901000000-notebook/20260901000000-abcdefab.sy", box: "20260901000000-notebook", name: "b"}]);
         },
     });
-    const host = makeHost();
+    const host = makeHost(runner.requestKernelJsonOutcome);
     const scrollElement = surface();
     const version = beginSearch(getDocSession(host, scrollElement));
     await runner.call(host, scrollElement, input("foo"), "foo", version, () => {}, {}, "key:foo", "foo");
@@ -124,7 +139,7 @@ test("fetch: stale version neither fetches, renders, nor caches", async () => {
             return titleResponse([]);
         },
     });
-    const host = makeHost();
+    const host = makeHost(runner.requestKernelJsonOutcome);
     const scrollElement = surface();
     beginSearch(getDocSession(host, scrollElement));
     // 旧调用顺序会把 keyword 当 version 传进来——这里就是当时静默退出的形态。
@@ -138,9 +153,7 @@ test("fetch: stale version neither fetches, renders, nor caches", async () => {
 });
 
 test("fetch: results arriving after a newer input are discarded post fallback", async () => {
-    const host = makeHost();
     const scrollElement = surface();
-    const session = getDocSession(host, scrollElement);
     let releaseFallback;
     const runner = makeRunner({
         canUseTitleSearch: () => false,
@@ -148,6 +161,8 @@ test("fetch: results arriving after a newer input are discarded post fallback", 
             releaseFallback = () => resolve([{id: "20260901000000-abcdefab", path: "/slow"}]);
         }),
     });
+    const host = makeHost(runner.requestKernelJsonOutcome);
+    const session = getDocSession(host, scrollElement);
     const version = beginSearch(session);
     const pending = runner.call(host, scrollElement, input("slow"), "slow", version, () => {}, {}, "key:slow", "slow");
     await Promise.resolve();
@@ -166,7 +181,7 @@ test("fetch: cache hit refreshes open-tab counts without a remote request", asyn
             return titleResponse([]);
         },
     });
-    const host = makeHost();
+    const host = makeHost(runner.requestKernelJsonOutcome);
     const scrollElement = surface();
     const session = getDocSession(host, scrollElement);
     const cached = [{id: "20260901000000-cachedca", path: "/c"}];
@@ -186,7 +201,7 @@ test("fetch: global failure preserves opened-tab layer and exposes retry callbac
         runOpenedDocumentContentSearch: () => Promise.resolve(new Set(["20260901000000-opened"])),
         runFullTextSearchFallback: () => Promise.resolve(null),
     });
-    const host = makeHost();
+    const host = makeHost(runner.requestKernelJsonOutcome);
     const scrollElement = surface();
     const version = beginSearch(getDocSession(host, scrollElement));
     await runner.call(host, scrollElement, input("offline"), "offline", version, () => {}, {}, "key:offline", "offline");

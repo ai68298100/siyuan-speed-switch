@@ -22,6 +22,18 @@ type Tab = ReturnType<typeof getAllTabs>[number];
 // inference get explicit annotations (result payloads / nullable DOM lookups).
 type DocSearchPathProbe = Awaited<ReturnType<typeof normalizePathFilterProbeOutcome>>;
 
+const docSearchSurfaceRequestIds = new WeakMap<HTMLElement, number>();
+let nextDocSearchSurfaceRequestId = 0;
+
+function docSearchRequestScope(scrollElement: HTMLElement): string {
+    let id = docSearchSurfaceRequestIds.get(scrollElement);
+    if (!id) {
+        id = ++nextDocSearchSurfaceRequestId;
+        docSearchSurfaceRequestIds.set(scrollElement, id);
+    }
+    return `doc-search:${id}`;
+}
+
 export interface DocSearchUiHost {
     docSearchState: DocSearchState;
     i18n: Record<string, string>;
@@ -29,6 +41,7 @@ export interface DocSearchUiHost {
     isMobile: boolean;
     fetchKernelJson(url: string, body: Record<string, unknown>, options?: {signal?: AbortSignal}): Promise<any | null>;
     loadNotebooks(): Promise<Array<{id: string, name: string}>>;
+    loadNotebooksDetailed?: () => Promise<{notebooks: Array<{id: string, name: string}>; failed: boolean}>;
     escapeAttr(text: string): string;
     applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, onClose: IOverlayClose): void;
     filterCards(scrollElement: HTMLElement, keyword: string, contentRoots: Set<string>, filters: IDocSearchFilters): number;
@@ -47,6 +60,18 @@ export interface DocSearchUiHost {
     /** T-6830 打开策略：复用已开页签 */
     reuseOpenTabsEnabled(): boolean;
     activateTabForReuse(rootId: string, onClose?: IOverlayClose): boolean;
+    /** Shared kernel transport; extracted UI must not create a second request policy. */
+    requestKernelJsonOutcome(url: string, body: Record<string, unknown>, options?: {signal?: AbortSignal; latestKey?: string}): Promise<{ok: boolean; value?: unknown; error?: {kind: string}}>;
+}
+
+async function boundedSearchRequest(this: DocSearchUiHost, endpoint: string, body: Record<string, unknown>, signal: AbortSignal | undefined, latestKey: string) {
+    const result = await this.requestKernelJsonOutcome(endpoint, body, {signal, latestKey: latestKey || undefined});
+    if (!result.ok) {
+        const error = new Error(result.error?.kind || "search unavailable");
+        if (result.error?.kind === "aborted") error.name = "AbortError";
+        throw error;
+    }
+    return {ok: true, json: async () => result.value};
 }
 
 export async function loadDocSearchPathChildren(this: DocSearchUiHost, notebook: string, path: string, generation: number, scrollElement: HTMLElement) {
@@ -157,6 +182,11 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
                             : this.i18n.searchPathFailed,
                         disabled: true,
                     });
+                    items.push({
+                        label: this.i18n.homeRetry,
+                        icon: "iconRefresh",
+                        click: () => openPathMenu(notebook, path),
+                    });
                     openAsMenu(items);
                     return;
                 }
@@ -215,12 +245,20 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
             button.disabled = true;
             button.setAttribute("aria-busy", "true");
             let notebooks: Array<{id: string; name: string}> = [];
+            let notebooksFailed = false;
             try {
-                notebooks = await this.loadNotebooks();
+                if (this.loadNotebooksDetailed) {
+                    const detailed = await this.loadNotebooksDetailed();
+                    notebooks = detailed.notebooks;
+                    notebooksFailed = detailed.failed;
+                } else {
+                    notebooks = await this.loadNotebooks();
+                }
             } catch (error) {
                 // Keep the filter menu usable even if a host adapter throws
                 // outside loadNotebooks' own guarded fetch path.
                 logger.warn("load search filter notebooks fail", error);
+                notebooksFailed = true;
             } finally {
                 if (button.isConnected) {
                     button.disabled = false;
@@ -251,6 +289,9 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
                     checked: current.notebook === notebook.id,
                     click: () => commitFilters((next) => { next.notebook = notebook.id; delete next.paths; }),
                 }));
+            } else if (notebooksFailed) {
+                notebookSub.push({label: this.i18n.notebookLoadFailed, disabled: true});
+                notebookSub.push({label: this.i18n.homeRetry, icon: "iconRefresh", click: () => button.click()});
             } else {
                 notebookSub.push({label: this.i18n.searchNoNotebooks, disabled: true});
             }
@@ -754,10 +795,12 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
             const signal = controller?.signal;
             // Keep local content probing independent of the global fast path,
             // including cache hits. Report failures separately from zero hits.
+            const requestScope = docSearchRequestScope(scrollElement);
+            if (signal) (signal as AbortSignal & {__swDocSearchScope?: string}).__swDocSearchScope = requestScope;
             openedPromise = runOpenedDocumentContentSearch.call(this, fetchText, signal, filters,
                 (source: {status: string; count: number; latencyMs: number}) => {
                     report({counts: {opened: source.count}, sources: {opened: source}});
-                });
+                }, requestScope);
             openedPromise = openedPromise.then((roots) => {
                 if (current()) {
                     const visible = this.filterCards(scrollElement, keyword, roots, filters);
@@ -782,12 +825,8 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
             let fallbackUsed = !canUseTitleSearch(filters);
             if (!fallbackUsed) {
                 try {
-                    const response = await fetch("/api/filetree/searchDocs", {
-                        method: "POST",
-                        headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({k: fetchText}),
-                        ...(signal ? {signal} : {}),
-                    });
+                    const response = await boundedSearchRequest.call(this, "/api/filetree/searchDocs", {k: fetchText}, signal,
+                        `${requestScope}:title`);
                     if (!response.ok) throw new Error("searchDocs unavailable");
                     const json = await response.json();
                     if (!current()) return;
@@ -850,6 +889,7 @@ export async function runOpenedDocumentContentSearch(this: DocSearchUiHost,
         signal?: AbortSignal,
         filters: IDocSearchFilters = {},
         report?: (source: {status: string; count: number; latencyMs: number}) => void,
+        latestScope = "doc-search:opened",
     ): Promise<Set<string>> {
         const startedAt = performance.now();
         const tabs = (this.isMobile ? this.getMobileTabs() : getAllTabs()).filter((tab) =>
@@ -878,18 +918,8 @@ export async function runOpenedDocumentContentSearch(this: DocSearchUiHost,
                 const request = requests[index];
                 try {
                     // 端点为固定两个字面量之一（安全扫描要求 fetch 处无变量 URL）
-                    const init = {
-                        method: "POST",
-                        headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify(request.body),
-                        ...(signal ? {signal} : {}),
-                    };
-                    let response: Response;
-                    if (request.endpoint === "/api/search/semanticSearchBlock") {
-                        response = await fetch("/api/search/semanticSearchBlock", init);
-                    } else {
-                        response = await fetch("/api/search/fullTextSearchBlock", init);
-                    }
+                    const response = await boundedSearchRequest.call(this, request.endpoint, request.body, signal,
+                        `${latestScope}:opened:${request.scope.rootId}`);
                     if (!response.ok) { failures++; continue; }
                     const payload = await response.json();
                     if (payload?.code !== undefined && payload.code !== 0) { failures++; continue; }
@@ -919,6 +949,7 @@ export async function runFullTextSearchFallback(this: DocSearchUiHost,
         signal?: AbortSignal,
         filters: IDocSearchFilters = {},
         documents = DOC_RESULT_LIMIT,
+        latestScope = "doc-search:fulltext",
     ): Promise<IDocSearchResult[] | null> {
         // Keep one overflow card available for Agent callers to report a
         // truthful `truncated` flag. UI callers still pass DOC_RESULT_LIMIT.
@@ -937,18 +968,10 @@ export async function runFullTextSearchFallback(this: DocSearchUiHost,
         }
         try {
             // 端点为固定两个字面量之一（安全扫描要求 fetch 处无变量 URL）
-            const init = {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(request.body),
-                ...(signal ? {signal} : {}),
-            };
-            let response: Response;
-            if (request.endpoint === "/api/search/semanticSearchBlock") {
-                response = await fetch("/api/search/semanticSearchBlock", init);
-            } else {
-                response = await fetch("/api/search/fullTextSearchBlock", init);
-            }
+            const scopedLatestKey = signal
+                ? String((signal as AbortSignal & {__swDocSearchScope?: string}).__swDocSearchScope || latestScope)
+                : latestScope;
+            const response = await boundedSearchRequest.call(this, request.endpoint, request.body, signal, `${scopedLatestKey}:fulltext`);
             if (!response.ok) {
                 throw new Error(`full text search HTTP ${response.status}`);
             }

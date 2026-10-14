@@ -364,7 +364,7 @@
     overflow: hidden;
     border-color: #6f9ed9;
     background:
-        radial-gradient(circle at 88% 16%, rgba(255, 255, 255, 0.32), transparent 24%),
+        radial-gradient(circle at 88% 16%, rgba(255, 255, 255, 0.08), transparent 24%),
         linear-gradient(145deg, #468ed8 0%, #7164c8 100%);
     --sw-home-accent: #ffffff;
 
@@ -376,7 +376,14 @@
     .sw__home-stat-value { color: #fff; }
 
     .sw__home-module-icon { background: rgba(255, 255, 255, 0.18); color: #fff; }
-    .sw__home-module-context { opacity: 0.82; }
+    .sw__home-module-context {
+        display: table;
+        max-width: 100%;
+        padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
+        border-radius: var(--sw-radius-sm, 6px);
+        background: rgba(10, 24, 48, 0.68);
+        color: #fff;
+    }
     .sw__home-stat { padding-block: var(--sw-space-md, 8px) var(--sw-space-lg, 12px); }
     .sw__home-stat-value { font-size: clamp(34px, 5vw, 52px); font-weight: 520; letter-spacing: -0.055em; }
     .sw__home-stat-label { opacity: 0.88; }

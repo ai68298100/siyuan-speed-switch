@@ -13,10 +13,11 @@ test('editing chrome wiring: edit mode toggles the editing grid class', () => {
         '编辑态必须在网格上挂作用域类');
 });
 
-test('editing chrome wiring: wiggle animation with reduced-motion fallback', () => {
-    assert.match(homeScss, /animation: sw-home-wiggle/, '抖动动画必须存在');
-    assert.match(homeScss, /@media \(prefers-reduced-motion: reduce\)/, '必须有 reduced-motion 降级');
-    assert.match(homeScss, /outline: 2px dashed/, '编辑态虚线描边');
+test('editing chrome wiring: static edit affordance has no repeating wiggle animation', () => {
+    assert.match(homeScss, /\.sw-home__grid--editing \.sw-home__cell\s*\{[^}]*outline: 2px dashed/s,
+        '编辑态必须保留静态虚线描边');
+    assert.doesNotMatch(homeScss, /animation:\s*sw-home-wiggle|@keyframes\s+sw-home-wiggle/,
+        '编辑态不得启动持续摇摆动画');
 });
 
 test('editing chrome wiring: hero constraint runs in the render path', () => {

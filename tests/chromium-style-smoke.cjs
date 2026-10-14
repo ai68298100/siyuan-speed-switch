@@ -88,6 +88,7 @@ ${links}
 </div>
 <div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="journal-calendar"><div class="sw-home__cell-body">
   <section class="sw__home-module" data-module-id="journal-calendar">
+    <div class="sw__home-module-context">日历上下文</div>
     <div class="sw__home-module-body">
       <div class="sw__home-calendar-nav"><button>‹</button><strong class="sw__home-calendar-period">2026年9月</strong><button>今天</button><button>›</button></div>
       <div class="sw__home-calendar"><span class="sw__home-calendar-head">一</span><span class="sw__home-calendar-head">二</span><span class="sw__home-calendar-head">三</span><span class="sw__home-calendar-head">四</span><span class="sw__home-calendar-head">五</span><span class="sw__home-calendar-head">六</span><span class="sw__home-calendar-head">日</span>${calendarCells}</div>
@@ -194,17 +195,64 @@ window.addEventListener('load', () => {
         }
         return {r: 255, g: 255, b: 255, a: 1};
       };
+      const blend = (foreground, background, alpha) => ({
+        r: Math.round(foreground.r * alpha + background.r * (1 - alpha)),
+        g: Math.round(foreground.g * alpha + background.g * (1 - alpha)),
+        b: Math.round(foreground.b * alpha + background.b * (1 - alpha)),
+        a: 1,
+      });
+      const contrastRatio = (foreground, background) => {
+        const l1 = luminance(foreground);
+        const l2 = luminance(background);
+        return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+      };
       const contrastOf = (element) => {
         const fg = parseColor(getComputedStyle(element).color);
         if (!fg) return 0;
         const bg = effectiveBackground(element);
-        const l1 = luminance(fg);
-        const l2 = luminance(bg);
-        return Math.round(((Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)) * 100) / 100;
+        return Math.round(contrastRatio(fg, bg) * 100) / 100;
+      };
+      const weatherSurfaceSamples = (card) => {
+        const gradient = getComputedStyle(card).backgroundImage;
+        const glow = gradient.match(/radial-gradient\\([^,]+, rgba\\(255, 255, 255, ([\\d.]+)\\)/);
+        const linear = gradient.match(/linear-gradient\\([^,]+,\\s*(rgb\\([^)]*\\)),\\s*(rgb\\([^)]*\\))\\)/);
+        const endpoints = linear ? [parseColor(linear[1]), parseColor(linear[2])] : [];
+        const glowOpacity = glow ? Number(glow[1]) : NaN;
+        if (endpoints.length !== 2 || endpoints.some((endpoint) => !endpoint)
+          || !Number.isFinite(glowOpacity)) return null;
+        return {endpoints, glowOpacity};
+      };
+      const weatherContextContrast = () => {
+        const context = document.querySelector('[data-module-id="external-weather-open-meteo"] .sw__home-module-context');
+        const card = document.querySelector('[data-module-id="external-weather-open-meteo"].sw-home__cell');
+        const surfaceSamples = card && weatherSurfaceSamples(card);
+        if (!context || !surfaceSamples) return 0;
+        const foreground = parseColor(getComputedStyle(context).color);
+        const surface = parseColor(getComputedStyle(context).backgroundColor);
+        const opacity = Number(getComputedStyle(context).opacity);
+        if (!foreground || !surface || !Number.isFinite(opacity)) return 0;
+        return Math.round(Math.min(...surfaceSamples.endpoints.map((endpoint) => {
+          const highlight = blend({r: 255, g: 255, b: 255, a: 1}, endpoint, surfaceSamples.glowOpacity);
+          const background = blend(surface, highlight, surface.a);
+          const compositedText = blend(foreground, background, opacity * foreground.a);
+          return contrastRatio(compositedText, background);
+        })) * 100) / 100;
+      };
+      const weatherStatContrast = () => {
+        const card = document.querySelector('[data-module-id="external-weather-open-meteo"].sw-home__cell');
+        const value = card?.querySelector('.sw__home-stat-value');
+        const surfaceSamples = card && weatherSurfaceSamples(card);
+        if (!card || !value || !surfaceSamples) return 0;
+        const foreground = parseColor(getComputedStyle(value).color);
+        const fontSize = Number.parseFloat(getComputedStyle(value).fontSize);
+        if (!foreground || !Number.isFinite(fontSize) || fontSize < 24) return 0;
+        return Math.round(Math.min(...surfaceSamples.endpoints.map((endpoint) => {
+          const background = blend({r: 255, g: 255, b: 255, a: 1}, endpoint, surfaceSamples.glowOpacity);
+          return contrastRatio(foreground, background);
+        })) * 100) / 100;
       };
       const samples = {
-        // T-6690 注：moduleTitle 采番剧卡（非渐变面）；天气卡是白字渐变设计（有意），
-        // 渐变背景无法从 backgroundColor 读取，其可读性由设计评审覆盖。
+        // T-6690 注：moduleTitle 采番剧卡；天气渐变端点由专用采样覆盖。
         moduleTitle: '[data-module-id="external-anime-bangumi"] .sw__home-module-title',
         itemLabel: '[data-module-id="external-hot-news-dailyhot"] .sw__home-module-item-label',
         docTitle: '.sw__doc-title',
@@ -217,10 +265,9 @@ window.addEventListener('load', () => {
         docPath: '.sw__doc-path',
         calendarPeriod: '.sw__home-calendar-period',
         // T-6701 第三波：模块上下文、日历星期头、媒体标题
-        moduleContext: '.sw__home-module-context',
+        moduleContext: '[data-module-id="journal-calendar"] .sw__home-module-context',
         calendarHead: '.sw__home-calendar-head',
         mediaTitle: '[data-module-id="external-anime-bangumi"] .sw__home-media-title',
-        statValue: '.sw__home-stat-value',
         // T-6871/RZ-1：平台原语（六态徽标、kbd 芯片、分段控件激活项）
         platformStatusReady: '.sw-platform-status[data-state="ready"]',
         platformStatusStale: '.sw-platform-status[data-state="stale"]',
@@ -233,6 +280,8 @@ window.addEventListener('load', () => {
         const element = document.querySelector(selector);
         ratios[name] = element ? contrastOf(element) : 0;
       }
+      ratios.weatherContext = weatherContextContrast();
+      ratios.weatherStatValue = weatherStatContrast();
       return ratios;
     })(),
   };
@@ -335,14 +384,15 @@ try {
             console.log("[" + pass.name + "] contrast " + name + ": " + ratio);
         }
         // T-6697b：普通文本一组 ≥4.5；节假日日历/过期徽章按次要与大字号线 ≥3 归入聚合
-        const normalTextOk = ["moduleTitle", "itemLabel", "docTitle", "settingsTitle", "calendarPeriod", "docPath", "mediaSecondary", "windowLabel", "calendarHead", "mediaTitle"].every((name) => (result.contrast[name] || 0) >= 4.5);
+        const normalTextOk = ["moduleTitle", "itemLabel", "docTitle", "settingsTitle", "calendarPeriod", "docPath", "mediaSecondary", "windowLabel", "calendarHead", "mediaTitle", "weatherContext"].every((name) => (result.contrast[name] || 0) >= 4.5);
+        const largeTextOk = (result.contrast.weatherStatValue || 0) >= 3;
         const badgeTextOk = ["calendarHoliday", "sourceHealthStale"].every((name) => (result.contrast[name] || 0) >= 3);
         // T-6871/RZ-1：平台原语——六态徽标沿用徽章线 ≥3（与 sourceHealthStale 同约定）；
         // kbd 芯片与分段激活项是常规小字，须达普通文本线 ≥4.5。
         const platformBadgeOk = ["platformStatusReady", "platformStatusStale", "platformStatusError"].every((name) => (result.contrast[name] || 0) >= 3);
         const platformTextOk = ["platformKbd", "platformSegActive"].every((name) => (result.contrast[name] || 0) >= 4.5);
-        console.log("[" + pass.name + "] " + (normalTextOk && badgeTextOk && platformBadgeOk && platformTextOk ? "PASS" : "FAIL") + " contrast ratios meet WCAG AA on the sampled surfaces");
-        if (!(normalTextOk && badgeTextOk && platformBadgeOk && platformTextOk)) contrastAllOk = false;
+        console.log("[" + pass.name + "] " + (normalTextOk && largeTextOk && badgeTextOk && platformBadgeOk && platformTextOk ? "PASS" : "FAIL") + " contrast ratios meet WCAG AA on the sampled surfaces");
+        if (!(normalTextOk && largeTextOk && badgeTextOk && platformBadgeOk && platformTextOk)) contrastAllOk = false;
         console.log(JSON.stringify(result, null, 2));
         console.log("[" + pass.name + "] " + (actionOk ? 'PASS' : 'FAIL') + " Chromium mobile card actions");
         console.log("[" + pass.name + "] " + (switchOk ? 'PASS' : 'FAIL') + " Chromium settings switch");

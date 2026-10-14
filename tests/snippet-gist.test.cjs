@@ -196,7 +196,7 @@ test("updates refuse arbitrary, ambiguous or truncated matching files with zero 
     }
 });
 
-test("new gist publishing returns the complete link and never retries an uncertain write", async () => {
+test("new gist publishing returns the complete link and classifies an uncertain write without retrying", async () => {
     let calls = 0;
     const created = await publishGist({token: "token", snippet, fetchImpl: async (url, init) => {
         assert.equal(url, "https://api.github.com/gists");
@@ -206,7 +206,7 @@ test("new gist publishing returns the complete link and never retries an uncerta
     assert.equal(created.mode, "create");
     await assert.rejects(publishGist({token: "token", snippet, fetchImpl: async () => {
         calls += 1; throw new Error("gist-ghp-secret");
-    }}), /^Error: gist-request-failed$/);
+    }}), /^Error: gist-write-unknown$/);
     assert.equal(calls, 1);
 });
 

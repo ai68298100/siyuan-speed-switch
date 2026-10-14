@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-13",
-  "currentTask": "T-7159",
+  "updated": "2026-10-14",
+  "currentTask": "T-7144",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
@@ -92,7 +92,18 @@
     "T-7245",
     "T-7246",
     "T-7247",
-    "T-7248"
+    "T-7248",
+    "T-7249",
+    "T-7250",
+    "T-7251",
+    "T-7252",
+    "T-7253",
+    "T-7254",
+    "T-7255",
+    "T-7256",
+    "T-7257",
+    "T-7258",
+    "T-7259"
   ],
   "tasks": [
     {
@@ -781,7 +792,7 @@
     {
       "id": "T-7144",
       "title": "少量高价值组件二轮精修",
-      "status": "planned",
+      "status": "in_progress",
       "priority": "P2",
       "owner": "local",
       "workType": "conditional",
@@ -2609,12 +2620,344 @@
         "package.zip"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7249",
+      "title": "片段实验室窄屏滚动与触控命中区",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7248"
+      ],
+      "evidence": [
+        "src/styles/_12-r54-surface-adapter.scss",
+        "tests/e2e/studio-editing-state.spec.mjs",
+        "docs/design/platform-ui-redesign-r4-2026-10-03.html",
+        "docs/adr/0176-studio-narrow-scroll-and-touch-targets.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7250",
+      "title": "第二面板编辑态持续摇摆与频闪",
+      "status": "completed",
+      "priority": "P0",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7248"
+      ],
+      "evidence": [
+        "src/styles/_05-settings-widgets.scss",
+        "tests/home-editing-chrome-wiring.test.cjs",
+        "tests/e2e/workbench-information.spec.mjs",
+        "docs/design/workbench-redesign-2026-09-27.html",
+        "docs/adr/0177-workbench-static-edit-mode.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7251"
+    },
+    {
+      "id": "T-7251",
+      "title": "工作台编辑快捷键可发现性与输入保护",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7250"
+      ],
+      "evidence": [
+        "src/second-panel-ui.ts",
+        "src/i18n/zh-CN.json",
+        "src/i18n/en.json",
+        "tests/e2e/workbench-information.spec.mjs",
+        "tests/home-editing-chrome-wiring.test.cjs",
+        "docs/adr/0178-workbench-edit-shortcuts.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7252"
+    },
+    {
+      "id": "T-7252",
+      "title": "工作台精选组件补齐入口与商店原型设备语义",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7251"
+      ],
+      "evidence": [
+        "src/second-panel-ui.ts",
+        "src/home-store-ui.ts",
+        "src/i18n/zh-CN.json",
+        "src/i18n/en.json",
+        "docs/design/workbench-redesign-2026-09-27.html",
+        "docs/design/store-redesign-2026-09-27.html",
+        "tests/e2e/workbench-information.spec.mjs",
+        "tests/e2e/store-inline-preview.spec.mjs",
+        "tests/home-empty-guide.test.cjs",
+        "tests/store-master-detail-contract.test.cjs",
+        "docs/adr/0179-workbench-default-fill-and-store-preview-context.md",
+        "docs/adr/0180-package-budget-578kib-for-v0471-working-tree.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7252-independent-e2e/results.json",
+        ".artifacts/T-7252-final-e2e/results.json"
+      ],
+      "next": "T-7253"
+    },
+    {
+      "id": "T-7253",
+      "title": "天气组件上下文对比度与烟测覆盖",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7252"
+      ],
+      "evidence": [
+        "src/styles/_09-store-preview-polish.scss",
+        "tests/chromium-style-smoke.cjs",
+        "scripts/readiness-snapshot.cjs",
+        "docs/adr/0181-weather-context-contrast-guard.md",
+        ".artifacts/T-7253-verify-release.log",
+        ".artifacts/T-7253-weather-contrast-smoke.log",
+        ".artifacts/T-7253-weather-contrast-negative.log"
+      ],
+      "next": "T-7254"
+    },
+    {
+      "id": "T-7254",
+      "title": "加载骨架动效声明修复",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7253"
+      ],
+      "evidence": [
+        "src/styles/_00-tokens.scss",
+        "src/styles/_03-switcher-mobile.scss",
+        "src/styles/_05-settings-widgets.scss",
+        "docs/adr/0182-loading-skeleton-duration-token.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7254-build.log",
+        ".artifacts/T-7254-skeleton-motion.log"
+      ],
+      "next": "T-7255"
+    },
+    {
+      "id": "T-7255",
+      "title": "第一面板顶栏控件状态同步",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7254"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "tests/switcher-feedback-contract.test.cjs",
+        "docs/adr/0183-first-panel-control-state-sync.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7255-first-panel-contract.log"
+      ],
+      "next": "T-7256"
+    },
+    {
+      "id": "T-7256",
+      "title": "移动入口与筛选失败恢复闭环",
+      "status": "completed",
+      "priority": "P0",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7255"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "src/mobile-switcher-ui.ts",
+        "src/doc-search-ui.ts",
+        "tests/mobile-card-smoke.cjs",
+        "tests/history-trigger-lock-contract.test.cjs",
+        "docs/adr/0184-filter-retry-and-mobile-journal-entry.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7256-mobile-journal-history.log",
+        ".artifacts/T-7256-negative-mobile-journal.log",
+        ".artifacts/T-7256-negative-history-lock.log"
+      ],
+      "next": "T-7257"
+    },
+    {
+      "id": "T-7257",
+      "title": "最近关闭批量清空确认",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7256"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "src/i18n/zh-CN.json",
+        "src/i18n/en.json",
+        "tests/history-clear-confirm-contract.test.cjs",
+        "docs/adr/0185-recently-closed-clear-confirmation.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7258",
+      "title": "最近记录同步失败回执与重试",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7257"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "src/i18n/zh-CN.json",
+        "src/i18n/en.json",
+        "src/styles/_03-switcher-mobile.scss",
+        "tests/history-sync-receipt-contract.test.cjs",
+        "docs/adr/0186-history-sync-failure-receipt.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7258-negative.log",
+        ".artifacts/T-7259-verify-release-final.log"
+      ],
+      "next": "T-7259"
+    },
+    {
+      "id": "T-7259",
+      "title": "最近记录改动筛选失败与空态闭环",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7258"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "src/i18n/zh-CN.json",
+        "src/i18n/en.json",
+        "tests/history-sync-receipt-contract.test.cjs",
+        "docs/adr/0187-changed-history-filter-recovery.md",
+        "docs/dev-plan-2026-10-06.md",
+        "src/styles/_03-switcher-mobile.scss",
+        ".artifacts/T-7259-negative.log",
+        ".artifacts/T-7259-verify-release-final.log",
+        "docs/release-readiness.md"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7260",
+      "title": "共享请求服务与内核结果分类",
+      "status": "completed",
+      "priority": "P0",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7259"
+      ],
+      "evidence": [
+        "src/request-service.js",
+        "src/index.ts",
+        "src/doc-search-ui.ts",
+        "src/i18n/zh-CN.json",
+        "src/i18n/en.json",
+        "tests/request-service.test.cjs",
+        "tests/kernel-endpoint-guard.test.cjs",
+        "tests/doc-search-fetch-behavior.test.cjs",
+        "tests/search-orchestration-composition.test.cjs",
+        "docs/adr/0188-shared-request-outcomes-and-latest-wins.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7261"
+    },
+    {
+      "id": "T-7261",
+      "title": "工作台适配器 deadline 取消",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7260"
+      ],
+      "evidence": [
+        "src/home-adapters.js",
+        "tests/home-adapters.test.cjs",
+        "docs/adr/0188-shared-request-outcomes-and-latest-wins.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7262"
+    },
+    {
+      "id": "T-7262",
+      "title": "生活组件 latest-wins 缓存保护",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7261"
+      ],
+      "evidence": [
+        "src/life-widget-network.js",
+        "tests/life-widget-network.test.cjs",
+        "tests/life-widget-backoff.test.cjs",
+        "docs/adr/0188-shared-request-outcomes-and-latest-wins.md",
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7263",
+      "title": "旁路请求与写操作继续审计",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7262"
+      ],
+      "evidence": [
+        "src/journal-actions.js",
+        "src/snippet-gist.js",
+        "src/index.ts",
+        "src/ical-model.js",
+        "src/life-widget-model.js",
+        "tests/journal-actions.test.cjs",
+        "tests/snippet-gist.test.cjs",
+        "tests/snippet-gist-ui.test.cjs",
+        "tests/ical-model.test.cjs",
+        "tests/life-widget-model.test.cjs",
+        "tests/preview-cancel-contract.test.cjs",
+        "docs/adr/0189-side-channel-write-outcomes-and-measured-performance.md",
+        "docs/dev-plan-2026-10-06.md",
+        "docs/release-readiness.md"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
     "jsRunner": "blocked",
     "release": "published",
     "personalInstall": "not_updated",
-    "mainlineMerge": "forbidden_until_user_action"
+    "mainlineMerge": "forbidden_until_user_action",
+    "packageBudget": "blocked: 596337 bytes exceeds 591872-byte repository budget by 4465 bytes; requires measured reduction before release"
   }
 }

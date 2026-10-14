@@ -23,6 +23,8 @@ test("组件商店桌面全屏并在目录选择后直接显示实时预览", as
     const preview = store.locator(".sw-home-store__live-preview");
     await expect(preview).toHaveCount(1);
     await expect(preview.locator(".sw-store-preview")).toHaveAttribute("aria-busy", "false", {timeout: 10000});
+    await expect(preview.locator('.sw-store-preview__meta-chip[data-tone="context"]').first())
+        .toContainText(/Main panel|主面板/);
 
     const sizeButtons = store.locator(".sw-home-store__detail .sw-home-store__size[data-size]");
     if (await sizeButtons.count() > 1) {
@@ -35,7 +37,7 @@ test("组件商店桌面全屏并在目录选择后直接显示实时预览", as
     const cards = store.locator(".sw-home-store__catalog .sw-home-store__card[data-module-id]");
     if (await cards.count() > 1) {
         const secondModule = await cards.nth(1).getAttribute("data-module-id");
-        await cards.nth(1).evaluate((element) => (element instanceof HTMLElement ? element.click() : undefined));
+        await cards.nth(1).click();
         await expect(store).toHaveAttribute("data-selected-module", secondModule || "");
         await expect(store.locator(".sw-home-store__live-preview")).toHaveCount(1);
         await expect(store.locator(".sw-home-store__live-preview .sw-store-preview")).toHaveAttribute("aria-busy", "false", {timeout: 10000});

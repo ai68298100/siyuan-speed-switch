@@ -1,11 +1,16 @@
 import {expect, test} from "@playwright/test";
 import {openApp, artifactPath} from "./helpers/app.mjs";
 
-test("workbench keeps actions compact and exposes loading, failure and recovery", async ({page}) => {
+test("workbench exposes keyboard edit shortcuts, loading, failure and recovery", async ({page}) => {
     await openApp(page);
     // Temporary read-only adapters and in-memory layout; never overwrite saved user layout.
     await page.evaluate(() => {
         const plugin = window.siyuan.ws.app.plugins.find(item => item.name === "siyuan-speed-switch");
+        const opener = document.createElement("button");
+        opener.type = "button";
+        opener.dataset.testid = "workbench-shortcut-opener";
+        document.body.appendChild(opener);
+        opener.focus();
         plugin.getSettings = () => ({homeSizeMode: "fullscreen", panelSizeMode: "fullscreen"});
         const fixture = window.__workbenchFixture = {mode: "pending", release: null};
         const snapshot = {items: [{label: "Retained component content", value: "Ready"}]};
@@ -76,12 +81,45 @@ test("workbench keeps actions compact and exposes loading, failure and recovery"
     await expect(root.locator(".sw-home__bar button").first()).toHaveAttribute("aria-pressed", "true");
     await root.locator(".sw-home__edit-done").click();
     await expect(root.locator(".sw-home__bar button").first()).toHaveAttribute("aria-pressed", "false");
+
+    const shortcutToggle = root.locator('[data-home-action="edit"]');
+    await expect(shortcutToggle).toHaveAttribute("aria-keyshortcuts", "Control+B Meta+B");
+    await expect(shortcutToggle).toHaveAttribute("title", /Ctrl\/Cmd\+B/);
+    await shortcutToggle.focus();
+    await page.evaluate(() => document.activeElement.dispatchEvent(new KeyboardEvent("keydown", {
+        key: "b", ctrlKey: true, bubbles: true, cancelable: true, isComposing: true,
+    })));
+    await expect(shortcutToggle).toHaveAttribute("aria-pressed", "false");
+    await page.locator('[data-testid="workbench-shortcut-opener"]').focus();
+    await page.keyboard.press("Control+b");
+    await expect(root.locator('[data-home-action="edit"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(root.locator('[data-home-action="edit"]')).toHaveAttribute("aria-keyshortcuts", "Escape");
+    await page.keyboard.press("Escape");
+    await expect(root.locator('[data-home-action="edit"]')).toHaveAttribute("aria-pressed", "false");
+    await expect(root).toBeVisible();
+
+    await root.evaluate(element => {
+        const input = document.createElement("input");
+        input.dataset.testid = "workbench-shortcut-guard";
+        element.appendChild(input);
+        input.focus();
+    });
+    await page.keyboard.press("Control+b");
+    await expect(root.locator('[data-home-action="edit"]')).toHaveAttribute("aria-pressed", "false");
+    await expect(root).toBeVisible();
+    await root.locator('[data-testid="workbench-shortcut-guard"]').evaluate(input => input.remove());
+
     await page.setViewportSize({width: 1440, height: 900});
     await page.screenshot({path: artifactPath("workbench-information.png")});
     await root.locator(".sw-home__add").click();
     await expect(page.locator(".sw-home-store")).toBeVisible();
+    await page.locator('[data-testid="workbench-shortcut-opener"]').focus();
+    await page.keyboard.press("Control+b");
+    await expect(root.locator('[data-home-action="edit"]')).toHaveAttribute("aria-pressed", "false");
+    await page.locator(".sw-home-store__close").click();
+    await expect(page.locator(".sw-home-store")).toHaveCount(0);
+    await page.locator('[data-testid="workbench-shortcut-opener"]').evaluate(opener => opener.remove());
 });
-
 test("workbench explains unavailable saved widgets and offers a nearby store action", async ({page}) => {
     await openApp(page);
     await page.evaluate(() => {
@@ -139,4 +177,97 @@ test("workbench explains unavailable saved widgets and offers a nearby store act
     await empty.locator("button.sw-home__empty-store").click();
     await expect(page.locator(".sw-home-store")).toBeVisible();
     await expect(root.locator(".sw-home__cell--unavailable")).toHaveCount(1);
+});
+test("workbench edit mode stays visually still when resumed through surface navigation", async ({page}) => {
+    await openApp(page);
+    await page.evaluate(() => {
+        const plugin = window.siyuan.ws.app.plugins.find(item => item.name === "siyuan-speed-switch");
+        plugin.getSettings = () => ({homeSizeMode: "fullscreen", panelSizeMode: "fullscreen"});
+        plugin.getHomeState = () => ({schemaVersion: 1,
+            instances: [{instanceId: "e2e-static-edit", moduleId: "recent-documents", enabled: true, config: {}}],
+            layouts: {desktop: [{instanceId: "e2e-static-edit", x: 0, y: 0, w: 4, h: 1, size: "small"}]}});
+        plugin.commands.find(item => item.langKey === "secondPanel").callback();
+    });
+
+    const root = page.locator(".sw-home");
+    await expect(root).toBeVisible();
+    await root.locator('.sw-home__bar button[data-home-action="edit"]').click();
+    await expect(root.locator('.sw-home__bar button[data-home-action="edit"]')).toHaveAttribute("aria-pressed", "true");
+    const cells = root.locator(".sw-home__grid--editing .sw-home__cell");
+    await expect(cells).toHaveCount(1);
+
+    const motion = await cells.first().evaluate(element => ({
+        animationName: getComputedStyle(element).animationName,
+        runningAnimations: element.getAnimations().filter(animation => animation.playState === "running").length,
+        outlineStyle: getComputedStyle(element).outlineStyle,
+        dragHandle: Boolean(element.querySelector(".sw-home__tool--drag")),
+    }));
+    expect(motion.animationName).toBe("none");
+    expect(motion.runningAnimations).toBe(0);
+    expect(motion.outlineStyle).toBe("dashed");
+    expect(motion.dragHandle).toBe(true);
+
+    await root.locator('.sw-platform-surface-nav__item[data-surface="studio"]').click();
+    await expect(page.locator(".sw-studio")).toBeVisible();
+    await page.locator('button.sw-platform-surface-nav__item[data-surface="workbench"]').click();
+    await expect(root.locator('.sw-home__bar button[data-home-action="edit"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(root.locator(".sw-home__grid--editing .sw-home__cell")).toHaveCSS("animation-name", "none");
+    await expect(root.locator(".sw-home__tool--drag")).toBeVisible();
+});
+
+test("workbench can add missing curated defaults without replacing existing layout", async ({page}) => {
+    await openApp(page);
+    await page.evaluate(() => {
+        const plugin = window.siyuan.ws.app.plugins.find(item => item.name === "siyuan-speed-switch");
+        plugin.getSettings = () => ({homeSizeMode: "fullscreen", panelSizeMode: "fullscreen"});
+        const available = ["recent-documents", "today-journal", "today-tasks"]
+            .filter(id => plugin.homeRuntime.listModules("desktop").some(module => module.moduleId === id));
+        if (available.length < 2) throw new Error("fixture requires at least two available curated default widgets");
+        const kept = {instanceId: "e2e-kept-default", moduleId: available[0], enabled: true, config: {}};
+        const initial = {schemaVersion: 1, instances: [kept], layouts: {
+            desktop: [{instanceId: kept.instanceId, x: 3, y: 2, w: 4, h: 1, size: "small"}],
+        }};
+        window.__restoreDefaultsFixture = {state: initial, available};
+        plugin.getHomeState = () => structuredClone(window.__restoreDefaultsFixture.state);
+        plugin.saveHomeState = state => {window.__restoreDefaultsFixture.state = structuredClone(state);};
+        plugin.commands.find(item => item.langKey === "secondPanel").callback();
+    });
+
+    const root = page.locator(".sw-home");
+    await expect(root).toBeVisible();
+    await root.locator('[data-home-action="edit"]').click();
+    const restore = root.locator('[data-home-action="restore-default"]');
+    await expect(restore).toBeVisible();
+    await expect(restore).toBeEnabled();
+    await expect(restore).toHaveText(/Add selected defaults|补齐精选组件/);
+
+    const before = await page.evaluate(() => structuredClone(window.__restoreDefaultsFixture.state));
+    const cancelDialog = async dialog => {await dialog.dismiss();};
+    page.on("dialog", cancelDialog);
+    await restore.click();
+    await page.removeListener("dialog", cancelDialog);
+    await expect.poll(() => page.evaluate(() => window.__restoreDefaultsFixture.state.instances.length)).toBe(before.instances.length);
+    expect(await page.evaluate(() => window.__restoreDefaultsFixture.state)).toEqual(before);
+
+    const confirmDialog = page.waitForEvent("dialog", {timeout: 5000}).then(async dialog => {
+        const message = dialog.message();
+        await dialog.accept();
+        return message;
+    });
+    await restore.click();
+    expect(await confirmDialog).toMatch(/Add \d+ selected default widgets|将补齐 \d+ 个精选默认组件/);
+
+    await expect(restore).toBeDisabled();
+    await expect(restore).toHaveAttribute("title", /already in this workbench|已在当前工作台中/);
+    const after = await page.evaluate(() => window.__restoreDefaultsFixture.state);
+    const modules = after.instances.map(instance => instance.moduleId);
+    const available = await page.evaluate(() => window.__restoreDefaultsFixture.available);
+    for (const moduleId of available) expect(modules.filter(id => id === moduleId)).toHaveLength(1);
+    expect(after.layouts.desktop.find(item => item.instanceId === "e2e-kept-default")).toMatchObject({x: 3, y: 2});
+
+    const undo = root.locator(".sw-home__edit-banner button.sw-home__history");
+    await expect(undo).toBeVisible();
+    await undo.click();
+    await expect.poll(() => page.evaluate(() => window.__restoreDefaultsFixture.state.instances.length)).toBe(before.instances.length);
+    await expect(root.locator('[data-home-action="restore-default"]')).toBeEnabled();
 });

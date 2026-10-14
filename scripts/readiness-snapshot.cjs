@@ -62,8 +62,8 @@ doc = doc.replace(/`dist\/index\.js` \d+ bytes; `dist\/index\.css` \d+ bytes; `p
 // 2) 生产产物表行：三类数字与余量
 doc = doc.replace(/`dist\/index\.js` \d+ bytes（\d+ KiB 自律线内，余量 -?\d+ bytes，ADR \d{4}）/,
     `\`dist/index.js\` ${size} bytes（${RAW_BUNDLE_BUDGET / 1024} KiB 自律线内，余量 ${RAW_BUNDLE_BUDGET - size} bytes，ADR ${RAW_BUNDLE_BUDGET_ADR}）`);
-doc = doc.replace(/`package\.zip` \d+ bytes（\d+ KiB 硬上限余量 -?\d+ bytes）/,
-    `\`package.zip\` ${zip} bytes（${ARCHIVE_BUDGET / 1024} KiB 硬上限余量 ${ARCHIVE_BUDGET - zip} bytes）`);
+doc = doc.replace(/`package\.zip` \d+ bytes（\d+ KiB 仓库门禁预算余量 -?\d+ bytes）/,
+    `\`package.zip\` ${zip} bytes（${ARCHIVE_BUDGET / 1024} KiB 仓库门禁预算余量 ${ARCHIVE_BUDGET - zip} bytes）`);
 doc = doc.replace(/当前 `index\.js` 压缩后 \d+ bytes，余量 \d+ bytes）/,
     `当前 \`index.js\` 压缩后 ${compressed} bytes，余量 ${COMPRESSED_ENTRY_BUDGET - compressed} bytes）`);
 

@@ -2,6 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {JSDOM} = require("jsdom");
+const {buildRecycleEntry, normalizeRecycleStore} = require("../src/snippet-recycle.js");
 
 function createHarness(t) {
     const dom = new JSDOM("<!doctype html><body><div id=\"root\"></div></body>", {url: "https://localhost"});
@@ -84,6 +85,66 @@ test("snippet group picker persists CRUD state and accepts native drag/drop", as
     view.value = "flat";
     view.dispatchEvent(new dom.window.Event("change", {bubbles: true}));
     assert.equal(groupState.view, "flat");
+    controller.dispose();
+});
+
+test("snippet group save failure keeps the last persisted view and allows retry", async (t) => {
+    const {dom, document, mountSnippetStudio, i18n} = createHarness(t);
+    let groupState = null;
+    let fail = true;
+    const controller = mountSnippetStudio(document.getElementById("root"), {
+        i18n,
+        store: {read: async () => [], dispose: () => {}},
+        groups: {load: () => groupState, save: (next) => {
+            if (fail) throw new Error("sidecar unavailable");
+            groupState = next;
+        }},
+    });
+    t.after(() => controller.dispose());
+    await controller.ready;
+    Array.from(document.querySelectorAll("button")).find((button) => button.textContent === i18n.snippetChoose).click();
+    dom.window.prompt = () => "Work";
+    const create = Array.from(document.querySelectorAll("button")).find((button) => button.textContent === i18n.snippetGroupNew);
+    create.click();
+    assert.equal(groupState, null, "失败写入不得污染持久化状态");
+    assert.equal(document.querySelectorAll(".sw-studio__group[data-group-id]").length, 0, "失败分组不得显示成已保存");
+    assert.equal(document.querySelector(".sw-studio__status").dataset.state, "error", "失败必须回执到工作室状态");
+    fail = false;
+    create.click();
+    assert.equal(groupState.groups[0].name, "Work", "同一操作可重试并落入 sidecar");
+    assert.equal(document.querySelectorAll(".sw-studio__group[data-group-id]").length, 1, "成功重试后目录显示持久化分组");
+    controller.dispose();
+});
+
+test("recycle clear failure keeps the entry visible and can be retried", async (t) => {
+    const {dom, document, mountSnippetStudio, i18n} = createHarness(t);
+    const entry = buildRecycleEntry({
+        origin: "delete", snippetId: "recycle-item", name: "Recoverable", type: "css", content: ".recoverable{}",
+    }, 1000);
+    let recycleState = normalizeRecycleStore({version: 1, entries: [entry]}, 1001);
+    let fail = true;
+    const controller = mountSnippetStudio(document.getElementById("root"), {
+        i18n,
+        store: {read: async () => [], dispose: () => {}},
+        recycle: {load: () => recycleState, save: (next) => {
+            if (fail) throw new Error("recycle storage unavailable");
+            recycleState = next;
+        }},
+    });
+    t.after(() => controller.dispose());
+    await controller.ready;
+    Array.from(document.querySelectorAll("button")).find((button) => button.textContent === i18n.snippetChoose).click();
+    Array.from(document.querySelectorAll("button")).find((button) => button.textContent === i18n.snippetRecycle).click();
+    dom.window.confirm = () => true;
+    const clear = Array.from(document.querySelectorAll("button")).find((button) => button.textContent === i18n.snippetRecycleClear);
+    clear.click();
+    assert.equal(recycleState.entries.length, 1, "失败清空必须保留持久化快照");
+    assert.ok(document.querySelector(".sw-studio__recycle-title").textContent.includes("Recoverable"), "失败后快照仍可见");
+    assert.equal(document.querySelector(".sw-studio__status").dataset.state, "error", "失败清空必须明确回执");
+    fail = false;
+    clear.click();
+    assert.equal(recycleState.entries.length, 0, "再次点击可完成清空");
+    assert.ok(document.querySelector(".sw-studio__recycle .sw-studio__catalog").textContent.includes(i18n.snippetRecycleEmpty));
     controller.dispose();
 });
 

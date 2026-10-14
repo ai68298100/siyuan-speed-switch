@@ -158,6 +158,29 @@ function buildRecentRefreshNotice(previous, next) {
     return {changed: openBefore !== openAfter || closedBefore !== closedAfter, openCount: openAfter, closedCount: closedAfter};
 }
 
+/** Normalize the official recent-documents response without hiding failures. */
+function normalizeOfficialRecentHistory(payload, isValidRootId, now = Date.now(), max = 50) {
+    if (payload === null || payload === undefined || !Array.isArray(payload?.data)) {
+        return {status: "failed", items: []};
+    }
+    if (payload.data.length === 0) return {status: "empty", items: []};
+    const limit = Number.isFinite(max) && max > 0 ? Math.floor(max) : 50;
+    const timestamp = Number.isFinite(now) ? now : Date.now();
+    const valid = typeof isValidRootId === "function" ? isValidRootId : () => false;
+    const items = payload.data.slice(0, limit).map((row, index) => {
+        const rootId = typeof row?.rootID === "string" && valid(row.rootID) ? row.rootID : "";
+        if (!rootId) return null;
+        return {
+            key: rootId,
+            rootId,
+            title: String(row.title || rootId).slice(0, 128),
+            ts: Math.max(Number(row.viewedAt) || 0, Number(row.openAt) || 0, timestamp - index),
+            source: "open",
+        };
+    }).filter(Boolean);
+    return items.length > 0 ? {status: "success", items} : {status: "failed", items: []};
+}
+
 /** Remove one recent entry from a source list without mutating the input. */
 function removeRecentEntry(entries, key, field = "key") {
     const list = Array.isArray(entries) ? entries : [];
@@ -241,4 +264,4 @@ function planScrollRestore(metrics, ratio) {
     return {top: Math.min(max, Math.max(0, Math.round(Math.min(1, Math.max(0, bounded)) * max)))};
 }
 
-module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, buildRecentHistorySections, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, updatedChangedWithin, entryChangedWithin, computeScrollRatio, planScrollRestore};
+module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, buildRecentHistorySections, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice, normalizeOfficialRecentHistory, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, updatedChangedWithin, entryChangedWithin, computeScrollRatio, planScrollRestore};

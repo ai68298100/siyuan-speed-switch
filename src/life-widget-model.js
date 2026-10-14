@@ -16,6 +16,17 @@ function boundedText(value, max = 128) {
         : "";
 }
 
+function isValidIsoDate(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return false;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const daysByMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return month >= 1 && month <= 12 && day >= 1 && day <= daysByMonth[month - 1];
+}
+
 function normalizeWeatherConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const city = boundedText(source.city, 64);
@@ -90,6 +101,7 @@ function weatherIcon(condition, isDay = true) {
 }
 
 function finiteNumber(value, min, max, fallback = 0) {
+    if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) return fallback;
     const number = Number(value);
     return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
 }
@@ -103,20 +115,23 @@ function normalizeWeatherPayload(payload, maxDays = 5) {
     const days = [];
     for (let index = 0; index < limit; index += 1) {
         const date = boundedText(times[index], 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+        if (!isValidIsoDate(date)) continue;
         days.push({
             date,
             code: Math.trunc(finiteNumber(daily.weather_code?.[index], 0, 99, 3)),
-            high: finiteNumber(daily.temperature_2m_max?.[index], -100, 100),
-            low: finiteNumber(daily.temperature_2m_min?.[index], -100, 100),
-            precipitation: Math.round(finiteNumber(daily.precipitation_probability_max?.[index], 0, 100)),
+            high: finiteNumber(daily.temperature_2m_max?.[index], -100, 100, null),
+            low: finiteNumber(daily.temperature_2m_min?.[index], -100, 100, null),
+            precipitation: finiteNumber(daily.precipitation_probability_max?.[index], 0, 100, null),
         });
     }
-    if (days.length === 0 || !Number.isFinite(Number(current.temperature_2m))) return null;
+    const hasCurrentTemperature = current.temperature_2m !== null && current.temperature_2m !== undefined
+        && !(typeof current.temperature_2m === "string" && current.temperature_2m.trim() === "")
+        && Number.isFinite(Number(current.temperature_2m));
+    if (days.length === 0 || !hasCurrentTemperature) return null;
     return {
         temperature: finiteNumber(current.temperature_2m, -100, 100),
-        apparent: finiteNumber(current.apparent_temperature, -100, 100, Number(current.temperature_2m)),
-        wind: finiteNumber(current.wind_speed_10m, 0, 500),
+        apparent: finiteNumber(current.apparent_temperature, -100, 100, finiteNumber(current.temperature_2m, -100, 100)),
+        wind: finiteNumber(current.wind_speed_10m, 0, 500, null),
         code: Math.trunc(finiteNumber(current.weather_code, 0, 99, 3)),
         isDay: Number(current.is_day) !== 0,
         days,
@@ -152,18 +167,18 @@ function buildWeatherSnapshot(location, payload, config, labels = {}, now = Date
     // T-6438：体感/风速为可关闭的辅助指标；默认输出与旧版逐字节一致（体感开、风关）
     const statDetails = [];
     if (normalizedConfig.showApparent) {
-        statDetails.push(`${(boundedText(labels.feelsLike, 16) || "体感")} ${Math.round(weather.apparent)}°`);
+        if (weather.apparent !== null) statDetails.push(`${(boundedText(labels.feelsLike, 16) || "体感")} ${Math.round(weather.apparent)}°`);
     }
     if (normalizedConfig.showWind) {
-        statDetails.push(`${(boundedText(labels.wind, 16) || "风")} ${Math.round(weather.wind)} km/h`);
+        if (weather.wind !== null) statDetails.push(`${(boundedText(labels.wind, 16) || "风")} ${Math.round(weather.wind)} km/h`);
     }
     const items = weather.days.map((day) => {
         const condition = weatherCondition(day.code);
         const weekday = formatWeekday(day.date, labels.locale, boundedText(labels.today, 16) || "今天", now);
         return {
-            label: `${weekday} ${weatherIcon(condition, true)} ${Math.round(day.low)}° / ${Math.round(day.high)}°`,
+            label: `${weekday} ${weatherIcon(condition, true)} ${day.low === null ? "—" : `${Math.round(day.low)}°`} / ${day.high === null ? "—" : `${Math.round(day.high)}°`}`,
             value: "",
-            secondary: `${names[condition]} · ${(boundedText(labels.rainChance, 16) || "降水")} ${day.precipitation}%`,
+            secondary: `${names[condition]}${day.precipitation === null ? "" : ` · ${(boundedText(labels.rainChance, 16) || "降水")} ${day.precipitation}%`}`,
         };
     });
     items.push({label: "Open-Meteo · CC BY 4.0", value: "", href: "https://open-meteo.com/"});
@@ -186,7 +201,7 @@ function normalizeHolidayPayload(payload, expectedYear) {
     return payload.days.slice(0, 96).reduce((items, day) => {
         const date = boundedText(day?.date, 10);
         const name = boundedText(day?.name, 32);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !name || typeof day?.isOffDay !== "boolean" || seen.has(date)) return items;
+        if (!isValidIsoDate(date) || !name || typeof day?.isOffDay !== "boolean" || seen.has(date)) return items;
         seen.add(date);
         items.push({date, name, isOffDay: day.isOffDay});
         return items;

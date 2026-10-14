@@ -23,12 +23,15 @@ test('T-7001 persists the new settings fields with production defaults', () => {
     assert.match(settingsModelSource, /rememberScrollPosition: source\.rememberScrollPosition === undefined \? true : source\.rememberScrollPosition === true/);
 });
 
-test('T-7001 routes journal opening through create or read-only lookup', () => {
-    assert.match(indexSource, /this\.getSettings\(\)\.journalAutoCreate === false\s*\? await this\.findTodayJournal\(notebook\)\s*:\s*await this\.ensureTodayJournal\(notebook\)/);
-    assert.match(indexSource, /findTodayJournalAction\(\{notebook, fetchImpl: fetch, logger\}\)/);
-    assert.match(journalSource, /fetchImpl\("\/api\/query\/sql"/);
+test('T-7263 routes journal read and create through the shared request service', () => {
+    assert.match(indexSource, /this\.getSettings\(\)\.journalAutoCreate === false\s*\? await this\.findTodayJournalOutcome\(notebook\)\s*:\s*await this\.ensureTodayJournalOutcome\(notebook\)/);
+    assert.match(indexSource, /requestJson:\s*\(url, body, requestOptions\) => this\.fetchKernelJsonOutcome\(url, body, requestOptions\)/);
+    assert.match(indexSource, /"\/api\/filetree\/createDailyNote"/);
+    assert.match(journalSource, /endpoint:\s*"\/api\/query\/sql"/);
     assert.match(journalSource, /custom-dailynote-\$\{ymd\.replace\(\/-\/g, ""\)\}/);
-    assert.doesNotMatch(journalSource, /findTodayJournal[\s\S]*createDailyNote/);
+    assert.match(journalSource, /maxRetries:\s*0/);
+    assert.match(journalSource, /outcome:\s*write && UNKNOWN_WRITE_KINDS\.has\(kind\) \? "unknown" : "failed"/);
+    assert.doesNotMatch(journalSource, /findTodayJournalOutcome[\s\S]*createDailyNote/);
 });
 
 test('T-7001 exposes the behavior, journal, workbench, shortcut, and legacy-ball settings', () => {

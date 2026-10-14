@@ -51,6 +51,36 @@ test("clear weather distinguishes day and night", () => assert.notEqual(model.we
 test("weather payload normalizes current values", () => assert.equal(model.normalizeWeatherPayload(forecast).temperature, 21.4));
 test("weather payload bounds daily rows", () => assert.equal(model.normalizeWeatherPayload(forecast, 2).days.length, 2));
 test("weather payload rejects missing current temperature", () => assert.equal(model.normalizeWeatherPayload({daily: forecast.daily}), null));
+test("weather payload treats null and empty current temperatures as missing", () => {
+    for (const temperature of [null, "", "   "]) {
+        assert.equal(model.normalizeWeatherPayload({current: {temperature_2m: temperature}, daily: forecast.daily}), null);
+    }
+});
+test("weather payload keeps missing optional measurements absent instead of converting them to zero", () => {
+    const payload = {
+        current: {temperature_2m: 12, apparent_temperature: null, wind_speed_10m: "", weather_code: 1, is_day: 1},
+        daily: {time: ["2026-09-14"], weather_code: [1], temperature_2m_max: [null], temperature_2m_min: [""], precipitation_probability_max: [null]},
+    };
+    const normalized = model.normalizeWeatherPayload(payload);
+    assert.equal(normalized.apparent, 12, "missing apparent temperature falls back to the measured temperature");
+    assert.equal(normalized.wind, null);
+    assert.deepEqual(normalized.days[0], {date: "2026-09-14", code: 1, high: null, low: null, precipitation: null});
+    const snapshot = model.buildWeatherSnapshot(location, payload, {showWind: true}, {});
+    assert.match(snapshot.items[0].label, /— \/ —/);
+    assert.doesNotMatch(snapshot.items[0].secondary, /0%/);
+    assert.doesNotMatch(snapshot.stat.label, /0 km\/h/);
+});
+test("weather and holiday models reject impossible ISO dates", () => {
+    const weather = model.normalizeWeatherPayload({
+        current: {temperature_2m: 12},
+        daily: {time: ["2026-02-30", "2026-13-01", "2024-02-29"], weather_code: [1, 1, 1], temperature_2m_max: [10, 10, 10], temperature_2m_min: [2, 2, 2]},
+    });
+    assert.deepEqual(weather.days.map((day) => day.date), ["2024-02-29"]);
+    assert.deepEqual(model.normalizeHolidayPayload({year: 2026, days: [
+        {name: "无效日期", date: "2026-02-30", isOffDay: true},
+        {name: "有效日期", date: "2026-02-28", isOffDay: true},
+    ]}, 2026), [{name: "有效日期", date: "2026-02-28", isOffDay: true}]);
+});
 test("weather snapshot exposes location context", () => assert.equal(model.buildWeatherSnapshot(location, forecast, {}, {}).title, location.label));
 test("weather snapshot exposes rounded temperature", () => assert.equal(model.buildWeatherSnapshot(location, forecast, {}, {}).stat.value, "21°"));
 test("weather snapshot includes attribution link", () => assert.equal(model.buildWeatherSnapshot(location, forecast, {}, {}).items.at(-1).href, "https://open-meteo.com/"));

@@ -20,7 +20,8 @@ test('package.zip, when present, contains only release files', (t) => {
         return;
     }
     const bytes = fs.statSync(zip).size;
-    // Reviewed release ceiling: 512 KiB. SiYuan imposes no size limit on
+    // Reviewed repository release-gate budget: 578 KiB (ADR 0180), not a SiYuan host limit.
+    // SiYuan imposes no size limit on
     // package.zip (plugin-sample only caps icon.png at 20 KB and preview.png at
     // 200 KB) and GitHub Release assets allow 2 GB. The earlier 300 KiB and
     // 320 KiB figures were self-imposed and predated the semantic home-config
@@ -31,7 +32,7 @@ test('package.zip, when present, contains only release files', (t) => {
     const budget = ARCHIVE_BUDGET_BYTES;
     const remaining = headroom(budget, bytes);
     if (remaining >= 0 && remaining < 1024) {
-        t.diagnostic(`package.zip headroom is only ${remaining} bytes; keep future UI changes within the hard budget`);
+        t.diagnostic(`package.zip headroom is only ${remaining} bytes; review future UI changes against the repository release-gate budget`);
     }
     assert.ok(bytes <= budget, `package.zip is ${bytes} bytes; budget is ${budget}; headroom is ${remaining} bytes`);
     // D-219: ROADMAP.md left the release archive (repo-only dev doc);

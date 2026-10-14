@@ -3,10 +3,13 @@
 // Ctrl+B 批量底栏 / 移动端底部 sheet。
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const {readSourceFile, readStyleSource} = require('./source-scan.cjs');
 
 const ui = readSourceFile('src/home-store-ui.ts');
 const scss = readStyleSource('src/styles/_08-home-store-cards.scss');
+const storePrototype = fs.readFileSync(path.join(__dirname, '..', 'docs/design/store-redesign-2026-09-27.html'), 'utf8');
 
 test('layout: dialog skeleton carries catalog + detail panes', () => {
     assert.match(ui, /sw-home-store__layout"><div class="sw-home-store__catalog"><\/div><aside class="sw-home-store__detail/,
@@ -68,4 +71,18 @@ test('styles: master-detail grid with scroll containment per pane', () => {
         '桌面双栏：左目录 300-400px + 右详情自适应');
     assert.match(scss, /\.sw-home-store__catalog \{\s*\n\s*min-height: 0;\s*\n\s*overflow: auto;/, '目录窗格独立滚动');
     assert.match(scss, /\.sw-home-store__catalog \.sw-home-store__card \.sw-home-store__status\.is-added::before \{\s*\n\s*content: "✓ ";/, '已添加行以 ✓ 表达');
+});
+
+test('prototype: desktop preview reports its context without an inert device switcher', () => {
+    const desktopStart = storePrototype.indexOf('<!-- ============ 屏①');
+    const statesStart = storePrototype.indexOf('<!-- ============ 屏②', desktopStart);
+    assert.ok(desktopStart >= 0 && statesStart > desktopStart, '桌面主屏边界必须可定位');
+    const desktopScreen = storePrototype.slice(desktopStart, statesStart);
+    const barStart = desktopScreen.indexOf('<div class="dbar">');
+    const barClose = desktopScreen.indexOf('</div>', barStart);
+    assert.ok(barStart >= 0 && barClose > barStart, '预览栏必须可定位');
+    const previewBar = desktopScreen.slice(barStart, barClose + '</div>'.length);
+    assert.doesNotMatch(previewBar, /class="seg"/, '预览栏不得把静态文本伪装成设备切换器');
+    assert.ok(previewBar.includes('桌面预览'), '预览栏必须标明当前桌面上下文');
+    assert.ok(desktopScreen.includes('支持主面板 · 侧栏 · 移动端'), '能力说明必须和当前预览设备区分');
 });

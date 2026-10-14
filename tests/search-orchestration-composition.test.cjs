@@ -22,6 +22,8 @@ const {
 const uiSource = readSourceFile("src/doc-search-ui.ts");
 const sourceFile = ts.createSourceFile("doc-search-ui.ts", uiSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 const functionNames = [
+    "docSearchRequestScope",
+    "boundedSearchRequest",
     "runDocSearchFetch",
     "runOpenedDocumentContentSearch",
     "runFullTextSearchFallback",
@@ -35,7 +37,9 @@ const compiledFunctions = functionNames.map((name) => {
 }).join("\n");
 
 function makeRunner(overrides = {}) {
-    return new Function(
+    const fetchImpl = overrides.fetch || (async () => ({ok: true, status: 200, json: async () => ({code: 0, data: []})}));
+    const runner = new Function(
+        "docSearchSurfaceRequestIds", "nextDocSearchSurfaceRequestId",
         "getDocSearchSession", "renderDocResults", "updateDocSearchHealth", "disposeDocSearchSession",
         "filterDocSearchResults", "canUseTitleSearch", "buildSearchCacheKey", "cacheSearchResult",
         "DOC_SEARCH_FETCH_LIMIT", "logger", "fetch", "buildOpenedDocumentSearchRequests",
@@ -43,6 +47,7 @@ function makeRunner(overrides = {}) {
         "aggregateSearchResults", "resolveSearchNotebookId",
         `${compiledFunctions}\nreturn {runDocSearchFetch, runOpenedDocumentContentSearch, runFullTextSearchFallback};`,
     )(
+        new WeakMap(), 0,
         overrides.getDocSearchSession || function (scrollElement) {
             let session = this.docSearchState.sessions.get(scrollElement);
             if (!session) {
@@ -66,7 +71,7 @@ function makeRunner(overrides = {}) {
         overrides.cacheSearchResult || cacheSearchResult,
         overrides.DOC_SEARCH_FETCH_LIMIT || 33,
         overrides.logger || {warn() {}},
-        overrides.fetch || (async () => ({ok: true, status: 200, json: async () => ({data: []})})),
+        fetchImpl,
         overrides.buildOpenedDocumentSearchRequests || buildOpenedDocumentSearchRequests,
         overrides.extractSearchRecords || extractSearchRecords,
         overrides.normalizeSearchResult || normalizeSearchResult,
@@ -74,6 +79,13 @@ function makeRunner(overrides = {}) {
         overrides.aggregateSearchResults || aggregateSearchResults,
         overrides.resolveSearchNotebookId || resolveSearchNotebookId,
     );
+    runner.requestKernelJsonOutcome = async (url, body, options = {}) => {
+        try {
+            const response = await fetchImpl(url, {method: "POST", body: JSON.stringify(body), signal: options.signal});
+            return response?.ok === true ? {ok: true, value: await response.json()} : {ok: false, error: {kind: "http"}};
+        } catch (_) { return {ok: false, error: {kind: "network"}}; }
+    };
+    return runner;
 }
 
 function getDocSession(host, scrollElement) {
@@ -85,7 +97,7 @@ function getDocSession(host, scrollElement) {
     return session;
 }
 
-function makeHost(tabs = []) {
+function makeHost(tabs = [], requestKernelJsonOutcome = async () => ({ok: true, value: {code: 0, data: []}})) {
     return {
         isMobile: true,
         docSearchState: {sessions: new WeakMap()},
@@ -109,6 +121,7 @@ function makeHost(tabs = []) {
         applySearch() {
             this.retryCalls += 1;
         },
+        requestKernelJsonOutcome,
     };
 }
 
@@ -165,7 +178,7 @@ test("composition: opened scope, native fallback, path filtering, paging, and ca
             return response(globalHits);
         },
     });
-    const host = makeHost(tabs);
+    const host = makeHost(tabs, runner.requestKernelJsonOutcome);
     const scrollElement = surface();
     const searchInput = input("项目");
     const filters = {notebook: "box-a", paths: ["box-a/work"], method: "regexp"};
@@ -207,7 +220,7 @@ test("composition: a late native response cannot render or populate a newer sear
             return pendingGlobal;
         },
     });
-    const host = makeHost([]);
+    const host = makeHost([], runner.requestKernelJsonOutcome);
     const scrollElement = surface();
     const searchInput = input("旧查询");
     const filters = {method: "regexp"};
@@ -240,14 +253,14 @@ function buildHits(rootCount) {
 
 async function measureCompositionCpu(runner, records, iterations = 36) {
     for (let index = 0; index < 8; index += 1) {
-        const host = makeHost([]);
+        const host = makeHost([], runner.requestKernelJsonOutcome);
         const scrollElement = surface();
         const session = getDocSession(host, scrollElement);
         await runner.runDocSearchFetch.call(host, scrollElement, input("大型查询"), "大型查询", beginSearch(session), () => {}, {method: "regexp"}, `bench-${records.length}-${index}`, "大型查询");
     }
     const samples = [];
     for (let index = 0; index < iterations; index += 1) {
-        const host = makeHost([]);
+        const host = makeHost([], runner.requestKernelJsonOutcome);
         const scrollElement = surface();
         const session = getDocSession(host, scrollElement);
         const started = process.cpuUsage();

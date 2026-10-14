@@ -125,6 +125,10 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         let releasePanel: () => void = () => undefined;
         let disposeSizeMenu: () => void = () => undefined;
         const dialogHolder: {dialog: Dialog | null} = {dialog: null};
+        const ownerDocument = document;
+        const openerElement = ownerDocument.activeElement instanceof HTMLElement && ownerDocument.activeElement !== ownerDocument.body
+            ? ownerDocument.activeElement
+            : null;
         const dialog = new Dialog({
             title: this.i18n.dialogWorkbenchTitle || "工作台",
             content: '<div class="speed-switch sw-home sw-platform-surface sw-platform-surface--workbench" data-sw-surface="workbench"></div>',
@@ -150,6 +154,39 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             return;
         }
         root.dataset.swSurface = "workbench";
+        const dialogContainer = dialog.element.querySelector<HTMLElement>(".b3-dialog__container");
+        const isTopmostDialog = () => {
+            if (!dialogContainer?.isConnected || !root.isConnected || this.workbenchDialog !== dialog) return false;
+            const visible = Array.from(ownerDocument.querySelectorAll<HTMLElement>(".b3-dialog__container"))
+                .filter((candidate) => {
+                    const style = ownerDocument.defaultView!.getComputedStyle(candidate);
+                    return style.display !== "none" && style.visibility !== "hidden" && !candidate.closest("[inert]");
+                })
+                .sort((left, right) => {
+                    const zIndex = (element: HTMLElement) => Number.parseInt(ownerDocument.defaultView!.getComputedStyle(element).zIndex, 10) || 0;
+                    return zIndex(left) - zIndex(right);
+                });
+            return visible[visible.length - 1] === dialogContainer;
+        };
+        const isTextEntryTarget = (target: EventTarget | null) => target instanceof HTMLElement && (
+            target.isContentEditable || Boolean(target.closest("input,textarea,select,[role=textbox],[contenteditable]:not([contenteditable=false]),.cm-editor"))
+        );
+        const onWorkbenchKeydown = (event: KeyboardEvent) => {
+            if (event.defaultPrevented || event.isComposing || isTextEntryTarget(event.target)) return;
+            const editToggle = root.querySelector<HTMLButtonElement>('[data-home-action="edit"]');
+            const startsEditing = (event.ctrlKey || event.metaKey)
+                && !event.altKey
+                && !event.shiftKey
+                && event.key.toLowerCase() === "b";
+            const finishesEditing = event.key === "Escape" && editing && editToggle?.getAttribute("aria-pressed") === "true";
+            if ((!startsEditing || editing) && !finishesEditing || !editToggle || editToggle.disabled) return;
+            const target = event.target as Node | null;
+            if (!target || !isTopmostDialog() || (!dialog.element.contains(target) && !openerElement?.contains(target))) return;
+            event.preventDefault();
+            event.stopPropagation();
+            editToggle.click();
+        };
+        ownerDocument.addEventListener("keydown", onWorkbenchKeydown);
         // T-7012：只消费进入工作台时携带的稳定对象描述符；离开时不复用旧焦点。
         const focusObjectId = context?.objectKind === "widget"
             ? context.objectId || ""
@@ -354,6 +391,52 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 if (inst) cells.push({inst, layout: entry});
             });
             const hasAvailableCell = cells.some(({inst}) => defs.has(inst.moduleId));
+            const getDefaultRestorePlan = (homeState = this.getHomeState()) => {
+                const layoutList: Array<any> = [...((homeState.layouts[device] || []) as Array<any>)];
+                const instancesByModule = new Map<string, any>();
+                (homeState.instances as Array<any>).forEach((candidate: any) => {
+                    if (!instancesByModule.has(candidate.moduleId)) instancesByModule.set(candidate.moduleId, candidate);
+                });
+                const candidates = EMPTY_WORKBENCH_DEFAULT_IDS.map((moduleId) => ({moduleId, def: defs.get(moduleId)}))
+                    .filter((candidate) => candidate.def);
+                const isLaidOut = (instanceId: string) => layoutList.some((entry) => entry.instanceId === instanceId);
+                const missing = candidates.filter(({moduleId}) => {
+                    const existing = instancesByModule.get(moduleId);
+                    return !existing || !isLaidOut(existing.instanceId);
+                });
+                return {layoutList, instancesByModule, candidates, missing};
+            };
+            const restoreDefaultComponents = () => {
+                const next = this.getHomeState();
+                const {layoutList, instancesByModule, missing} = getDefaultRestorePlan(next);
+                if (missing.length === 0) {
+                    showMessage(this.i18n.homeEmptyRestoreNothing);
+                    return;
+                }
+                const impact = this.i18n.homeEmptyRestoreConfirm
+                    .replace("{count}", String(missing.length))
+                    .replace("{existing}", String(layoutList.length));
+                if (!confirm(impact)) return;
+                prepareLayoutMutation();
+                missing.forEach(({moduleId, def: candidateDef}) => {
+                    const existing = instancesByModule.get(moduleId);
+                    const targetInstanceId = existing?.instanceId || moduleId;
+                    const supported: string[] = Array.isArray(candidateDef.sizes) && candidateDef.sizes.length > 0 ? candidateDef.sizes : ["medium"];
+                    const sizeKey = resolveHomeTileDefaultSize(moduleId, supported, "medium");
+                    const preset = HOME_WIDGET_SIZES[(sizeKey || "medium") as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+                    if (!existing) {
+                        const restored = {instanceId: moduleId, moduleId, config: {}, enabled: true};
+                        (next.instances as Array<any>).push(restored);
+                        instancesByModule.set(moduleId, restored);
+                    }
+                    layoutList.push({instanceId: targetInstanceId, x: 0, y: 0, w: preset.w, h: preset.h, collapsed: false, size: sizeKey});
+                });
+                next.layouts[device] = layoutList;
+                this.saveHomeState(next);
+                commitLayoutMutation(next);
+                layoutOpLabel = this.i18n.homeHistoryUpdate;
+                renderPanel();
+            };
 
             // 秒开（D-382）：工具栏/问候/网格在离屏 fragment 中装配，一次挂载避免多轮重排
             const mountFragment = document.createDocumentFragment();
@@ -365,6 +448,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             // T-7010：重绘事务用 data-home-action 在重建后找回同一工具栏按钮。
             editToggle.dataset.homeAction = "edit";
             editToggle.setAttribute("aria-pressed", String(editing));
+            editToggle.setAttribute("aria-keyshortcuts", editing ? "Escape" : "Control+B Meta+B");
+            editToggle.title = editing ? this.i18n.homeDoneShortcutHint : this.i18n.homeEditShortcutHint;
             editToggle.textContent = editing ? this.i18n.homeDone : this.i18n.homeEditLayout;
             editToggle.addEventListener("click", () => {
                 editing = !editing;
@@ -376,6 +461,23 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 renderPanel();
             });
             bar.appendChild(editToggle);
+            const createRestoreButton = (className: string) => {
+                const restorePlan = getDefaultRestorePlan();
+                if (!restorePlan.candidates.length) return null;
+                const restore = document.createElement("button");
+                restore.type = "button";
+                restore.className = className;
+                restore.dataset.homeAction = "restore-default";
+                restore.textContent = this.i18n.homeEmptyRestoreDefault;
+                restore.disabled = restorePlan.missing.length === 0;
+                restore.title = restore.disabled ? this.i18n.homeEmptyRestoreNothing : this.i18n.homeRestoreDefaultHint;
+                restore.addEventListener("click", restoreDefaultComponents);
+                return restore;
+            };
+            if (editing && cells.length > 0) {
+                const restore = createRestoreButton("b3-button b3-button--text sw-home__restore-default");
+                if (restore) bar.appendChild(restore);
+            }
             // 查看态的空态推荐/恢复同样可撤销；按钮留在工具栏，避免用户必须进入编辑态才能找回布局。
             if (!editing && layoutHistory && (canUndoLayoutHistory(layoutHistory) || canRedoLayoutHistory(layoutHistory))) {
                 if (canUndoLayoutHistory(layoutHistory)) {
@@ -638,57 +740,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         });
                         empty.append(recRow);
                     }
-                    // 恢复默认布局：仅补齐精选默认组件，保留当前设备已有布局；
-                    // 执行前明确影响，避免把整个目录静默写入工作台。
-                    const restore = document.createElement("button");
-                    restore.type = "button";
-                    restore.className = "b3-button b3-button--outline sw-home__empty-restore";
-                    restore.textContent = this.i18n.homeEmptyRestoreDefault;
-                    restore.addEventListener("click", () => {
-                        const next = this.getHomeState();
-                        const layoutList: Array<any> = [...((next.layouts[device] || []) as Array<any>)];
-                        const instancesByModule = new Map<string, any>();
-                        (next.instances as Array<any>).forEach((candidate: any) => {
-                            if (!instancesByModule.has(candidate.moduleId)) instancesByModule.set(candidate.moduleId, candidate);
-                        });
-                        const isLaidOut = (instanceId: string) => layoutList.some((entry) => entry.instanceId === instanceId);
-                        const candidates = EMPTY_WORKBENCH_DEFAULT_IDS.map((moduleId) => ({moduleId, def: defs.get(moduleId)}))
-                            .filter((candidate) => candidate.def);
-                        const missing = candidates.filter((candidate) => {
-                            const existing = instancesByModule.get(candidate.moduleId);
-                            return !existing || !isLaidOut(existing.instanceId);
-                        });
-                        if (missing.length === 0) {
-                            showMessage(this.i18n.homeEmptyRestoreNothing);
-                            return;
-                        }
-                        const impact = this.i18n.homeEmptyRestoreConfirm
-                            .replace("{count}", String(missing.length))
-                            .replace("{existing}", String(layoutList.length));
-                        if (!confirm(impact)) return;
-                        prepareLayoutMutation();
-                        candidates.forEach(({moduleId, def: candidateDef}) => {
-                            if (!candidateDef) return;
-                            const existing = instancesByModule.get(moduleId);
-                            const targetInstanceId = existing?.instanceId || moduleId;
-                            if (isLaidOut(targetInstanceId)) return;
-                            const supported: string[] = Array.isArray(candidateDef.sizes) && candidateDef.sizes.length > 0 ? candidateDef.sizes : ["medium"];
-                            const sizeKey = resolveHomeTileDefaultSize(moduleId, supported, "medium");
-                            const preset2 = HOME_WIDGET_SIZES[(sizeKey || "medium") as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
-                            if (!existing) {
-                                const restored = {instanceId: moduleId, moduleId, config: {}, enabled: true};
-                                (next.instances as Array<any>).push(restored);
-                                instancesByModule.set(moduleId, restored);
-                            }
-                            layoutList.push({instanceId: targetInstanceId, x: 0, y: 0, w: preset2.w, h: preset2.h, collapsed: false, size: sizeKey});
-                        });
-                        next.layouts[device] = layoutList;
-                        this.saveHomeState(next);
-                        commitLayoutMutation(next);
-                        layoutOpLabel = this.i18n.homeHistoryUpdate;
-                        renderPanel();
-                    });
-                    empty.append(restore);
+                    const restore = createRestoreButton("b3-button b3-button--outline sw-home__empty-restore");
+                    if (restore) empty.append(restore);
                 }
                 const openStore = document.createElement("button");
                 openStore.type = "button";
@@ -1594,6 +1647,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             homeControllers.splice(0).forEach((entry) => entry.dispose());
             panelEventCleanup?.();
             panelEventCleanup = null;
+            ownerDocument.removeEventListener("keydown", onWorkbenchKeydown);
             this.homeModuleChangeListeners.delete(handleModuleChange);
         };
         renderPanel();

@@ -302,6 +302,13 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetGistStale: locale.i18n.snippetGistStale,
         snippetGistFailed: locale.i18n.snippetGistFailed,
         snippetGistPending: locale.i18n.snippetGistPending,
+        snippetGistUnknownNotice: locale.i18n.snippetGistUnknownNotice,
+        snippetGistRecovery: locale.i18n.snippetGistRecovery,
+        snippetGistRecoveryTitle: locale.i18n.snippetGistRecoveryTitle,
+        snippetGistRecoveryMessage: locale.i18n.snippetGistRecoveryMessage,
+        snippetGistRecoveryConfirm: locale.i18n.snippetGistRecoveryConfirm,
+        snippetGistRecoveryCancel: locale.i18n.snippetGistRecoveryCancel,
+        snippetGistRecoveryUnlocked: locale.i18n.snippetGistRecoveryUnlocked,
         snippetMore: locale.i18n.snippetMore,
         snippetName: locale.i18n.snippetName,
         snippetNew: locale.i18n.snippetNew,
@@ -494,6 +501,22 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let gistSourceUrl = session.gistSourceUrl || "";
     let gistEditingToken = !gistSettings.token;
     let gistWriting = false;
+    let gistWriteMode = "create";
+    let gistWritePending = session.gistWritePending?.status === "unknown"
+        && ["create", "update"].includes(session.gistWritePending.mode)
+        ? {status: "unknown", mode: session.gistWritePending.mode} : null;
+    if (gistWritePending) session.gistWritePending = {...gistWritePending};
+    else delete session.gistWritePending;
+    function rememberUnknownGistWrite(mode) {
+        gistWritePending = {status: "unknown", mode: mode === "update" ? "update" : "create"};
+        // This session marker contains no token or snippet contents. Keeping it
+        // in the studio session prevents a remount from blindly replaying a write.
+        session.gistWritePending = {...gistWritePending};
+    }
+    function clearUnknownGistWrite() {
+        gistWritePending = null;
+        delete session.gistWritePending;
+    }
     const initialSnippetSettings = getConfig()?.snippet;
     let masterFlags = {
         enabledCSS: typeof initialSnippetSettings?.enabledCSS === "boolean" ? initialSnippetSettings.enabledCSS : null,
@@ -764,9 +787,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const gistUpdateButton = action("snippetGistPublishUpdate", () => { void publishCurrentGist(true); }, "is-secondary");
     const gistPreviewButton = action("snippetGistImportPreview", () => { void previewGistImport(); }, "is-quiet");
     const gistCancelButton = action("snippetAICancel", () => cancelGistRequest(), "is-quiet");
-    gistActions.append(gistPublishButton, gistUpdateButton, gistPreviewButton, gistCancelButton);
+    const gistRecoverButton = action("snippetGistRecovery", () => openGistRecoveryDialog(), "is-quiet");
+    gistRecoverButton.hidden = true;
+    const gistPendingNotice = node("p", "sw-studio__hint is-warning", t("snippetGistUnknownNotice"));
+    gistPendingNotice.setAttribute("role", "alert");
+    gistPendingNotice.hidden = true;
+    gistActions.append(gistPublishButton, gistUpdateButton, gistPreviewButton, gistCancelButton, gistRecoverButton);
     const gistPreviewBox = node("div", "sw-studio__gist-preview");
-    gistSection.append(gistTitle, gistHint, gistTokenLabel, gistTokenState, gistTokenActions, gistDescriptionLabel, gistUrlLabel, gistActions, gistPreviewBox);
+    gistSection.append(gistTitle, gistHint, gistTokenLabel, gistTokenState, gistTokenActions, gistDescriptionLabel, gistUrlLabel, gistActions, gistPendingNotice, gistPreviewBox);
     // Keep the original core append contract stable for host wiring audits; optional
     // controls are inserted around that stable spine so the details panel remains
     // ordered without forcing every consumer to understand the newer fields.
@@ -1256,6 +1284,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const errorText = (error) => {
         const code = String(error?.message || error?.code || "");
         if (code.startsWith("gist-")) {
+            if (code === "gist-write-unknown") return t("snippetGistPending");
+            if (code === "gist-request-rejected") return t("snippetGistFailed");
             if (code === "gist-token-required" || code === "gist-token-invalid") return t("snippetGistTokenRequired");
             if (code === "gist-conflict") return t("snippetGistStale");
             return t("snippetGistFailed");
@@ -1288,7 +1318,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         }
     }
     function cancelGistRequest(showStatus = true) {
-        const uncertain = gistWriting;
+        const uncertain = gistWriting || Boolean(gistWritePending);
+        if (gistWriting && !gistWritePending) rememberUnknownGistWrite(gistWriteMode);
         gistGeneration += 1;
         gistController?.abort();
         gistController = null;
@@ -1300,8 +1331,31 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             if (showStatus) setStatus(t(uncertain ? "snippetGistPending" : "snippetCancelled"), uncertain ? "warn" : "ready");
         }
     }
+    function openGistRecoveryDialog() {
+        if (!gistWritePending || disposed) return;
+        const dialog = new Dialog({
+            title: t("snippetGistRecoveryTitle"),
+            content: '<div class="sw-studio__gist-recovery"></div>',
+            width: "min(460px, 92vw)",
+        });
+        const box = dialog.element.querySelector(".sw-studio__gist-recovery");
+        if (!box) { dialog.destroy(); return; }
+        const message = node("p", "sw-studio__hint", t("snippetGistRecoveryMessage"));
+        const actions = node("div", "sw-studio__commands");
+        const confirm = action("snippetGistRecoveryConfirm", () => {
+            clearUnknownGistWrite();
+            dialog.destroy();
+            syncFields();
+            setStatus(t("snippetGistRecoveryUnlocked"), "warn");
+        }, "is-primary");
+        const keepLocked = action("snippetGistRecoveryCancel", () => dialog.destroy(), "is-quiet");
+        actions.append(confirm, keepLocked);
+        box.append(message, actions);
+        keepLocked.focus({preventScroll: true});
+    }
     function syncGistFields() {
         const hasToken = Boolean(gistSettings.token);
+        const writeLocked = Boolean(gistWritePending);
         gistTokenState.textContent = hasToken ? `${t("snippetGistTokenSet")} · ${maskGistToken(gistSettings.token)}` : t("snippetGistTokenPlaceholder");
         gistTokenState.dataset.state = hasToken ? "ready" : "blocked";
         gistTokenLabel.hidden = hasToken && !gistEditingToken;
@@ -1310,13 +1364,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         gistReplaceTokenButton.disabled = gistBusy;
         gistSaveTokenButton.disabled = gistBusy;
         gistClearTokenButton.disabled = gistBusy || !hasToken;
-        gistPublishButton.disabled = gistBusy || busy || loading || loadFailed || dirty() || !baseline || !draft.content.trim();
-        gistUpdateButton.disabled = gistPublishButton.disabled || !gistUrlInput.value.trim();
+        gistPublishButton.disabled = writeLocked || gistBusy || busy || loading || loadFailed || dirty() || !baseline || !draft.content.trim();
+        gistUpdateButton.disabled = writeLocked || gistPublishButton.disabled || !gistUrlInput.value.trim();
         gistPreviewButton.disabled = gistBusy || loading || loadFailed || !gistUrlInput.value.trim();
         gistTokenInput.disabled = gistBusy;
         gistDescriptionInput.disabled = gistBusy;
         gistUrlInput.disabled = gistBusy;
         gistCancelButton.hidden = !gistBusy;
+        gistRecoverButton.hidden = !writeLocked;
+        gistPendingNotice.hidden = !writeLocked;
         gistUpdateButton.textContent = t(gistPreview ? "snippetGistPublishUpdate" : "snippetGistPrepareUpdate");
     }
     function renderGistPreview() {
@@ -1390,7 +1446,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         }
     }
     async function publishCurrentGist(update = false) {
-        if (gistBusy || busy || loading || loadFailed || disposed || !baseline || dirty() || !draft.content.trim()) return;
+        if (gistWritePending || gistBusy || busy || loading || loadFailed || disposed || !baseline || dirty() || !draft.content.trim()) return;
         const token = readGistSettings().token;
         if (!token) { setStatus(t("snippetGistTokenRequired"), "error"); return; }
         if (update && !gistUrlInput.value.trim()) return;
@@ -1401,14 +1457,20 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         gistController = new AbortController();
         gistBusy = true;
         gistWriting = true;
+        gistWriteMode = update ? "update" : "create";
         syncFields();
         try {
             const result = await publishGist({
                 token, snippet: captured, gistUrl: update ? gistUrlInput.value : "",
                 description: gistDescriptionInput.value || captured.name, fetchImpl: gistFetch,
                 expected, signal: gistController.signal,
+                onWriteStart: () => {
+                    rememberUnknownGistWrite(update ? "update" : "create");
+                    syncGistFields();
+                },
             });
             if (disposed || generation !== gistGeneration) return;
+            clearUnknownGistWrite();
             gistUrlInput.value = result.url;
             gistPreview = null;
             gistPreviewBox.replaceChildren();
@@ -1419,9 +1481,11 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             setStatus(t("snippetGistPublished"), "ready");
         } catch (error) {
             if (disposed || generation !== gistGeneration) return;
+            if (error?.message !== "gist-write-unknown") clearUnknownGistWrite();
             gistPreview = null;
             gistPreviewBox.replaceChildren();
-            setStatus(t("snippetGistPending") + " " + errorText(error), "error");
+            if (error?.message === "gist-write-unknown") setStatus(t("snippetGistPending"), "warn");
+            else setStatus(errorText(error), "error");
         } finally {
             if (!disposed && generation === gistGeneration) {
                 gistBusy = false;
@@ -1819,16 +1883,16 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const historyState = () => ({name: nameInput.value, type: typeSelect.value, content: editor.value, disabledInPublish: publishInput.checked});
     const commitDraftHistory = () => {
         if (suppressDraftHistory) return;
-        if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
+        if (historyTimer) { win.clearTimeout(historyTimer); historyTimer = 0; }
         draftHistory = pushDraftHistory(draftHistory, historyState());
     };
     const scheduleDraftHistoryCommit = () => {
         if (suppressDraftHistory || composing) return;
-        if (historyTimer) clearTimeout(historyTimer);
+        if (historyTimer) win.clearTimeout(historyTimer);
         historyTimer = win.setTimeout(commitDraftHistory, DRAFT_HISTORY_SETTLE_MS);
     };
     const resetDraftHistory = (signature) => {
-        if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
+        if (historyTimer) { win.clearTimeout(historyTimer); historyTimer = 0; }
         composing = false;
         draftHistorySignature = signature;
         draftHistory = createDraftHistory(historyState());
@@ -2515,14 +2579,19 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     function saveSnippetGroupStore(next) {
         const normalized = normalizeSnippetGroupStore(next);
         const changed = JSON.stringify(normalized) !== JSON.stringify(snippetGroups);
-        snippetGroups = normalized;
-        if (!changed || typeof groups?.save !== "function") return changed;
+        if (!changed) return false;
+        if (typeof groups?.save !== "function") {
+            setStatus(t("snippetUnavailable"), "error");
+            return false;
+        }
         try {
             groups.save(normalized);
+            snippetGroups = normalized;
+            return true;
         } catch (error) {
             setStatus(errorText(error), "error");
+            return false;
         }
-        return changed;
     }
     function reconcileLoadedSnippetGroups() {
         const result = reconcileSnippetGroups(snippetGroups, snippets);
@@ -2625,7 +2694,12 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 });
                 const purgeButton = action("snippetRecyclePurge", () => {
                     if (!win.confirm(t("snippetRecyclePurgeConfirm"))) return;
-                    recycle.save(purgeRecycleEntry(recycle.load(), entry.recId));
+                    try {
+                        recycle.save(purgeRecycleEntry(recycle.load(), entry.recId));
+                    } catch (error) {
+                        if (!disposed) setStatus(errorText(error), "error");
+                        return;
+                    }
                     setStatus(t("snippetRecycle"), "ready");
                     renderList();
                 });
@@ -2636,7 +2710,12 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         };
         const clearButton = action("snippetRecycleClear", () => {
             if (!win.confirm(t("snippetRecycleClearConfirm"))) return;
-            recycle.save(normalizeRecycleStore(null));
+            try {
+                recycle.save(normalizeRecycleStore(null));
+            } catch (error) {
+                if (!disposed) setStatus(errorText(error), "error");
+                return;
+            }
             setStatus(t("snippetRecycle"), "ready");
             renderList();
         });
@@ -3069,7 +3148,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     // 首焦点落到平台关闭按钮；独立装配或旧宿主没有平台头部时回退到返回按钮。
     // 这样全屏工作室打开后，键盘用户立即知道如何退出，且不会把焦点送入编辑器造成误输入。
     const initialFocus = root.querySelector(".sw-platform-header__close") || backButton;
-    win.setTimeout(() => {
+    let initialFocusTimer = win.setTimeout(() => {
+        initialFocusTimer = 0;
         if (!disposed && root.isConnected && typeof initialFocus.focus === "function") {
             initialFocus.focus({preventScroll: true});
         }
@@ -3092,6 +3172,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             session.draft = {...draft};
             session.baseline = baseline ? {...baseline} : null;
             clearTimeout(previewTimer);
+            if (historyTimer) { win.clearTimeout(historyTimer); historyTimer = 0; }
+            if (initialFocusTimer) { win.clearTimeout(initialFocusTimer); initialFocusTimer = 0; }
             pickerRelease();
             pickerOpener = null;
             root.removeEventListener("keydown", onStudioKeydown);

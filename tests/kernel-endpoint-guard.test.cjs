@@ -17,14 +17,23 @@ const source = readSourceText(path.join(root, "src", "index.ts"));
 // 只截取 fetchKernelJson 函数体，避免把其它 switch（例如生活组件代理分发）
 // 误当作内核端点分发来断言。
 function fetchKernelBody() {
-    const start = source.indexOf("private async fetchKernelJson");
-    assert.ok(start >= 0, "fetchKernelJson must exist in src/index.ts");
+    const start = source.indexOf("private async fetchKernelJsonOutcome");
+    assert.ok(start >= 0, "fetchKernelJsonOutcome must exist in src/index.ts");
     const rest = source.slice(start);
     const end = rest.indexOf("\n    private ");
     return end > 0 ? rest.slice(0, end) : rest;
 }
 
+function fetchKernelWrapperBody() {
+    const start = source.indexOf("private async fetchKernelJson(");
+    assert.ok(start >= 0, "legacy fetchKernelJson adapter must exist in src/index.ts");
+    const end = source.indexOf("private async fetchKernelJsonOutcome(", start);
+    assert.ok(end > start, "legacy adapter must delegate to the structured request method");
+    return source.slice(start, end);
+}
+
 const body = fetchKernelBody();
+const wrapperBody = fetchKernelWrapperBody();
 
 function allowlistedEndpoints() {
     const match = source.match(/KERNEL_ENDPOINTS\s*=\s*new Set\(\[([\s\S]*?)\]\)/);
@@ -80,6 +89,19 @@ test("kernel requests never use a variable or absolute URL", () => {
 test("unknown endpoints are rejected by an explicit default branch", () => {
     assert.match(body, /default:\s*\n\s*logger\.warn\("blocked non-whitelisted kernel endpoint"/,
         "the switch must reject unknown endpoints through an explicit default branch");
+});
+
+test("kernel requests use the shared deadline, cancellation, and retry policy", () => {
+    assert.match(body, /this\.requestService\.request\(/,
+        "kernel endpoint dispatch must go through the shared request service");
+    assert.match(body, /signal:\s*externalSignal/,
+        "the shared request service must receive caller cancellation");
+    assert.match(body, /timeoutMs,/,
+        "each kernel request must carry its effective deadline");
+    assert.match(body, /maxRetries:\s*retrySafe\s*\?\s*1\s*:\s*0/,
+        "only allowlisted read requests may receive one automatic retry");
+    assert.match(wrapperBody, /this\.fetchKernelJsonOutcome\(/,
+        "legacy callers must preserve compatibility while structured callers can inspect failures");
 });
 
 test("the allowlist guard keeps all four rejections", () => {

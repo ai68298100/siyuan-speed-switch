@@ -52,14 +52,16 @@ async function loadAirQuality(url, options = {}) {
     if (options.force !== true && cached && now - cached.at < AIR_QUALITY_TTL_MS) {
         return {payload: cached.value, status: "cached", fetchedAt: cached.at};
     }
-    try {
-        const payload = await fetchBoundedLifeJson(url, {...options, isAllowed: (candidate) => allowedAirQualityUrl(candidate)});
-        cacheWrite(key, payload, now);
-        return {payload, status: "fresh", fetchedAt: now};
-    } catch (error) {
-        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
-        throw error;
-    }
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        try {
+            const payload = await fetchBoundedLifeJson(url, {...options, signal, isAllowed: (candidate) => allowedAirQualityUrl(candidate)});
+            cacheWriteForLifeRequest(key, payload, now, generation);
+            return {payload, status: "fresh", fetchedAt: now};
+        } catch (error) {
+            if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+            throw error;
+        }
+    });
 }
 
 // iCal 订阅：用户提供的 .ics 地址（https 或 http+本机、无 URL 凭据）；30 分钟缓存，
@@ -93,15 +95,17 @@ async function loadRssFeed(url, options = {}) {
     if (options.force !== true && cached && now - cached.at < RSS_TTL_MS) {
         return {text: cached.value, status: "cached", fetchedAt: cached.at};
     }
-    try {
-        const text = await fetchBoundedLifeText(url, {...options, isAllowed: (candidate) => allowedRssFeedUrl(candidate)});
-        if (typeof text !== "string" || !text) throw new Error("empty_response");
-        cacheWrite(key, text, now);
-        return {text, status: "fresh", fetchedAt: now};
-    } catch (error) {
-        if (cached) return {text: cached.value, status: "stale", fetchedAt: now};
-        throw error;
-    }
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        try {
+            const text = await fetchBoundedLifeText(url, {...options, signal, isAllowed: (candidate) => allowedRssFeedUrl(candidate)});
+            if (typeof text !== "string" || !text) throw new Error("empty_response");
+            cacheWriteForLifeRequest(key, text, now, generation);
+            return {text, status: "fresh", fetchedAt: now};
+        } catch (error) {
+            if (cached) return {text: cached.value, status: "stale", fetchedAt: now};
+            throw error;
+        }
+    });
 }
 
 function allowedIcalFeedUrl(value) {
@@ -126,15 +130,17 @@ async function loadIcalText(url, options = {}) {
     if (options.force !== true && cached && now - cached.at < ICAL_TTL_MS) {
         return {text: cached.value, status: "cached", fetchedAt: cached.at};
     }
-    try {
-        const text = await fetchBoundedLifeText(url, {...options, isAllowed: (candidate) => allowedIcalFeedUrl(candidate)});
-        if (typeof text !== "string" || !text) throw new Error("empty_response");
-        cacheWrite(key, text, now);
-        return {text, status: "fresh", fetchedAt: now};
-    } catch (error) {
-        if (cached) return {text: cached.value, status: "stale", fetchedAt: now};
-        throw error;
-    }
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        try {
+            const text = await fetchBoundedLifeText(url, {...options, signal, isAllowed: (candidate) => allowedIcalFeedUrl(candidate)});
+            if (typeof text !== "string" || !text) throw new Error("empty_response");
+            cacheWriteForLifeRequest(key, text, now, generation);
+            return {text, status: "fresh", fetchedAt: now};
+        } catch (error) {
+            if (cached) return {text: cached.value, status: "stale", fetchedAt: now};
+            throw error;
+        }
+    });
 }
 // GitHub 贡献：官方 REST 公开事件流（免 Key，未认证 60 次/时/IP）；可选 Token 走
 // Authorization 请求头提升限额，永不进入 URL。60 分钟缓存，失效回退 stale 缓存。
@@ -173,28 +179,31 @@ async function loadGithubEvents(config, options = {}) {
     if (options.force !== true && cached && now - cached.at < GITHUB_TTL_MS) {
         return {text: cached.value, status: "cached", fetchedAt: cached.at};
     }
-    try {
-        const events = [];
-        for (let page = 1; page <= pages; page += 1) {
-            const url = `https://api.github.com/users/${encodeURIComponent(username)}/events/public?per_page=100&page=${page}`;
-            if (!allowedGithubEventsUrl(url)) throw new Error("blocked_endpoint");
-            const text = await fetchBoundedLifeText(url, {
-                ...options,
-                extraHeaders: token ? {Authorization: `Bearer ${token}`} : undefined,
-                isAllowed: (candidate) => allowedGithubEventsUrl(candidate),
-            });
-            const arr = JSON.parse(text);
-            if (!Array.isArray(arr)) throw new Error("invalid_github_payload");
-            events.push(...arr);
-            if (arr.length < 100) break;
+    const requestOptions = {...options, requestIdentity: JSON.stringify({hasToken: !!token, pages})};
+    return runLatestLifeRequest(key, requestOptions, async ({generation, signal}) => {
+        try {
+            const events = [];
+            for (let page = 1; page <= pages; page += 1) {
+                const url = `https://api.github.com/users/${encodeURIComponent(username)}/events/public?per_page=100&page=${page}`;
+                if (!allowedGithubEventsUrl(url)) throw new Error("blocked_endpoint");
+                const text = await fetchBoundedLifeText(url, {
+                    ...options, signal,
+                    extraHeaders: token ? {Authorization: `Bearer ${token}`} : undefined,
+                    isAllowed: (candidate) => allowedGithubEventsUrl(candidate),
+                });
+                const arr = JSON.parse(text);
+                if (!Array.isArray(arr)) throw new Error("invalid_github_payload");
+                events.push(...arr);
+                if (arr.length < 100) break;
+            }
+            const text = JSON.stringify(events);
+            cacheWriteForLifeRequest(key, text, now, generation);
+            return {text, status: "fresh", fetchedAt: now};
+        } catch (error) {
+            if (cached) return {text: cached.value, status: "stale", fetchedAt: now};
+            throw error;
         }
-        const text = JSON.stringify(events);
-        cacheWrite(key, text, now);
-        return {text, status: "fresh", fetchedAt: now};
-    } catch (error) {
-        if (cached) return {text: cached.value, status: "stale", fetchedAt: now};
-        throw error;
-    }
+    });
 }
 
 // Frankfurter：v1 域名（api.frankfurter.app/latest）已 301 迁移，fetch 的 redirect:"error"
@@ -345,6 +354,69 @@ function cacheWrite(key, value, now = Date.now()) {
     return value;
 }
 
+// 请求协调（T-7261）：同一缓存键在同一取消语境下只保留一个飞行请求；
+// 强制刷新或显式 dedupe:false 可启动新一代请求，但迟到的旧响应只能返回给
+// 原调用者，不能再次写入全局缓存。这样快速刷新、面板重挂载时始终由最后一代
+// 响应拥有缓存，避免旧数据覆盖新数据。
+const inFlightLifeRequests = new Map();
+const lifeRequestGenerations = new Map();
+
+function runLatestLifeRequest(key, options, task) {
+    const signal = options?.signal && typeof options.signal === "object" ? options.signal : null;
+    const fetchImpl = typeof options?.fetchImpl === "function" ? options.fetchImpl : globalThis.fetch;
+    const timeoutMs = Number.isFinite(options?.timeoutMs) ? options.timeoutMs : null;
+    const requestIdentity = options?.requestIdentity ?? null;
+    if (options?.dedupe !== false && options?.force !== true) {
+        const inflight = inFlightLifeRequests.get(key);
+        // 不共享不同取消语境：一个调用者取消时不能误伤另一个调用者。
+        if (inflight && inflight.signal === signal && inflight.fetchImpl === fetchImpl
+            && inflight.timeoutMs === timeoutMs && inflight.requestIdentity === requestIdentity) return inflight.promise;
+    }
+    const previous = inFlightLifeRequests.get(key);
+    previous?.controller?.abort();
+    const generation = (lifeRequestGenerations.get(key) || 0) + 1;
+    lifeRequestGenerations.set(key, generation);
+    const isLatest = () => lifeRequestGenerations.get(key) === generation;
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const requestSignal = controller ? controller.signal : signal;
+    let externalLinkHandler = null;
+    if (controller && signal) {
+        if (signal.aborted) controller.abort();
+        else if (typeof signal.addEventListener === "function") {
+            externalLinkHandler = () => controller.abort();
+            signal.addEventListener("abort", externalLinkHandler, {once: true});
+        }
+    }
+    const promise = (async () => {
+        try {
+            const result = await task({generation, isLatest, signal: requestSignal});
+            if (!isLatest()) throw new Error("superseded");
+            return result;
+        } catch (error) {
+            if (!isLatest()) throw new Error("superseded");
+            throw error;
+        } finally {
+            const inflight = inFlightLifeRequests.get(key);
+            if (inflight?.promise === promise) inFlightLifeRequests.delete(key);
+            if (signal && externalLinkHandler && typeof signal.removeEventListener === "function") {
+                signal.removeEventListener("abort", externalLinkHandler);
+            }
+            // No request can still commit once the key leaves the flight map.
+            // Dropping the generation here avoids retaining one tombstone per
+            // URL while a later read starts again from generation 1.
+            if (!inFlightLifeRequests.has(key)) lifeRequestGenerations.delete(key);
+        }
+    })();
+    inFlightLifeRequests.set(key, {promise, signal, fetchImpl, timeoutMs, requestIdentity, generation, controller});
+    return promise;
+}
+
+function cacheWriteForLifeRequest(key, value, now, generation) {
+    if (lifeRequestGenerations.get(key) !== generation) return false;
+    cacheWrite(key, value, now);
+    return true;
+}
+
 // 失败抑制窗（T-6489）：不可达或持续报错的源，在一个短窗内不再重复付出整段超时。
 // 借鉴第三方插件 siyuan-lumina 的"失败即终结"纪律，但保留强制刷新通道：窗内被抑制的
 // 请求抛 backoff，调用方沿用它已有的 stale / 空态分支，四条基本路径不受影响。
@@ -452,30 +524,54 @@ async function fetchBoundedLifeTextInner(url, options = {}) {
 }
 
 async function loadWeatherLocation(url, options = {}) {
-    const cached = cacheRead(`location:${url}`, LOCATION_TTL_MS, options.now);
+    const key = `location:${url}`;
+    const cached = cacheRead(key, LOCATION_TTL_MS, options.now);
     if (cached) return cached;
-    return cacheWrite(`location:${url}`, await fetchBoundedLifeJson(url, options), options.now);
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        const value = await fetchBoundedLifeJson(url, {...options, signal});
+        cacheWriteForLifeRequest(key, value, now, generation);
+        return value;
+    });
 }
 
 async function loadWeatherForecast(url, options = {}) {
-    const cached = cacheRead(`weather:${url}`, WEATHER_TTL_MS, options.now);
+    const key = `weather:${url}`;
+    const cached = cacheRead(key, WEATHER_TTL_MS, options.now);
     if (cached) return cached;
-    return cacheWrite(`weather:${url}`, await fetchBoundedLifeJson(url, options), options.now);
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        const value = await fetchBoundedLifeJson(url, {...options, signal});
+        cacheWriteForLifeRequest(key, value, now, generation);
+        return value;
+    });
 }
 
 async function loadHolidayYear(year, options = {}) {
     const normalizedYear = Math.min(2100, Math.max(2000, Math.trunc(Number(year)) || 2000));
     const url = `https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/${normalizedYear}.json`;
-    const cached = cacheRead(`holiday:${normalizedYear}`, HOLIDAY_TTL_MS, options.now);
+    const key = `holiday:${normalizedYear}`;
+    const cached = cacheRead(key, HOLIDAY_TTL_MS, options.now);
     if (cached) return cached;
-    return cacheWrite(`holiday:${normalizedYear}`, await fetchBoundedLifeJson(url, options), options.now);
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        const value = await fetchBoundedLifeJson(url, {...options, signal});
+        cacheWriteForLifeRequest(key, value, now, generation);
+        return value;
+    });
 }
 
 async function loadBangumiCalendar(options = {}) {
     const url = "https://api.bgm.tv/calendar";
-    const cached = cacheRead("bangumi:calendar", BANGUMI_TTL_MS, options.now);
+    const key = "bangumi:calendar";
+    const cached = cacheRead(key, BANGUMI_TTL_MS, options.now);
     if (cached) return cached;
-    return cacheWrite("bangumi:calendar", await fetchBoundedLifeJson(url, options), options.now);
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        const value = await fetchBoundedLifeJson(url, {...options, signal});
+        cacheWriteForLifeRequest(key, value, now, generation);
+        return value;
+    });
 }
 
 // Hacker News 榜单：固定端点 + 30 分钟缓存 + 失败回退陈旧缓存（与用户端点 feed 同一健康
@@ -489,14 +585,16 @@ async function loadHackerNewsBoard(board, options = {}) {
     if (options.force !== true && cached && now - cached.at < HACKER_NEWS_TTL_MS) {
         return {payload: cached.value, status: "cached", fetchedAt: cached.at};
     }
-    try {
-        const payload = await fetchBoundedLifeJson(endpoint, options);
-        cacheWrite(key, payload, now);
-        return {payload, status: "fresh", fetchedAt: now};
-    } catch (error) {
-        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
-        throw error;
-    }
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        try {
+            const payload = await fetchBoundedLifeJson(endpoint, {...options, signal});
+            cacheWriteForLifeRequest(key, payload, now, generation);
+            return {payload, status: "fresh", fetchedAt: now};
+        } catch (error) {
+            if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+            throw error;
+        }
+    });
 }
 
 // 兼容保留：front_page 榜单即此前的"首页"加载器。
@@ -511,14 +609,16 @@ async function loadConfiguredFeed(url, options = {}) {    if (!allowedConfigured
     if (options.force !== true && cached && now - cached.at < FEED_TTL_MS) {
         return {payload: cached.value, status: "cached", fetchedAt: cached.at};
     }
-    try {
-        const payload = await fetchBoundedLifeJson(url, {...options, allowConfiguredFeed: true});
-        cacheWrite(key, payload, now);
-        return {payload, status: "fresh", fetchedAt: now};
-    } catch (error) {
-        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
-        throw error;
-    }
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        try {
+            const payload = await fetchBoundedLifeJson(url, {...options, signal, allowConfiguredFeed: true});
+            cacheWriteForLifeRequest(key, payload, now, generation);
+            return {payload, status: "fresh", fetchedAt: now};
+        } catch (error) {
+            if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+            throw error;
+        }
+    });
 }
 
 async function fetchActivityWatchQuery(url, body, options = {}) {
@@ -571,9 +671,11 @@ async function loadActivityWatchBuckets(endpoint, options = {}) {
     if (options.force !== true && cached && now - cached.at < ACTIVITYWATCH_TTL_MS) {
         return {payload: cached.value, status: "cached", fetchedAt: cached.at};
     }
-    const payload = await fetchBoundedLifeJson(url, {signal: options.signal, isAllowed: (candidate) => allowedActivityWatchUrl(candidate)});
-    cacheWrite(key, payload, now);
-    return {payload, status: "fresh", fetchedAt: now};
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        const payload = await fetchBoundedLifeJson(url, {...options, signal, isAllowed: (candidate) => allowedActivityWatchUrl(candidate)});
+        cacheWriteForLifeRequest(key, payload, now, generation);
+        return {payload, status: "fresh", fetchedAt: now};
+    });
 }
 
 async function loadActivityWatchSummary(request, options = {}) {
@@ -584,14 +686,17 @@ async function loadActivityWatchSummary(request, options = {}) {
     if (options.force !== true && cached && now - cached.at < ACTIVITYWATCH_TTL_MS) {
         return {payload: cached.value, status: "cached", fetchedAt: cached.at};
     }
-    try {
-        const payload = await fetchActivityWatchQuery(request.url, request.body, options);
-        cacheWrite(key, payload, now);
-        return {payload, status: "fresh", fetchedAt: now};
-    } catch (error) {
-        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
-        throw error;
-    }
+    const requestOptions = {...options, requestIdentity: JSON.stringify({url: request.url, body: request.body})};
+    return runLatestLifeRequest(key, requestOptions, async ({generation, signal}) => {
+        try {
+            const payload = await fetchActivityWatchQuery(request.url, request.body, {...options, signal});
+            cacheWriteForLifeRequest(key, payload, now, generation);
+            return {payload, status: "fresh", fetchedAt: now};
+        } catch (error) {
+            if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+            throw error;
+        }
+    });
 }
 
 // Uptime Kuma 状态页与心跳页共享同一"新鲜/缓存/陈旧"加载语义；5 分钟缓存
@@ -604,14 +709,16 @@ async function loadUptimeKumaPage(url, slug, heartbeat, options = {}) {
     if (options.force !== true && cached && now - cached.at < UPTIME_KUMA_TTL_MS) {
         return {payload: cached.value, status: "cached", fetchedAt: cached.at};
     }
-    try {
-        const payload = await fetchBoundedLifeJson(url, {...options, isAllowed: (candidate) => allowedUptimeKumaUrl(candidate, slug, heartbeat)});
-        cacheWrite(key, payload, now);
-        return {payload, status: "fresh", fetchedAt: now};
-    } catch (error) {
-        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
-        throw error;
-    }
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        try {
+            const payload = await fetchBoundedLifeJson(url, {...options, signal, isAllowed: (candidate) => allowedUptimeKumaUrl(candidate, slug, heartbeat)});
+            cacheWriteForLifeRequest(key, payload, now, generation);
+            return {payload, status: "fresh", fetchedAt: now};
+        } catch (error) {
+            if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+            throw error;
+        }
+    });
 }
 
 async function loadFrankfurterRates(url, options = {}) {
@@ -622,14 +729,16 @@ async function loadFrankfurterRates(url, options = {}) {
     if (options.force !== true && cached && now - cached.at < FRANKFURTER_TTL_MS) {
         return {payload: cached.value, status: "cached", fetchedAt: cached.at};
     }
-    try {
-        const payload = await fetchBoundedLifeJson(url, {...options, isAllowed: (candidate) => allowedFrankfurterUrl(candidate)});
-        cacheWrite(key, payload, now);
-        return {payload, status: "fresh", fetchedAt: now};
-    } catch (error) {
-        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
-        throw error;
-    }
+    return runLatestLifeRequest(key, options, async ({generation, signal}) => {
+        try {
+            const payload = await fetchBoundedLifeJson(url, {...options, signal, isAllowed: (candidate) => allowedFrankfurterUrl(candidate)});
+            cacheWriteForLifeRequest(key, payload, now, generation);
+            return {payload, status: "fresh", fetchedAt: now};
+        } catch (error) {
+            if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+            throw error;
+        }
+    });
 }
 
 // Miniflux：15 分钟缓存（阅读节奏量级），失败回退陈旧缓存。Token 经 extraHeaders
@@ -645,24 +754,36 @@ async function loadMinifluxEntries(url, token, options = {}) {
     if (options.force !== true && cached && now - cached.at < MINIFLUX_TTL_MS) {
         return {payload: cached.value, status: "cached", fetchedAt: cached.at};
     }
-    try {
-        const payload = await fetchBoundedLifeJson(url, {
-            ...options,
-            extraHeaders: {"X-Auth-Token": token},
-            isAllowed: (candidate) => allowedMinifluxUrl(candidate),
-        });
-        cacheWrite(key, payload, now);
-        return {payload, status: "fresh", fetchedAt: now};
-    } catch (error) {
-        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
-        throw error;
-    }
+    const requestOptions = {...options, requestIdentity: token ? "token-present" : "anonymous"};
+    return runLatestLifeRequest(key, requestOptions, async ({generation, signal}) => {
+        try {
+            const payload = await fetchBoundedLifeJson(url, {
+                ...options, signal,
+                extraHeaders: {"X-Auth-Token": token},
+                isAllowed: (candidate) => allowedMinifluxUrl(candidate),
+            });
+            cacheWriteForLifeRequest(key, payload, now, generation);
+            return {payload, status: "fresh", fetchedAt: now};
+        } catch (error) {
+            if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+            throw error;
+        }
+    });
 }
 
 function clearLifeWidgetCaches() {
     responseCache.clear();
     // 清缓存同时清掉失败抑制窗：用户显式要求"重来一次"时不该还被旧失败挡着。
     failureLedger.clear();
+    // In-flight readers may still settle after the clear. Advance their
+    // generations so late responses cannot repopulate the cleared cache.
+    for (const [key, generation] of lifeRequestGenerations) {
+        lifeRequestGenerations.set(key, generation + 1);
+    }
+    for (const [key, request] of inFlightLifeRequests) request.controller?.abort();
+    for (const key of lifeRequestGenerations.keys()) {
+        if (!inFlightLifeRequests.has(key)) lifeRequestGenerations.delete(key);
+    }
 }
 
 function lifeWidgetCacheSize() {

@@ -6,6 +6,7 @@ const {JSDOM} = require("jsdom");
 
 function createHarness(t, fetchImpl) {
     const dom = new JSDOM("<!doctype html><body><div id=\"root\"></div></body>", {url: "https://localhost"});
+    let lastDialog = null;
     dom.window.fetch = fetchImpl;
     global.window = dom.window;
     global.document = dom.window.document;
@@ -16,7 +17,14 @@ function createHarness(t, fetchImpl) {
     const Module = require("node:module");
     const originalLoad = Module._load;
     Module._load = function (request, parent, isMain) {
-        if (request === "siyuan") return {Dialog: class {constructor() { this.element = dom.window.document.createElement("div"); } destroy() {}}, showMessage: () => {}};
+        if (request === "siyuan") return {Dialog: class {
+            constructor(options = {}) {
+                this.element = dom.window.document.createElement("div");
+                this.element.innerHTML = options.content || "";
+                lastDialog = this;
+            }
+            destroy() { this.destroyed = true; }
+        }, showMessage: () => {}};
         return originalLoad.apply(this, arguments);
     };
     t.after(() => {
@@ -30,7 +38,8 @@ function createHarness(t, fetchImpl) {
         dom.window.close();
     });
     delete require.cache[require.resolve("../src/snippet-studio-ui.js")];
-    return {dom, document: dom.window.document, mountSnippetStudio: require("../src/snippet-studio-ui.js").mountSnippetStudio, i18n: require("../src/i18n/zh-CN.json")};
+    return {dom, document: dom.window.document, mountSnippetStudio: require("../src/snippet-studio-ui.js").mountSnippetStudio,
+        i18n: require("../src/i18n/zh-CN.json"), getDialog: () => lastDialog};
 }
 
 test("studio Gist controls save a masked token, publish with a full link, and remember the snippet mapping", async (t) => {
@@ -203,13 +212,102 @@ test("cancelled or disposed Gist requests discard late responses and release bus
 
 test("a cancelled Gist publish reports uncertain remote state and never saves a late mapping", async (t) => {
     let resolveFetch;
-    const view = await studio(t, () => new Promise((resolve) => { resolveFetch = resolve; }), {token: "token", links: {}});
+    let calls = 0;
+    const view = await studio(t, () => { calls += 1; return new Promise((resolve) => { resolveFetch = resolve; }); }, {token: "token", links: {}});
     view.button("snippetGistPublish").click();
     view.button("snippetAICancel").click();
     assert.equal(view.document.querySelector(".sw-studio__status").textContent, view.i18n.snippetGistPending);
+    assert.equal(view.session.gistWritePending?.status, "unknown");
+    assert.equal(view.button("snippetGistPublish").disabled, true);
+    view.button("snippetGistPublish").click();
+    await flush();
+    assert.equal(calls, 1, "cancelling an in-flight write must not enable a blind replay");
     resolveFetch(new Response(JSON.stringify(remotePayload())));
     await flush();
     assert.deepEqual(view.settings.links, {});
+});
+
+test("an uncertain Gist create stays locked until the user confirms a manual GitHub check", async (t) => {
+    let calls = 0;
+    const view = await studio(t, async () => {
+        calls += 1;
+        if (calls === 1) throw new TypeError("network disconnected");
+        return new Response(JSON.stringify({id: "abcdef123456", html_url: remoteUrl, description: "Remote description"}));
+    }, {token: "token", links: {}});
+    view.enterUrl();
+    const editor = view.document.querySelector(".sw-studio__editor");
+    view.button("snippetGistPublish").click();
+    await flush();
+
+    assert.equal(calls, 1);
+    assert.equal(editor.value, nativeSnippet.content, "the editor draft stays intact after an unknown write");
+    assert.deepEqual(view.session.gistWritePending, {status: "unknown", mode: "create"});
+    assert.equal(view.button("snippetGistPublish").disabled, true);
+    assert.equal(view.button("snippetGistPrepareUpdate").disabled, true);
+    assert.equal(view.button("snippetGistRecovery").hidden, false);
+    assert.match(view.section.querySelector('[role="alert"]').textContent, /结果未知/);
+
+    view.button("snippetGistPublish").click();
+    view.button("snippetGistPrepareUpdate").click();
+    await flush();
+    assert.equal(calls, 1, "neither create nor update can replay an unknown write");
+
+    view.button("snippetGistRecovery").click();
+    let dialog = view.getDialog();
+    assert.match(dialog.element.textContent, /可能创建重复 Gist/);
+    dialog.element.querySelectorAll("button")[1].click();
+    assert.ok(view.session.gistWritePending, "choosing to keep the lock must preserve the session marker");
+    assert.equal(view.button("snippetGistPublish").disabled, true);
+
+    view.button("snippetGistRecovery").click();
+    dialog = view.getDialog();
+    dialog.element.querySelector("button.sw-studio__button.is-primary").click();
+    assert.equal(view.session.gistWritePending, undefined);
+    assert.equal(view.button("snippetGistPublish").disabled, false);
+    view.button("snippetGistPublish").click();
+    await flush();
+    assert.equal(calls, 2, "a fresh POST is possible only after explicit recovery confirmation");
+    assert.equal(view.settings.links[nativeSnippet.id], remoteUrl);
+});
+
+test("a definite GitHub authentication rejection clears the marker and remains retryable", async (t) => {
+    let calls = 0;
+    const view = await studio(t, async () => {
+        calls += 1;
+        if (calls === 1) return new Response("{}", {status: 401});
+        return new Response(JSON.stringify({id: "abcdef123456", html_url: remoteUrl, description: "Remote description"}));
+    }, {token: "token", links: {}});
+    view.button("snippetGistPublish").click();
+    await flush();
+    assert.equal(calls, 1);
+    assert.equal(view.session.gistWritePending, undefined);
+    assert.equal(view.button("snippetGistPublish").disabled, false);
+
+    view.button("snippetGistPublish").click();
+    await flush();
+    assert.equal(calls, 2, "a server-rejected request can be retried without the unknown-write dialog");
+    assert.equal(view.settings.links[nativeSnippet.id], remoteUrl);
+});
+
+test("Gist server errors and malformed success receipts also block automatic replay", async (t) => {
+    const scenarios = [
+        ["HTTP 500", async () => new Response("{}", {status: 500})],
+        ["invalid success receipt", async () => new Response(JSON.stringify({id: "invalid", html_url: remoteUrl}), {status: 201})],
+    ];
+    for (const [label, firstResponse] of scenarios) {
+        let calls = 0;
+        const view = await studio(t, async () => {
+            calls += 1;
+            return calls === 1 ? firstResponse() : new Response(JSON.stringify({id: "abcdef123456", html_url: remoteUrl, description: "Remote description"}));
+        }, {token: "token", links: {}});
+        view.button("snippetGistPublish").click();
+        await flush();
+        assert.equal(calls, 1, label + ": only one write is attempted before confirmation");
+        assert.equal(view.session.gistWritePending?.status, "unknown", label + ": session retains the unknown outcome");
+        view.button("snippetGistPublish").click();
+        await flush();
+        assert.equal(calls, 1, label + ": another click cannot replay the write");
+    }
 });
 
 test("restored imported sessions keep their source link and Gist token clearing leaves links intact", async (t) => {

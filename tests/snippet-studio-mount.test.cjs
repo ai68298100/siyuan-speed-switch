@@ -65,6 +65,35 @@ test('studio mount: the lab mounts, renders the first preview and the capability
     assert.ok(document.querySelector('.sw-studio__preview-canvas iframe'), '首渲染必须产出预览 iframe');
 });
 
+test('studio dispose cancels the pending draft-history timer (T-7260)', async (t) => {
+    const {dom, document, mountSnippetStudio, i18n} = createHarness(t);
+    const window = dom.window;
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    const nativeClearTimeout = window.clearTimeout.bind(window);
+    const historyTimers = [];
+    const clearedTimers = [];
+    window.setTimeout = (callback, delay, ...args) => {
+        const handle = nativeSetTimeout(callback, delay, ...args);
+        if (delay === 600) historyTimers.push(handle);
+        return handle;
+    };
+    window.clearTimeout = (handle) => {
+        clearedTimers.push(handle);
+        return nativeClearTimeout(handle);
+    };
+    const controller = mountSnippetStudio(document.getElementById('root'), {
+        i18n, store: {read: async () => [], dispose: () => {}},
+    });
+    await controller.ready;
+    const editor = document.querySelector('.sw-studio__editor');
+    editor.value = '.pending-history{}';
+    editor.dispatchEvent(new dom.window.Event('input', {bubbles: true}));
+    assert.equal(historyTimers.length, 1, '编辑后应为草稿撤销历史安排一次合并计时器');
+    controller.dispose();
+    assert.ok(clearedTimers.includes(historyTimers[0]), '销毁面板时必须清除撤销历史计时器');
+    assert.equal(document.getElementById('root').childElementCount, 0, '销毁后根视图应清空');
+});
+
 test('studio AI sends only selected context and copies the candidate instead of the draft', async (t) => {
     const {dom, document, mountSnippetStudio, i18n} = createHarness(t);
     let requested = null;

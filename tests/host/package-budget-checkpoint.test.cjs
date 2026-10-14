@@ -13,10 +13,10 @@ test('package budget checkpoint reports bounded headroom', (t) => {
         return;
     }
     const bytes = fs.statSync(archive).size;
-    // Reviewed release ceiling: 512 KiB (was 320 KiB, raised 2026-09-15).
+    // Reviewed archive ceiling: 578 KiB (ADR 0180, recalibrated 2026-10-13).
     // SiYuan imposes no package.zip size limit and GitHub Release assets allow
     // 2 GB, so this is a self-discipline line, not a host constraint. The
-    // larger ceiling keeps the checkpoint meaningful as an early-warning
+    // reviewed ceiling keeps the checkpoint meaningful as an early-warning
     // signal instead of a ratchet that must be re-argued every few increments.
     const budget = ARCHIVE_BUDGET_BYTES;
     const remaining = headroom(budget, bytes);

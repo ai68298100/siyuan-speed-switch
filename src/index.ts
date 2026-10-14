@@ -5,7 +5,8 @@ import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeCustomIcon, isImageIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand, trimLeadingBlankThumbNodes, hasVisibleThumbContent} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, updatedChangedWithin, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
+import {buildRequestKey, createRequestService} from "./request-service";
+import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, normalizeOfficialRecentHistory, formatChangedWindowStart, updatedChangedWithin, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, buildSearchHealthSnapshot, buildSearchDocumentFilterMatcher, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, formatUpdatedBadge, isSemanticEmbeddingConfigured, matchesParsedQuery, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId, updateSavedSearchEntry} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
@@ -87,7 +88,7 @@ import {createPlatformStatus} from "./platform-dom";
 import {mountPlatformDialogCloseHint} from "./platform-dom";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
-import {ensureTodayJournal as ensureTodayJournalAction, findTodayJournal as findTodayJournalAction} from "./journal-actions";
+import {ensureTodayJournalOutcome as ensureTodayJournalOutcomeAction, findTodayJournalOutcome as findTodayJournalOutcomeAction} from "./journal-actions";
 import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry, normalizeFavoriteSmartGroups, buildTagSmartGroupQuery, projectTagSmartGroupEntries} from "./favorite-actions";
 import {normalizeSettings, resolvePanelSize, normalizeEssentials} from "./settings-model";
 import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction, resolveFloatingActionAvailability, normalizeFloatingBallConfig, applyFloatingBallPreset, pickNextFloatingBallPreset, findFloatingAction} from "./floating-ball-model";
@@ -406,6 +407,7 @@ declare module "./home-panel" {
 declare module "./recent-closed" {
     export function removeRecentEntry<T extends Record<string, unknown>>(entries: T[], key: string, field?: "key" | "rootId"): {items: T[]; changed: boolean};
     export function recordRecentOpen<T extends Record<string, unknown>>(openEntries: T[], closedEntries: T[], entry: {key: string; rootId?: string | null; title?: string; ts?: number}, max?: number): {open: T[]; closed: T[]; changed: boolean};
+    export function normalizeOfficialRecentHistory(payload: unknown, isValidRootId: (id: string) => boolean, now?: number, max?: number): {status: "success" | "empty" | "failed"; items: IOpenHistoryEntry[]};
 }
 declare module "./favorite-actions" {
     export function removeFavoriteEntry<T extends {key?: string}>(entries: T[], key: string): {items: T[]; changed: boolean};
@@ -462,6 +464,13 @@ export interface ITabGroupRenderCtx {
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
 type Tab = ReturnType<typeof getAllTabs>[number];
+type KernelRequestOutcome =
+    | {ok: true; value: any; attempts: number; outcome: "success"}
+    | {ok: false; error: {kind: string; status?: number}; attempts: number; outcome: "failed" | "unknown"};
+type JournalActionOutcome =
+    | {ok: true; id: string; empty?: false}
+    | {ok: true; id: null; empty: true}
+    | {ok: false; error: {kind: string; status?: number}; attempts?: number; outcome: "failed" | "unknown"};
 
 export interface IDocSearchResult {
     id?: string;
@@ -1104,6 +1113,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     // Record<string, string> —— 全部 this.i18n.<key> 调用点随之恢复 string 类型。
     declare i18n: Record<string, string>;
     private isMobile = false;
+    // 内核 JSON 请求共用超时、取消、可安全读取的重试及相同请求去重策略。
+    private readonly requestService = createRequestService();
     private snippetStudioDialog: Dialog | null = null;
     private snippetStudioSession: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null; recentIds?: string[]} = {draft: null, baseline: null};
     // T-6869（P1-c）：平台会话级路由状态——最近表面供悬浮球恢复（无持久化，
@@ -3020,6 +3031,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         };
 
         let saving = false;
+        let writeOutcomeUnknown = false;
         const submit = () => {
             if (saving) return;
             void (async () => {
@@ -3040,9 +3052,23 @@ export default class SpeedSwitchPlugin extends Plugin {
                             showMessage(this.i18n.quickCaptureNoTarget, MESSAGE_DEFAULT_MS, "error");
                             return;
                         }
-                        const appendJson = await this.fetchKernelJson("/api/block/appendBlock", {
+                        const appendResult = await this.fetchKernelJsonOutcome("/api/block/appendBlock", {
                             dataType: "markdown", data: content, parentID: capture.rootId,
                         });
+                        if (!appendResult.ok) {
+                            if (appendResult.outcome === "unknown") {
+                                writeOutcomeUnknown = true;
+                                previewLine.textContent = this.i18n.quickCaptureUnknown || "请求已发出，但结果暂时无法确认。请先核对目标文档；本窗口已锁定追加，避免重复写入。";
+                                input.readOnly = true;
+                                targetButtons.forEach(({el}) => { el.disabled = true; });
+                                save.textContent = this.i18n.quickCapturePending || "结果待核实";
+                                showMessage(this.i18n.quickCaptureUnknown || "请求已发出，但结果暂时无法确认。请先核对目标文档；本窗口已锁定追加，避免重复写入。", MESSAGE_DEFAULT_MS, "error");
+                            } else {
+                                showMessage(this.i18n.quickCaptureFailed, MESSAGE_DEFAULT_MS, "error");
+                            }
+                            return;
+                        }
+                        const appendJson = appendResult.value;
                         if (!appendJson || appendJson.code !== 0) {
                             showMessage(this.i18n.quickCaptureFailed, MESSAGE_DEFAULT_MS, "error");
                             return;
@@ -3057,14 +3083,34 @@ export default class SpeedSwitchPlugin extends Plugin {
                         notebook = await this.promptJournalNotebook();
                         if (!notebook) return;
                     }
-                    const docId = await this.ensureTodayJournal(notebook);
-                    if (!docId) {
-                        showMessage(this.i18n.journalFailed, MESSAGE_DEFAULT_MS, "error");
+                    const journalResult = await this.ensureTodayJournalOutcome(notebook);
+                    if (journalResult.ok === false) {
+                        const message = journalResult.outcome === "unknown"
+                            ? this.i18n.journalResultUnknown || "日记创建请求已发出，但结果暂时无法确认。请先核对今日日记，再继续捕获。"
+                            : journalResult.error.kind === "unauthorized" || journalResult.error.kind === "forbidden"
+                                ? this.i18n.kernelPermissionDenied || "思源会话或权限不可用，请在思源中恢复后重试。"
+                                : this.i18n.quickCaptureFailed;
+                        showMessage(message, MESSAGE_DEFAULT_MS, "error");
                         return;
                     }
-                    const appendJson = await this.fetchKernelJson("/api/block/appendBlock", {
+                    const docId = journalResult.id;
+                    const appendResult = await this.fetchKernelJsonOutcome("/api/block/appendBlock", {
                         dataType: "markdown", data: content, parentID: docId,
                     });
+                    if (!appendResult.ok) {
+                        if (appendResult.outcome === "unknown") {
+                            writeOutcomeUnknown = true;
+                            previewLine.textContent = this.i18n.quickCaptureUnknown || "请求已发出，但结果暂时无法确认。请先核对今日日记；本窗口已锁定追加，避免重复写入。";
+                            input.readOnly = true;
+                            targetButtons.forEach(({el}) => { el.disabled = true; });
+                            save.textContent = this.i18n.quickCapturePending || "结果待核实";
+                            showMessage(this.i18n.quickCaptureUnknown || "请求已发出，但结果暂时无法确认。请先核对今日日记；本窗口已锁定追加，避免重复写入。", MESSAGE_DEFAULT_MS, "error");
+                        } else {
+                            showMessage(this.i18n.quickCaptureFailed, MESSAGE_DEFAULT_MS, "error");
+                        }
+                        return;
+                    }
+                    const appendJson = appendResult.value;
                     if (!appendJson || appendJson.code !== 0) {
                         showMessage(this.i18n.quickCaptureFailed, MESSAGE_DEFAULT_MS, "error");
                         return;
@@ -3078,7 +3124,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 } finally {
                     if (!completed) {
                         saving = false;
-                        save.disabled = false;
+                        save.disabled = writeOutcomeUnknown;
                         cancel.disabled = false;
                         input.focus();
                     }
@@ -3120,9 +3166,19 @@ export default class SpeedSwitchPlugin extends Plugin {
                 return; // 鐢ㄦ埛鍙栨秷閫夋嫨
             }
         }
-        const id = this.getSettings().journalAutoCreate === false
-            ? await this.findTodayJournal(notebook)
-            : await this.ensureTodayJournal(notebook);
+        const result = this.getSettings().journalAutoCreate === false
+            ? await this.findTodayJournalOutcome(notebook)
+            : await this.ensureTodayJournalOutcome(notebook);
+        if (result.ok === false) {
+            const message = result.outcome === "unknown"
+                ? this.i18n.journalResultUnknown || "日记创建请求已发出，但结果暂时无法确认。请先检查今日日记，再决定是否重试。"
+                : result.error.kind === "unauthorized" || result.error.kind === "forbidden"
+                    ? this.i18n.kernelPermissionDenied || "思源会话或权限不可用，请在思源中恢复后重试。"
+                    : this.i18n.journalFailed;
+            showMessage(message, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const id = result.id;
         if (!id) {
             showMessage(this.i18n.journalFailed, MESSAGE_DEFAULT_MS, "error");
             return;
@@ -3137,11 +3193,29 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 调用内核 createDailyNote：已有当日日记时返回其 id（不重复创建）
     private async ensureTodayJournal(notebook: string): Promise<string | null> {
-        return ensureTodayJournalAction({notebook, fetchImpl: fetch, logger});
+        const result = await this.ensureTodayJournalOutcome(notebook);
+        return result.ok ? result.id : null;
     }
 
     private async findTodayJournal(notebook: string): Promise<string | null> {
-        return findTodayJournalAction({notebook, fetchImpl: fetch, logger});
+        const result = await this.findTodayJournalOutcome(notebook);
+        return result.ok ? result.id : null;
+    }
+
+    private async ensureTodayJournalOutcome(notebook: string): Promise<JournalActionOutcome> {
+        return ensureTodayJournalOutcomeAction({
+            notebook,
+            logger,
+            requestJson: (url, body, requestOptions) => this.fetchKernelJsonOutcome(url, body, requestOptions),
+        }) as Promise<JournalActionOutcome>;
+    }
+
+    private async findTodayJournalOutcome(notebook: string): Promise<JournalActionOutcome> {
+        return findTodayJournalOutcomeAction({
+            notebook,
+            logger,
+            requestJson: (url, body, requestOptions) => this.fetchKernelJsonOutcome(url, body, requestOptions),
+        }) as Promise<JournalActionOutcome>;
     }
 
     // 首次点击日记按钮：弹窗选择默认日记笔记本，选择后保存并返回
@@ -4703,6 +4777,7 @@ const updatedMap: {[rootId: string]: string} = {};
                 container.classList.add("sw-dialog--fullscreen");
                 swBody?.classList.add("sw--fullscreen");
                 fsBtn?.setAttribute("aria-label", this.i18n.exitFullscreen);
+                fsBtn?.setAttribute("title", this.i18n.exitFullscreen);
             } else {
                 const restored = this.resolvePanelDialogSize(settings, false);
                 container.style.width = `${restored.width}px`;
@@ -4710,6 +4785,7 @@ const updatedMap: {[rootId: string]: string} = {};
                 container.classList.remove("sw-dialog--fullscreen");
                 swBody?.classList.remove("sw--fullscreen");
                 fsBtn?.setAttribute("aria-label", this.i18n.enterFullscreen);
+                fsBtn?.setAttribute("title", this.i18n.enterFullscreen);
             }
         };
         fsBtn?.addEventListener("click", () => toggleFullscreen(!isFullscreen));
@@ -4829,6 +4905,8 @@ const updatedMap: {[rootId: string]: string} = {};
     ): () => void {
         const trigger = scope.querySelector<HTMLButtonElement>(".sw__sort-trigger");
         if (!trigger) return () => undefined;
+        trigger.setAttribute("aria-haspopup", "menu");
+        trigger.setAttribute("aria-expanded", "false");
         this.updateSortTriggerLabel(scope);
         let panel: HTMLElement | null = null;
         let outsideHandler: ((event: PointerEvent) => void) | null = null;
@@ -4840,6 +4918,7 @@ const updatedMap: {[rootId: string]: string} = {};
             const focusInside = panel.contains(document.activeElement);
             panel.remove();
             panel = null;
+            trigger.setAttribute("aria-expanded", "false");
             if (outsideHandler) document.removeEventListener("pointerdown", outsideHandler, true);
             if (keyHandler) document.removeEventListener("keydown", keyHandler, true);
             if (resizeHandler) window.removeEventListener("resize", resizeHandler);
@@ -4874,6 +4953,7 @@ const updatedMap: {[rootId: string]: string} = {};
         };
         trigger.addEventListener("click", () => {
             if (panel) { closePanel(); return; }
+            trigger.setAttribute("aria-expanded", "true");
             panel = document.createElement("div");
             panel.className = "sw__sort-menu";
             panel.setAttribute("role", "menu");
@@ -6533,7 +6613,8 @@ const updatedMap: {[rootId: string]: string} = {};
     // 内核 HTTP POST 共用逻辑：端点白名单 + 5s 超时 + 非 2xx 抛错 + 失败返回 null
     private static KERNEL_ENDPOINTS = new Set([
         "/api/query/sql", "/api/tag/getTag", "/api/bookmark/getBookmark",
-        "/api/filetree/getDoc", "/api/filetree/createDocWithMd",
+        "/api/filetree/getDoc", "/api/filetree/createDocWithMd", "/api/filetree/createDailyNote",
+        "/api/filetree/searchDocs", "/api/search/semanticSearchBlock", "/api/search/fullTextSearchBlock",
         "/api/block/updateBlock", "/api/block/insertBlock", "/api/block/appendBlock",
         "/api/outline/getDocOutline", "/api/riff/getNotebookRiffDueCards",
         // v0.18 路径筛选（T-103）：只读列目录，用于搜索筛选选择路径前缀。
@@ -6563,6 +6644,16 @@ const updatedMap: {[rootId: string]: string} = {};
         // T-6878 跨表面对象第一批：原生片段清单只读查询（零态工作台的片段对象投影）。
         "/api/snippet/getSnippet",
     ]);
+    private static KERNEL_READ_ENDPOINTS = new Set([
+        "/api/tag/getTag", "/api/bookmark/getBookmark", "/api/filetree/getDoc",
+        "/api/filetree/searchDocs", "/api/search/semanticSearchBlock", "/api/search/fullTextSearchBlock",
+        "/api/outline/getDocOutline", "/api/riff/getNotebookRiffDueCards",
+        "/api/filetree/listDocsByPath", "/api/filetree/getPinnedDocs",
+        "/api/inbox/getShorthands", "/api/block/getRecentUpdatedBlocks",
+        "/api/asset/getMissingAssets", "/api/ref/getBacklink2",
+        "/api/storage/getRecentDocs", "/api/storage/getCriteria",
+        "/api/av/renderAttributeView", "/api/av/getAttributeView", "/api/snippet/getSnippet",
+    ]);
 
     /**
      * 语义搜索能力判定（P3-3）：读取宿主 AI embedding 配置，与内核
@@ -6580,15 +6671,35 @@ const updatedMap: {[rootId: string]: string} = {};
     private async fetchKernelJson(
         url: string,
         body: Record<string, unknown>,
-        timeoutOrOptions: number | {signal?: AbortSignal} = 5000,
-        options?: {signal?: AbortSignal},
+        timeoutOrOptions: number | {signal?: AbortSignal; dedupe?: boolean; latestKey?: string; timeoutMs?: number} = 5000,
+        options?: {signal?: AbortSignal; dedupe?: boolean; latestKey?: string; timeoutMs?: number},
     ): Promise<any | null> {
+        const result = await this.fetchKernelJsonOutcome(url, body, timeoutOrOptions, options);
+        return result.ok ? result.value : null;
+    }
+
+    /** Shared transport bridge for extracted search UI modules. */
+    public requestKernelJsonOutcome(
+        url: string,
+        body: Record<string, unknown>,
+        options: {signal?: AbortSignal; dedupe?: boolean; latestKey?: string; timeoutMs?: number} = {},
+    ): Promise<KernelRequestOutcome> {
+        return this.fetchKernelJsonOutcome(url, body, options);
+    }
+
+    /** Structured result for flows that must distinguish failed from unknown writes. */
+    private async fetchKernelJsonOutcome(
+        url: string,
+        body: Record<string, unknown>,
+        timeoutOrOptions: number | {signal?: AbortSignal; dedupe?: boolean; latestKey?: string; timeoutMs?: number} = 5000,
+        options?: {signal?: AbortSignal; dedupe?: boolean; latestKey?: string; timeoutMs?: number},
+    ): Promise<KernelRequestOutcome> {
         // 安全守卫（纵深防御）：仅允许同源、硬编码的思源内核相对路径。
         // - 必须以 "/" 开头（相对路径 → 同源），拒绝任何绝对 URL 与外部 host；
         // - 必须命中端点白名单，杜绝把请求指向任意地址（SSRF）。
         if (typeof url !== "string" || !url.startsWith("/") || url.startsWith("//") || !SpeedSwitchPlugin.KERNEL_ENDPOINTS.has(url)) {
             logger.warn("blocked non-whitelisted kernel endpoint", url);
-            return null;
+            return {ok: false, error: {kind: "blocked"}, attempts: 0, outcome: "failed"};
         }
         // Callers in extracted UI modules pass the cancellation options as the
         // third argument, while older host-side callers pass a numeric timeout
@@ -6596,25 +6707,28 @@ const updatedMap: {[rootId: string]: string} = {};
         // coerces it to zero and aborts every request immediately (the preview
         // pane then only shows the incomplete-load state).  Normalize both
         // forms at the boundary so one host contract serves both paths.
-        const timeoutMs = typeof timeoutOrOptions === "number" ? timeoutOrOptions : 5000;
+        const timeoutMs = typeof timeoutOrOptions === "number" ? timeoutOrOptions
+            : Number.isFinite(timeoutOrOptions.timeoutMs) ? Math.max(1, Math.min(120000, Math.trunc(timeoutOrOptions.timeoutMs!))) : 5000;
         const requestOptions = typeof timeoutOrOptions === "number" ? options : timeoutOrOptions;
-        const controller = typeof AbortController === "function" ? new AbortController() : null;
-        // T-7165/T-7191：外部取消 signal 联动超时 abort（无 AbortController 环境自动降级）。
         const externalSignal = requestOptions?.signal;
-        const externalAbort = externalSignal && typeof externalSignal.addEventListener === "function"
-            ? () => controller?.abort() : null;
-        if (externalSignal && externalAbort) {
-            if (externalSignal.aborted) { controller?.abort(); }
-            else externalSignal.addEventListener("abort", externalAbort, {once: true});
-        }
-        const timer = window.setTimeout(() => controller?.abort(), timeoutMs);
-        try {
+        const latestKey = typeof requestOptions?.latestKey === "string" ? requestOptions.latestKey : "";
+        const key = buildRequestKey(url, body);
+        const sqlRead = url === "/api/query/sql" && /^\s*SELECT\b/i.test(String(body?.stmt || ""));
+        const retrySafe = SpeedSwitchPlugin.KERNEL_READ_ENDPOINTS.has(url) || sqlRead;
+        const result = await this.requestService.request({
+            key,
+            dedupe: retrySafe || requestOptions?.dedupe === true,
+            latestKey,
+            signal: externalSignal,
+            timeoutMs,
+            maxRetries: retrySafe ? 1 : 0,
+            execute: async (signal: AbortSignal | undefined) => {
             // 每个端点的 fetch 都使用字面量 URL（安全扫描要求：不存在变量 URL 请求）
             const init = {
                 method: "POST" as const,
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(body),
-                ...(controller ? {signal: controller.signal} : {}),
+                ...(signal ? {signal} : {}),
             };
             let response: Response;
             switch (url) {
@@ -6630,8 +6744,20 @@ const updatedMap: {[rootId: string]: string} = {};
                 case "/api/filetree/getDoc":
                     response = await fetch("/api/filetree/getDoc", init);
                     break;
+                case "/api/filetree/searchDocs":
+                    response = await fetch("/api/filetree/searchDocs", init);
+                    break;
+                case "/api/search/semanticSearchBlock":
+                    response = await fetch("/api/search/semanticSearchBlock", init);
+                    break;
+                case "/api/search/fullTextSearchBlock":
+                    response = await fetch("/api/search/fullTextSearchBlock", init);
+                    break;
                 case "/api/filetree/createDocWithMd":
                     response = await fetch("/api/filetree/createDocWithMd", init);
+                    break;
+                case "/api/filetree/createDailyNote":
+                    response = await fetch("/api/filetree/createDailyNote", init);
                     break;
                 case "/api/block/updateBlock":
                     response = await fetch("/api/block/updateBlock", init);
@@ -6694,15 +6820,17 @@ const updatedMap: {[rootId: string]: string} = {};
                     logger.warn("blocked non-whitelisted kernel endpoint", url);
                     return null;
             }
-            if (!response.ok) throw new Error(`${url} HTTP ${response.status}`);
+            if (!response.ok) throw Object.assign(new Error("http_error"), {status: response.status});
             return await response.json();
-        } catch (e) {
-            logger.warn("kernel request fail", url, e);
-            return null;
-        } finally {
-            window.clearTimeout(timer);
-            if (externalSignal && externalAbort) externalSignal.removeEventListener("abort", externalAbort);
+            },
+        });
+        if (!result.ok) {
+            logger.warn("kernel request fail", url, result.error.kind, result.error.status || "");
+            const uncertainWrite = !retrySafe && result.attempts > 0
+                && ["aborted", "timeout", "network", "server", "invalid_response", "failed"].includes(result.error.kind);
+            return {...result, outcome: uncertainWrite ? "unknown" : "failed"};
         }
+        return {...result, outcome: "success"};
     }
 
     // 外部生活组件在桌面 WebView 中可能受 CORS/代理环境影响。这里复用思源公开的
@@ -9367,7 +9495,7 @@ private rootIdOf(tab: Tab): string | null {
         container.innerHTML = `<button type="button" class="sw__history-trigger" aria-label="${this.i18n.openHistory}">
     <svg width="13" height="13"><use xlink:href="#iconClock"></use></svg><span class="sw__history-trigger-text">${this.i18n.openHistory}</span><span class="sw__history-badge"></span>
 </button><div class="sw__history-panel fn__none" role="menu"></div>`;
-        const trigger = container.querySelector<HTMLElement>(".sw__history-trigger");
+        const trigger = container.querySelector<HTMLButtonElement>(".sw__history-trigger");
         const panel = container.querySelector<HTMLElement>(".sw__history-panel");
         if (!trigger || !panel) return () => undefined;
         trigger.setAttribute("aria-haspopup", "menu");
@@ -9400,16 +9528,48 @@ private rootIdOf(tab: Tab): string | null {
         };
         this.historyDropdownClosers.set(container, {close, dispose});
         this.historyDropdownCloseSet.add(dispose);
+        let historySyncState: "idle" | "loading" | "success" | "empty" | "failed" = "idle";
+        const renderSyncFailure = () => {
+            const failure = document.createElement("div");
+            failure.className = "sw__history-sync-error";
+            failure.setAttribute("role", "alert");
+            failure.textContent = this.i18n.historySyncFailed;
+            const retry = document.createElement("button");
+            retry.type = "button";
+            retry.className = "b3-button b3-button--text sw__history-sync-retry";
+            retry.textContent = this.i18n.homeRetry;
+            retry.setAttribute("aria-label", this.i18n.historySyncRetry);
+            retry.addEventListener("click", (event) => {
+                event.stopPropagation();
+                close();
+                trigger.click();
+            });
+            failure.appendChild(retry);
+            panel.prepend(failure);
+        };
         trigger.addEventListener("click", async () => {
             if (!panel.classList.contains("fn__none")) { close(); return; }
+            if (trigger.disabled) return;
+            trigger.disabled = true;
             trigger.setAttribute("aria-busy", "true");
-            await this.syncOfficialRecentHistory();
-            trigger.removeAttribute("aria-busy");
+            historySyncState = "loading";
+            let syncResult: "success" | "empty" | "failed" = "failed";
+            try {
+                syncResult = await this.syncOfficialRecentHistory();
+            } catch (error) {
+                logger.warn("sync recent history fail", error);
+                syncResult = "failed";
+            } finally {
+                trigger.removeAttribute("aria-busy");
+                if (trigger.isConnected) trigger.disabled = false;
+            }
+            historySyncState = syncResult;
         if (disposed || !panel.isConnected) return;
         // T-6799b "只看有改动"：开关状态与内核更新时间缓存在下拉生命周期内保持；
         // 过滤真值 = 内核 blocks.updated 落在窗口期（默认 7 天）内。
         let changedOnly = false;
         let changedUpdatedMap: Map<string, string> | null = null;
+        let changedOnlyLoadFailed = false;
         const toggle = document.createElement("button");
         toggle.type = "button";
         toggle.className = "b3-button b3-button--text sw__history-changed-toggle";
@@ -9423,26 +9583,60 @@ private rootIdOf(tab: Tab): string | null {
                 close();
                 onClose();
                 void this.openHistoryEntry(entry);
-            }, filter);
+            }, filter, changedOnly ? () => {
+                changedOnly = false;
+                changedOnlyLoadFailed = false;
+                renderPanel();
+            } : undefined);
             panel.prepend(toggle);
             toggle.setAttribute("aria-pressed", String(changedOnly));
+            if (changedOnlyLoadFailed) {
+                const failure = document.createElement("div");
+                failure.className = "sw__history-sync-error";
+                failure.setAttribute("role", "alert");
+                failure.textContent = this.i18n.historyChangedLoadFailed;
+                const retry = document.createElement("button");
+                retry.type = "button";
+                retry.className = "b3-button b3-button--text sw__history-sync-retry";
+                retry.textContent = this.i18n.homeRetry;
+                retry.setAttribute("aria-label", this.i18n.historyChangedRetry);
+                retry.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    changedOnlyLoadFailed = false;
+                    toggle.click();
+                });
+                failure.appendChild(retry);
+                panel.insertBefore(failure, toggle.nextSibling);
+            }
         };
         toggle.addEventListener("click", async () => {
+            if (toggle.disabled) return;
             changedOnly = !changedOnly;
             toggle.setAttribute("aria-pressed", String(changedOnly));
             if (changedOnly && !changedUpdatedMap) {
+                toggle.disabled = true;
                 toggle.setAttribute("aria-busy", "true");
                 const ids = [
                     ...this.getOpenHistory().map((entry) => entry.rootId || ""),
                     ...this.getClosedHistory().map((entry) => entry.rootId || ""),
                 ].filter((id) => BLOCK_ID_RE.test(id));
-                changedUpdatedMap = await this.fetchDocUpdatedMap(ids);
-                toggle.removeAttribute("aria-busy");
+                try {
+                    changedUpdatedMap = await this.fetchDocUpdatedMap(ids);
+                    changedOnlyLoadFailed = false;
+                } catch (error) {
+                    logger.warn("load changed history fail", error);
+                    changedOnly = false;
+                    changedOnlyLoadFailed = true;
+                } finally {
+                    toggle.removeAttribute("aria-busy");
+                    if (toggle.isConnected) toggle.disabled = false;
+                }
             }
             if (disposed || !panel.isConnected) return;
             renderPanel();
         });
         renderPanel();
+            if (historySyncState === "failed") renderSyncFailure();
             panel.classList.remove("fn__none");
             trigger.setAttribute("aria-expanded", "true");
             this.positionOpenHistoryPanel(trigger, panel);
@@ -9467,33 +9661,27 @@ private rootIdOf(tab: Tab): string | null {
             const json = await this.fetchKernelJson("/api/query/sql", {
                 stmt: `SELECT id, updated FROM blocks WHERE id IN (${list})`,
             });
-            (Array.isArray(json?.data) ? json.data : []).forEach((row: {id?: string; updated?: string}) => {
-                if (row?.id && typeof row.updated === "string") result.set(row.id, row.updated);
+            if (json === null || json === undefined || !Array.isArray(json?.data)) {
+                throw new Error("history-updated-query-unavailable");
+            }
+            json.data.forEach((row: {id?: string; updated?: string}) => {
+                if (typeof row?.id !== "string" || !BLOCK_ID_RE.test(row.id) || typeof row.updated !== "string") {
+                    throw new Error("history-updated-row-invalid");
+                }
+                result.set(row.id, row.updated);
             });
         }
         return result;
     }
 
-    private async syncOfficialRecentHistory() {
+    private async syncOfficialRecentHistory(): Promise<"success" | "empty" | "failed"> {
         const json = await this.fetchKernelJson("/api/storage/getRecentDocs", {});
-        const rows = Array.isArray(json?.data) ? json.data : [];
-        if (rows.length === 0) return;
-        const now = Date.now();
-        const entries = rows.slice(0, HISTORY_MAX).map((row: any, index: number) => {
-            const rootId = typeof row?.rootID === "string" && BLOCK_ID_RE.test(row.rootID) ? row.rootID : null;
-            if (!rootId) return null;
-            return {
-                key: rootId,
-                rootId,
-                title: String(row.title || rootId).slice(0, 128),
-                ts: Math.max(Number(row.viewedAt) || 0, Number(row.openAt) || 0, now - index),
-                source: "open" as const,
-            };
-        }).filter(Boolean) as IOpenHistoryEntry[];
-        if (entries.length > 0) {
-            this.data[HISTORY_KEY] = entries;
+        const result = normalizeOfficialRecentHistory(json, (id) => BLOCK_ID_RE.test(id), Date.now(), HISTORY_MAX);
+        if (result.status === "success") {
+            this.data[HISTORY_KEY] = result.items;
             this.saveDataDebounced(HISTORY_KEY);
         }
+        return result.status;
     }
 
     private positionOpenHistoryPanel(trigger: HTMLElement, panel: HTMLElement) {
@@ -9508,7 +9696,7 @@ private rootIdOf(tab: Tab): string | null {
         panel.style.maxHeight = `${Math.max(140, window.innerHeight - top - margin)}px`;
     }
 
-    private renderOpenHistoryPanel(panel: HTMLElement, onPick: (entry: IOpenHistoryEntry) => void, entryFilter?: (entry: IOpenHistoryEntry) => boolean) {
+    private renderOpenHistoryPanel(panel: HTMLElement, onPick: (entry: IOpenHistoryEntry) => void, entryFilter?: (entry: IOpenHistoryEntry) => boolean, onShowAll?: () => void) {
         panel.innerHTML = "";
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
@@ -9517,8 +9705,16 @@ private rootIdOf(tab: Tab): string | null {
         if (sections.count === 0) {
             const empty = document.createElement("div");
             empty.className = "sw__history-empty";
-            empty.textContent = this.i18n.noOpenHistory;
+            empty.textContent = entryFilter ? this.i18n.historyChangedEmpty : this.i18n.noOpenHistory;
             panel.appendChild(empty);
+            if (entryFilter && onShowAll) {
+                const showAll = document.createElement("button");
+                showAll.type = "button";
+                showAll.className = "b3-button b3-button--text sw__history-show-all";
+                showAll.textContent = this.i18n.historyChangedShowAll;
+                showAll.addEventListener("click", onShowAll);
+                panel.appendChild(showAll);
+            }
             return;
         }
         let shown = 0;
@@ -9578,6 +9774,7 @@ private rootIdOf(tab: Tab): string | null {
             this.refreshOpenHistoryDropdowns();
         });
         appendSection(this.i18n.historyClosedSection, sections.closed as IOpenHistoryEntry[], this.i18n.clearClosedHistory, () => {
+            if (!confirm(this.i18n.clearClosedHistoryConfirm)) return;
             this.data[CLOSED_HISTORY_KEY] = [];
             this.saveDataDebounced(CLOSED_HISTORY_KEY);
             this.refreshOpenHistoryDropdowns();
@@ -9587,6 +9784,14 @@ private rootIdOf(tab: Tab): string | null {
             empty.className = "sw__history-empty";
             empty.textContent = this.i18n.historyChangedEmpty;
             panel.appendChild(empty);
+            if (onShowAll) {
+                const showAll = document.createElement("button");
+                showAll.type = "button";
+                showAll.className = "b3-button b3-button--text sw__history-show-all";
+                showAll.textContent = this.i18n.historyChangedShowAll;
+                showAll.addEventListener("click", onShowAll);
+                panel.appendChild(showAll);
+            }
         }
     }
 
@@ -12623,6 +12828,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 <svg width="16" height="16"><use xlink:href="#iconStar"></use></svg><span class="sw__mobile-chip-label">${this.i18n.favorites}</span>
             </button>
             <div class="sw__history-dd"></div>
+            <button type="button" class="b3-button b3-button--text sw__icon-btn sw__journal-btn" aria-label="${this.i18n.journalBtn}" title="${this.i18n.journalBtn}">
+                <svg width="16" height="16"><use xlink:href="#iconCalendar"></use></svg><span class="sw__mobile-chip-label">${this.i18n.journalBtn}</span>
+            </button>
             <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}">
                 <svg width="16" height="16"><use xlink:href="#iconSettings"></use></svg><span class="sw__mobile-chip-label">${this.i18n.settingsShort}</span>
             </button>

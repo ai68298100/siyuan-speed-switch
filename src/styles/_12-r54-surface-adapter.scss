@@ -263,7 +263,15 @@
     .speed-switch .sw__dock { display: none; }
     .sw-home { padding: var(--sw-r54-space-3) var(--sw-r54-space-3) 0; }
     .sw-home__cell { grid-column: 1 / -1; }
-    .sw-studio__layout { display: flex; flex-direction: column; overflow: hidden; }
+    .sw-studio__layout {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior-y: contain;
+    }
     .sw-studio__library { flex: 0 0 auto; max-height: 190px; border-right: 0; border-bottom: 1px solid var(--sw-r54-line); }
     .sw-studio__main { flex: 1 1 auto; min-height: 540px; }
     .sw-studio__ai { flex: 0 0 auto; min-height: 320px; }
@@ -273,7 +281,8 @@
     .sw-home__bar .b3-button,
     .sw-home-store button,
     .sw-studio__button,
-    .sw-studio__library-item { min-height: 44px; }
+    .sw-studio__library-item,
+    .sw-studio__library-filter { min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

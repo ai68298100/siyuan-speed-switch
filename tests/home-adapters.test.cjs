@@ -197,6 +197,51 @@ test("home adapter agent source missing API and timeout degrade safely", async (
     assert.equal(result.snapshot.empty, true);
 });
 
+test("home adapter timeout aborts the underlying reader signal", async () => {
+    adapters.clearHomeSnapshotCache();
+    let readerSignal = null;
+    let readerAborted = false;
+    const map = adapters.registerHomeAdapters([{
+        moduleId: "deadline-abort",
+        supportedDevices: ["desktop"],
+        read: (_config, _device, context) => new Promise((resolve) => {
+            readerSignal = context.signal;
+            if (readerSignal?.aborted) readerAborted = true;
+            else if (typeof readerSignal?.addEventListener === "function") {
+                readerSignal.addEventListener("abort", () => {
+                    readerAborted = true;
+                    resolve({title: "cancelled"});
+                }, {once: true});
+            }
+        }),
+    }]);
+    const result = await adapters.readHomeModule(map, "deadline-abort", "desktop", {}, {timeoutMs: 5});
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(result.reason, "timeout");
+    assert.equal(readerSignal?.aborted, true);
+    assert.equal(readerAborted, true);
+});
+
+test("home adapter external cancellation aborts the derived reader signal", async () => {
+    adapters.clearHomeSnapshotCache();
+    const controller = new AbortController();
+    let readerSignal = null;
+    const map = adapters.registerHomeAdapters([{
+        moduleId: "linked-abort",
+        supportedDevices: ["desktop"],
+        read: (_config, _device, context) => new Promise((resolve) => {
+            readerSignal = context.signal;
+            readerSignal.addEventListener("abort", () => resolve({title: "cancelled"}), {once: true});
+        }),
+    }]);
+    const pending = adapters.readHomeModule(map, "linked-abort", "desktop", {}, {signal: controller.signal, timeoutMs: 100});
+    await new Promise((resolve) => setImmediate(resolve));
+    controller.abort();
+    const result = await pending;
+    assert.equal(result.reason, "aborted");
+    assert.equal(readerSignal?.aborted, true);
+});
+
 test("home adapter external plugin providers interoperate through one contract", async () => {
     adapters.clearHomeSnapshotCache();
     const map = adapters.registerHomeAdapters([

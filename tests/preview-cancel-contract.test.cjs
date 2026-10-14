@@ -37,22 +37,19 @@ test('path filter requests abort on generation bump (T-7191)', () => {
 });
 
 test('kernel fetch impl links external signal with its timeout abort', () => {
-    const fnStart = index.indexOf('private async fetchKernelJson');
+    const fnStart = index.indexOf('private async fetchKernelJsonOutcome');
     const body = index.slice(fnStart, index.indexOf('\n    }\n', fnStart) + 6);
-    assert.match(body, /options\?: \{signal\?: AbortSignal\}/, 'impl 必须接受外部 signal');
-    assert.match(body, /externalSignal\.addEventListener\("abort"/, '外部 signal 必须联动内部 controller');
-    assert.match(body, /externalSignal\.removeEventListener\("abort"/, '完成/失败必须解除联动监听');
-    assert.match(body, /typeof AbortController === "function"/, '无 AbortController 环境能力检测保留');
+    assert.match(body, /signal:\s*externalSignal/, '共享请求服务必须接受外部 signal');
+    assert.match(body, /timeoutMs,/, '统一请求入口必须传递 deadline');
+    assert.match(body, /this\.requestService\.request\(/, '请求必须经过共享服务');
 });
 
 test('kernel fetch accepts extracted UI options in the third argument', () => {
     const fnStart = index.indexOf('private async fetchKernelJson');
     const body = index.slice(fnStart, index.indexOf('\n    }\n', fnStart) + 6);
-    assert.match(body, /timeoutOrOptions: number \| \{signal\?: AbortSignal\}/,
+    assert.match(body, /timeoutOrOptions: number \| \{signal\?: AbortSignal(?:;[^}]*)?\}/,
         '实现必须兼容第三参直接传取消选项的抽取模块调用');
-    assert.match(body, /typeof timeoutOrOptions === "number" \? timeoutOrOptions : 5000/,
-        '对象形式不能被当作 setTimeout 延迟而立即触发 abort');
-    assert.match(body, /typeof timeoutOrOptions === "number" \? options : timeoutOrOptions/,
+    assert.match(index, /const requestOptions = typeof timeoutOrOptions === "number" \? options : timeoutOrOptions/,
         '第三参对象必须成为实际外部 signal');
 });
 

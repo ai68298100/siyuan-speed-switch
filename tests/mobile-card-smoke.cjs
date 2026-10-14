@@ -167,11 +167,20 @@ const source = readSource('index.ts');
 // P1-1a：移动端切换器方法群已迁入 mobile-switcher-ui.ts，相关模式按归属分流。
 const mobileSwitcherSource = readSource('mobile-switcher-ui.ts');
 const secondPanelSource = readSource('second-panel-ui.ts');
-const mobileToolbarSemanticsOk = source.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn"')
-    && source.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn"')
-    && source.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-close-btn"');
+const mobileTemplateStart = source.indexOf('private buildMobileSwitcherHtml(): string');
+const mobileTemplateEnd = source.indexOf('private renderMobileSwitcherList(', mobileTemplateStart);
+const mobileTemplate = mobileTemplateStart >= 0 && mobileTemplateEnd > mobileTemplateStart
+    ? source.slice(mobileTemplateStart, mobileTemplateEnd) : '';
+const mobileToolbarSemanticsOk = mobileTemplate.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn"')
+    && mobileTemplate.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn"')
+    && mobileTemplate.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__journal-btn"')
+    && mobileTemplate.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-close-btn"');
 console.log(`${mobileToolbarSemanticsOk ? 'PASS' : 'FAIL'} mobile toolbar controls use button semantics`);
 if (!mobileToolbarSemanticsOk) allPassed = false;
+const mobileJournalPathOk = mobileSwitcherSource.includes('querySelector(".sw__journal-btn")')
+    && mobileSwitcherSource.includes('this.openJournal();');
+console.log(`${mobileJournalPathOk ? 'PASS' : 'FAIL'} mobile journal entry has a live handler path`);
+if (!mobileJournalPathOk) allPassed = false;
 const documentActionsSource = readSource('document-actions.js');
 const homePanelSource = readSource('home-panel.js');
 const homeViewSource = readSource('home-view.js');
@@ -675,7 +684,7 @@ const documentActionsContractOk = source.includes('openDocumentOnMobile({')
     && fs.existsSync(path.join(REPO, 'src', 'document-actions.js'));
 console.log(`${documentActionsContractOk ? 'PASS' : 'FAIL'} shared document-open command adapter`);
 if (!documentActionsContractOk) allPassed = false;
-const journalActionContractOk = source.includes('ensureTodayJournalAction({')
+const journalActionContractOk = source.includes('ensureTodayJournalOutcomeAction({')
     && documentActionsSource.includes('openDocumentOnDesktop')
     && fs.existsSync(path.join(REPO, 'src', 'journal-actions.js'));
 console.log(`${journalActionContractOk ? 'PASS' : 'FAIL'} shared journal creation command adapter`);

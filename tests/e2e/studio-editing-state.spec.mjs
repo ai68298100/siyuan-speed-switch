@@ -113,3 +113,61 @@ test("studio lightweight editor keeps line numbers, bracket status and shortcut 
         }
     }
 });
+
+test("studio narrow host keeps its sections reachable and filter targets touch-sized", async ({page, browser}) => {
+    await page.setViewportSize({width: 520, height: 600});
+    const root = await openStudio(page);
+    const layout = root.locator(".sw-studio__layout");
+    const overflow = await layout.evaluate(element => ({
+        x: getComputedStyle(element).overflowX,
+        y: getComputedStyle(element).overflowY,
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+        clientHeight: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+    }));
+    expect(overflow.y).toBe("auto");
+    expect(overflow.scrollHeight).toBeGreaterThan(overflow.clientHeight);
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+
+    for (const selector of [".sw-studio__library", ".sw-studio__main", ".sw-studio__ai"]) {
+        const section = root.locator(selector);
+        await section.scrollIntoViewIfNeeded();
+        const intersectsScrollport = await section.evaluate(element => {
+            const scroll = element.closest(".sw-studio__layout");
+            const item = element.getBoundingClientRect();
+            const viewport = scroll.getBoundingClientRect();
+            return item.bottom > viewport.top + 1 && item.top < viewport.bottom - 1;
+        });
+        expect(intersectsScrollport, `${selector} can be reached in the main scroll area`).toBe(true);
+    }
+    const finalAIAction = root.locator(".sw-studio__ai button:visible").last();
+    await finalAIAction.scrollIntoViewIfNeeded();
+    const finalActionInScrollport = await finalAIAction.evaluate(element => {
+        const viewport = element.closest(".sw-studio__layout").getBoundingClientRect();
+        const item = element.getBoundingClientRect();
+        return item.bottom <= viewport.bottom + 1 && item.top >= viewport.top - 1;
+    });
+    expect(finalActionInScrollport, "the bottom of the AI rail stays reachable").toBe(true);
+    await page.screenshot({path: artifactPath("studio-narrow-layout.png")});
+
+    const touchContext = await browser.newContext({viewport: {width: 520, height: 700}, isMobile: true, hasTouch: true});
+    try {
+        const touchPage = await touchContext.newPage();
+        await openStudio(touchPage);
+        await touchPage.evaluate(() => Promise.all(document.getAnimations()
+            .filter(animation => animation.effect.getTiming().iterations !== Infinity)
+            .map(animation => animation.finished.catch(() => {}))));
+        const coarsePointer = await touchPage.evaluate(() => matchMedia("(pointer: coarse)").matches);
+        expect(coarsePointer, "mobile touch profile activates the coarse-pointer media query").toBe(true);
+        const filterMetrics = await touchPage.locator(".sw-studio__library-filter").evaluateAll(elements =>
+            elements.map(element => ({height: element.getBoundingClientRect().height,
+                minHeight: getComputedStyle(element).minHeight, transform: getComputedStyle(element).transform,
+                cssZoom: getComputedStyle(element).zoom})));
+        expect(filterMetrics.length).toBeGreaterThan(0);
+        expect(filterMetrics.every(metric => metric.height >= 44 && metric.minHeight === "44px" && metric.transform === "none"),
+            `measured filter metrics: ${JSON.stringify(filterMetrics)}`).toBe(true);
+    } finally {
+        await touchContext.close();
+    }
+});

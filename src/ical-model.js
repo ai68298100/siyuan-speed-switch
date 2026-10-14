@@ -36,6 +36,14 @@ function boundedText(value, max) {
     return value.length <= max ? value : value.slice(0, max);
 }
 
+function isValidIcalDateTimeParts(y, mo, d, h = 0, mi = 0, s = 0) {
+    if (![y, mo, d, h, mi, s].every(Number.isInteger) || mo < 0 || mo > 11
+        || h < 0 || h > 23 || mi < 0 || mi > 59 || s < 0 || s > 59) return false;
+    const leap = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+    const daysByMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return d >= 1 && d <= daysByMonth[mo];
+}
+
 // T-630-1：订阅配置归一化。URL 传输规则与 allowedConfiguredFeedUrl 对齐：
 // https（或 http+本机）、拒绝 URL 内嵌凭据。
 // T-6724：接受 webcal:// 分享链接（重写为 https——webcal 约定即 https 传输）；
@@ -92,6 +100,7 @@ function parseIcalDateValue(value) {
         const y = Number(dateOnly[1]);
         const mo = Number(dateOnly[2]) - 1;
         const d = Number(dateOnly[3]);
+        if (!isValidIcalDateTimeParts(y, mo, d)) return null;
         const ms = Date.UTC(y, mo, d, 0, 0, 0);
         return Number.isFinite(ms) ? ms : null;
     }
@@ -103,6 +112,7 @@ function parseIcalDateValue(value) {
         const h = Number(dateTime[4]);
         const mi = Number(dateTime[5]);
         const se = Number(dateTime[6]);
+        if (!isValidIcalDateTimeParts(y, mo, d, h, mi, se)) return null;
         const ms = dateTime[7] === "Z"
             ? Date.UTC(y, mo, d, h, mi, se)
             : new Date(y, mo, d, h, mi, se).getTime();
@@ -127,11 +137,13 @@ function parseIcalNaiveParts(value) {
     const raw = String(value || "").trim();
     const dateOnly = raw.match(/^(\d{4})(\d{2})(\d{2})Z?$/);
     if (dateOnly) {
-        return {y: Number(dateOnly[1]), mo: Number(dateOnly[2]) - 1, d: Number(dateOnly[3]), h: 0, mi: 0, s: 0, utc: /Z$/i.test(raw), dateOnly: true};
+        const parts = {y: Number(dateOnly[1]), mo: Number(dateOnly[2]) - 1, d: Number(dateOnly[3]), h: 0, mi: 0, s: 0, utc: /Z$/i.test(raw), dateOnly: true};
+        return isValidIcalDateTimeParts(parts.y, parts.mo, parts.d) ? parts : null;
     }
     const dateTime = raw.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z)?$/i);
     if (dateTime) {
-        return {y: Number(dateTime[1]), mo: Number(dateTime[2]) - 1, d: Number(dateTime[3]), h: Number(dateTime[4]), mi: Number(dateTime[5]), s: Number(dateTime[6]), utc: !!dateTime[7], dateOnly: false};
+        const parts = {y: Number(dateTime[1]), mo: Number(dateTime[2]) - 1, d: Number(dateTime[3]), h: Number(dateTime[4]), mi: Number(dateTime[5]), s: Number(dateTime[6]), utc: !!dateTime[7], dateOnly: false};
+        return isValidIcalDateTimeParts(parts.y, parts.mo, parts.d, parts.h, parts.mi, parts.s) ? parts : null;
     }
     return null;
 }

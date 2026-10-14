@@ -132,6 +132,54 @@ test("configured feed loader force refresh bypasses a fresh cache", async () => 
     const fresh = await network.loadConfiguredFeed(dailyHotUrl, {fetchImpl, now: 200, force: true});
     assert.equal(fresh.payload.n, 2);
 });
+test("same configured feed read is deduplicated while it is in flight", async () => {
+    let calls = 0;
+    let release;
+    const fetchImpl = () => {
+        calls += 1;
+        return new Promise((resolve) => { release = () => resolve(response('{"n":1}')); });
+    };
+    const first = network.loadConfiguredFeed(dailyHotUrl, {fetchImpl, now: 10});
+    const second = network.loadConfiguredFeed(dailyHotUrl, {fetchImpl, now: 10});
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(calls, 1);
+    release();
+    const results = await Promise.all([first, second]);
+    assert.deepEqual(results.map((item) => item.payload), [{n: 1}, {n: 1}]);
+});
+test("latest configured feed read owns the cache when older response arrives last", async () => {
+    let releaseOlder;
+    let olderSignal;
+    const olderFetch = (_url, init) => new Promise((resolve) => {
+        olderSignal = init.signal;
+        releaseOlder = () => resolve(response('{"n":1}'));
+    });
+    const older = network.loadConfiguredFeed(dailyHotUrl, {fetchImpl: olderFetch, now: 10, force: true, dedupe: false});
+    await new Promise((resolve) => setImmediate(resolve));
+    const newer = await network.loadConfiguredFeed(dailyHotUrl, {
+        fetchImpl: async () => response('{"n":2}'), now: 20, force: true, dedupe: false,
+    });
+    assert.deepEqual(newer.payload, {n: 2});
+    assert.equal(olderSignal.aborted, true, "a newer read aborts the older transport");
+    releaseOlder();
+    await assert.rejects(older, /superseded/);
+    const cached = await network.loadConfiguredFeed(dailyHotUrl, {
+        fetchImpl: async () => { throw new Error("cache should win"); }, now: 21,
+    });
+    assert.deepEqual(cached, {payload: {n: 2}, status: "cached", fetchedAt: 20});
+});
+test("clearing life widget caches prevents a pending response from repopulating them", async () => {
+    let release;
+    const pending = network.loadConfiguredFeed(dailyHotUrl, {
+        force: true,
+        fetchImpl: () => new Promise((resolve) => { release = () => resolve(response('{"n":1}')); }),
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    network.clearLifeWidgetCaches();
+    release();
+    await assert.rejects(pending, /superseded/);
+    assert.equal(network.lifeWidgetCacheSize(), 0);
+});
 test("ActivityWatch allowlist accepts the exact loopback query route", () => assert.equal(network.allowedActivityWatchUrl(activityWatchUrl), true));
 test("ActivityWatch allowlist accepts localhost HTTPS", () => assert.equal(network.allowedActivityWatchUrl("https://localhost:5600/api/0/query/"), true));
 test("ActivityWatch allowlist rejects remote services", () => assert.equal(network.allowedActivityWatchUrl("https://example.com/api/0/query/"), false));

@@ -192,11 +192,9 @@ kbd.k { display: inline-flex; align-items: center; justify-content: center; min-
 .batt .case { width: 52px; height: 26px; border: 2px solid currentColor; border-radius: 8px; padding: 3px; opacity: .9; }
 .batt .case i { display: block; height: 100%; width: 82%; border-radius: 4px; background: var(--sw-ok); }
 .batt .p { font-size: 20px; font-weight: 700; }
-/* ---------- 编辑态（抖动模式） ---------- */
-.tile.editing { cursor: grab; animation: wiggle 320ms ease-in-out infinite; border: 1.5px dashed color-mix(in srgb, var(--sw-accent) 45%, transparent); }
+/* ---------- 静态编辑态 ---------- */
+.tile.editing { cursor: grab; border: 1.5px dashed color-mix(in srgb, var(--sw-accent) 45%, transparent); }
 .tile.editing.mat-plain, .tile.editing.mat-dark, .tile.editing.mat-accent, .tile.editing.mat-vibrant { border-style: dashed; }
-@keyframes wiggle { 0%,100% { transform: rotate(-.35deg); } 50% { transform: rotate(.35deg); } }
-@media (prefers-reduced-motion: reduce) { .tile.editing { animation: none; } }
 .sizechip { position: absolute; left: 10px; bottom: 10px; display: inline-flex; background: rgb(20 23 31 / 78%);
   border-radius: 8px; padding: 2px; gap: 1px; backdrop-filter: blur(4px); }
 .sizechip span { color: rgb(255 255 255 / 72%); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
@@ -260,7 +258,7 @@ kbd.k { display: inline-flex; align-items: center; justify-content: center; min-
     <li><b>尺寸档位</b>（iOS S/M/L 语义）：S=3×2 一览型 · M=6×2 流式 · L=6×4 富内容 · XL=12×3 英雄位——映射到既有 12 列网格的跨度组合，不新增布局引擎；「最适合的尺寸」由组件类型声明默认档，用户在编辑态改档。</li>
     <li><b>材质系统</b>（iOS 深色/彩色小组件）：plain 常规面 / accent 主色渐变 / dark 深色舞台 / vibrant 内容驱动渐变（天气=天空）。每个组件按内容属性选定材质——时钟配 dark 舞台、打卡配 accent、天气配 vibrant，各模式组件都有适合自己的展示底色。材质经皮肤层（ADR 0073）作用域派生，不改组件选择器。</li>
     <li><b>查看态去 chrome</b>：卡片头（名称+徽标+更多点）→ 10px 微标头（识别名 + 状态 chip 悬浮显现），内容即卡片，信息密度让给内容本身。</li>
-    <li><b>编辑态 = 抖动模式</b>：查看/编辑两态彻底分离——编辑态全 chrome（虚线框 + 摇摆 + 尺寸角标 S/M/L/X + 删除钮 + 落点虚影），与 iOS jiggle mode 心智一致；尺寸切换从「拖边缘」升级为「点档位」，移动端同一交互不再需要上移/下移特化。</li>
+    <li><b>静态编辑态</b>：查看/编辑两态彻底分离——编辑态显示虚线框、尺寸角标 S/M/L/X、删除钮与落点虚影，不使用持续摇摆，避免干扰阅读；尺寸切换从「拖边缘」升级为「点档位」，移动端同一交互不再需要上移/下移特化。</li>
     <li><b>现代层次</b>：连续大圆角 18px（大面积极小数会显廉价）、双层柔影、hover 浮起 2px；数字全部 tabular-nums；动效只动 transform/opacity，时钟秒数沿用 T-6935 局部补丁通道。</li>
     <li><b>失败与新鲜度</b>：状态收进微标头 chip（stale「15 分钟前」）与失败 tile 描边 + 内联重试（延续 T-6879/T-6880 语义），不新增全局 toast。</li>
   </ol>
@@ -396,16 +394,16 @@ kbd.k { display: inline-flex; align-items: center; justify-content: center; min-
   </div>
 </section>
 
-<!-- ============ 屏② 编辑态（抖动模式） ============ -->
+<!-- ============ 屏② 静态编辑态 ============ -->
 <section class="screen">
-  <h2>② 编辑态 · 抖动模式 <span>全 chrome：虚线框 + 摇摆 + 尺寸角标 + 删除钮 + 落点虚影 + 失败 tile 内联重试</span></h2>
+  <h2>② 编辑态 · 静态反馈 <span>全 chrome：虚线框 + 尺寸角标 + 删除钮 + 落点虚影 + 失败 tile 内联重试</span></h2>
   <div class="frame">
     <div class="wbbar" style="border-bottom:1px solid var(--sw-line);">
       <span class="seg"><span>查看</span><span class="on">编辑布局</span></span>
       <span style="color:var(--sw-text-sub);font-size:11.5px;">拖动排列 · 点卡片左下角标切换尺寸 · 点 ✕ 移除</span>
       <span style="flex:1"></span>
-      <button class="btn quiet">恢复默认</button>
-      <button class="btn primary">完成</button>
+      <button class="btn quiet" title="仅补齐缺少的精选组件，保留已有布局。">补齐精选组件</button>
+      <button class="btn primary" aria-keyshortcuts="Escape" title="快捷键：Esc 完成编辑">完成</button>
     </div>
     <div class="wb-grid" style="grid-auto-rows:82px;">
       <div class="tile sz-xl mat-dark editing">

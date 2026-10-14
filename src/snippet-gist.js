@@ -85,7 +85,9 @@ async function readJsonResponse(response, signal) {
         cancelGistBody(response?.body);
         const code = response?.status === 401 ? "gist-auth-failed"
             : response?.status === 403 || response?.status === 429 ? "gist-access-denied"
-                : response?.status === 404 ? "gist-not-found" : "gist-request-failed";
+                : response?.status === 404 ? "gist-not-found"
+                    : response?.status >= 400 && response?.status < 500 && response?.status !== 408
+                        ? "gist-request-rejected" : "gist-request-failed";
         throw new Error(code);
     }
     const declaredSize = Number(response.headers?.get?.("Content-Length"));
@@ -173,7 +175,7 @@ function buildGistPublishBody(snippet, description) {
         files: {[buildGistFileName(snippet)]: {content: snippet.content}}};
 }
 
-async function requestGist(url, {token, method = "GET", body, fetchImpl = fetch, timeoutMs = 10000, signal} = {}) {
+async function requestGist(url, {token, method = "GET", body, fetchImpl = fetch, timeoutMs = 10000, signal, onWriteStart} = {}) {
     const controller = new AbortController();
     const init = buildGistRequest({token, method, body, signal: controller.signal});
     let timeoutId;
@@ -188,6 +190,7 @@ async function requestGist(url, {token, method = "GET", body, fetchImpl = fetch,
     try {
         const operation = (async () => {
             if (controller.signal.aborted) throw new Error("gist-cancelled");
+            if ((method === "POST" || method === "PATCH") && typeof onWriteStart === "function") onWriteStart();
             const response = await fetchImpl(url, init);
             const payload = await readJsonResponse(response, controller.signal);
             if (controller.signal.aborted) throw new Error("gist-cancelled");
@@ -196,7 +199,7 @@ async function requestGist(url, {token, method = "GET", body, fetchImpl = fetch,
         return await Promise.race([operation, interrupted]);
     } catch (error) {
         if (["gist-cancelled", "gist-timeout", "gist-auth-failed", "gist-access-denied", "gist-not-found",
-            "gist-request-failed", "gist-invalid-response", "gist-response-too-large", "gist-token-invalid",
+            "gist-request-rejected", "gist-request-failed", "gist-invalid-response", "gist-response-too-large", "gist-token-invalid",
             "gist-token-required", "gist-request-invalid"].includes(error?.message)) throw new Error(error.message);
         throw new Error("gist-request-failed");
     } finally {
@@ -226,12 +229,22 @@ async function publishGist({token, snippet, gistUrl = "", description = "", expe
         if (owned[0].filename !== filename) body.files[owned[0].filename] = null;
         delete body.public;
     }
-    const payload = await requestGist(parsed ? parsed.apiUrl : GIST_API_ORIGIN + "/gists",
-        {...options, token, method: parsed ? "PATCH" : "POST", body});
-    if (!isRecord(payload) || typeof payload.id !== "string" || !GIST_ID_RE.test(payload.id)) throw new Error("gist-invalid-response");
+    let payload;
+    try {
+        payload = await requestGist(parsed ? parsed.apiUrl : GIST_API_ORIGIN + "/gists",
+            {...options, token, method: parsed ? "PATCH" : "POST", body});
+    } catch (error) {
+        // The API explicitly rejects authentication/permission/not-found errors;
+        // transport failures, cancellation, server errors and unreadable responses
+        // cannot establish whether the write landed and must not be replayed blindly.
+        if (["gist-auth-failed", "gist-access-denied", "gist-not-found", "gist-request-rejected", "gist-token-invalid",
+            "gist-token-required", "gist-request-invalid"].includes(error?.message)) throw error;
+        throw new Error("gist-write-unknown");
+    }
+    if (!isRecord(payload) || typeof payload.id !== "string" || !GIST_ID_RE.test(payload.id)) throw new Error("gist-write-unknown");
     const url = normalizeSnippetGistUrl(payload.html_url);
     if (!url || parseGistUrl(url).id.toLowerCase() !== payload.id.toLowerCase()
-        || (parsed && parsed.id.toLowerCase() !== payload.id.toLowerCase())) throw new Error("gist-invalid-response");
+        || (parsed && parsed.id.toLowerCase() !== payload.id.toLowerCase())) throw new Error("gist-write-unknown");
     return {id: payload.id, url, description: buildGistDescription(payload.description), mode: parsed ? "update" : "create"};
 }
 

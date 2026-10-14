@@ -160,8 +160,10 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // 上限按同口径校准 73→74，包体预算另由 release-readiness 快照审查（ADR 0148）。
     // T-7233：notebook-load-ui 将失败/空列表/重试回执从配置表单抽出，实测 75；
     // 上限按同口径校准 74→75，包体预算仍由 release-readiness 快照独立审查（ADR 0160）。
+    // T-7260：request-service 收拢共享 deadline/去重/latest-wins，实测 76；
+    // 上限随 ADR 0188 校准 75→76。
     // 包体复核：raw 1024 KiB 自律线、zip 硬上限与压缩条目线均独立审查（见 release-readiness 快照）。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 75, `production graph grew to ${graph.size} modules; audited ceiling is 75`);
+    assert.ok(graph.size <= 76, `production graph grew to ${graph.size} modules; audited ceiling is 76`);
 });
