@@ -29,6 +29,8 @@ $sw-dur-panel: 260ms;
 $sw-dur-skeleton: 1s;
 $sw-ease: cubic-bezier(0.32, 0.72, 0, 1);
 $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
+$sw-z-base: 0;
+$sw-z-raised: 1;
 
 // ------------------------------------------------------------
 // 字号刻度（T-7206）。CSS 自定义属性、挂插件根容器——

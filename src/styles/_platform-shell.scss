@@ -346,7 +346,7 @@
     // T-7228：顶栏入口是连续操作区。保留自身命中层与触控语义，避免
     // 宿主按钮皮肤/透明边界让用户必须反复移动鼠标才能得到反馈。
     position: relative;
-    z-index: 0;
+    z-index: $sw-z-base;
     appearance: none;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
@@ -383,7 +383,7 @@
 .sw-platform-surface-nav__item:focus-visible {
     outline: 2px solid var(--sw-platform-accent);
     outline-offset: 2px;
-    z-index: 1;
+    z-index: $sw-z-raised;
 }
 
 // Context and state ----------------------------------------------------------

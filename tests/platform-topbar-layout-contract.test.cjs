@@ -22,6 +22,15 @@ test('T-7232 surface entries keep a stable pointer target', () => {
     assert.equal(declaresIn(css, '.sw-platform-surface-nav__item', /flex:\s*1 1 0/, base), true);
 });
 
+test('T-7264 platform navigation consumes shared layer tokens', () => {
+    const base = {topLevel: true};
+    assert.equal(declaresIn(css, '.sw-platform-surface-nav__item', /z-index:\s*\$sw-z-base/, base), true);
+    assert.equal(declaresIn(css, '.sw-platform-surface-nav__item:focus-visible', /z-index:\s*\$sw-z-raised/, base), true);
+    const withoutBase = css.replace('z-index: $sw-z-base;', '');
+    assert.equal(declaresIn(withoutBase, '.sw-platform-surface-nav__item', /z-index:\s*\$sw-z-base/, base), false,
+        'removing base layer token must fail');
+});
+
 test('T-7232 compact viewports give navigation its own row and keep close controls reachable', () => {
     assert.equal(declaresIn(css, '.sw-platform-header', /grid-template-areas:\s*"brand actions" "nav nav"/, {atRule: /max-width:\s*960px/}), true);
     assert.equal(declaresIn(css, '.sw-platform-surface-nav__icon', /display:\s*none/, {atRule: /max-width:\s*560px/}), true);
