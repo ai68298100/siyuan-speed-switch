@@ -114,7 +114,8 @@
     "T-7267",
     "T-7268",
     "T-7269",
-    "T-7270"
+    "T-7270",
+    "T-7271"
   ],
   "tasks": [
     {
@@ -3164,6 +3165,26 @@
         ".artifacts/T-7270-recent-edits-scale.json",
         "src/index.ts",
         "src/kernel-widget-model.js",
+        "docs/component-availability-audit.md"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7271",
+      "title": "标签层级路径与原生入口核验",
+      "status": "completed",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7144"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0196-t7271-tag-path-host-boundary.md",
+        ".artifacts/T-7271-tag-path-probe.json",
+        "src/kernel-widget-model.js",
+        "src/index.ts",
         "docs/component-availability-audit.md"
       ],
       "next": "T-7144"
