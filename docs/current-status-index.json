@@ -115,7 +115,8 @@
     "T-7268",
     "T-7269",
     "T-7270",
-    "T-7271"
+    "T-7271",
+    "T-7272"
   ],
   "tasks": [
     {
@@ -3185,6 +3186,26 @@
         ".artifacts/T-7271-tag-path-probe.json",
         "src/kernel-widget-model.js",
         "src/index.ts",
+        "docs/component-availability-audit.md"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7272",
+      "title": "文档关系摘要真实宿主边界核验",
+      "status": "completed",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7144"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0197-t7272-relations-host-boundary.md",
+        ".artifacts/T-7272-relations-host-probe.json",
+        "src/index.ts",
+        "src/kernel-widget-model.js",
         "docs/component-availability-audit.md"
       ],
       "next": "T-7144"
