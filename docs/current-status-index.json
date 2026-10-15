@@ -113,7 +113,8 @@
     "T-7266",
     "T-7267",
     "T-7268",
-    "T-7269"
+    "T-7269",
+    "T-7270"
   ],
   "tasks": [
     {
@@ -3144,6 +3145,26 @@
         "tests/e2e/global-setup.mjs",
         "scripts/e2e/host-scale-probe.mjs",
         "docs/release-readiness.md"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7270",
+      "title": "近期编辑真实宿主规模观测",
+      "status": "completed",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7144"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0195-t7270-recent-edits-host-scale.md",
+        ".artifacts/T-7270-recent-edits-scale.json",
+        "src/index.ts",
+        "src/kernel-widget-model.js",
+        "docs/component-availability-audit.md"
       ],
       "next": "T-7144"
     }

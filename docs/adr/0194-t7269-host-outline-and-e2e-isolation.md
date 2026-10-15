@@ -23,4 +23,4 @@ T-7144 的模型和接线测试无法证明真实思源返回形状。隔离思�
 - 大纲回归：`tests/agent-outline.test.cjs` 新增真实响应形状；定向套件 75/75 通过。将生产展平逻辑临时还原为只读 `name` 后，该命名测试按预期失败，恢复后源文件 SHA-256 保持一致。
 - 端口保护：`tests/e2e-port-guard.test.cjs` 1/1；覆盖占用端口、错误 PID 和启动后唯一归属。临时移除占用检查后具名测试按预期失败，随后恢复源码。
 - 配套验证：`pnpm exec tsc --noEmit`、`pnpm run build`、`pnpm run release:check`、`node scripts/current-status-audit.cjs`、`git diff --check` 均通过；工作树快照为 `dist/index.js` 1142825 B、`package.zip` 591540 B。
-- 当前仍没有真人使用频率证据；T-7144 的“高价值”排序仍需 T-7168 或问题记录支持。近期编辑大库性能、旧宿主字段兼容和标签精确定位继续保持待证，不因一次隔离样本销号。
+- 当前仍没有真人使用频率证据；T-7144 的“高价值”排序仍需 T-7168 或问题记录支持。近期编辑大库规模观测已由 [ADR 0195](0195-t7270-recent-edits-host-scale.md) 单独记录；旧宿主字段兼容和标签精确定位继续保持待证，不因隔离样本销号。
