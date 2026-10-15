@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-15",
+  "updated": "2026-10-16",
   "currentTask": "T-7144",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
@@ -116,7 +116,10 @@
     "T-7269",
     "T-7270",
     "T-7271",
-    "T-7272"
+    "T-7272",
+    "T-7273",
+    "T-7274",
+    "T-7275"
   ],
   "tasks": [
     {
@@ -3209,6 +3212,78 @@
         "docs/component-availability-audit.md"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7273",
+      "title": "第二面板紧凑小组件与 Obsidian 参考再调研",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "research",
+      "dependsOn": [],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/research-second-panel-2026-10-15.md",
+        "docs/adr/0198-t7273-second-panel-information-architecture.md",
+        "src/second-panel-ui.ts",
+        "src/styles/_05-settings-widgets.scss",
+        "tests/e2e/workbench-information.spec.mjs",
+        ".artifacts/e2e/workbench-information.png",
+        ".artifacts/e2e/workbench-unavailable-wide.png",
+        "docs/adr/0199-t7273-compact-widgets.md",
+        "docs/design/second-panel-compact-widget-prototype-2026-10-16.html"
+      ],
+      "next": "T-7274"
+    },
+    {
+      "id": "T-7274",
+      "title": "第二面板紧凑小组件尺寸对照原型与候选实现",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7273"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/research-second-panel-2026-10-15.md",
+        "docs/adr/0199-t7273-compact-widgets.md",
+        "docs/adr/0198-t7273-second-panel-information-architecture.md",
+        "docs/adr/0200-t7274-candidate-production-implementation.md",
+        "docs/design/second-panel-compact-widget-prototype-2026-10-16.html",
+        "src/index.ts",
+        "src/constants.ts",
+        "src/second-panel-ui.ts",
+        "src/styles/_12-r54-surface-adapter.scss",
+        "tests/compact-workbench-style-contract.test.cjs",
+        "tests/kernel-widgets-wiring.test.cjs",
+        "tests/compact-workbench-style-contract.test.cjs",
+        ".artifacts/e2e-compact-host-7/compact-host-probe.png",
+        ".artifacts/e2e-compact-host-narrow-2/compact-host-700.png",
+        ".artifacts/e2e-compact-host-narrow-2/compact-host-375.png"
+      ],
+      "next": "T-7275"
+    },
+    {
+      "id": "T-7275",
+      "title": "第二面板候选实现视觉回归与兼容收口",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "verification",
+      "dependsOn": [
+        "T-7274"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0200-t7274-candidate-production-implementation.md",
+        ".artifacts/e2e-compact-host-7/compact-host-probe.png",
+        ".artifacts/e2e-compact-host-narrow-2/compact-host-narrow-probe.json",
+        "package.zip",
+        "README.md"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
@@ -3216,6 +3291,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591328 bytes is below the 591872-byte repository budget by 544 bytes; v0.47.2 Release asset and current package.zip match"
+    "packageBudget": "passed: 591173 bytes is below the 591872-byte repository budget by 699 bytes; current candidate package.zip is within the repository budget"
   }
 }

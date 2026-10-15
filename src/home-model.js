@@ -476,7 +476,8 @@ const HOME_TILE_DEFAULT_SIZES = {
     // T-6980 / T-6971 批次⑧：导航与历史组件按规格卡声明默认档。
     'recent-documents': 'wide',
     'pinned-docs': 'medium',
-    favorites: 'medium',
+    // T-7274：首次紧凑工作台使用小卡，用户仍可在商店/编辑态改回 medium。
+    favorites: 'small',
     tags: 'small',
     bookmarks: 'small',
     'document-sets': 'medium',

@@ -897,10 +897,11 @@ const DEFAULT_SETTINGS: ISwSettings = {
     panelSizeMode: "fullscreen", // 面板尺寸模式：fullscreen=全屏（ADR 0080 默认，三表面内容优先）/ adaptive=屏幕比例自适应 / custom=固定尺寸
     panelScale: PANEL_SCALE_DEFAULT, // 自适应比例（百分比，相对当前可视区宽高）
     groupBy: TAB_GROUP_MODE_DEFAULT, // 列表分组：默认按笔记本
-    homeSizeMode: "fullscreen", // 组件面板尺寸模式：全屏（ADR 0080 默认，组件内容充分展示）
-    homePalette: "auto",     // 组件卡片强调色：自动多彩 / 柔和 / 单色
-    homeWidth: 960,          // 组件面板固定宽度
-    homeHeight: 720,         // 组件面板固定高度
+    // T-7274 / ADR 0199：新装工作台先以紧凑小组件窗口打开；已有设置中的显式值不迁移。
+    homeSizeMode: "custom",
+    homePalette: "soft",    // 组件卡片强调色：自动多彩 / 柔和 / 单色
+    homeWidth: 920,          // 紧凑小组件窗口固定宽度
+    homeHeight: 390,         // 紧凑小组件窗口固定高度
     studioSizeMode: "fullscreen", // 片段实验室尺寸模式：全屏（ADR 0080 默认）/ 自适应 / 固定（T-6986）
     studioWidth: 1120,       // 片段实验室固定宽度（编辑/预览/AI 三栏需要更宽）
     studioHeight: 800,       // 片段实验室固定高度

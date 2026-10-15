@@ -105,6 +105,32 @@ test('panel size mode accepts known values and rejects unknown ones', () => {
     assert.equal(normalizeSettings({fullscreen: false}, options).panelSizeMode, 'adaptive');
 });
 
+test('compact workbench defaults apply to fresh settings while explicit saved preferences survive', () => {
+    const compactDefaults = {
+        ...defaults,
+        homeSizeMode: 'custom',
+        homeWidth: 920,
+        homeHeight: 390,
+        homePalette: 'soft',
+    };
+    const compactOptions = {
+        ...options,
+        defaults: compactDefaults,
+        ranges: {...options.ranges, homeWidth: [400, 1600], homeHeight: [300, 1200]},
+    };
+    const fresh = normalizeSettings({}, compactOptions);
+    assert.equal(fresh.homeSizeMode, 'custom');
+    assert.equal(fresh.homeWidth, 920);
+    assert.equal(fresh.homeHeight, 390);
+    assert.equal(fresh.homePalette, 'soft');
+
+    const saved = normalizeSettings({homeSizeMode: 'fullscreen', homeWidth: 1180, homeHeight: 860, homePalette: 'mono'}, compactOptions);
+    assert.equal(saved.homeSizeMode, 'fullscreen');
+    assert.equal(saved.homeWidth, 1180);
+    assert.equal(saved.homeHeight, 860);
+    assert.equal(saved.homePalette, 'mono');
+});
+
 test('resolvePanelSize computes adaptive, custom and fullscreen sizes', () => {
     const viewport = {width: 2000, height: 1000, minWidth: 420, minHeight: 420};
     assert.deepEqual(resolvePanelSize({panelSizeMode: 'fullscreen'}, viewport), {width: 2000, height: 1000});

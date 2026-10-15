@@ -16,7 +16,7 @@ const homeStyleSource = readSourceText(path.join(root, 'src', 'styles', '_07-sid
 const NAVIGATION_DEFAULTS = {
     'recent-documents': 'wide',
     'pinned-docs': 'medium',
-    favorites: 'medium',
+    favorites: 'small',
     tags: 'small',
     bookmarks: 'small',
     'document-sets': 'medium',

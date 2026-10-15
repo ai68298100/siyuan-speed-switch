@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>第二面板 · 紧凑小组件尺寸对照</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, "Segoe UI", "Microsoft YaHei UI", sans-serif;
+      color: #34332f;
+      background: #e9e7e1;
+      font-size: 13px;
+      --muted: #817d74;
+      --line: #e8e5de;
+      --paper: #fffefa;
+      --green: #789b77;
+      --coral: #d78b78;
+      --gap: 9px;
+      --row: 96px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, #efede7, #e5e2da);
+    }
+    button { color: inherit; font: inherit; }
+    .panel {
+      width: min(920px, 76vw);
+      max-height: min(640px, 72vh);
+      overflow: auto;
+      border: 1px solid rgba(255,255,255,.82);
+      border-radius: 12px;
+      background: var(--paper);
+      box-shadow: 0 8px 24px rgba(54,48,38,.11), 0 1px 3px rgba(54,48,38,.05);
+    }
+    .panel__head {
+      height: 40px;
+      padding: 0 13px 0 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel__title { margin: 0; font-size: 12px; font-weight: 650; }
+    .add {
+      width: 25px; height: 25px; border: 0; border-radius: 7px;
+      background: transparent; color: var(--muted); font-size: 18px; cursor: pointer;
+    }
+    .add:hover { background: #f4f2ec; color: #44423c; }
+    .widgets {
+      padding: 12px 14px 14px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-auto-rows: var(--row);
+      gap: var(--gap);
+      align-content: start;
+    }
+    .widget {
+      min-width: 0; overflow: hidden; padding: 9px 10px;
+      border: 1px solid #ebe8e1; border-radius: 8px; background: #fcfbf8;
+    }
+    .widget__head {
+      min-height: 16px; margin-bottom: 5px; display: flex; align-items: center; gap: 6px;
+      color: #55534d; font-size: 10px; font-weight: 650;
+    }
+    .widget__dot { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--green); }
+    .widget__meta { margin-left: auto; color: #99958b; font-size: 9px; font-weight: 450; }
+    .clock { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .clock__time { color: #48463f; font-size: 25px; font-weight: 650; letter-spacing: .025em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .clock__date { color: var(--muted); font-size: 9px; }
+    .heatmap { grid-column: 2 / span 2; grid-row: 1; }
+    .heatmap__cells { display: grid; grid-template-columns: repeat(28, minmax(0, 1fr)); gap: 3px; margin-top: 9px; }
+    .heatmap__cells i { height: 7px; border-radius: 2px; background: #e5e9df; }
+    .heatmap__cells i:nth-child(7n+2), .heatmap__cells i:nth-child(13n+4) { background: #b7ceb0; }
+    .heatmap__cells i:nth-child(11n+5) { background: #83a982; }
+    .heatmap__months { margin-top: 5px; display: flex; justify-content: space-between; color: #99958b; font-size: 8px; }
+    .countdown { grid-column: 4; grid-row: 1 / span 2; display: flex; flex-direction: column; }
+    .countdown__body { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+    .countdown__number { color: #b97c68; font-size: 33px; font-weight: 650; line-height: 1; }
+    .countdown__label { margin-top: 5px; color: #77736b; font-size: 10px; }
+    .recent { grid-column: 1 / span 2; grid-row: 2 / span 2; }
+    .recent__list { display: grid; gap: 8px; margin-top: 9px; }
+    .recent__item { min-width: 0; display: flex; align-items: center; gap: 7px; color: #4e4c45; font-size: 10px; }
+    .recent__item::before { content: ""; width: 4px; height: 4px; flex: none; border-radius: 50%; background: #c9a88a; }
+    .recent__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .recent__time { margin-left: auto; color: #99958b; font-size: 9px; white-space: nowrap; }
+    .calendar { grid-column: 3; grid-row: 2 / span 2; }
+    .calendar__month { margin: 8px 0 6px; display: flex; justify-content: space-between; color: #514f48; font-size: 10px; font-weight: 650; }
+    .calendar__days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; }
+    .calendar__days span { min-height: 17px; display: grid; place-items: center; border-radius: 4px; color: #66635b; font-size: 8px; }
+    .calendar__days .weekday { color: #a09b90; font-size: 7px; }
+    .calendar__days .today { background: #ead2c7; color: #744f42; font-weight: 700; }
+    .calendar__note { margin-top: 6px; color: #99958b; font-size: 8px; }
+    @media (max-width: 900px) {
+      .panel { width: 92vw; max-height: 82vh; }
+      .widgets { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 96px; }
+      .clock { grid-column: 1; grid-row: 2; }
+      .heatmap { grid-column: 1 / span 2; grid-row: 1; }
+      .countdown { grid-column: 2; grid-row: 2 / span 2; }
+      .recent { grid-column: 1 / span 2; grid-row: 4 / span 2; }
+      .calendar { grid-column: 1 / span 2; grid-row: 6 / span 2; }
+    }
+    @media (max-width: 560px) {
+      body { place-items: start center; background: #f5f3ee; }
+      .panel { width: 100vw; max-height: 100dvh; min-height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+      .panel__head { height: 42px; padding-inline: 12px; }
+      .widgets { padding: 10px 11px 16px; gap: 8px; }
+      .widget { padding: 8px; }
+      .heatmap__cells { gap: 2px; }
+      .heatmap__cells i { height: 6px; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark; color: #e8e5dd; background: #242522;
+        --muted: #aaa69c; --line: #3a3b36; --paper: #2b2c29;
+        --green: #8bab84; --coral: #d89a86;
+      }
+      body { background: linear-gradient(145deg, #20211f, #292a27); }
+      .panel { border-color: #3b3c36; box-shadow: 0 8px 24px rgba(0,0,0,.24); }
+      .widget { border-color: #41423b; background: #30312d; }
+      .widget__head, .clock__time, .recent__item, .calendar__month { color: #e4e0d7; }
+      .widget__meta, .recent__time, .clock__date, .calendar__note { color: #aaa69c; }
+      .heatmap__cells i { background: #414a3f; }
+      .heatmap__cells i:nth-child(7n+2), .heatmap__cells i:nth-child(13n+4) { background: #647d5d; }
+      .heatmap__cells i:nth-child(11n+5) { background: #86a47a; }
+      .calendar__days span { color: #d0ccc2; }
+      .calendar__days .weekday { color: #aaa69c; }
+      .calendar__days .today { background: #67493e; color: #f1d4c8; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="panel" aria-label="第二面板紧凑小组件原型">
+    <header class="panel__head">
+      <h1 class="panel__title">小组件</h1>
+      <button class="add" type="button" aria-label="添加小组件" title="添加小组件">+</button>
+    </header>
+    <section class="widgets" aria-label="不同尺寸的小组件">
+      <article class="widget clock">
+        <div class="widget__head"><i class="widget__dot"></i>时钟</div>
+        <div class="clock__time">09:41</div>
+        <div class="clock__date">周五 · 10月16日</div>
+      </article>
+      <article class="widget heatmap">
+        <div class="widget__head"><i class="widget__dot"></i>写作记录 <span class="widget__meta">近一年</span></div>
+        <div class="heatmap__cells" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="heatmap__months"><span>11月</span><span>2月</span><span>5月</span><span>8月</span><span>10月</span></div>
+      </article>
+      <article class="widget countdown">
+        <div class="widget__head"><i class="widget__dot" style="background:var(--coral)"></i>倒数日</div>
+        <div class="countdown__body"><strong class="countdown__number">12</strong><span class="countdown__label">天后 · 项目交付</span></div>
+      </article>
+      <article class="widget recent">
+        <div class="widget__head"><i class="widget__dot" style="background:#c9a88a"></i>近期文档 <span class="widget__meta">最近打开</span></div>
+        <div class="recent__list">
+          <div class="recent__item"><span class="recent__name">小组件交互草稿</span><time class="recent__time">09:32</time></div>
+          <div class="recent__item"><span class="recent__name">本周研究记录与待办</span><time class="recent__time">昨天</time></div>
+          <div class="recent__item"><span class="recent__name">产品体验复盘</span><time class="recent__time">周一</time></div>
+          <div class="recent__item"><span class="recent__name">Obsidian 插件收集</span><time class="recent__time">周日</time></div>
+        </div>
+      </article>
+      <article class="widget calendar">
+        <div class="widget__head"><i class="widget__dot"></i>日历</div>
+        <div class="calendar__month"><span>2026年10月</span><span aria-hidden="true">‹　›</span></div>
+        <div class="calendar__days" aria-label="十月日历">
+          <span class="weekday">一</span><span class="weekday">二</span><span class="weekday">三</span><span class="weekday">四</span><span class="weekday">五</span><span class="weekday">六</span><span class="weekday">日</span>
+          <span></span><span></span><span></span><span>1</span><span>2</span><span>3</span><span>4</span>
+          <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span>
+          <span>12</span><span>13</span><span>14</span><span>15</span><span class="today">16</span><span>17</span><span>18</span>
+          <span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span><span>25</span>
+          <span>26</span><span>27</span><span>28</span><span>29</span><span>30</span><span>31</span><span></span>
+        </div>
+        <div class="calendar__note">今天 · 1 项安排</div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

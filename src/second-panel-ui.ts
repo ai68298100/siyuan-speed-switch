@@ -154,6 +154,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             return;
         }
         root.dataset.swSurface = "workbench";
+        root.classList.toggle("sw-home--compact", !fullscreenMode);
         const dialogContainer = dialog.element.querySelector<HTMLElement>(".b3-dialog__container");
         const isTopmostDialog = () => {
             if (!dialogContainer?.isConnected || !root.isConnected || this.workbenchDialog !== dialog) return false;
@@ -1208,13 +1209,32 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
 
             body.appendChild(grid);
 
-            // 首次打开播种默认实例（最近打开 + 收藏，中号），之后删除即保留删除
+            // 首次打开播种紧凑默认实例（近期文档宽卡 + 三张小卡），之后删除即保留删除。
             if (state.instances.length === 0 && !editing) {
                 const seeded = this.getHomeState();
-                ["recent-documents", "favorites"].forEach((moduleId) => {
+                let seedX = 0;
+                let seedY = 0;
+                let seedRowHeight = 0;
+                ["recent-documents", "favorites", "today-journal", "today-tasks"].forEach((moduleId) => {
                     if (!catalogIds.has(moduleId)) return;
+                    const definition = defs.get(moduleId);
+                    const supported: string[] = Array.isArray(definition?.sizes) && definition.sizes.length > 0 ? definition.sizes : ["medium"];
+                    const sizeKey = resolveHomeTileDefaultSize(moduleId, supported, "small");
+                    const preset = HOME_WIDGET_SIZES[(sizeKey || "small") as HomeWidgetSize] || HOME_WIDGET_SIZES.small;
+                    if (seedX > 0 && seedX + preset.w > 12) {
+                        seedX = 0;
+                        seedY += seedRowHeight;
+                        seedRowHeight = 0;
+                    }
                     (seeded.instances as Array<any>).push({instanceId: moduleId, moduleId, enabled: true, config: {}});
-                    ((seeded.layouts[device] || []) as Array<any>).push({instanceId: moduleId, x: 0, y: 0, w: 4, h: 4, collapsed: false, size: "medium"});
+                    ((seeded.layouts[device] || []) as Array<any>).push({instanceId: moduleId, x: seedX, y: seedY, w: preset.w, h: preset.h, collapsed: false, size: sizeKey});
+                    seedX += preset.w;
+                    seedRowHeight = Math.max(seedRowHeight, preset.h);
+                    if (seedX >= 12) {
+                        seedX = 0;
+                        seedY += seedRowHeight;
+                        seedRowHeight = 0;
+                    }
                 });
                 if ((seeded.instances as Array<any>).length > 0) {
                     this.saveHomeState(seeded);

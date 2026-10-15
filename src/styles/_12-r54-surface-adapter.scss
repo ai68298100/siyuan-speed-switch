@@ -291,3 +291,91 @@
     .sw-home-store__card,
     .sw-studio__button { transition: none !important; }
 }
+
+// T-7274：只有非全屏工作台启用轻量小组件密度。
+// 该覆盖位于 R54 最终皮肤层之后的层叠位置，避免 11-ui-polish 把卡片重新放大。
+.sw-home.sw-home--compact {
+    padding: var(--sw-space-md, 8px) var(--sw-space-lg, 12px);
+
+    // 紧凑桌面窗口只有约 920px 宽；平台头部保持一行，避免导航
+    // 自己占掉一整行，把组件挤成“只剩标题”的大卡片。
+    > .sw-platform-chrome .sw-platform-header {
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 320px) minmax(0, 1fr);
+        grid-template-areas: "brand nav actions";
+        gap: var(--sw-space-sm, 6px);
+        min-height: var(--sw-control-h-lg, 48px);
+        padding: var(--sw-space-sm, 6px) 10px;
+    }
+    > .sw-platform-chrome .sw-platform-surface-nav { padding: var(--sw-space-2xs, 2px); }
+    > .sw-platform-chrome .sw-platform-surface-nav__item {
+        min-height: var(--sw-control-h-sm, 28px);
+        gap: var(--sw-space-xs, 4px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
+    }
+    > .sw-platform-chrome .sw-platform-surface-nav__hint,
+    > .sw-platform-chrome .sw-platform-header__close-hint { display: none; }
+    > .sw-platform-chrome .sw-platform-context {
+        min-height: var(--sw-control-h-sm, 28px);
+        padding: var(--sw-space-xs, 4px) 10px;
+    }
+    > .sw-platform-chrome .sw-platform-context__hint { display: none; }
+
+    .sw-home__body { padding: 0 var(--sw-space-md, 8px); }
+    .sw-home__grid {
+        gap: var(--sw-space-sm, 6px);
+        grid-auto-rows: auto;
+    }
+    .sw-home__bar { min-height: var(--sw-control-h-sm, 28px); margin-bottom: var(--sw-space-xs, 4px); }
+
+    .sw-home__cell {
+        padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
+        border-radius: $sw-radius-md;
+        max-height: 68px;
+        overflow: auto;
+        grid-row: auto !important;
+        backdrop-filter: none;
+        box-shadow: none;
+
+        &:hover {
+            transform: none;
+        }
+    }
+
+    .sw-home__cell-body { padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px); }
+    .sw__home-module-header {
+        min-height: 24px;
+        margin-bottom: var(--sw-space-xs, 4px);
+        gap: var(--sw-space-xs, 4px);
+        padding-block: 0;
+    }
+    .sw__home-module-header .sw__home-module-icon { width: 22px; height: 22px; }
+    .sw__home-module-header .sw__home-module-title { font-size: var(--sw-font-sm, 12px); }
+    .sw__home-module-header .sw__home-module-config { width: 18px; height: 18px; }
+    .sw__home-module-item-action {
+        min-height: 24px;
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-xs, 4px);
+        font-size: var(--sw-font-sm, 12px);
+        line-height: var(--sw-leading-ui, 1.4);
+    }
+    .sw__home-module-status--empty,
+    .sw__home-module-status--error { min-height: var(--sw-control-h-sm, 28px); padding-block: var(--sw-space-2xs, 2px); }
+    .sw-home__quick-actions {
+        display: none;
+    }
+    .sw-home__receipt {
+        min-height: var(--sw-control-h-sm, 28px);
+        padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
+    }
+}
+
+// 窄紧凑工作台恢复两行头部；底部健康回执保留状态语义，头部隐藏重复徽标。
+@container sw-platform (max-width: 760px) {
+    .sw-home.sw-home--compact > .sw-platform-chrome .sw-platform-header {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "brand actions" "nav nav";
+        gap: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
+        min-height: 0;
+        padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
+    }
+    .sw-home.sw-home--compact > .sw-platform-chrome .sw-platform-status { display: none; }
+}
