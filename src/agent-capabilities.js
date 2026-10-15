@@ -1243,6 +1243,15 @@ function sanitizeJournalAppend(value) {
     return cleaned.slice(0, 512);
 }
 
+function decodeOutlineTitle(value) {
+    return asText(value, 200).replace(/&(nbsp|amp|lt|gt|quot|#39);|&#(\d+);|&#x([0-9a-f]+);/gi, (entity, named, decimal, hexadecimal) => {
+        if (named) return ({nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'"})[named.toLowerCase()] || entity;
+        const point = decimal ? Number(decimal) : Number.parseInt(hexadecimal, 16);
+        if (!Number.isInteger(point) || point < 0 || point > 0x10ffff || (point >= 0xd800 && point <= 0xdfff)) return "�";
+        return String.fromCodePoint(point);
+    }).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 // 文档大纲扁平化：内核返回嵌套 Path（id/name/depth/blocks），按上限展平为有界列表。
 // 只保留非空 id 与标题，depth 限制在 0–8，供 Agent 按标题块 ID 定位章节。
 function flattenOutline(nodes, limit = MAX_OUTLINE_ITEMS, depth = 0, out = []) {
@@ -1251,7 +1260,9 @@ function flattenOutline(nodes, limit = MAX_OUTLINE_ITEMS, depth = 0, out = []) {
         if (out.length >= limit) break;
         if (!node || typeof node !== "object") continue;
         const id = asText(node.id, 64);
-        const title = asText(node.name, 200);
+        // SiYuan 3.8.x returns the root heading in `name`, nested headings in
+        // `content`, and HTML-escaped title text in both fields.
+        const title = decodeOutlineTitle(node.name || node.content);
         if (!id || !title) continue;
         const level = Number.isFinite(node.depth) ? node.depth : depth;
         out.push({id, title, depth: Math.min(8, Math.max(0, Math.trunc(level)))});

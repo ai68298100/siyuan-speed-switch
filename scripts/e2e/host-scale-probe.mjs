@@ -12,14 +12,16 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import {execFileSync} from "node:child_process";
 import {
+    assertPortOwnedByChild,
+    assertPortUnoccupied,
     e2eConfig,
     readAccessToken,
     resolveInstall,
     SiyuanClient,
     startKernel,
     stopKernel,
+    waitForPortOwnedByChild,
 } from "./lib.mjs";
 
 const PERSONAL_PORT = 6806;
@@ -56,30 +58,6 @@ function assertMarkedWorkspace(cfg) {
     return {created: false, marker};
 }
 
-function listeningOwners(port) {
-    let output;
-    try {
-        output = execFileSync("netstat", ["-ano", "-p", "tcp"], {encoding: "utf8", windowsHide: true});
-    } catch (error) {
-        throw new Error(`无法读取端口监听者，拒绝继续：${error?.message || error}`);
-    }
-    const owners = new Set();
-    const portPattern = new RegExp(`(?:127\\.0\\.0\\.1|0\\.0\\.0\\.0|\\[?::\\]?|\\*):${port}\\b`);
-    for (const line of String(output).split(/\r?\n/)) {
-        if (!portPattern.test(line) || !/\bLISTEN(?:ING)?\b/i.test(line)) continue;
-        const pid = line.trim().match(/(\d+)\s*$/)?.[1];
-        if (pid) owners.add(Number(pid));
-    }
-    return owners;
-}
-
-function assertPortOwnedByChild(port, childPid) {
-    const owners = listeningOwners(port);
-    if (!owners.has(Number(childPid)) || owners.size !== 1) {
-        throw new Error(`端口 ${port} 监听者不属于本轮唯一内核进程：期望 PID ${childPid}，实际 ${[...owners].join(", ") || "无"}`);
-    }
-}
-
 function readFileTree(config) {
     const fileTree = config?.conf?.fileTree || config?.fileTree;
     if (!fileTree || typeof fileTree !== "object" || Array.isArray(fileTree)) {
@@ -103,10 +81,7 @@ function cloneFileTree(fileTree) {
 
 async function main() {
     const cfg = requireExplicitIsolation();
-    const occupiedBeforeStart = listeningOwners(cfg.port);
-    if (occupiedBeforeStart.size) {
-        throw new Error(`拒绝启动：端口 ${cfg.port} 已被占用（PID ${[...occupiedBeforeStart].join(", ")}），不会向该服务发送退出或配置请求`);
-    }
+    assertPortUnoccupied(cfg.port);
     const workspaceState = assertMarkedWorkspace(cfg);
     const install = resolveInstall();
     const running = startKernel({kernel: install.kernel, appDir: install.appDir, workspace: cfg.workspace, port: cfg.port});
@@ -124,6 +99,7 @@ async function main() {
         values: [],
     };
     try {
+        await waitForPortOwnedByChild(cfg.port, running.child.pid);
         await client.waitForBoot(running.lines);
         assertPortOwnedByChild(cfg.port, running.child.pid);
         ownsPort = true;

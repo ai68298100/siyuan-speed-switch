@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import {spawn} from "node:child_process";
+import {execFileSync, spawn} from "node:child_process";
 
 export const PLUGIN_NAME = "siyuan-speed-switch";
 export const STORAGE_DIR = `storage/petal/${PLUGIN_NAME}`;
@@ -19,6 +19,68 @@ export function e2eConfig() {
     const pluginName = process.env.SWSS_E2E_PLUGIN_NAME || PLUGIN_NAME;
     const pluginSource = process.env.SWSS_E2E_PLUGIN_SOURCE || "";
     return {workspace, host, port, baseURL: `http://${host}:${port}`, artifactDir, pluginName, pluginSource};
+}
+
+export function listeningOwners(port) {
+    let output;
+    try {
+        if (process.platform === "win32") {
+            output = execFileSync("netstat", ["-ano", "-p", "tcp"], {encoding: "utf8", windowsHide: true});
+        } else {
+            try {
+                output = execFileSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"], {encoding: "utf8"});
+            } catch {
+                output = execFileSync("ss", ["-ltnp"], {encoding: "utf8"});
+            }
+        }
+    } catch (error) {
+        throw new Error(`无法确认端口 ${port} 的监听进程，拒绝启动 E2E 内核：${error?.message || error}`);
+    }
+    const owners = new Set();
+    if (process.platform === "win32") {
+        const portPattern = new RegExp(`(?:127\\.0\\.0\\.1|0\\.0\\.0\\.0|\\[?::\\]?|\\*):${port}\\b`);
+        for (const line of String(output).split(/\r?\n/)) {
+            if (!portPattern.test(line) || !/\bLISTEN(?:ING)?\b/i.test(line)) continue;
+            const pid = line.trim().match(/(\d+)\s*$/)?.[1];
+            if (pid) owners.add(Number(pid));
+        }
+    } else if (String(output).trim() && String(output).trim().split(/\r?\n/).every((line) => /^\d+$/.test(line.trim()))) {
+        for (const pid of String(output).trim().split(/\r?\n/)) owners.add(Number(pid));
+    } else {
+        const portPattern = new RegExp(`(?:\\*|0\\.0\\.0\\.0|127\\.0\\.0\\.1|::|\\[::\\]):${port}(?:\\s|$)`);
+        for (const line of String(output).split(/\r?\n/)) {
+            if (!portPattern.test(line)) continue;
+            const matches = [...line.matchAll(/pid=(\d+)/g)];
+            if (matches.length) matches.forEach((match) => owners.add(Number(match[1])));
+            else owners.add(-1);
+        }
+    }
+    return owners;
+}
+
+export function assertPortUnoccupied(port) {
+    const owners = listeningOwners(port);
+    if (owners.size) throw new Error(`拒绝启动 E2E：端口 ${port} 已被 PID ${[...owners].join(", ")} 占用`);
+}
+
+export function assertPortOwnedByChild(port, childPid) {
+    const owners = listeningOwners(port);
+    if (!owners.has(Number(childPid)) || owners.size !== 1) {
+        throw new Error(`端口 ${port} 监听者不属于本轮唯一内核进程：期望 PID ${childPid}，实际 ${[...owners].join(", ") || "无"}`);
+    }
+}
+
+export async function waitForPortOwnedByChild(port, childPid, timeoutMs = 15000) {
+    const deadline = Date.now() + Math.max(1, timeoutMs);
+    while (Date.now() < deadline) {
+        const owners = listeningOwners(port);
+        if (owners.has(Number(childPid)) && owners.size === 1) return;
+        if (owners.size > 0 && !owners.has(Number(childPid))) {
+            throw new Error(`端口 ${port} 在启动期间被其他进程占用：PID ${[...owners].join(", ")}；拒绝向该服务发送请求`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(`等待本轮内核 PID ${childPid} 监听端口 ${port} 超时；拒绝向该服务发送请求`);
 }
 
 /** 只允许指向本机回环，避免测试打到用户的远端思源。 */

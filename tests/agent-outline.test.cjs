@@ -1036,6 +1036,26 @@ test("flattenOutline flattens nested headings with depth and bounds", () => {
     assert.deepEqual(flat.map((item) => item.depth), [0, 1, 2, 0]);
 });
 
+test("flattenOutline reads real SiYuan nested content titles and decodes HTML entities", () => {
+    const hostOutline = [{
+        id: "20260101000001-aaaaaaa",
+        name: "Root&nbsp;&amp;&nbsp;Overview",
+        depth: 0,
+        blocks: [{
+            id: "20260101000002-bbbbbbb",
+            content: "Section&nbsp;Alpha",
+            depth: 1,
+            blocks: [{id: "20260101000003-ccccccc", content: "Detail&nbsp;&#x42;eta", depth: 2}],
+        }],
+    }];
+    const flat = flattenOutline(hostOutline, 48);
+    assert.deepEqual(flat.map(({title, depth}) => ({title, depth})), [
+        {title: "Root & Overview", depth: 0},
+        {title: "Section Alpha", depth: 1},
+        {title: "Detail Beta", depth: 2},
+    ]);
+});
+
 test("flattenOutline respects the limit and skips malformed nodes", () => {
     const nodes = Array.from({length: 20}, (_, i) => ({id: `2026010100000${String(i).padStart(2, "0")}-aaaaaaa`, name: `标题 ${i}`, depth: 0}));
     assert.equal(flattenOutline(nodes, 5).length, 5);

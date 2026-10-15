@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-14",
+  "updated": "2026-10-15",
   "currentTask": "T-7144",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
@@ -111,7 +111,9 @@
     "T-7264",
     "T-7265",
     "T-7266",
-    "T-7267"
+    "T-7267",
+    "T-7268",
+    "T-7269"
   ],
   "tasks": [
     {
@@ -810,10 +812,15 @@
       "evidence": [
         "docs/dev-plan-2026-10-06.md",
         "docs/product-review-2026-10-06.md",
+        "docs/component-availability-audit.md",
         "src/home-model.js",
         "src/home-store-ui.ts",
         "src/snippet-studio-ui.js",
-        "docs/widget-protocol.md"
+        "docs/widget-protocol.md",
+        "tests/kernel-widget-model.test.cjs",
+        "tests/insight-widgets.test.cjs",
+        "tests/component-specs-batch8-wiring.test.cjs",
+        "tests/kernel-widgets-wiring.test.cjs"
       ],
       "next": "T-7156",
       "inputsFrom": [
@@ -3095,6 +3102,50 @@
         "docs/dev-plan-2026-10-06.md"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7268",
+      "title": "v0.47.2 小版本发布",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "release",
+      "workType": "release",
+      "dependsOn": [
+        "T-7267"
+      ],
+      "evidence": [
+        "ROADMAP.md",
+        "docs/dev-plan-2026-10-06.md",
+        "docs/release-readiness.md",
+        "package.json",
+        "plugin.json",
+        "README.md"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7269",
+      "title": "真实宿主组件核验与 E2E 隔离",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "quality",
+      "dependsOn": [
+        "T-7144"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0194-t7269-host-outline-and-e2e-isolation.md",
+        "src/agent-capabilities.js",
+        "tests/agent-outline.test.cjs",
+        "tests/e2e/t7144-widgets.spec.mjs",
+        "tests/e2e-port-guard.test.cjs",
+        "scripts/e2e/lib.mjs",
+        "tests/e2e/global-setup.mjs",
+        "scripts/e2e/host-scale-probe.mjs",
+        "docs/release-readiness.md"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
@@ -3102,6 +3153,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591332 bytes is below the 591872-byte repository budget by 540 bytes after reproducible README history reduction"
+    "packageBudget": "passed: 591328 bytes is below the 591872-byte repository budget by 544 bytes; v0.47.2 Release asset and current package.zip match"
   }
 }

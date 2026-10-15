@@ -3,6 +3,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+    assertPortOwnedByChild,
+    assertPortUnoccupied,
     e2eConfig,
     enablePlugin,
     installPlugin,
@@ -14,6 +16,7 @@ import {
     SiyuanClient,
     startKernel,
     stopKernel,
+    waitForPortOwnedByChild,
 } from "../../scripts/e2e/lib.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
@@ -23,6 +26,7 @@ export const targetFile = path.join(artifactDir, "target.json");
 export default async function globalSetup() {
     fs.mkdirSync(artifactDir, {recursive: true});
     const cfg = e2eConfig();
+    assertPortUnoccupied(cfg.port);
     const install = resolveInstall();
     const prepared = prepareWorkspace(cfg.workspace);
     const installed = installPlugin(cfg.workspace, repoRoot, cfg.pluginSource || undefined, cfg.pluginName);
@@ -34,10 +38,12 @@ export default async function globalSetup() {
     const running = startKernel({kernel: install.kernel, appDir: install.appDir, workspace: cfg.workspace, port: cfg.port});
     let client = new SiyuanClient({baseURL: cfg.baseURL});
     try {
+        await waitForPortOwnedByChild(cfg.port, running.child.pid);
         await client.waitForBoot(running.lines);
+        assertPortOwnedByChild(cfg.port, running.child.pid);
     } catch (error) {
         fs.writeFileSync(path.join(artifactDir, "kernel-start.log"), running.lines.join("\n"));
-        await stopKernel({client, child: running.child}).catch(() => undefined);
+        running.child.kill();
         throw error;
     }
     const token = readAccessToken(cfg.workspace);
@@ -49,7 +55,13 @@ export default async function globalSetup() {
     console.log(`[e2e] 就绪：思源 ${kernelVersion} @ ${cfg.baseURL}${token ? "（带访问码）" : "（回环免鉴权）"}`);
 
     return async () => {
-        await stopKernel({client, child: running.child}, running.lines);
+        try {
+            assertPortOwnedByChild(cfg.port, running.child.pid);
+            await stopKernel({client, child: running.child}, running.lines);
+        } catch (error) {
+            if (running.child.exitCode === null) running.child.kill();
+            throw error;
+        }
         fs.writeFileSync(path.join(artifactDir, "kernel.log"), running.lines.join("\n"));
         const errors = kernelErrorLines(running.lines);
         fs.writeFileSync(path.join(artifactDir, "kernel-errors.log"), errors.join("\n"));
