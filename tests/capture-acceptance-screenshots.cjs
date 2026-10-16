@@ -42,7 +42,7 @@ const PALETTES = {
 };
 
 function pageHtml(theme) {
-    return `<!doctype html><html data-theme-mode="${theme}"><head><meta charset="utf-8"><link rel="stylesheet" href="./index.css"><style>:root{${PALETTES[theme]}}</style></head><body>
+    return `<!doctype html><html data-theme-mode="${theme}"><head><meta charset="utf-8"><link rel="stylesheet" href="./index.css"><style>:root{${PALETTES[theme]}}.b3-dialog__content,.b3-dialog__body{height:100%;min-height:0}</style></head><body>
 <script>window.__stubI18n = ${i18nJson};</script>
 <script>window.__bootLog = [];</script>
 <script src="./bundle.js"></script>
@@ -133,7 +133,7 @@ async function main() {
         };
         for (const entry of CASES) {
             const page = path.join(artifactDir, `page-${entry.theme}.html`);
-            if (!fs.existsSync(page)) fs.writeFileSync(page, pageHtml(entry.theme));
+            fs.writeFileSync(page, pageHtml(entry.theme));
             await send("Page.navigate", {url: "file:///" + page.replace(/\\/g, "/")});
             for (let i = 0; i < 40; i += 1) {
                 await delay(150);
@@ -150,28 +150,33 @@ async function main() {
             if (!cssState?.loaded) { failures.push(`${entry.id}: production CSS missing or not loaded (${cssState?.rules || 0} rules)`); continue; }
             applyViewport(entry.viewport);
             await evalJs(entry.action);
-            await delay(600);
             const targetSelector = entry.id.startsWith("switcher-") ? ".sw__main"
-                : entry.id.startsWith("studio-") ? ".sw-studio"
+                : entry.id.startsWith("studio-") ? ".sw-studio, .sw-snippet-studio-host"
                     : '[data-sw-surface="workbench"]';
-            const panelState = await evalJs(`(() => {
-                const target = document.querySelector(${JSON.stringify(targetSelector)});
-                if (!target) return JSON.stringify({visible: false, targetFound: false,
-                    dialogs: [...document.querySelectorAll(".b3-dialog")].map((dialog) => ({
-                        open: dialog.isConnected, surface: dialog.querySelector("[data-sw-surface]")?.dataset.swSurface || null,
-                        classes: dialog.className,
-                    }))});
-                const rect = target.getBoundingClientRect();
-                const style = getComputedStyle(target);
-                return JSON.stringify({visible: rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden",
-                    targetFound: true, rect: {width: Math.round(rect.width), height: Math.round(rect.height)},
-                    display: style.display, visibility: style.visibility,
-                    dialogs: [...document.querySelectorAll(".b3-dialog")].map((dialog) => ({
-                        open: dialog.isConnected, surface: dialog.querySelector("[data-sw-surface]")?.dataset.swSurface || null,
-                        classes: dialog.className,
-                    }))});
-            })()`);
-            const panelStatus = JSON.parse(panelState);
+            let panelStatus = {visible: false};
+            let panelState = "";
+            for (let attempt = 0; attempt < 30; attempt += 1) {
+                await delay(100);
+                panelState = await evalJs(`(() => {
+                    const target = document.querySelector(${JSON.stringify(targetSelector)});
+                    if (!target) return JSON.stringify({visible: false, targetFound: false,
+                        dialogs: [...document.querySelectorAll(".b3-dialog")].map((dialog) => ({
+                            open: dialog.isConnected, surface: dialog.querySelector("[data-sw-surface]")?.dataset.swSurface || null,
+                            classes: dialog.className,
+                        }))});
+                    const rect = target.getBoundingClientRect();
+                    const style = getComputedStyle(target);
+                    return JSON.stringify({visible: rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden",
+                        targetFound: true, rect: {width: Math.round(rect.width), height: Math.round(rect.height)},
+                        display: style.display, visibility: style.visibility,
+                        dialogs: [...document.querySelectorAll(".b3-dialog")].map((dialog) => ({
+                            open: dialog.isConnected, surface: dialog.querySelector("[data-sw-surface]")?.dataset.swSurface || null,
+                            classes: dialog.className,
+                        }))});
+                })()`);
+                panelStatus = JSON.parse(panelState);
+                if (panelStatus.visible) break;
+            }
             if (!panelStatus.visible) { failures.push(`${entry.id}: expected panel surface is not visible (${targetSelector}): ${panelState}`); continue; }
             const shot = await send("Page.captureScreenshot", {format: "png"});
             const out = path.join(outDir, `${entry.id}.png`);

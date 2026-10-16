@@ -2,20 +2,20 @@
 
 首轮审计日期：2026-10-07；当前复核：2026-10-13。范围：公开仓库元数据、分支与标签、Actions、Release、issue 入口和仓库内协作配置。远端查询默认只读；本文件末尾单独记录已获授权并成功应用的低风险设置。
 
-## 当前复核（2026-10-13）
+## 当前复核（2026-10-17）
 
-GitHub 远端事实已重新读取，下面的首轮表格保留为历史快照，不再代表当前分支状态：
+GitHub 远端事实已重新读取与校准，下面的首轮表格保留为历史快照，不再代表当前分支状态：
 
 | 项目 | 当前事实 | 证据 |
 | --- | --- | --- |
 | 默认分支 | `main` | `gh repo view ... --json defaultBranchRef` 返回 `main` |
-| 最新正式 Release | `v0.47.0`，2026-10-11，非草稿、非预发布 | `gh release view v0.47.0`；资产 `package.zip` 588,082 bytes，SHA-256 `fdc752b86dd82ae569db0776c2591abcc7c08154d7353417840dd7af91286443` |
+| 最新正式 Release | `v0.47.3`，2026-10-16，非草稿、非预发布 | `gh release view v0.47.3`；资产 `package.zip` 590,757 bytes，SHA-256 `6651b473cc405a1dbbe3a7ee9eae6eee590c3d4948d55107881db663882c2dae` |
 | GitHub About | 描述为 `Local-first SiYuan navigation and work-context platform: switcher, workbench, snippet lab, and floating-ball actions.`；homepage 为空 | `gh api repos/ai68298100/siyuan-speed-switch` |
-| Topics | `plugin`、`siyuan`、`siyuan-note`、`siyuan-plugin`、`snippet-studio`、`speed-switch`、`tab-switcher`、`unified-workspace`、`workbench` | `gh api ... --jq .topics`；与四入口定位一致，`package.json` 关键词覆盖核心词 |
-| 最新云端检查 | CI `38151084260` 成功；Release `38149534664` 成功 | `gh run list --repo ai68298100/siyuan-speed-switch --limit 5` |
-| 本地候选 | `v0.47.1` 的 `package.json`、`plugin.json`、中英文 README 与双语 changelog 已对齐；候选仍未 push | 本地发布就绪快照与工作树状态；不把候选写成正式 Release |
+| Topics | `plugin`、`siyuan`、`siyuan-note`、`siyuan-plugin`、`snippet-studio`、`speed-switch`、`tab-switcher`、`unified-workspace`、`workbench` | `gh api ... --jq .topics`；与四入口定位一致，`plugin.json` 与 `package.json` 覆盖中英核心关键词 |
+| 最新云端检查 | main CI `38867726526` 成功；Release `38867726040` 成功 | `gh run list --repo ai68298100/siyuan-speed-switch --limit 5` |
+| 本地状态 | 工作树已推进 Phase A 治理规范与紧凑视觉层次，双语 README 与 manifest 关键词完成对齐 | 本地发布就绪快照与工作树状态；不把未发布本地工作树写成正式 Release |
 
-本次只更新仓库内事实记录和 README 的 18 个持久化 key 说明，没有写入 GitHub About、Topics 或 homepage，也没有 push；About 描述与 `package.json` 已一致，homepage 仍留空属于待维护者决定的外部元数据项。
+本次已核对 GitHub About、9 个 Topics、`package.json` 描述与 `plugin.json` 双语简介；`plugin.json` 关键词增补了“工作台”、“workbench”、“代码片段”与“snippet studio”，使四入口定位在思源集市搜索中具备完整检索覆盖。
 
 ## 首轮审计快照（2026-10-07）
 

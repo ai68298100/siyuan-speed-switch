@@ -58,6 +58,8 @@ QQ community group: **871707735** (bug reports and feature requests)
 - [Shortcuts](#shortcuts)
 - [Settings](#settings)
 - [Install And Upgrade](#install-and-upgrade)
+- [Troubleshooting & Support](#troubleshooting--support)
+- [Privacy & Security](#privacy--security)
 - [Requirements And Compatibility](#requirements-and-compatibility)
 - [Architecture And Tests](#architecture-and-tests)
 - [Development](#development)
@@ -238,6 +240,17 @@ Tap the floating ball to open the switcher; drag onto journal, search, widget pa
 - **Manual**: download `package.zip` from [Releases](https://github.com/ai68298100/siyuan-speed-switch/releases), extract into `<workspace>/data/plugins/siyuan-speed-switch/` and restart SiYuan (the folder must be named `siyuan-speed-switch`).
 
 Upgrading preserves favorites, groups, pins, MRU, and settings. On first `v0.16.9` load, quick-action fields are validated; invalid entries are ignored, while valid configurations remain even if their third-party provider is temporarily unavailable.
+
+## Troubleshooting & Support
+
+- **FAQ & Diagnostics**: If you experience missing entries, slow search, missing search hits, unavailable widgets, or upgrade issues, please refer to [FAQ & Troubleshooting Guide](docs/faq-and-troubleshooting.md).
+- **Sanitized Bug Reports**: Before opening a GitHub Issue, use the plugin's built-in health details to preview and copy a sanitized diagnostic summary, avoiding leaking tokens, note bodies, or local absolute paths.
+- **Contributing**: Development, testing, and release guidelines are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Privacy & Security
+
+- **Local-First**: All note contents, navigation history, and code snippets remain stored strictly within your local SiYuan workspace; there is no centralized telemetry.
+- **Permissions & Security Disclosures**: Four-tier data isolation policies and private vulnerability reporting instructions are detailed in [Privacy and Security Policy](docs/privacy-and-security.md) and [Security Advisories](.github/SECURITY.md).
 
 ## Requirements And Compatibility
 
@@ -510,50 +523,6 @@ Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；En
 - **Configuration governance**: appearance/behavior settings, per-surface enablement and action ordering, default presets, import/export, capability states, and safe fallback.
 - **Reliability and viewport handling**: scroll/modal/fullscreen yielding, execution watchdog, visualViewport/safe-area handling, and host-aware low layering.
 - **Verification**: 6,011 tests, four UI smoke suites, 22 Chromium scenarios, and 100 real pointer drags passed.
-
-### v0.29.1 (2026-09-21)
-
-- **Fixed iCal every-N-days weekday recurrence** (`FREQ=DAILY;INTERVAL=N;BYDAY=…`): previously conservatively degraded to a single occurrence, now expands correctly per RFC (e.g. "every 2 days limited to Mon/Wed").
-- **City table grows to 555 entries (wave 12)**: tourism and regional additions, all bilingual; full-table IANA validation clean.
-- **Engineering & repo**: version-consistency gate (six version surfaces must match), count-consistency gate, fixture end-to-end integration tests with a CORS fixture server, bilingual issue templates, repo metadata refresh, remote branch consolidation (4 merged branches cleaned), dependency updates.
-
-### v0.29.0 (2026-09-21)
-
-- **World-clock city table grows to 535 entries (wave 11)**: additions across Europe, Russia/Central Asia, the Americas, Oceania, and Asia, all bilingual; full-table IANA validation clean.
-- **Subscription fixes**: iCal accepts webcal:// share links and suffix-less addresses (iCloud/Nextcloud/Fastmail work as-is); RSS/Atom date parsing tries later candidates when the first tag is malformed.
-- **Quality infrastructure**: version-consistency and count-consistency gates, end-to-end loopback integration tests for the acceptance fixtures, bilingual issue templates, repo metadata refresh, dead-subgraph pruning and dead-export cleanup.
-
-### v0.28.3 (2026-09-21)
-
-- **Fixed the iCal feed gateway lagging behind the config policy**: the v0.28.2 URL relaxation only touched config normalization while the loader gate `allowedIcalFeedUrl` still required the .ics suffix - suffix-less addresses (iCloud/Nextcloud/Fastmail) saved fine but failed at fetch. The gate now mirrors the config policy: suffix-less https addresses and http+localhost fixture paths all fetch correctly.
-
-### v0.28.2 (2026-09-21)
-
-- **World-clock city table grows to 460 entries (wave 9)**: Chinese-city English aliases completed plus 25 new dual-language zone groups; full-table IANA validation clean.
-- **iCal subscription URL policy relaxed**: `webcal://` share links are accepted (fetched as https); the .ics path-suffix requirement is dropped (iCloud/Nextcloud/Fastmail work as-is); security rejection rules unchanged.
-- **RSS/Atom date tolerance**: when the first date tag is malformed, later candidates (dc:date/published) are tried before giving up.
-
-### v0.28.1 (2026-09-21)
-
-- **iCal subscription URL policy relaxed**: `webcal://` share links are accepted (fetched as https); the .ics path-suffix requirement is dropped, so iCloud, Nextcloud, and Fastmail subscription addresses work as-is; plain-http and embedded-credential rejection rules unchanged.
-- **RSS/Atom date tolerance**: when the first date tag (pubDate/updated) is malformed, later candidates (dc:date/published) are tried before giving up, so entries keep their timestamps.
-- **Engineering**: a zero-reference dead shim removed; the manual acceptance checklist grew verification points for the v0.26~v0.28 features (acceptance-runbook section 5d).
-
-### v0.28.0 (2026-09-21)
-
-- **iCal recurrence semantics completed**: BYSETPOS candidate-set selection ("last weekday of the month" style) and DAILY+BYDAY weekday filtering (weekends no longer expand); fixed MONTHLY ordinal-less BYDAY and YEARLY+BYMONTH+BYMONTHDAY being silently mis-expanded; 8 invalid combinations such as BYWEEKNO/BYYEARDAY now degrade explicitly to a single occurrence instead of guessing.
-- **Bundle structure optimization**: the world-clock city table now declares per IANA zone (338 cities / 104 zones), recovering ~2.9KB of raw margin with zero semantic change (build-time deep-equality verified).
-
-### v0.27.1 (2026-09-21)
-
-- **iCal recurrence supports BYSETPOS** (MONTHLY/WEEKLY candidate-set selection): recurring events like "last weekday of the month" (`BYDAY=MO..FR;BYSETPOS=-1`) now expand correctly; fixed a semantic defect where `MONTHLY;BYDAY=TU` without an ordinal was silently degraded to a single occurrence (RFC: every matching Tuesday of the month); standalone BYSETPOS and other invalid combinations still degrade safely.
-- **Engineering cleanup**: a repository-wide dead-export sweep removed 5 zero-reference items; no behavior changes.
-
-### v0.27.0 (2026-09-21)
-
-- **World-clock city table grows to 338 entries (wave 8)**: about 70 cities gained their missing language; 24 new dual-language cities added; full-table IANA validation clean.
-- **Performance benchmarks promoted to hard gates**: after three stable releases the four benchmark classes now enforce unconditionally — the filter benchmarks measure CPU time with hard average asserts (15/48/20 ms budgets) and the 40 ms large-library pathology line also blocks on CI; pathological regressions fail precisely in every environment.
-- **Full storage-migration drill**: 12 managed keys x 5 corruption classes degrade deterministically through a sanitize fixpoint; a v0.23.5-era payload set (no schema stamp) survives the upgrade key-by-key.
 
 The complete history lives in [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); the Chinese version is [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 </details>
