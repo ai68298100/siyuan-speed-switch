@@ -20,12 +20,21 @@ function boundedText(value, max) {
 // 单个组件的来源解析。无 source 且非插件类的组件返回 kind "builtin"，
 // 由调用方回退到既有的功能分组（日记/任务/文档…）。
 function resolveHomeModuleSource(def) {
+    const network = def && ["local", "loopback", "remote"].includes(def.network)
+        ? def.network
+        : (def && def.endpoint ? "remote" : "local");
+    const auth = def && ["none", "token", "host"].includes(def.auth)
+        ? def.auth
+        : "none";
     if (!def || typeof def !== "object") {
-        return {key: BUILTIN_SOURCE_KEY, label: "", pluginId: "", icon: "", homepage: "", version: "", collection: "", kind: "builtin"};
+        return {key: BUILTIN_SOURCE_KEY, label: "", pluginId: "", icon: "", homepage: "", version: "", collection: "", kind: "builtin", network, auth};
     }
     const source = def.source && typeof def.source === "object" ? def.source : null;
     if (source && boundedText(source.pluginId, 64)) {
         const pluginId = boundedText(source.pluginId, 64);
+        const kind = source.kind && ["builtin", "family", "plugin", "external"].includes(source.kind)
+            ? source.kind
+            : "plugin";
         return {
             key: `plugin:${pluginId}`,
             label: boundedText(source.name, 64) || pluginId,
@@ -35,7 +44,9 @@ function resolveHomeModuleSource(def) {
             version: boundedText(source.version, 32),
             collection: boundedText(source.collection, 48),
             order: Number.isFinite(source.order) ? Math.min(999, Math.max(0, Math.trunc(source.order))) : 0,
-            kind: "plugin",
+            kind,
+            network,
+            auth,
         };
     }
     // 旧注册没有 source：插件类按作者兜底，保证老组件不会掉进内置功能组。
@@ -51,9 +62,11 @@ function resolveHomeModuleSource(def) {
             collection: "",
             order: 0,
             kind: "plugin",
+            network,
+            auth,
         };
     }
-    return {key: BUILTIN_SOURCE_KEY, label: "", pluginId: "", icon: "", homepage: "", version: "", collection: "", order: 0, kind: "builtin"};
+    return {key: BUILTIN_SOURCE_KEY, label: "", pluginId: "", icon: "", homepage: "", version: "", collection: "", order: 0, kind: "builtin", network, auth};
 }
 
 // 组内顺序（ADR 0057）：同一来源的多个组件按提供方建议的 source.order 升序排列，
@@ -147,6 +160,41 @@ function buildHomeStoreProviderGroups(states) {
     });
 }
 
+// T-7293（ADR 0219）：透明度多维聚合统计（来源、网络、鉴权要求与不可用原因）
+function buildHomeStoreTransparencySummary(entries) {
+    const summary = {
+        total: 0,
+        added: 0,
+        sources: {builtin: 0, family: 0, plugin: 0, external: 0},
+        networks: {local: 0, loopback: 0, remote: 0},
+        auths: {none: 0, token: 0, host: 0},
+    };
+    (Array.isArray(entries) ? entries : []).forEach((entry) => {
+        if (!entry || typeof entry !== "object") return;
+        summary.total += 1;
+        if (entry.added) summary.added += 1;
+        const source = resolveHomeModuleSource(entry.def);
+        if (summary.sources[source.kind] !== undefined) summary.sources[source.kind] += 1;
+        if (summary.networks[source.network] !== undefined) summary.networks[source.network] += 1;
+        if (summary.auths[source.auth] !== undefined) summary.auths[source.auth] += 1;
+    });
+    return Object.freeze(summary);
+}
+
+// T-7293（ADR 0219）：按来源类型、网络属性与鉴权要求纯函数过滤
+function filterHomeStoreEntriesByTransparency(entries, filter = {}) {
+    const list = Array.isArray(entries) ? entries : [];
+    if (!filter || typeof filter !== "object") return list;
+    return list.filter((entry) => {
+        if (!entry || typeof entry !== "object") return false;
+        const source = resolveHomeModuleSource(entry.def);
+        if (filter.sourceKind && source.kind !== filter.sourceKind) return false;
+        if (filter.network && source.network !== filter.network) return false;
+        if (filter.auth && source.auth !== filter.auth) return false;
+        return true;
+    });
+}
+
 module.exports = {
     BUILTIN_SOURCE_KEY,
     resolveHomeModuleSource,
@@ -155,4 +203,6 @@ module.exports = {
     orderHomeStoreSourceGroups,
     buildHomeStoreSourceSearchText,
     buildHomeStoreProviderGroups,
+    buildHomeStoreTransparencySummary,
+    filterHomeStoreEntriesByTransparency,
 };

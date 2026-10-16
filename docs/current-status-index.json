@@ -3743,6 +3743,24 @@
         "src/home-adapters.js",
         "src/external-widget-model.js"
       ],
+      "next": "T-7293"
+    },
+    {
+      "id": "T-7293",
+      "title": "组件商店分组与目录协议扩展（来源/网络/鉴权透明化）",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7292"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0219-t7293-store-grouping-and-directory-protocol-extension.md",
+        "tests/store-grouping-and-directory-protocol.test.cjs",
+        "src/home-source-model.js"
+      ],
       "next": "T-7144"
     }
   ],
