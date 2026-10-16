@@ -5,6 +5,15 @@
 
 ## Changelog (full history)
 
+### v0.47.3 (2026-10-16)
+
+- **Compact workbench**: reduced toolbar and card spacing, restored widget height tiers, and gave weather/countdown widgets compact layouts while retaining explicit failure and stale-content feedback.
+- **Seven starter widgets**: Recently opened, Favorites, Today journal, Today's tasks, Time & date, Year progress, and Note stats, each with a compact layout. Saved layouts, configurations, and window modes are preserved; upgrades do not add all starters automatically. Add from the store, or explicitly restore defaults in an empty workbench.
+- **Weather retry**: failed requests offer a Retry action that bypasses cached failures and backoff.
+- **Preview diagnostics**: inspect or cancel before copying, with busy feedback and a manual fallback. Summaries include versions, device, status, and safe reasons while excluding titles, instance IDs, and raw errors. Health details show widget names and timestamps again.
+- **Compatibility fixes**: improved nested outline titles and HTML entities, bookmark count fallbacks and legacy block IDs; missing statistics remain a failure while valid zero totals render as zero.
+- **Verification**: complete gate passed with 8749 tests and 1 skipped; isolated Chrome/SiYuan coverage includes compact layouts, weather retry, and diagnostics. The declared minimum remains SiYuan 3.8.0; Android, screen-reader, and real external-account checks retain their documented limits.
+
 ### v0.47.2 (2026-10-14)
 
 - **Added the compact 2px spacing tier**: introduced `--sw-space-2xs` and migrated 97 declarations / 99 top-level components; spacing coverage moved from 69.09% to 73.73%, with zero computed-style or geometry differences across 30 Chromium scenarios and 480 elements.
