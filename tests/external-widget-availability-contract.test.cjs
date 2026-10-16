@@ -34,7 +34,7 @@ test("weather adapter uses the proxy fetcher", () => assert.match(adapters, /loa
 test("weather forecast uses the proxy fetcher", () => assert.match(adapters, /loadWeatherForecast\(forecastUrl, \{signal: context\?\.signal, fetchImpl:/));
 test("weather keeps configuration empty state", () => assert.match(adapters, /homeWeatherConfigHint, items: \[\]\}/));
 test("weather keeps city-not-found empty state", () => assert.match(adapters, /homeWeatherCityNotFound, items: \[\]\}/));
-test("weather catches unavailable errors", () => assert.match(adapters, /return \{emptyHint: `\$\{this\.i18n\.homeModuleError\} · \$\{this\.i18n\.homeRetry\}`, items: \[\]\};/));
+test("weather exposes unavailable errors to the retryable empty state", () => assert.match(adapters, /return \{emptyHint: `\$\{this\.i18n\.homeModuleError\} · \$\{this\.i18n\.homeRetry\}`, retryable: true, items: \[\]\};/));
 test("weather preserves abort semantics", () => assert.match(adapters, /if \(error\?\.message === "aborted"\) throw error;/));
 
 test("Bangumi uses the proxy fetcher", () => assert.match(adapters, /loadBangumiCalendar\(\{signal: context\?\.signal, fetchImpl:/));

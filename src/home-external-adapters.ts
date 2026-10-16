@@ -90,7 +90,7 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                 return snapshot;
             } catch (error) {
                 if (error?.message === "aborted") throw error;
-                return {emptyHint: `${this.i18n.homeModuleError} · ${this.i18n.homeRetry}`, items: []};
+                return {emptyHint: `${this.i18n.homeModuleError} · ${this.i18n.homeRetry}`, retryable: true, items: []};
             }
         }, {timeoutMs: 7500, cacheTtlMs: 15 * 60 * 1000});
         // 空气质量（T-6308）：与天气共用地理编码链路（location-only），固定字段集的

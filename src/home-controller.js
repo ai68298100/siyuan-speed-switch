@@ -177,7 +177,7 @@ function createHomeModuleController(options = {}) {
             onToggleItem: options.onToggleItem,
             onConfig: options.onConfig,
             onToggle: () => toggle(),
-            onRetry: () => refresh(),
+            onRetry: () => refresh(undefined, {force: true}),
         });
         if (!element) return null;
         while (container.firstChild) container.removeChild(container.firstChild);

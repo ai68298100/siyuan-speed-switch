@@ -126,7 +126,8 @@
     "T-7279",
     "T-7280",
     "T-7281",
-    "T-7282"
+    "T-7282",
+    "T-7283"
   ],
   "tasks": [
     {
@@ -3471,6 +3472,40 @@
         ".artifacts/T-7282-verify-release-final.log"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7283",
+      "title": "天气网络失败空态重试闭环",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "fix",
+      "dependsOn": [
+        "T-7282"
+      ],
+      "evidence": [
+        "src/home-external-adapters.ts",
+        "src/home-adapters.js",
+        "src/home-view.js",
+        "src/home-controller.js",
+        "tests/external-widget-availability-contract.test.cjs",
+        "tests/home-adapters.test.cjs",
+        "tests/home-view.test.cjs",
+        "tests/home-controller.test.cjs",
+        "docs/adr/0208-t7283-weather-empty-retry.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".tmp/T-7283/negative-weather.json",
+        ".tmp/T-7283/weather-retry.spec.mjs",
+        ".tmp/T-7283/playwright.config.mjs",
+        ".artifacts/T-7283-negative-weather.log",
+        ".artifacts/T-7283-weather-retry-run.log",
+        ".artifacts/T-7283-weather-retry/results.json",
+        ".artifacts/T-7283-weather-retry/calls.json",
+        ".artifacts/T-7283-weather-retry/recovered.png",
+        ".artifacts/T-7283-build.log",
+        ".artifacts/T-7283-verify-release-final.log"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
@@ -3478,6 +3513,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591859 bytes is below the 591872-byte repository budget by 13 bytes; current candidate package.zip is within the repository budget"
+    "packageBudget": "passed: 591864 bytes is below the 591872-byte repository budget by 8 bytes; current candidate package.zip is within the repository budget"
   }
 }

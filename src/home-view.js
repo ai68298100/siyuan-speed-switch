@@ -223,6 +223,7 @@ function buildHomeModuleView(module, result, options = {}) {
         // 窄头部里标题列被挤成首字、旁挂完整同文案的"叠字"即源于此。
         ...(normalized.title && normalized.title !== title ? {contextTitle: normalized.title} : {}),
         ...(normalized.emptyHint ? {emptyHint: normalized.emptyHint} : {}),
+        ...(snapshot.retryable === true ? {retryable: true} : {}),
         collapsed: options.collapsed === true,
         role: "region",
         ariaBusy: normalized.status === "loading",
@@ -878,7 +879,7 @@ function renderHomeModuleView(doc, view, options = {}) {
         const hint = (view.status === "empty" || view.status === "blocked") && view.emptyHint ? view.emptyHint : "";
         status.textContent = hint || labels[view.reason] || labels[view.status] || labels.empty;
         body.appendChild(status);
-        if (view.status === "error" && options.onRetry) {
+        if ((view.status === "error" || view.retryable === true) && options.onRetry) {
             const retry = doc.createElement("button");
             retry.type = "button";
             retry.className = "sw__home-module-retry b3-button b3-button--outline";

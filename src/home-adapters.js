@@ -153,6 +153,7 @@ function normalizeSnapshot(value, options = {}) {
     if (["fresh", "cached", "stale"].includes(value.sourceHealth)) snapshot.sourceHealth = value.sourceHealth;
     const emptyHint = safeText(value.emptyHint, 96);
     if (emptyHint) snapshot.emptyHint = emptyHint;
+    value.retryable === true && (snapshot.retryable = true);
     return snapshot;
 }
 

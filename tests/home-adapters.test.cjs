@@ -48,10 +48,11 @@ guarded("home adapters: provider unload clears cache counts and completed genera
 });
 
 test("home adapter snapshots keep fields consistent across devices", () => {
-    const snapshot = adapters.normalizeSnapshot({title: "T", items: [{label: "L", value: "V", href: "/x"}], updatedAt: 1});
+    const snapshot = adapters.normalizeSnapshot({title: "T", items: [{label: "L", value: "V", href: "/x"}], updatedAt: 1, retryable: true});
     for (const key of ["title", "items", "updatedAt", "empty"]) assert.equal(Object.prototype.hasOwnProperty.call(snapshot, key), true);
     assert.equal(snapshot.empty, false);
     assert.equal(snapshot.items[0].href, "");
+    assert.equal(snapshot.retryable, true);
 });
 
 test("home adapter snapshots allow only explicit safe link protocols", () => {
@@ -195,6 +196,27 @@ test("home adapter agent source missing API and timeout degrade safely", async (
     const result = await adapters.readHomeModule(slow, "agent-slow", "mobile", {}, {timeoutMs: 5});
     assert.equal(result.reason, "timeout");
     assert.equal(result.snapshot.empty, true);
+});
+
+test("home adapter failures expose retryable state and bounded backoff", async () => {
+    adapters.clearHomeSnapshotCache();
+    let reads = 0;
+    const map = adapters.registerHomeAdapters([{
+        moduleId: "weather-failure",
+        supportedDevices: ["desktop"],
+        read: () => { reads += 1; throw new Error("weather_unavailable"); },
+    }]);
+    const failed = await adapters.readHomeModule(map, "weather-failure", "desktop", {}, {cacheTtlMs: 0});
+    assert.equal(failed.ok, false);
+    assert.equal(failed.reason, "failed");
+    assert.equal(failed.snapshot.empty, true);
+    const backedOff = await adapters.readHomeModule(map, "weather-failure", "desktop", {}, {cacheTtlMs: 0});
+    assert.equal(backedOff.reason, "backoff");
+    assert.equal(reads, 1);
+    const retried = await adapters.readHomeModule(map, "weather-failure", "desktop", {}, {cacheTtlMs: 0, force: true});
+    assert.equal(retried.reason, "failed");
+    assert.equal(reads, 2);
+    adapters.clearHomeSnapshotCache();
 });
 
 test("home adapter timeout aborts the underlying reader signal", async () => {

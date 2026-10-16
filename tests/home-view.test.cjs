@@ -25,6 +25,21 @@ test("home view preserves a bounded adapter empty hint", () => {
     assert.equal(rendered.querySelector(".sw__home-module-status").textContent, "Install a command plugin");
 });
 
+test("home view renders a retry action for retryable empty states", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const calls = [];
+    const view = buildHomeModuleView({moduleId: "weather", title: "Weather"}, {
+        ok: true,
+        snapshot: {items: [], emptyHint: "加载失败 · 重试", retryable: true},
+    });
+    assert.equal(view.status, "empty");
+    assert.equal(view.retryable, true);
+    const rendered = renderHomeModuleView(dom.window.document, view, {onRetry: () => calls.push("retry")});
+    assert.equal(rendered.querySelector('[role="status"]').textContent, "加载失败 · 重试");
+    rendered.querySelector(".sw__home-module-retry").click();
+    assert.deepEqual(calls, ["retry"]);
+});
+
 test("home view shows the adapter hint beside a ready zero statistic without hiding populated rows (T-7280)", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     const render = (items, emptyHint = "No pending tasks") => renderHomeModuleView(dom.window.document,
