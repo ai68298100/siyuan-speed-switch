@@ -61,3 +61,28 @@ test('compact workbench keeps shell chrome lightweight while preserving labeled 
     assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw__home-source-health:is(.is-fresh, .is-cached)', /font-size:\s*0/, {topLevel: true}),
         'compact normal source health must reduce to a status dot while stale keeps its text');
 });
+
+test('compact workbench decuples view and edit state while reducing shell chrome (T-7291)', () => {
+    const secondPanelSource = readSourceText(path.join(root, 'src', 'second-panel-ui.ts'));
+    assert.ok(secondPanelSource.includes('root.dataset.mode = editing ? "edit" : "view";'),
+        'second panel must explicitly set dataset.mode for view/edit decoupling');
+    assert.ok(secondPanelSource.includes('root.classList.toggle("is-editing", editing);'),
+        'second panel must toggle is-editing class on the container');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile):not(.is-editing) .sw-home__bar', /margin-bottom:\s*var\(--sw-space-2xs,\s*2px\)/, {topLevel: true}),
+        'compact workbench must tighten bar margin in view mode to save vertical budget');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw-home__receipt[data-state="ready"]', /border-top-color:\s*transparent/, {topLevel: true}),
+        'compact receipt must reduce to a lightweight status row when all modules are ready');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw-home__receipt[data-state="error"]', /border-top-color:/, {topLevel: true}),
+        'compact receipt must retain prominent border when an error occurs');
+});
+
+test('compact workbench enforces mobile dual bento and GPU touch performance guardrails (T-7291)', () => {
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home__grid', /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/, {atRule: /@container sw-r54-surface \(max-width:\s*560px\)/}),
+        'narrow container must use a 2-column mobile dual bento grid instead of full row stacking');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home__cell\[data-size="xs"\]', /grid-column:\s*span 1/, {atRule: /@container sw-r54-surface \(max-width:\s*560px\)/}),
+        'xs micro-tiles must pair up into a 2-column layout on mobile screens');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__cell', /will-change:\s*transform/, {topLevel: true}),
+        'compact cells must declare will-change transform for GPU composite layer isolation');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home .sw-home__cell:active', /transform:\s*scale\(0\.985\)/, {atRule: /@media \(pointer:\s*coarse\)/}),
+        'touch devices must receive zero-cpu hardware accelerated press feedback');
+});

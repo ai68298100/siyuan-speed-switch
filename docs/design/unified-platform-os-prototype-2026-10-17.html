@@ -1,0 +1,1221 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="frost" data-noise="off" data-screen="workbench" data-mode="view">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 全平台一体化操作系统级原型 (Unified Platform OS)</title>
+<style>
+:root {
+  --dur-fast: 140ms;
+  --dur-spring: 320ms;
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* 1. 🕊️ 陶瓷霜白极简 (Titanium Frost, 默认强化浅色模式：高端冷灰陶瓷 + 晶体纯白微倒角) */
+[data-theme="frost"] {
+  --b3-theme-primary: #5946d2;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #edf0f5;
+  --b3-theme-surface: rgba(255, 255, 255, 0.88);
+  --b3-theme-surface-lighter: #e2e6ee;
+  --b3-theme-on-background: #0f172a;
+  --b3-theme-on-surface-light: #64748b;
+  --b3-border-color: rgba(203, 213, 225, 0.85);
+  --b3-theme-success: #15803d;
+  --b3-theme-warning: #b45309;
+  --b3-theme-error: #b91c1c;
+
+  --panel-bg: 
+    radial-gradient(480px circle at 10% 12%, rgba(89, 70, 210, 0.06) 0%, transparent 65%),
+    radial-gradient(400px circle at 90% 88%, rgba(14, 165, 233, 0.05) 0%, transparent 60%),
+    #edf0f5;
+  --tile-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 248, 252, 0.9) 100%);
+  --tile-rim: inset 0 1px 0 0 rgba(255, 255, 255, 1), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --tile-border: rgba(203, 213, 225, 0.85);
+  --tile-shadow: 0 2px 6px rgba(15, 23, 42, 0.03), 0 16px 32px rgba(15, 23, 42, 0.05);
+  --spotlight-core: rgba(89, 70, 210, 0.12);
+  --spotlight-aura: rgba(89, 70, 210, 0.06);
+  --glow-focus: 0 0 0 1px #fff, 0 0 0 3px rgba(89, 70, 210, 0.35);
+  --header-bg: rgba(255, 255, 255, 0.82);
+}
+
+/* 2. 🌌 深空极光主题 (Cyber Aurora：深邃钛黑 + 极光漫射 + 铣削切光) */
+[data-theme="aurora"] {
+  --b3-theme-primary: #8b79ff;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #07090e;
+  --b3-theme-surface: rgba(16, 20, 31, 0.7);
+  --b3-theme-surface-lighter: rgba(28, 34, 50, 0.65);
+  --b3-theme-on-background: #f8fafc;
+  --b3-theme-on-surface-light: #94a3b8;
+  --b3-border-color: rgba(255, 255, 255, 0.08);
+  --b3-theme-success: #34d399;
+  --b3-theme-warning: #fbbf24;
+  --b3-theme-error: #f87171;
+
+  --panel-bg: 
+    radial-gradient(550px circle at 8% 12%, rgba(139, 121, 255, 0.16) 0%, transparent 70%),
+    radial-gradient(480px circle at 92% 88%, rgba(45, 212, 191, 0.12) 0%, transparent 65%),
+    #080a10;
+  --tile-bg: linear-gradient(135deg, rgba(23, 28, 43, 0.72) 0%, rgba(14, 17, 27, 0.75) 100%);
+  --tile-rim: inset 0 1px 0 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --tile-border: rgba(255, 255, 255, 0.09);
+  --tile-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 12px 28px rgba(0, 0, 0, 0.35), 0 24px 60px rgba(0, 0, 0, 0.25);
+  --spotlight-core: rgba(255, 255, 255, 0.18);
+  --spotlight-aura: rgba(139, 121, 255, 0.15);
+  --glow-focus: 0 0 0 1px #080a10, 0 0 0 3px rgba(139, 121, 255, 0.55), 0 0 16px rgba(139, 121, 255, 0.35);
+  --header-bg: rgba(10, 13, 20, 0.65);
+}
+
+/* 3. ⬛ 暗曜极简纯黑 (Obsidian Void：哑光玄武岩 + 高亮纯白切角) */
+[data-theme="obsidian"] {
+  --b3-theme-primary: #ffffff;
+  --b3-theme-on-primary: #000000;
+  --b3-theme-background: #000000;
+  --b3-theme-surface: #0f1013;
+  --b3-theme-surface-lighter: #1b1c20;
+  --b3-theme-on-background: #ffffff;
+  --b3-theme-on-surface-light: #7e828d;
+  --b3-border-color: rgba(255, 255, 255, 0.1);
+  --b3-theme-success: #4ade80;
+  --b3-theme-warning: #facc15;
+  --b3-theme-error: #f87171;
+
+  --panel-bg: #030405;
+  --tile-bg: linear-gradient(135deg, #131418 0%, #0c0d10 100%);
+  --tile-rim: inset 0 1px 0 0 rgba(255, 255, 255, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --tile-border: #222329;
+  --tile-shadow: 0 2px 5px rgba(0, 0, 0, 0.6), 0 16px 36px rgba(0, 0, 0, 0.55);
+  --spotlight-core: rgba(255, 255, 255, 0.2);
+  --spotlight-aura: rgba(255, 255, 255, 0.08);
+  --glow-focus: 0 0 0 1px #000, 0 0 0 3px rgba(255, 255, 255, 0.6);
+  --header-bg: rgba(8, 8, 10, 0.7);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--b3-theme-background);
+  color: var(--b3-theme-on-background);
+  font: 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  padding: 16px 12px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* 可选物理微噪点层 (可在控制台自由开启/关闭) */
+.noise-layer {
+  display: none;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+[data-noise="on"] .noise-layer { display: block; }
+
+button { font: inherit; color: inherit; border: 0; background: transparent; cursor: pointer; }
+button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible, input:focus-visible {
+  outline: none;
+  box-shadow: var(--glow-focus);
+}
+
+/* 顶部演示辅助控制器 */
+.proto-controls {
+  width: min(940px, 100%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #0d1017;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 12px 32px rgba(0, 0, 0, 0.45);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 11px;
+}
+.proto-controls strong { letter-spacing: 0.02em; font-size: 12px; color: #fff; }
+.proto-controls .spacer { flex: 1; }
+.proto-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #181d2a;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all var(--dur-fast);
+}
+.proto-btn:hover, .proto-btn.is-active {
+  background: #7361fa;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 12px rgba(115, 97, 250, 0.45);
+}
+
+/* 视窗舞台 */
+.stage-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.window-frame {
+  width: 940px;
+  height: 480px;
+  background: var(--panel-bg);
+  border: 1px solid var(--b3-border-color);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  backdrop-filter: blur(28px) saturate(190%);
+  transition: width var(--dur-spring) var(--ease-spring), height var(--dur-spring) var(--ease-spring);
+}
+
+/* 多端视口切换模拟 */
+.device-desktop .window-frame { width: 940px; height: 480px; }
+.device-ipad .window-frame { width: 834px; height: 580px; border-radius: 18px; }
+.device-iphone .window-frame { width: 393px; height: 780px; border-radius: 36px; border-width: 4px; border-color: #2b303d; }
+.device-dock .window-frame { width: 245px; height: 540px; }
+
+/* 1. 统一 36px 纯净顶栏 */
+.app-header {
+  height: 38px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--b3-border-color);
+  background: var(--header-bg);
+  backdrop-filter: blur(20px);
+  gap: 12px;
+  z-index: 10;
+}
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 750;
+  font-size: 12px;
+  user-select: none;
+}
+.brand-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, var(--b3-theme-primary), #2dd4bf);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 900;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--b3-theme-primary) 50%, transparent);
+}
+
+/* 中间极简分段胶囊导航（直达四大表面与商店） */
+.segmented-nav {
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  background: var(--b3-theme-surface-lighter);
+  border-radius: 7px;
+  gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.nav-pill {
+  padding: 2px 9px;
+  height: 23px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 5px;
+  color: var(--b3-theme-on-surface-light);
+  transition: all var(--dur-fast);
+}
+.nav-pill:hover { color: var(--b3-theme-on-background); }
+.nav-pill.is-active {
+  background: var(--b3-theme-surface);
+  color: var(--b3-theme-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.icon-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--b3-theme-on-surface-light);
+  font-size: 13px;
+  transition: all var(--dur-fast);
+}
+.icon-btn:hover {
+  background: var(--b3-theme-surface-lighter);
+  color: var(--b3-theme-on-background);
+}
+.keycap {
+  font: 700 9px/1 var(--font-mono);
+  padding: 2px 6px;
+  background: linear-gradient(180deg, var(--b3-theme-surface-lighter), color-mix(in srgb, var(--b3-theme-surface-lighter) 80%, black));
+  border: 1px solid var(--b3-border-color);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  color: var(--b3-theme-on-surface-light);
+}
+
+/* 屏幕主视区调度容器 */
+.screen-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+}
+.screen-panel {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.screen-panel.is-active {
+  display: flex;
+}
+
+/* ==========================================================================
+   【表面一：切换器 Switcher (Raycast级视线无阻流)】
+   ========================================================================== */
+.switcher-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+.switcher-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  border-right: 1px solid var(--b3-border-color);
+  gap: 8px;
+}
+.switcher-searchbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 40px;
+  background: var(--b3-theme-surface);
+  border: 1px solid var(--b3-border-color);
+  border-radius: 8px;
+  box-shadow: var(--tile-rim);
+}
+.switcher-searchbar input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--b3-theme-on-background);
+  font-size: 13px;
+  font-weight: 500;
+}
+.switcher-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.switcher-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  transition: all var(--dur-fast);
+}
+.switcher-item:hover, .switcher-item.is-selected {
+  background: var(--b3-theme-surface);
+  border-color: color-mix(in srgb, var(--b3-theme-primary) 35%, var(--b3-border-color));
+  box-shadow: var(--tile-rim), 0 2px 6px rgba(0,0,0,0.06);
+}
+.switcher-item.is-selected {
+  border-left: 3px solid var(--b3-theme-primary);
+}
+.switcher-right-preview {
+  width: 320px;
+  padding: 14px;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--b3-theme-surface) 60%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.preview-title {
+  font-size: 15px;
+  font-weight: 750;
+  color: var(--b3-theme-on-background);
+}
+.preview-meta {
+  font-size: 11px;
+  color: var(--b3-theme-on-surface-light);
+  line-height: 1.5;
+}
+.preview-content {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--b3-theme-on-surface-light);
+  border-top: 1px solid var(--b3-border-color);
+  padding-top: 10px;
+}
+
+/* ==========================================================================
+   【表面二：看板与工作台 Glance Board】
+   ========================================================================== */
+.workbench-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.edit-subbar {
+  display: none;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: color-mix(in srgb, var(--b3-theme-primary) 10%, var(--b3-theme-surface));
+  border-bottom: 1px dashed color-mix(in srgb, var(--b3-theme-primary) 35%, var(--b3-border-color));
+  font-size: 11px;
+  color: var(--b3-theme-primary);
+  font-weight: 600;
+}
+[data-mode="edit"] .edit-subbar { display: flex; }
+.subbar-btn {
+  padding: 3px 10px;
+  border-radius: 5px;
+  background: var(--b3-theme-surface);
+  border: 1px solid var(--b3-theme-primary);
+  color: var(--b3-theme-primary);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--dur-fast);
+}
+.subbar-btn.primary {
+  background: var(--b3-theme-primary);
+  color: var(--b3-theme-on-primary);
+}
+
+.grid-canvas {
+  flex: 1;
+  padding: 8px 12px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: 28px;
+  gap: 7px;
+  align-content: start;
+}
+
+/* 瓦片基础：搭载双层聚光与铣削高光 */
+.glance-tile {
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  box-shadow: var(--tile-rim), var(--tile-shadow);
+  border-radius: 11px;
+  padding: 7px 10px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+  transform: translateZ(0);
+  will-change: transform;
+  transition: border-color var(--dur-fast), transform var(--dur-fast);
+}
+@media (hover: hover) and (pointer: fine) {
+  .glance-tile::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 11px;
+    padding: 1px;
+    background: radial-gradient(140px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), var(--spotlight-core), transparent 75%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur-fast);
+  }
+  .glance-tile:hover::before { opacity: 1; }
+}
+
+.span-xs { grid-column: span 3; grid-row: span 2; }
+.span-small { grid-column: span 6; grid-row: span 2; }
+.span-medium { grid-column: span 6; grid-row: span 4; }
+.span-wide { grid-column: span 12; grid-row: span 2; }
+
+.time-clock { justify-content: space-between; }
+.time-clock .clock-digits {
+  font-family: var(--font-mono);
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--b3-theme-on-background);
+}
+.time-clock .day-progress-bar {
+  width: 100%;
+  height: 2.5px;
+  background: var(--b3-theme-surface-lighter);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+.time-clock .day-progress-fill {
+  height: 100%;
+  width: 44%;
+  background: linear-gradient(90deg, var(--b3-theme-primary), #2dd4bf);
+  box-shadow: 0 0 10px rgba(45, 212, 191, 0.6);
+}
+
+.weather-tile { justify-content: space-between; }
+.weather-tile .temp-value {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--b3-theme-on-background);
+}
+
+.recent-tile { justify-content: center; gap: 4px; }
+.doc-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 21px;
+  border-radius: 6px;
+  padding: 0 6px;
+  text-decoration: none;
+  transition: background var(--dur-fast);
+}
+.doc-row:hover { background: var(--b3-theme-surface-lighter); }
+.doc-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--b3-theme-primary);
+  flex: none;
+}
+.doc-name {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 待办任务交互打勾 */
+.tasks-tile { justify-content: center; gap: 4px; }
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 21px;
+  padding: 0 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+.task-row:hover { background: var(--b3-theme-surface-lighter); }
+.task-check {
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid var(--b3-theme-on-surface-light);
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  color: transparent;
+  transition: transform var(--dur-spring) var(--ease-bounce), background var(--dur-fast);
+}
+.task-row.is-done .task-check {
+  background: var(--b3-theme-primary);
+  border-color: var(--b3-theme-primary);
+  color: #fff;
+  transform: scale(1.1);
+}
+.task-row.is-done .task-text {
+  text-decoration: line-through;
+  color: var(--b3-theme-on-surface-light);
+  opacity: 0.65;
+}
+
+/* ==========================================================================
+   【表面三：组件商店大厅 Widget Store (画廊沉浸式浏览)】
+   ========================================================================== */
+.store-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--panel-bg) 95%, #101420);
+}
+.store-topbar {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--b3-border-color);
+}
+.store-cat-scroll {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+}
+.store-grid-layout {
+  flex: 1;
+  padding: 14px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.store-card {
+  border: 1px solid var(--b3-border-color);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--tile-bg);
+  box-shadow: var(--tile-rim);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all var(--dur-fast);
+}
+.store-card:hover {
+  border-color: color-mix(in srgb, var(--b3-theme-primary) 50%, var(--b3-border-color));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+.store-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.store-card-preview-box {
+  background: var(--b3-theme-surface);
+  border: 1px solid var(--b3-border-color);
+  border-radius: 8px;
+  padding: 8px;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   【表面四：片段实验室 Snippet Studio (现代极客代码编辑器)】
+   ========================================================================== */
+.studio-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+.studio-sidebar {
+  width: 220px;
+  padding: 10px;
+  border-right: 1px solid var(--b3-border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: color-mix(in srgb, var(--b3-theme-surface) 50%, transparent);
+}
+.snippet-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.snippet-item:hover, .snippet-item.is-active {
+  background: var(--b3-theme-surface);
+  border-color: var(--b3-border-color);
+}
+/* iOS 风格微型 Toggle 开关 */
+.ios-toggle {
+  width: 28px;
+  height: 16px;
+  border-radius: 99px;
+  background: var(--b3-theme-surface-lighter);
+  position: relative;
+  transition: background var(--dur-fast);
+}
+.ios-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform var(--dur-fast);
+}
+.ios-toggle.is-on {
+  background: var(--b3-theme-success);
+}
+.ios-toggle.is-on::after {
+  transform: translateX(12px);
+}
+.studio-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.studio-codebar {
+  height: 32px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--b3-border-color);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.studio-editor {
+  flex: 1;
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-y: auto;
+  color: var(--b3-theme-on-background);
+  background: rgba(0,0,0,0.08);
+}
+
+/* ==========================================================================
+   【表面五：系统设置 Settings (macOS 级系统设置)】
+   ========================================================================== */
+.settings-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+.settings-sidebar {
+  width: 180px;
+  padding: 10px;
+  border-right: 1px solid var(--b3-border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: color-mix(in srgb, var(--b3-theme-surface) 40%, transparent);
+}
+.settings-nav-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--b3-theme-on-surface-light);
+  transition: all var(--dur-fast);
+}
+.settings-nav-btn:hover, .settings-nav-btn.is-active {
+  background: var(--b3-theme-surface);
+  color: var(--b3-theme-primary);
+}
+.settings-content {
+  flex: 1;
+  padding: 16px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.settings-group {
+  background: var(--b3-theme-surface);
+  border: 1px solid var(--b3-border-color);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 全局悬浮球 */
+.floating-ball {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--b3-theme-primary), #2dd4bf);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 15px;
+  box-shadow: 0 8px 24px rgba(89, 70, 210, 0.45);
+  cursor: pointer;
+  z-index: 900;
+  opacity: 0.6;
+  transition: opacity var(--dur-fast), transform var(--dur-fast);
+}
+.floating-ball:hover {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+</style>
+</head>
+<body class="device-desktop">
+
+<!-- 物理微噪点层 -->
+<div class="noise-layer"></div>
+
+<!-- 顶部超级控制台 -->
+<div class="proto-controls">
+  <strong>小驴雷切 · 全平台操作系统级原型 (Unified OS Prototype)</strong>
+  <span class="spacer"></span>
+  <button class="proto-btn is-active" id="btnThemeFrost">🕊️ 陶瓷霜白 (加强浅色)</button>
+  <button class="proto-btn" id="btnThemeAurora">🌌 深空极光 (深暗)</button>
+  <button class="proto-btn" id="btnThemeObsidian">⬛ 暗曜黑 (纯黑)</button>
+  <span style="color:#444">|</span>
+  <button class="proto-btn" id="btnToggleNoise">噪点: 关 (纯净模式)</button>
+  <span style="color:#444">|</span>
+  <button class="proto-btn is-active" id="btnDevDesktop">🖥️ 桌面 940</button>
+  <button class="proto-btn" id="btnDevIpad">📱 iPad 834</button>
+  <button class="proto-btn" id="btnDevIphone">📲 iPhone 393</button>
+  <button class="proto-btn" id="btnDevDock">📌 窄Dock 245</button>
+</div>
+
+<div class="stage-wrapper">
+  <main class="window-frame" id="windowFrame">
+    
+    <!-- 1. 统一 36px 纯净平台顶栏 -->
+    <header class="app-header">
+      <div class="app-brand">
+        <div class="brand-icon">驴</div>
+        <span>小驴雷切</span>
+      </div>
+
+      <!-- 全表面分段导航控制器 -->
+      <nav class="segmented-nav" aria-label="表面导航">
+        <button class="nav-pill" id="navSwitcher" onclick="switchScreen('switcher')">切换器</button>
+        <button class="nav-pill is-active" id="navWorkbench" onclick="switchScreen('workbench')">工作台看板</button>
+        <button class="nav-pill" id="navStore" onclick="switchScreen('store')">小组件商店</button>
+        <button class="nav-pill" id="navStudio" onclick="switchScreen('studio')">代码实验室</button>
+        <button class="nav-pill" id="navSettings" onclick="switchScreen('settings')">设置</button>
+      </nav>
+
+      <div class="header-actions">
+        <button class="icon-btn" type="button" id="btnEditTrigger" title="编排看板布局">✎</button>
+        <span class="keycap">Esc</span>
+        <button class="icon-btn" type="button" title="关闭窗口">×</button>
+      </div>
+    </header>
+
+    <!-- 视窗容器 -->
+    <div class="screen-container">
+
+      <!-- ==================== 表面一：切换器 Switcher ==================== -->
+      <section class="screen-panel" id="screen-switcher">
+        <div class="switcher-body">
+          <div class="switcher-left">
+            <div class="switcher-searchbar">
+              <span style="color:var(--b3-theme-on-surface-light)">⌕</span>
+              <input type="text" placeholder="搜索已开页签、全库文档、快捷动作..." value="路线图">
+              <span class="keycap">⌘K</span>
+            </div>
+            <div class="switcher-list">
+              <a href="#" class="switcher-item is-selected">
+                <span style="font-size:14px">📄</span>
+                <span style="flex:1;font-weight:600">小驴雷切 UI 原型深度优化方案 (2026-10-17)</span>
+                <span style="font-size:10px;color:var(--b3-theme-on-surface-light)">/docs · 正在编辑</span>
+              </a>
+              <a href="#" class="switcher-item">
+                <span style="font-size:14px">📑</span>
+                <span style="flex:1;font-weight:600">ADR 0217: 多端自适应双拼Bento与GPU性能护栏</span>
+                <span style="font-size:10px;color:var(--b3-theme-on-surface-light)">/adr · 1h前</span>
+              </a>
+              <a href="#" class="switcher-item">
+                <span style="font-size:14px">📔</span>
+                <span style="flex:1;font-weight:600">今日日记 (2026-10-17)</span>
+                <span style="font-size:10px;color:var(--b3-theme-on-surface-light)">/日记 · 3项待办</span>
+              </a>
+            </div>
+          </div>
+          <div class="switcher-right-preview">
+            <span class="preview-title">小驴雷切 UI 原型深度优化方案</span>
+            <span class="preview-meta">路径: /思源笔记/小驴雷切/docs<br>字数: 3,840 字 · 刚刚保存</span>
+            <div class="preview-content">
+              <strong># 一、全景背景与痛点切片</strong><br>
+              彻底解决第二面板（看板本体、商店、每个组件）让用户不满意的深层根因，打造具备极质感与现代科技感的全平台操作系统级体验。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 表面二：看板与工作台 Glance Board ==================== -->
+      <section class="screen-panel is-active" id="screen-workbench">
+        <div class="workbench-body">
+          <div class="edit-subbar">
+            <span>📐 正在编排小组件看板 · 支持尺寸切换与移除</span>
+            <div class="edit-subbar-actions">
+              <button class="subbar-btn" onclick="switchScreen('store')">+ 从商店添加</button>
+              <button class="subbar-btn primary" id="btnDoneEditing">完成</button>
+            </div>
+          </div>
+
+          <div class="grid-canvas" id="gridCanvas">
+            <!-- 时钟 -->
+            <article class="glance-tile span-xs time-clock" id="tile-time" tabindex="0">
+              <div class="top-meta">
+                <span>时刻</span>
+                <span style="font-family:var(--font-mono)">周六 SAT</span>
+              </div>
+              <div class="clock-digits" id="liveClock">10:24:36</div>
+              <div>
+                <div style="font-size:9.5px;color:var(--b3-theme-on-surface-light);margin-bottom:2px">10月17日 · 农历九月十七</div>
+                <div class="day-progress-bar"><div class="day-progress-fill"></div></div>
+              </div>
+            </article>
+
+            <!-- 天气 -->
+            <article class="glance-tile span-xs weather-tile" id="tile-weather" tabindex="0">
+              <div class="top-meta">
+                <span style="color:var(--b3-theme-success);font-weight:700">● 晴朗 CLEAR</span>
+                <span>☀️</span>
+              </div>
+              <div class="temp-row">
+                <span class="temp-value">23°</span>
+                <span style="font-size:10px;color:var(--b3-theme-on-surface-light)">杭州 · 空气优</span>
+              </div>
+              <div style="font-size:9.5px;color:var(--b3-theme-on-surface-light)">↑ 26° 最高  ↓ 18° 最低</div>
+            </article>
+
+            <!-- 近期文档 -->
+            <article class="glance-tile span-small recent-tile" id="tile-recent" tabindex="0">
+              <a href="#" class="doc-row">
+                <span class="doc-dot"></span>
+                <span class="doc-name">小驴雷切 UI 原型深度优化方案 (2026-10-17)</span>
+                <span style="font-size:9.5px;color:var(--b3-theme-on-surface-light)">刚刚</span>
+              </a>
+              <a href="#" class="doc-row">
+                <span class="doc-dot" style="background:#2dd4bf"></span>
+                <span class="doc-name">ADR 0217: 紧凑工作台查看态解耦与壳层收口</span>
+                <span style="font-size:9.5px;color:var(--b3-theme-on-surface-light)">1h前</span>
+              </a>
+            </article>
+
+            <!-- 今日待办 -->
+            <article class="glance-tile span-small tasks-tile" id="tile-tasks" tabindex="0">
+              <div class="task-row" onclick="this.classList.toggle('is-done')">
+                <span class="task-check">✓</span>
+                <span class="task-text">完成全平台一体化超级原型研发</span>
+              </div>
+              <div class="task-row is-done" onclick="this.classList.toggle('is-done')">
+                <span class="task-check">✓</span>
+                <span class="task-text">强化白色浅色模式与可选噪点</span>
+              </div>
+            </article>
+
+            <!-- 年度进度 -->
+            <article class="glance-tile span-medium progress-tile" id="tile-progress" tabindex="0">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <strong style="font-size:11px">2026 年度时间进程</strong>
+                <span style="font-family:var(--font-mono);font-weight:750;color:var(--b3-theme-primary)">79.2%</span>
+              </div>
+              <div class="dense-bar"><div class="dense-bar-fill"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--b3-theme-on-surface-light);margin-top:4px">
+                <span>已过 289 天</span>
+                <span>剩余 76 天</span>
+              </div>
+              <div style="margin-top:10px;font-size:10.5px;color:var(--b3-theme-on-surface-light);border-top:1px solid var(--b3-border-color);padding-top:6px;display:flex;justify-content:space-between">
+                <span>当前季度: Q4</span>
+                <span style="color:var(--b3-theme-primary);font-weight:600">已推进 18.2%</span>
+              </div>
+            </article>
+
+            <!-- 大纲索引 -->
+            <article class="glance-tile span-medium" id="tile-outline" tabindex="0">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <strong style="font-size:11px">活动文档大纲索引</strong>
+                <span style="font-size:10px;color:var(--b3-theme-on-surface-light)">3 Tiers</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font-size:11px;font-weight:600"># 一、全平台一体化设计系统</div>
+                <div style="font-size:10.5px;color:var(--b3-theme-on-surface-light);padding-left:10px">## 1.1 陶瓷霜白高端浅色</div>
+                <div style="font-size:10.5px;color:var(--b3-theme-on-surface-light);padding-left:10px">## 1.2 可选噪点与性能护栏</div>
+                <div style="font-size:11px;font-weight:600"># 二、小组件画廊沉浸商店</div>
+              </div>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 表面三：小组件画廊大厅 Widget Store ==================== -->
+      <section class="screen-panel" id="screen-store">
+        <div class="store-body">
+          <div class="store-topbar">
+            <span style="font-weight:750;font-size:13px">🧩 小组件画廊库 (Gallery)</span>
+            <div class="store-cat-scroll">
+              <button class="proto-btn is-active">全部小组件</button>
+              <button class="proto-btn">🕒 时间与生活</button>
+              <button class="proto-btn">📝 笔记与大纲</button>
+              <button class="proto-btn">✅ 待办与打卡</button>
+              <button class="proto-btn">📊 进度与监控</button>
+            </div>
+          </div>
+          <div class="store-grid-layout">
+            
+            <div class="store-card">
+              <div class="store-card-head">
+                <strong>🎯 目标与里程碑倒数</strong>
+                <span style="font-size:9.5px;color:var(--b3-theme-primary);font-weight:700">本地离线</span>
+              </div>
+              <p style="font-size:10.5px;color:var(--b3-theme-on-surface-light)">直观展示重要交付节点剩余天数。</p>
+              <div class="store-card-preview-box">
+                <div style="font-size:20px;font-weight:800;color:var(--b3-theme-warning)">64 <small style="font-size:10px">天后</small></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:var(--b3-theme-on-surface-light)">支持 1×1 / 2×1</span>
+                <button class="subbar-btn primary" onclick="alert('已添加到工作台看板！')">+ 添加到看板</button>
+              </div>
+            </div>
+
+            <div class="store-card">
+              <div class="store-card-head">
+                <strong>🌿 写作活跃绿墙热力图</strong>
+                <span style="font-size:9.5px;color:var(--b3-theme-success);font-weight:700">笔记统计</span>
+              </div>
+              <p style="font-size:10.5px;color:var(--b3-theme-on-surface-light)">类似 GitHub 绿墙展示近一年字数产出。</p>
+              <div class="store-card-preview-box">
+                <div style="display:flex;gap:3px">
+                  <span style="width:8px;height:8px;background:#2d6a4f;border-radius:2px"></span>
+                  <span style="width:8px;height:8px;background:#52b788;border-radius:2px"></span>
+                  <span style="width:8px;height:8px;background:#74c69d;border-radius:2px"></span>
+                  <span style="width:8px;height:8px;background:#95d5b2;border-radius:2px"></span>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:var(--b3-theme-on-surface-light)">支持 2×2 / 4×2</span>
+                <button class="subbar-btn primary" onclick="alert('已添加到工作台看板！')">+ 添加到看板</button>
+              </div>
+            </div>
+
+            <div class="store-card">
+              <div class="store-card-head">
+                <strong>📔 今日日记快捷直达</strong>
+                <span style="font-size:9.5px;color:var(--b3-theme-on-surface-light);font-weight:700">高频常用</span>
+              </div>
+              <p style="font-size:10.5px;color:var(--b3-theme-on-surface-light)">单次点击瞬时打开或创建当天日记。</p>
+              <div class="store-card-preview-box">
+                <span style="font-weight:700;color:var(--b3-theme-primary)">打开本日日记 ➔</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:var(--b3-theme-on-surface-light)">支持 1×1 / 2×1</span>
+                <button class="subbar-btn primary" onclick="alert('已添加到工作台看板！')">+ 添加到看板</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 表面四：代码实验室 Snippet Lab ==================== -->
+      <section class="screen-panel" id="screen-studio">
+        <div class="studio-body">
+          <div class="studio-sidebar">
+            <div style="font-weight:750;font-size:11px;margin-bottom:6px">CSS / JS 代码片段</div>
+            <div class="snippet-item is-active">
+              <div>
+                <div style="font-weight:600">readable-focus.css</div>
+                <div style="font-size:9.5px;color:var(--b3-theme-on-surface-light)">微质感焦点环</div>
+              </div>
+              <div class="ios-toggle is-on" onclick="this.classList.toggle('is-on')"></div>
+            </div>
+            <div class="snippet-item">
+              <div>
+                <div style="font-weight:600">compact-sidebar.css</div>
+                <div style="font-size:9.5px;color:var(--b3-theme-on-surface-light)">极窄侧栏流</div>
+              </div>
+              <div class="ios-toggle" onclick="this.classList.toggle('is-on')"></div>
+            </div>
+          </div>
+          <div class="studio-main">
+            <div class="studio-codebar">
+              <span>编辑草稿: readable-focus.css</span>
+              <span style="color:var(--b3-theme-success);font-weight:700">● 安全沙箱已就绪</span>
+            </div>
+            <pre class="studio-editor">
+/* 现代微质感发光焦点环 */
+.protyle :focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 1px var(--b3-theme-background),
+                0 0 0 3px color-mix(in srgb, var(--b3-theme-primary) 38%, transparent);
+    transition: box-shadow 120ms ease;
+}
+            </pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 表面五：系统设置 Settings ==================== -->
+      <section class="screen-panel" id="screen-settings">
+        <div class="settings-body">
+          <div class="settings-sidebar">
+            <button class="settings-nav-btn is-active">外观与材质</button>
+            <button class="settings-nav-btn">看板小组件</button>
+            <button class="settings-nav-btn">切换器行为</button>
+            <button class="settings-nav-btn">快捷键管理</button>
+            <button class="settings-nav-btn">数据与存储</button>
+          </div>
+          <div class="settings-content">
+            <div class="settings-group">
+              <strong style="font-size:12px">界面质感与视觉风格</strong>
+              <div class="settings-row">
+                <div>
+                  <div style="font-weight:600">物理微噪点材质 (Micro-Noise Grain)</div>
+                  <div style="font-size:10.5px;color:var(--b3-theme-on-surface-light)">模拟真实阳极氧化铝与高定磨砂胶片质感；关闭后恢复纯净无暇数码平滑。</div>
+                </div>
+                <div class="ios-toggle" id="toggleNoiseSettings" onclick="toggleNoise()"></div>
+              </div>
+              <div class="settings-row" style="border-top:1px solid var(--b3-border-color);padding-top:10px">
+                <div>
+                  <div style="font-weight:600">主题风格</div>
+                  <div style="font-size:10.5px;color:var(--b3-theme-on-surface-light)">支持陶瓷霜白（强化浅色）、深空极光（科技暗色）、暗曜纯黑。</div>
+                </div>
+                <div style="display:flex;gap:4px">
+                  <button class="proto-btn is-active" onclick="setTheme('frost')">陶瓷霜白</button>
+                  <button class="proto-btn" onclick="setTheme('aurora')">深空极光</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <strong style="font-size:12px">数据与隐私安全</strong>
+              <div class="settings-row">
+                <div>
+                  <div style="font-weight:600">本地优先与零遥测承诺</div>
+                  <div style="font-size:10.5px;color:var(--b3-theme-on-surface-light)">插件不设立任何外部同步服务器，四层物理数据隔离。</div>
+                </div>
+                <span style="font-size:11px;color:var(--b3-theme-success);font-weight:700">✓ 100% 隔离合规</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- 全局悬浮球 -->
+<div class="floating-ball" onclick="alert('悬浮球已激活：可在任意文档页面瞬间唤出小驴雷切！')" title="小驴雷切全局悬浮球">驴</div>
+
+<script>
+const root = document.documentElement;
+
+// 1. 表面多屏切换函数
+function switchScreen(screenId) {
+  document.querySelectorAll('.screen-panel').forEach(el => el.classList.remove('is-active'));
+  document.getElementById('screen-' + screenId)?.classList.add('is-active');
+  
+  const navMap = {
+    switcher: 'navSwitcher',
+    workbench: 'navWorkbench',
+    store: 'navStore',
+    studio: 'navStudio',
+    settings: 'navSettings'
+  };
+  document.querySelectorAll('.nav-pill').forEach(btn => btn.classList.remove('is-active'));
+  document.getElementById(navMap[screenId])?.classList.add('is-active');
+
+  // 控制编辑按钮显示
+  document.getElementById('btnEditTrigger').style.display = (screenId === 'workbench') ? 'grid' : 'none';
+}
+
+// 2. 主题切换
+function setTheme(theme) {
+  root.dataset.theme = theme;
+  document.getElementById('btnThemeFrost').classList.toggle('is-active', theme === 'frost');
+  document.getElementById('btnThemeAurora').classList.toggle('is-active', theme === 'aurora');
+  document.getElementById('btnThemeObsidian').classList.toggle('is-active', theme === 'obsidian');
+}
+document.getElementById('btnThemeFrost').onclick = () => setTheme('frost');
+document.getElementById('btnThemeAurora').onclick = () => setTheme('aurora');
+document.getElementById('btnThemeObsidian').onclick = () => setTheme('obsidian');
+
+// 3. 可选物理微噪点开关 (满足不同喜好！)
+function toggleNoise() {
+  const current = root.dataset.noise;
+  const next = current === 'on' ? 'off' : 'on';
+  root.dataset.noise = next;
+  const btn = document.getElementById('btnToggleNoise');
+  if (btn) btn.textContent = next === 'on' ? '噪点: 开 (胶片质感)' : '噪点: 关 (纯净模式)';
+  document.getElementById('toggleNoiseSettings')?.classList.toggle('is-on', next === 'on');
+}
+document.getElementById('btnToggleNoise').onclick = toggleNoise;
+
+// 4. 多设备视口无缝切换
+const deviceBtns = ['btnDevDesktop', 'btnDevIpad', 'btnDevIphone', 'btnDevDock'];
+function setDevice(deviceClass, activeId) {
+  document.body.className = deviceClass;
+  deviceBtns.forEach(id => document.getElementById(id)?.classList.toggle('is-active', id === activeId));
+}
+document.getElementById('btnDevDesktop').onclick = () => setDevice('device-desktop', 'btnDevDesktop');
+document.getElementById('btnDevIpad').onclick = () => setDevice('device-ipad', 'btnDevIpad');
+document.getElementById('btnDevIphone').onclick = () => setDevice('device-iphone', 'btnDevIphone');
+document.getElementById('btnDevDock').onclick = () => setDevice('device-dock', 'btnDevDock');
+
+// 5. 看板编辑模式切换
+document.getElementById('btnEditTrigger').onclick = () => {
+  root.dataset.mode = root.dataset.mode === 'edit' ? 'view' : 'edit';
+};
+document.getElementById('btnDoneEditing').onclick = () => {
+  root.dataset.mode = 'view';
+};
+
+// 6. 真实秒表跳动走时
+setInterval(() => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const clock = document.getElementById('liveClock');
+  if (clock) clock.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}, 1000);
+</script>
+
+</body>
+</html>

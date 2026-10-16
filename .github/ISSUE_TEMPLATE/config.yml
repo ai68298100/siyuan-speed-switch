@@ -1,6 +1,9 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 使用说明（先看这里）
+  - name: 常见问题与自助排障 / FAQ & Troubleshooting
+    url: https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/faq-and-troubleshooting.md
+    about: 遇到打不开、搜不到、组件不可用或未保存时先看这里 / Read FAQ first
+  - name: 使用说明（上手与功能指南）
     url: https://github.com/ai68298100/siyuan-speed-switch#readme
     about: 快速上手、设置说明、常见问题与查询语法
   - name: 功能需求 / Feature request

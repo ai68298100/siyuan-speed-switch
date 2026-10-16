@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light" data-mode="view">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 自适应弹性微马赛克看板原型 (Adaptive Glance Tiles)</title>
+<style>
+:root {
+  /* 思源主题映射变量 */
+  --b3-theme-primary: #6758d8;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #f7f8fa;
+  --b3-theme-surface: #ffffff;
+  --b3-theme-surface-lighter: #f0f2f7;
+  --b3-theme-on-background: #1e222d;
+  --b3-theme-on-surface-light: #7c8599;
+  --b3-border-color: #e2e5ec;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #c1781d;
+  --b3-theme-error: #c7515b;
+
+  /* 设计系统微质感 Token */
+  --tile-bg: var(--b3-theme-surface);
+  --tile-border: var(--b3-border-color);
+  --tile-text: var(--b3-theme-on-background);
+  --tile-sub: var(--b3-theme-on-surface-light);
+  --tile-radius: 8px;
+  --tile-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(30, 35, 50, 0.04);
+  --glow-focus: 0 0 0 1px var(--b3-theme-background), 0 0 0 3px color-mix(in srgb, var(--b3-theme-primary) 35%, transparent);
+  --dur: 150ms;
+}
+
+[data-theme="dark"] {
+  --b3-theme-primary: #9e91ff;
+  --b3-theme-on-primary: #141721;
+  --b3-theme-background: #171922;
+  --b3-theme-surface: #222532;
+  --b3-theme-surface-lighter: #2c303f;
+  --b3-theme-on-background: #f1f3f8;
+  --b3-theme-on-surface-light: #9ba3b8;
+  --b3-border-color: #383e50;
+  --b3-theme-success: #67d59a;
+  --b3-theme-warning: #e4a254;
+  --b3-theme-error: #ee7c86;
+  --tile-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="contrast"] {
+  --b3-theme-primary: #ffe45b;
+  --b3-theme-on-primary: #000000;
+  --b3-theme-background: #000000;
+  --b3-theme-surface: #121212;
+  --b3-theme-surface-lighter: #202020;
+  --b3-theme-on-background: #ffffff;
+  --b3-theme-on-surface-light: #e5e5e5;
+  --b3-border-color: #ffffff;
+  --b3-theme-success: #63ff9b;
+  --b3-theme-warning: #ffb85b;
+  --b3-theme-error: #ff7183;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--b3-theme-background);
+  color: var(--b3-theme-on-background);
+  font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+}
+
+button { font: inherit; color: inherit; border: 0; background: transparent; cursor: pointer; }
+button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible {
+  outline: none;
+  box-shadow: var(--glow-focus);
+}
+
+/* 控制演示顶栏 */
+.proto-controls {
+  width: min(920px, 100%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #151824;
+  color: #fff;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 11px;
+}
+.proto-controls strong { letter-spacing: 0.02em; font-size: 12px; }
+.proto-controls .spacer { flex: 1; }
+.proto-btn {
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: #2a3144;
+  color: #c8d0e5;
+  transition: all var(--dur);
+}
+.proto-btn:hover, .proto-btn.is-active {
+  background: #7665ef;
+  color: #fff;
+}
+
+/* 主面板容器：模拟思源 920×390px 紧凑悬浮窗口 */
+.window-frame {
+  width: min(920px, 100%);
+  height: 390px;
+  background: var(--b3-theme-surface);
+  border: 1px solid var(--b3-border-color);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(18, 22, 36, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 1. 极简 36px 纯净顶栏 */
+.app-header {
+  height: 36px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--b3-border-color);
+  background: color-mix(in srgb, var(--b3-theme-background) 65%, var(--b3-theme-surface));
+  gap: 12px;
+}
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  user-select: none;
+}
+.brand-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, var(--b3-theme-primary), #29b6af);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* 中间极简分段胶囊 */
+.segmented-nav {
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  background: var(--b3-theme-surface-lighter);
+  border-radius: 6px;
+  gap: 2px;
+}
+.nav-pill {
+  padding: 2px 10px;
+  height: 22px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  color: var(--tile-sub);
+  transition: all var(--dur);
+}
+.nav-pill:hover { color: var(--tile-text); }
+.nav-pill.is-active {
+  background: var(--b3-theme-surface);
+  color: var(--b3-theme-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.icon-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--tile-sub);
+  font-size: 13px;
+  transition: all var(--dur);
+}
+.icon-btn:hover {
+  background: var(--b3-theme-surface-lighter);
+  color: var(--tile-text);
+}
+.kbd-tag {
+  font: 600 9px/1 ui-monospace, monospace;
+  padding: 2px 4px;
+  background: var(--b3-theme-surface);
+  border: 1px solid var(--b3-border-color);
+  border-radius: 4px;
+  color: var(--tile-sub);
+}
+
+/* 2. 模式切换工具栏（仅在编辑态滑出） */
+.edit-toolbar {
+  display: none;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: color-mix(in srgb, var(--b3-theme-primary) 8%, var(--b3-theme-surface));
+  border-bottom: 1px dashed var(--b3-theme-primary);
+  font-size: 11px;
+  color: var(--b3-theme-primary);
+}
+[data-mode="edit"] .edit-toolbar { display: flex; }
+
+/* 3. 自适应微马赛克网格区域 */
+.grid-canvas {
+  flex: 1;
+  padding: 8px 10px;
+  overflow-y: auto;
+  display: grid;
+  /* 12 列基底，行高锁定 28px */
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: 28px;
+  gap: 6px;
+  align-content: start;
+}
+
+/* 核心瓦片规范 */
+.glance-tile {
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  border-radius: var(--tile-radius);
+  box-shadow: var(--tile-shadow);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--dur), box-shadow var(--dur);
+}
+.glance-tile:hover {
+  border-color: color-mix(in srgb, var(--b3-theme-primary) 40%, var(--b3-border-color));
+}
+
+/* A. Micro-Metric 单值微瓦片 (跨 3 列 × 跨 2 行 = 约 220×62px) */
+.tile-metric {
+  grid-column: span 3;
+  grid-row: span 2;
+  justify-content: space-between;
+}
+.tile-metric .tile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tile-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--tile-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tile-metric .value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.metric-num {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--tile-text);
+}
+.metric-sub {
+  font-size: 10px;
+  color: var(--tile-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* B. Compact-Row 微型信息条 (跨 6 列 × 跨 2 行) */
+.tile-row {
+  grid-column: span 6;
+  grid-row: span 2;
+  justify-content: center;
+  gap: 4px;
+}
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  border-radius: 4px;
+  padding: 0 4px;
+  text-decoration: none;
+  transition: background var(--dur);
+}
+.list-item:hover {
+  background: var(--b3-theme-surface-lighter);
+}
+.item-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--b3-theme-primary);
+  flex: none;
+}
+.item-title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--tile-text);
+}
+.item-meta {
+  font-size: 9px;
+  color: var(--tile-sub);
+  flex: none;
+}
+
+/* C. Dense-Card 密度卡 (跨 4 列 × 跨 4 行 或 跨 6 列 × 跨 4 行) */
+.tile-dense {
+  grid-column: span 6;
+  grid-row: span 4;
+}
+.tile-dense-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.dense-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tile-text);
+}
+.progress-rail {
+  width: 100%;
+  height: 4px;
+  background: var(--b3-theme-surface-lighter);
+  border-radius: 99px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--b3-theme-primary), #29b6af);
+  border-radius: 99px;
+}
+
+/* 4. 异常自动唤起状态条 (默认静默，仅异常时显示) */
+.alert-toast {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--b3-theme-warning) 16%, var(--b3-theme-surface));
+  border: 1px solid var(--b3-theme-warning);
+  color: var(--b3-theme-warning);
+  font-size: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.alert-toast button {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* 5. 窄 Dock 容器自适应演示 (245px) */
+.is-sidebar .window-frame {
+  width: 245px;
+  height: 520px;
+}
+.is-sidebar .app-brand span { display: none; }
+.is-sidebar .segmented-nav { display: none; }
+.is-sidebar .glance-tile {
+  grid-column: span 12 !important;
+}
+
+</style>
+</head>
+<body>
+
+<div class="proto-controls">
+  <strong>小驴雷切 · 弹性微马赛克 (Adaptive Glance Tiles)</strong>
+  <span class="spacer"></span>
+  <button class="proto-btn" id="btnThemeLight">浅色</button>
+  <button class="proto-btn" id="btnThemeDark">深色</button>
+  <button class="proto-btn" id="btnThemeContrast">高对比</button>
+  <span style="color:#555">|</span>
+  <button class="proto-btn is-active" id="btnModeView">日常查看态</button>
+  <button class="proto-btn" id="btnModeEdit">布局编排态</button>
+  <span style="color:#555">|</span>
+  <button class="proto-btn" id="btnDockDesktop">桌面 (920px)</button>
+  <button class="proto-btn" id="btnDockSidebar">窄Dock (245px)</button>
+</div>
+
+<main class="window-frame" id="windowFrame">
+  <!-- 1. 36px 纯净顶栏 -->
+  <header class="app-header">
+    <div class="app-brand">
+      <div class="brand-icon">驴</div>
+      <span>小驴雷切</span>
+    </div>
+    
+    <nav class="segmented-nav" aria-label="表面导航">
+      <button class="nav-pill" type="button">切换器</button>
+      <button class="nav-pill is-active" type="button" aria-current="page">工作台</button>
+      <button class="nav-pill" type="button">实验室</button>
+    </nav>
+
+    <div class="header-actions">
+      <button class="icon-btn" type="button" title="刷新全部 (R)">↻</button>
+      <button class="icon-btn" type="button" title="设置">⚙</button>
+      <span class="kbd-tag">Esc</span>
+      <button class="icon-btn" type="button" title="关闭">×</button>
+    </div>
+  </header>
+
+  <!-- 2. 编辑模式工具条 (默认隐藏) -->
+  <div class="edit-toolbar">
+    <span>📐 正在编排布局 · 拖拽调整顺序或改变尺寸</span>
+    <div>
+      <button class="proto-btn" style="padding:2px 8px;font-size:10px">+ 添加组件</button>
+      <button class="proto-btn" style="padding:2px 8px;font-size:10px" id="btnDoneEdit">完成</button>
+    </div>
+  </div>
+
+  <!-- 3. 自适应微马赛克网格 -->
+  <div class="grid-canvas">
+    
+    <!-- Micro-Metric 1: 本地时间 -->
+    <article class="glance-tile tile-metric" tabindex="0">
+      <div class="tile-header">
+        <span class="tile-label">时刻</span>
+        <span style="font-size:10px;color:var(--tile-sub)">周五</span>
+      </div>
+      <div class="value-row">
+        <span class="metric-num">09:41</span>
+        <span class="metric-sub">10月16日</span>
+      </div>
+    </article>
+
+    <!-- Micro-Metric 2: 今日天气 -->
+    <article class="glance-tile tile-metric" tabindex="0">
+      <div class="tile-header">
+        <span class="tile-label">天气</span>
+        <span style="font-size:10px;color:var(--b3-theme-success)">● 晴</span>
+      </div>
+      <div class="value-row">
+        <span class="metric-num">23°</span>
+        <span class="metric-sub">杭州 · 微风</span>
+      </div>
+    </article>
+
+    <!-- Compact-Row 1: 近期文档 -->
+    <article class="glance-tile tile-row" tabindex="0">
+      <a href="#" class="list-item">
+        <span class="item-dot"></span>
+        <span class="item-title">产品路线与精品化规划 (2026-10-16)</span>
+        <span class="item-meta">10m前</span>
+      </a>
+      <a href="#" class="list-item">
+        <span class="item-dot" style="background:#29b6af"></span>
+        <span class="item-title">ADR 0215: 工作上下文入口层定位</span>
+        <span class="item-meta">1h前</span>
+      </a>
+    </article>
+
+    <!-- Micro-Metric 3: 今日待办 -->
+    <article class="glance-tile tile-metric" tabindex="0">
+      <div class="tile-header">
+        <span class="tile-label">今日待办</span>
+        <span style="font-size:10px;color:var(--tile-sub)">日记</span>
+      </div>
+      <div class="value-row">
+        <span class="metric-num" style="color:var(--b3-theme-primary)">3</span>
+        <span class="metric-sub">/ 4 项未完</span>
+      </div>
+    </article>
+
+    <!-- Micro-Metric 4: 写作天数 -->
+    <article class="glance-tile tile-metric" tabindex="0">
+      <div class="tile-header">
+        <span class="tile-label">连续打卡</span>
+        <span style="font-size:10px;color:var(--b3-theme-warning)">★ Streak</span>
+      </div>
+      <div class="value-row">
+        <span class="metric-num" style="color:var(--b3-theme-warning)">28</span>
+        <span class="metric-sub">天达成</span>
+      </div>
+    </article>
+
+    <!-- Compact-Row 2: 收藏常用 -->
+    <article class="glance-tile tile-row" tabindex="0">
+      <a href="#" class="list-item">
+        <span class="item-dot" style="background:#e4a254"></span>
+        <span class="item-title">Obsidian 与思源双向同步方案指南</span>
+        <span class="item-meta">常用</span>
+      </a>
+      <a href="#" class="list-item">
+        <span class="item-dot" style="background:#e4a254"></span>
+        <span class="item-title">设计系统 Token 架构白皮书</span>
+        <span class="item-meta">星标</span>
+      </a>
+    </article>
+
+    <!-- Dense-Card: 年度进度与笔记统计 -->
+    <article class="glance-tile tile-dense" tabindex="0">
+      <div class="tile-dense-header">
+        <span class="dense-title">2026 年度进度</span>
+        <span style="font-size:10px;font-weight:700;color:var(--b3-theme-primary)">78.6%</span>
+      </div>
+      <div class="progress-rail">
+        <div class="progress-bar" style="width: 78.6%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--tile-sub);margin-top:6px;">
+        <span>已过 289 天</span>
+        <span>剩余 76 天</span>
+      </div>
+    </article>
+
+    <!-- Dense-Card: 大纲快速索引 -->
+    <article class="glance-tile tile-dense" tabindex="0">
+      <div class="tile-dense-header">
+        <span class="dense-title">当前活动文档大纲</span>
+        <span style="font-size:10px;color:var(--tile-sub)">3 级标题</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;">
+        <span style="font-size:10.5px;color:var(--tile-text)"># 1. 核心架构与主语收敛</span>
+        <span style="font-size:10.5px;color:var(--tile-sub);padding-left:8px;">## 1.1 三大核心表面权责</span>
+        <span style="font-size:10.5px;color:var(--tile-sub);padding-left:8px;">## 1.2 异步状态与可信回执</span>
+        <span style="font-size:10.5px;color:var(--tile-text)"># 2. 演进路线与验收标准</span>
+      </div>
+    </article>
+
+  </div>
+
+  <!-- 4. 静默健康异常条 (模拟有一项异常，优雅浮现) -->
+  <div class="alert-toast">
+    <span>⚠️ 1 个组件刷新超时 (天气离线缓存)</span>
+    <button type="button">重试</button>
+  </div>
+</main>
+
+<script>
+const root = document.documentElement;
+const frame = document.getElementById('windowFrame');
+
+document.getElementById('btnThemeLight').onclick = () => root.dataset.theme = 'light';
+document.getElementById('btnThemeDark').onclick = () => root.dataset.theme = 'dark';
+document.getElementById('btnThemeContrast').onclick = () => root.dataset.theme = 'contrast';
+
+document.getElementById('btnModeView').onclick = () => {
+  root.dataset.mode = 'view';
+  document.getElementById('btnModeView').classList.add('is-active');
+  document.getElementById('btnModeEdit').classList.remove('is-active');
+};
+document.getElementById('btnModeEdit').onclick = () => {
+  root.dataset.mode = 'edit';
+  document.getElementById('btnModeEdit').classList.add('is-active');
+  document.getElementById('btnModeView').classList.remove('is-active');
+};
+document.getElementById('btnDoneEdit').onclick = () => {
+  document.getElementById('btnModeView').click();
+};
+
+document.getElementById('btnDockDesktop').onclick = () => {
+  document.body.classList.remove('is-sidebar');
+  document.getElementById('btnDockDesktop').classList.add('is-active');
+  document.getElementById('btnDockSidebar').classList.remove('is-active');
+};
+document.getElementById('btnDockSidebar').onclick = () => {
+  document.body.classList.add('is-sidebar');
+  document.getElementById('btnDockSidebar').classList.add('is-active');
+  document.getElementById('btnDockDesktop').classList.remove('is-active');
+};
+</script>
+
+</body>
+</html>

@@ -263,6 +263,12 @@
     .speed-switch .sw__dock { display: none; }
     .sw-home { padding: var(--sw-r54-space-3) var(--sw-r54-space-3) 0; }
     .sw-home__cell { grid-column: 1 / -1; }
+    .sw-home__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--sw-space-sm, 6px);
+    }
+    // 手机端2列双拼Bento：微瓦片(xs)占1列并排，列表与大卡占满2列(1/-1)
+    .sw-home__cell[data-size="xs"] { grid-column: span 1; }
     .sw-studio__layout {
         display: flex;
         flex: 1 1 auto;
@@ -283,6 +289,12 @@
     .sw-studio__button,
     .sw-studio__library-item,
     .sw-studio__library-filter { min-height: 44px; }
+
+    // 触控设备专属极速反馈（GPU 硬件加速，零 CPU 占用）
+    .sw-home .sw-home__cell:active {
+        transform: scale(0.985);
+        transition: transform $sw-dur-fast $sw-ease;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -370,6 +382,26 @@
         }
     }
 
+    // T-7291: compact 查看态收拢工具条边距，首屏聚焦小组件内容；编辑态展开完整间隙
+    &:not(.sw-home--mobile):not(.is-editing) .sw-home__bar {
+        margin-bottom: var(--sw-space-2xs, 2px);
+    }
+
+    // T-7291 质感升级：日常查看态隐藏折叠与配置把手，Hover/Focus 优雅浮现，内容即界面
+    &:not(.is-editing) .sw-home__cell {
+        .sw__home-module-toggle {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity $sw-dur-fast $sw-ease;
+        }
+        &:hover .sw__home-module-toggle,
+        &:focus-within .sw__home-module-toggle {
+            opacity: 0.72;
+            pointer-events: auto;
+            &:hover { opacity: 1; }
+        }
+    }
+
     .sw-home__cell {
         padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
         border-radius: $sw-radius-md;
@@ -377,7 +409,9 @@
         min-height: 0;
         overflow: hidden;
         backdrop-filter: none;
-        box-shadow: none;
+        box-shadow: var(--sw-rim-light, none);
+        transform: translateZ(0);
+        will-change: transform;
 
         &:hover {
             transform: none;
@@ -415,6 +449,16 @@
             min-height: 24px;
             padding-inline: var(--sw-space-xs, 4px);
             font-size: var(--sw-font-xs, 11px);
+        }
+
+        // T-7291: 正常健康状态收成轻量状态行；发生错误或超时异常时显眼警示
+        &[data-state="ready"] {
+            border-top-color: transparent;
+            opacity: 0.8;
+        }
+        &[data-state="error"] {
+            border-top-color: color-mix(in srgb, var(--b3-theme-error) 40%, var(--b3-border-color));
+            background: color-mix(in srgb, var(--b3-theme-error) 6%, transparent);
         }
     }
 
@@ -454,6 +498,21 @@
         .sw__home-stat-value { font-size: var(--sw-font-xl, 17px); }
         .sw__home-module-list .sw__home-module-item-action { min-height: 24px; padding-block: 0; }
         .sw__home-module-status--empty { min-height: 0; margin: 0; padding: 0; opacity: 1; }
+
+        // 今日待办：紧凑交互打勾与弹簧微动效
+        .sw__home-module-item-check {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            border-width: 1.5px;
+            margin-right: var(--sw-space-xs, 4px);
+            transition: transform $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease, border-color $sw-dur-fast $sw-ease;
+
+            &:active { transform: scale(0.88); }
+            &.is-done {
+                box-shadow: 0 0 6px color-mix(in srgb, var(--b3-theme-primary) 40%, transparent);
+            }
+        }
         .sw__home-module.is-empty-content[data-module-id="today-tasks"] {
             height: 100%;
             display: flex;
@@ -477,7 +536,13 @@
         border: 1px solid var(--b3-border-color);
 
         .sw__home-stat { min-height: 24px; }
-        .sw__home-stat .sw__home-stat-value { font-size: var(--sw-font-2xl, 20px); letter-spacing: 0; }
+        .sw__home-stat .sw__home-stat-value {
+            font-family: var(--b3-font-family-code, ui-monospace, monospace);
+            font-size: var(--sw-font-2xl, 22px);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.03em;
+            font-weight: var(--sw-weight-bold, 700);
+        }
         .sw__home-stat-label { display: none; }
         .sw__home-module-list .sw__home-module-item-action {
             padding: 0;

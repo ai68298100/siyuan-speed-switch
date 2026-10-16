@@ -125,4 +125,8 @@ $sw-space-2xl: 24px;
     --sw-space-lg: #{$sw-space-lg};
     --sw-space-xl: #{$sw-space-xl};
     --sw-space-2xl: #{$sw-space-2xl};
+
+    // 现代科技感与物理质感微光 Token（随宿主主题自适应反光与发光焦点）
+    --sw-rim-light: inset 0 1px 0 0 color-mix(in srgb, var(--b3-theme-on-background) 8%, transparent);
+    --sw-focus-glow: 0 0 0 1px var(--b3-theme-background), 0 0 0 3px color-mix(in srgb, var(--b3-theme-primary) 35%, transparent);
 }

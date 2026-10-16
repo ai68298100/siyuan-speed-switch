@@ -264,6 +264,10 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         };
 
         const renderPanel = () => {
+            // T-7291: 显式标记查看态与编辑态，支持紧凑模式下的视觉层级解耦
+            root.dataset.mode = editing ? "edit" : "view";
+            root.classList.toggle("is-editing", editing);
+
             // T-7010 重绘事务（捕获段）：重建前记录滚动锚与聚焦现场（组件卡按
             // data-sw-object-id、工具栏按钮按 data-home-action）；挂载后恢复，
             // 编辑开关/刷新全部/配置保存等整面板重绘不再跳顶丢焦点。
@@ -333,6 +337,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 const stale = availableCells.filter((c) => c.dataset.swHealth === "stale").length;
                 const pending = availableCells.length - ok - failed - stale;
                 receipt.dataset.state = failed ? "error" : pending ? "loading" : unavailable ? "blocked" : "ready";
+                receipt.dataset.failedCount = String(failed);
+                receipt.dataset.staleCount = String(stale);
                 receipt.firstChild!.textContent = this.i18n.homeReceiptSummary
                     .replace("{ok}", String(ok))
                     .replace("{total}", String(availableCells.length))

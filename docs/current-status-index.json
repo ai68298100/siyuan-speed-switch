@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-16",
+  "updated": "2026-10-17",
   "currentTask": "T-7144",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7163",
+  "nextLocalTask": "T-7157",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -1235,7 +1235,7 @@
     {
       "id": "T-7158",
       "title": "真实截图/短演示、界面图和架构图",
-      "status": "planned",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "deliverable",
@@ -1354,7 +1354,7 @@
     {
       "id": "T-7163",
       "title": "FAQ 与脱敏问题反馈",
-      "status": "planned",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "deliverable",
@@ -1364,9 +1364,11 @@
       ],
       "evidence": [
         "docs/dev-plan-2026-10-06.md",
+        "docs/faq-and-troubleshooting.md",
+        ".github/ISSUE_TEMPLATE/config.yml",
+        ".github/ISSUE_TEMPLATE/bug_report.yml",
         "docs/product-review-2026-10-06.md",
         "docs/storage-compatibility-matrix.md",
-        ".github/ISSUE_TEMPLATE/bug_report.yml",
         "LICENSE",
         "AGENTS.md",
         "docs/install-upgrade-rollback-2026-10-06.md"
@@ -1376,7 +1378,7 @@
     {
       "id": "T-7164",
       "title": "集中隐私说明与漏洞报告入口",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "deliverable",
@@ -1385,12 +1387,13 @@
       ],
       "evidence": [
         "docs/dev-plan-2026-10-06.md",
+        "docs/privacy-and-security.md",
+        ".github/SECURITY.md",
         "docs/product-review-2026-10-06.md",
         "docs/storage-compatibility-matrix.md",
         ".github/ISSUE_TEMPLATE/bug_report.yml",
         "LICENSE",
         "AGENTS.md",
-        ".github/SECURITY.md",
         ".github/ISSUE_TEMPLATE/config.yml",
         "docs/data-flow-inventory-2026-10-06.md",
         "docs/data-scope-2026-10-06.md"
@@ -1421,7 +1424,7 @@
     {
       "id": "T-7166",
       "title": "维护者贡献/发布/排障手册",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P2",
       "owner": "local",
       "workType": "deliverable",
@@ -1469,7 +1472,7 @@
     {
       "id": "T-7168",
       "title": "五条主路径可用性与反馈闭环",
-      "status": "planned",
+      "status": "completed",
       "priority": "P1",
       "owner": "product",
       "workType": "deliverable",
@@ -1482,6 +1485,7 @@
       ],
       "evidence": [
         "docs/dev-plan-2026-10-06.md",
+        "docs/usability-evaluation-runbook-2026-10-17.md",
         "docs/product-review-2026-10-06.md",
         "README.md",
         "docs/desktop-acceptance-matrix.md",
@@ -3690,7 +3694,7 @@
     {
       "id": "T-7291",
       "title": "compact 工作台视觉层次收口",
-      "status": "planned",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "conditional",
@@ -3701,10 +3705,19 @@
       "evidence": [
         "docs/product-direction-2026-10-16.md",
         "docs/adr/0215-product-positioning-and-roadmap-2026-10-16.md",
+        "docs/adr/0216-t7291-compact-workbench-visual-parity.md",
+        "docs/adr/0217-multi-device-bento-and-gpu-performance-guardrails.md",
+        "docs/multi-device-adaptive-and-performance-spec-2026-10-17.md",
+        "docs/widget-glance-system-spec-2026-10-17.md",
+        "docs/design/widget-gallery-glance-prototype-2026-10-17.html",
+        "docs/cyber-tactile-design-tokens-2026-10-17.md",
+        "docs/design/cyber-tactile-glance-prototype-2026-10-17.html",
         "docs/research-second-panel-visual-gap-2026-10-16.md",
         "docs/adr/0202-t7277-second-panel-micro-mosaic-direction.md",
         "src/second-panel-ui.ts",
-        "src/styles/_12-r54-surface-adapter.scss"
+        "src/styles/_00-tokens.scss",
+        "src/styles/_12-r54-surface-adapter.scss",
+        "tests/compact-workbench-style-contract.test.cjs"
       ],
       "next": "T-7163"
     }

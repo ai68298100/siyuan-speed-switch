@@ -101,6 +101,13 @@ body:
       description: 桌面端 Ctrl+Shift+I 打开开发者工具，Console 标签页的红色报错截图或文本
       placeholder: "可粘贴文本或截图 / paste text or screenshots"
 
+  - type: textarea
+    id: diagnostics-summary
+    attributes:
+      label: 脱敏诊断摘要 / Sanitized diagnostics (optional)
+      description: 工作台底部点击「查看详情」➔「复制脱敏诊断」，直接粘贴在此（严格不含Token/正文/私密路径） / Paste sanitized diagnostic summary
+      placeholder: "可在此粘贴工作台内置复制的脱敏诊断 JSON / Paste sanitized diagnostics JSON here"
+
   - type: checkboxes
     id: privacy-check
     attributes:
