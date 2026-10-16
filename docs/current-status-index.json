@@ -122,7 +122,9 @@
     "T-7275",
     "T-7276",
     "T-7277",
-    "T-7278"
+    "T-7278",
+    "T-7279",
+    "T-7280"
   ],
   "tasks": [
     {
@@ -3351,6 +3353,64 @@
         ".artifacts/surface-switch-hostcss.log"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7279",
+      "title": "compact 壳层显露层级收口",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7278"
+      ],
+      "evidence": [
+        "src/styles/_12-r54-surface-adapter.scss",
+        "src/home-view.js",
+        "src/second-panel-ui.ts",
+        "tests/compact-workbench-style-contract.test.cjs",
+        "tests/home-view.test.cjs",
+        "docs/adr/0204-t7279-compact-shell-hierarchy.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7279-negative-shell-contract.log",
+        ".artifacts/T-7279-visual/results.json",
+        ".artifacts/T-7279-visual/metrics.json",
+        ".artifacts/T-7279-visual-run.log",
+        ".artifacts/T-7279-visual/t7279-compact-shell-1440.png",
+        ".artifacts/T-7279-visual/t7279-compact-shell-700.png",
+        ".artifacts/T-7279-visual/t7279-compact-shell-375.png",
+        "scripts/css-assertion-injector.cjs"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7280",
+      "title": "默认四组件的紧凑内容层级",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7279"
+      ],
+      "evidence": [
+        "src/styles/_12-r54-surface-adapter.scss",
+        "src/home-view.js",
+        "tests/compact-workbench-style-contract.test.cjs",
+        "tests/home-view.test.cjs",
+        "docs/adr/0205-t7280-compact-default-widget-content.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7280-visual-run.log",
+        ".artifacts/T-7280-negative-renderer.log",
+        ".artifacts/T-7279-negative-shell-contract.log",
+        ".artifacts/T-7280-visual/results.json",
+        ".artifacts/T-7280-visual/metrics.json",
+        ".artifacts/T-7280-visual/scroll-stale.json",
+        ".artifacts/T-7280-visual/t7280-default-four.png",
+        ".artifacts/T-7280-visual/compact-before-after.png",
+        ".artifacts/T-7280-verify-release-final.log"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
@@ -3358,6 +3418,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591179 bytes is below the 591872-byte repository budget by 693 bytes; current candidate package.zip is within the repository budget"
+    "packageBudget": "passed: 591810 bytes is below the 591872-byte repository budget by 62 bytes; current candidate package.zip is within the repository budget"
   }
 }

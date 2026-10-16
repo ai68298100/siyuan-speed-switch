@@ -288,12 +288,15 @@ function renderHomeModuleView(doc, view, options = {}) {
     const updatedAt = formatUpdatedAt(view.updatedAt);
     if (view.cached || updatedAt) {
         const meta = doc.createElement("span");
-        meta.className = "sw__home-module-meta";
+        meta.className = "sw__home-module-meta" + (view.stale ? " is-stale" : "");
+        meta.id = `sw-home-meta-${instanceKey}`;
         // T-6473 头部瘦身：首行只显示时间本身（"更新"前缀移入 tooltip），
         // 收窄后标题不再被挤成省略号
         const metaText = [view.stale ? (labels.staleRefreshFailed || "Stale · refresh failed") : view.cached ? (labels.cached || "Cached") : "", updatedAt].filter(Boolean).join(" · ");
         meta.textContent = metaText;
         meta.setAttribute("title", `${labels.updated || "Updated"} ${metaText}`);
+        title.title = `${title.textContent} · ${meta.title}`;
+        root.setAttribute("aria-describedby", meta.id);
         heading.appendChild(meta);
     }
     if (view.sourceHealth) {
@@ -301,6 +304,8 @@ function renderHomeModuleView(doc, view, options = {}) {
         health.className = `sw__home-source-health is-${view.sourceHealth}`;
         health.dataset.health = view.sourceHealth;
         health.textContent = view.sourceHealth === "fresh" ? labels.sourceFresh : view.sourceHealth === "cached" ? labels.sourceCached : labels.sourceStale;
+        health.setAttribute("aria-label", health.textContent);
+        health.setAttribute("title", health.textContent);
         heading.appendChild(health);
     }
     if (view.configurable && options.onConfig) {
@@ -829,6 +834,13 @@ function renderHomeModuleView(doc, view, options = {}) {
             list.appendChild(row);
         });
         body.appendChild(list);
+        if (!list.children.length && view.emptyHint) {
+            root.classList.add("is-empty-content");
+            const hint = doc.createElement("p");
+            hint.className = "sw__home-module-status sw__home-module-status--empty";
+            hint.textContent = view.emptyHint;
+            body.appendChild(hint);
+        }
         // T-7054 A 批次：时间与日期组件日进度条——当日已过百分比可视化
         if (view.moduleId === "external-local-time" && view.dayProgress >= 0) {
             const progress = doc.createElement("div");

@@ -21,9 +21,9 @@ test('compact workbench preserves visual height tiers after the final polish lay
         'compact widget content must not inherit the larger polish padding');
     assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__cell:hover', /transform:\s*none/, {topLevel: true}),
         'hover must not lift compact cards and make the grid feel heavy');
-    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact > .sw-platform-chrome .sw-platform-header', /grid-template-areas:\s*"brand nav actions"/, {topLevel: true}),
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header', /grid-template-areas:\s*"brand nav actions"/, {topLevel: true}),
         'compact host chrome must keep its navigation on one row');
-    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact > .sw-platform-chrome .sw-platform-surface-nav__item', /min-height:\s*var\(--sw-control-h-sm,\s*28px\)/, {topLevel: true}),
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-surface-nav__item', /min-height:\s*var\(--sw-control-h-sm,\s*28px\)/, {topLevel: true}),
         'compact host navigation must use a reduced row height');
     assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__quick-actions', /display:\s*none/, {topLevel: true}),
         'compact desktop workbench must remove the duplicate bottom action rail');
@@ -39,8 +39,25 @@ test('compact workbench preserves visual height tiers after the final polish lay
         'compact widget cards must clip only within their declared content-sized span');
     assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw__home-module-item-action', /min-height:\s*24px/, {topLevel: true}),
         'compact widget rows must stay visually small');
-    assert.match(finalSurfaceStyle, /@container sw-platform \(max-width: 760px\)[\s\S]*?grid-template-areas:\s*"brand actions" "nav nav"/,
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header', /grid-template-areas:\s*"brand actions" "nav nav"/, {atRule: /@container sw-platform \(max-width: 760px\)/}),
         'narrow compact workbench chrome must use a two-row header');
-    assert.match(finalSurfaceStyle, /@container sw-platform \(max-width: 760px\)[\s\S]*?\.sw-platform-status\s*\{\s*display:\s*none/,
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact > .sw-platform-chrome .sw-platform-status', /display:\s*none/, {atRule: /@container sw-platform \(max-width: 760px\)/}),
         'narrow compact workbench chrome must hide the duplicate status badge');
+});
+
+test('compact workbench keeps shell chrome lightweight while preserving labeled actions (T-7279)', () => {
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-context', /display:\s*none/, {topLevel: true}),
+        'compact workbench must remove the duplicate context breadcrumb from the height budget');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header', /min-height:\s*36px/, {topLevel: true}),
+        'compact platform header must fit a 36px single row');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw-home__bar .sw-home__refresh', /(?:^|\n)\s*width:\s*28px/, {topLevel: true}),
+        'compact refresh action must collapse to an icon target');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw-home__bar .sw-home__refresh > span', /display:\s*none/, {topLevel: true}),
+        'compact refresh must hide its duplicate label while retaining its icon');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw-home__bar .sw-home__add > span', /display:\s*none/, {topLevel: true}),
+        'compact store must hide its duplicate label while retaining its icon');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw-home__receipt', /min-height:\s*24px/, {topLevel: true}),
+        'compact health receipt must stay a short status row');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw__home-source-health:is(.is-fresh, .is-cached)', /font-size:\s*0/, {topLevel: true}),
+        'compact normal source health must reduce to a status dot while stale keeps its text');
 });

@@ -25,6 +25,23 @@ test("home view preserves a bounded adapter empty hint", () => {
     assert.equal(rendered.querySelector(".sw__home-module-status").textContent, "Install a command plugin");
 });
 
+test("home view shows the adapter hint beside a ready zero statistic without hiding populated rows (T-7280)", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const render = (items, emptyHint = "No pending tasks") => renderHomeModuleView(dom.window.document,
+        buildHomeModuleView({moduleId: "today-tasks", title: "Today's tasks"}, {
+            ok: true, snapshot: {items, stat: {value: "0", label: "tasks"}, emptyHint},
+        }));
+    const empty = render([]);
+    assert.equal(empty.dataset.status, "ready");
+    assert.equal(empty.querySelector(".sw__home-stat-value").textContent, "0");
+    assert.equal(empty.querySelector(".sw__home-module-status--empty").textContent, "No pending tasks");
+    assert.ok(empty.classList.contains("is-empty-content"));
+    const populated = render([{label: "Draft the note", value: "task-1"}]);
+    assert.equal(populated.querySelector(".sw__home-module-status--empty"), null);
+    assert.equal(populated.querySelector(".sw__home-module-item-label").textContent, "Draft the note");
+    assert.equal(render([], "").querySelector(".sw__home-module-status--empty"), null);
+});
+
 test("home view renders blocked provider state as a non-error placeholder", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     const view = buildHomeModuleView({moduleId: "clipped-unread", title: "Clipped"}, {
@@ -238,6 +255,8 @@ test("home view renders ranked feeds and stale source health", () => {
     const root = renderHomeModuleView(dom.window.document, view, {labels: {sourceStale: "过期缓存"}});
     assert.equal(root.querySelector(".sw__home-source-health").textContent, "过期缓存");
     assert.equal(root.querySelector(".sw__home-source-health").dataset.health, "stale");
+    assert.equal(root.querySelector(".sw__home-source-health").getAttribute("aria-label"), "过期缓存");
+    assert.equal(root.querySelector(".sw__home-source-health").getAttribute("title"), "过期缓存");
     assert.equal(root.querySelector(".sw__home-module-item-rank").textContent, "1");
     assert.equal(root.querySelector(".sw__home-module-item-secondary").textContent, "热度 123");
 });
@@ -398,6 +417,13 @@ test("home view exposes bounded cache and update metadata", () => {
     // T-6473 头部瘦身："更新"前缀移入 title tooltip，行内只保留时间本身
     assert.doesNotMatch(meta.textContent, /更新/);
     assert.equal(meta.getAttribute("title"), `更新 ${meta.textContent}`);
+    assert.equal(view.getAttribute("aria-describedby"), meta.id);
+    assert.equal(view.querySelector(".sw__home-module-title").title, `Meta · 更新 ${meta.textContent}`);
+    assert.equal(meta.classList.contains("is-stale"), false);
+    const stale = renderHomeModuleView(dom.window.document, buildHomeModuleView({moduleId: "meta", title: "Meta"}, {
+        ok: true, cached: true, stale: true, snapshot: {updatedAt: Date.now(), items: []},
+    }));
+    assert.equal(stale.querySelector(".sw__home-module-meta").classList.contains("is-stale"), true);
 });
 
 

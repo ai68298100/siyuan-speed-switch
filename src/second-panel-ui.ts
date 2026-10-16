@@ -523,6 +523,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 refreshAllButton.className = "b3-button b3-button--text sw-home__refresh";
                 refreshAllButton.dataset.homeAction = "refresh-all";
                 refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll);
+                refreshAllButton.title = this.i18n.homeRefreshAll;
                 refreshAllButton.innerHTML = '<svg><use xlink:href="#iconRefresh"></use></svg><span>' + this.i18n.homeRefreshAll + '</span>';
                 let retryEntries: typeof homeControllers | null = null;
                 refreshAllButton.addEventListener("click", async () => {
@@ -542,6 +543,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             const label = refreshAllButton.querySelector("span");
                             if (label) label.textContent = this.i18n.homeRetry;
                             refreshAllButton.setAttribute("aria-label", this.i18n.homeRetry);
+                            refreshAllButton.title = this.i18n.homeRetry;
                             showMessage(this.i18n.homeRefreshFailed
                                 .replace("{count}", String(failureCount))
                                 .replace("{timeout}", String(summary.timeout))
@@ -552,6 +554,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             const label = refreshAllButton.querySelector("span");
                             if (label) label.textContent = this.i18n.homeRefreshAll;
                             refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll);
+                            refreshAllButton.title = this.i18n.homeRefreshAll;
                         }
                     } finally {
                         if (homeRefreshBatchController === batchController) homeRefreshBatchController = null;
@@ -571,6 +574,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 const addButton = document.createElement("button");
                 addButton.type = "button";
                 addButton.className = "b3-button b3-button--text sw-home__add";
+                addButton.setAttribute("aria-label", this.i18n.homeStoreTitle);
+                addButton.title = this.i18n.homeStoreTitle;
                 addButton.innerHTML = '<svg><use xlink:href="#iconAdd"></use></svg><span>' + this.i18n.homeStoreTitle + '</span>';
                 addButton.addEventListener("click", () => {
                     openHomeWidgetStore.call(this, device, renderPanel);

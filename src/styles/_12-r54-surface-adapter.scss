@@ -297,28 +297,46 @@
 .sw-home.sw-home--compact {
     padding: var(--sw-space-md, 8px) var(--sw-space-lg, 12px);
 
+    &:not(.sw-home--mobile) { padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px); }
+
     // 紧凑桌面窗口只有约 920px 宽；平台头部保持一行，避免导航
     // 自己占掉一整行，把组件挤成“只剩标题”的大卡片。
-    > .sw-platform-chrome .sw-platform-header {
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header {
         grid-template-columns: minmax(0, 1fr) minmax(240px, 320px) minmax(0, 1fr);
         grid-template-areas: "brand nav actions";
         gap: var(--sw-space-sm, 6px);
-        min-height: var(--sw-control-h-lg, 48px);
-        padding: var(--sw-space-sm, 6px) 10px;
+        min-height: 36px;
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
     }
-    > .sw-platform-chrome .sw-platform-surface-nav { padding: var(--sw-space-2xs, 2px); }
-    > .sw-platform-chrome .sw-platform-surface-nav__item {
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header__brand-mark {
+        flex-basis: 24px;
+        width: 24px;
+        height: 24px;
+    }
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header__brand-subtitle { display: none; }
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header__actions { gap: var(--sw-space-xs, 4px); }
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header__icon-action,
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header__close {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+    }
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header__close-group {
+        gap: var(--sw-space-xs, 4px);
+        padding-left: var(--sw-space-sm, 6px);
+    }
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-surface-nav { padding: var(--sw-space-2xs, 2px); }
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-surface-nav__item {
         min-height: var(--sw-control-h-sm, 28px);
         gap: var(--sw-space-xs, 4px);
         padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
     }
-    > .sw-platform-chrome .sw-platform-surface-nav__hint,
-    > .sw-platform-chrome .sw-platform-header__close-hint { display: none; }
-    > .sw-platform-chrome .sw-platform-context {
-        min-height: var(--sw-control-h-sm, 28px);
-        padding: var(--sw-space-xs, 4px) 10px;
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-surface-nav__hint,
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header__close-hint { display: none; }
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-context {
+        display: none;
     }
-    > .sw-platform-chrome .sw-platform-context__hint { display: none; }
+    &:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-context__hint { display: none; }
 
     .sw-home__body { padding: 0 var(--sw-space-md, 8px); }
     .sw-home__grid {
@@ -330,7 +348,27 @@
         // renderer's span values produce visible small/medium/tall shapes.
         grid-auto-rows: 28px;
     }
-    .sw-home__bar { min-height: var(--sw-control-h-sm, 28px); margin-bottom: var(--sw-space-xs, 4px); }
+    &:not(.sw-home--mobile) .sw-home__bar {
+        min-height: var(--sw-control-h-sm, 28px);
+        margin-bottom: var(--sw-space-xs, 4px);
+        gap: var(--sw-space-xs, 4px);
+
+        > button {
+            min-height: var(--sw-control-h-sm, 28px);
+            padding-block: var(--sw-space-2xs, 2px);
+        }
+
+        .sw-home__refresh,
+        .sw-home__add {
+            width: 28px;
+            min-width: 28px;
+            justify-content: center;
+            padding-inline: 0;
+
+            > span { display: none; }
+            svg { width: 16px; height: 16px; }
+        }
+    }
 
     .sw-home__cell {
         padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
@@ -367,15 +405,74 @@
     .sw-home__quick-actions {
         display: none;
     }
-    .sw-home__receipt {
-        min-height: var(--sw-control-h-sm, 28px);
-        padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
+    &:not(.sw-home--mobile) .sw-home__receipt {
+        min-height: 24px;
+        gap: var(--sw-space-xs, 4px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
+        font-size: var(--sw-font-xs, 11px);
+
+        .sw-home__receipt-details {
+            min-height: 24px;
+            padding-inline: var(--sw-space-xs, 4px);
+            font-size: var(--sw-font-xs, 11px);
+        }
+    }
+
+    &:not(.sw-home--mobile) .sw__home-source-health:is(.is-fresh, .is-cached) {
+        width: 7px;
+        height: 7px;
+        padding: 0;
+        border-radius: 50%;
+        font-size: 0;
+        line-height: 0;
+    }
+    &:not(.sw-home--mobile) .sw__home-source-health.is-fresh { background: #3b9861; }
+    &:not(.sw-home--mobile) .sw__home-source-health.is-cached { border-style: dashed; }
+
+    // 默认四卡先展示内容；完整更新时间保留在标题提示与可读描述中。
+    &:not(.sw-home--mobile) .sw-home__cell:is([data-module-id="recent-documents"], [data-module-id="favorites"], [data-module-id="today-journal"], [data-module-id="today-tasks"]) {
+        .sw-home__cell-body { padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px); }
+        .sw__home-module-header { min-height: 24px; padding: 0; margin-bottom: var(--sw-space-xs, 4px); }
+        .sw__home-module-header .sw__home-module-title { font-size: var(--sw-font-sm, 12px); }
+        .sw__home-module-toggle {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            min-height: 24px;
+            padding: 0;
+        }
+        .sw__home-module-meta:not(.is-stale),
+        .sw__home-source-health:not(.is-stale) {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip-path: inset(50%);
+        }
+        .sw__home-module-body { padding: 0; }
+        .sw__home-stat { padding: 0; min-height: 22px; }
+        .sw__home-stat-value { font-size: var(--sw-font-xl, 17px); }
+        .sw__home-module-list .sw__home-module-item-action { min-height: 24px; padding-block: 0; }
+        .sw__home-module-status--empty { min-height: 0; margin: 0; padding: 0; opacity: 1; }
+        .sw__home-module.is-empty-content[data-module-id="today-tasks"] {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+
+            .sw__home-module-body[aria-hidden="false"] {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+        }
     }
 }
 
 // 窄紧凑工作台恢复两行头部；底部健康回执保留状态语义，头部隐藏重复徽标。
 @container sw-platform (max-width: 760px) {
-    .sw-home.sw-home--compact > .sw-platform-chrome .sw-platform-header {
+    .sw-home.sw-home--compact:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header {
         grid-template-columns: minmax(0, 1fr) auto;
         grid-template-areas: "brand actions" "nav nav";
         gap: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);

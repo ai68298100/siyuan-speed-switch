@@ -251,7 +251,7 @@ function literalOf(source) {
 
 function runTest() {
     const proc = require("node:child_process").spawnSync(
-        "node", ["--test", testFile.replace(/\\/g, "/")],
+        "node", ["--test", "--test-reporter=tap", testFile.replace(/\\/g, "/")],
         {cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024},
     );
     const output = (proc.stdout || "") + (proc.stderr || "");
