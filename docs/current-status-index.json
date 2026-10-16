@@ -129,7 +129,8 @@
     "T-7282",
     "T-7283",
     "T-7284",
-    "T-7285"
+    "T-7285",
+    "T-7286"
   ],
   "tasks": [
     {
@@ -3550,6 +3551,27 @@
         "docs/dev-plan-2026-10-06.md",
         ".artifacts/T-7285-negative-bookmark-alias.log",
         "package.zip"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7286",
+      "title": "当前文档大纲旧宿主包装与无活动文档兼容审计",
+      "status": "completed",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "research",
+      "dependsOn": [
+        "T-7285"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "src/agent-capabilities.js",
+        "tests/agent-outline.test.cjs",
+        "tests/insight-widgets.test.cjs",
+        "docs/adr/0211-t7286-outline-legacy-envelope-boundary.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7286-negative-outline.log"
       ],
       "next": "T-7144"
     }

@@ -53,7 +53,7 @@
 | `recent-writing-activity` 近期写作活跃度 | B | SQL 按 `created` 的 `YYYYMMDD` 聚合；日期标签已正确格式化 | adapter 有效；自动测试覆盖格式化正则 | 保持；真实宿主验证数据时区边界 |
 | `recent-daily-notes` 近期日记 | C | SQL 探测标题以 `YYYY-MM-DD` 开头的已有日记 | 只读、不创建；严格命名协议，空态常见 | 商店增加格式提示；补跨年边界测试 |
 | `document-relations-summary` 文档关系摘要 | C | 活动文档直接子块 + markdown 引用 SQL | 无活动文档必为空；引用匹配为有限 LIKE，不是完整关系图，可能漏报 | 标注“轻量摘要/非完整关系图”；后续改引用解析 |
-| `current-document-outline` 当前文档大纲 | C | 活动文档 `/api/outline/getDocOutline` | 端点与 Agent 共用；依赖活动文档和宿主返回结构 | 增加无活动文档和旧返回包装验收 |
+| `current-document-outline` 当前文档大纲 | C | 活动文档 `/api/outline/getDocOutline` | T-7286 已明确无活动文档返回可解释空态、未知响应包装拒绝并保持 `data` 数组边界；端点与 Agent 共用，旧宿主真实包装仍无样本 | 取得可核验旧宿主 fixture 后再决定是否扩展包装；不凭猜测支持 `data.outline`/`data.blocks` |
 | `today-reservations` 近期预约 | C | `attributes.name='custom-reservation'`、`value=YYYYMMDD` SQL；日期标签已正确格式化 | 仅兼容 dailynote-today 等插件约定，不是思源通用预约 | 商店描述已明确协议依赖；真实宿主验证第三方数据 |
 | `journal-calendar` 日历月视图 | C | SQL 以日记属性为主、日期标题为兼容回退，生成固定 6 周 × 7 列月历，已有日记显示圆点并可点击 | 保留完整 42 格、跨月/周末/今日/日记状态；可选加载 holiday-cn 节假日与调休班标识并与农历共存 | 真实宿主验证自定义日记路径、跨年节假日、筛选和窄卡片密度 |
 | `writing-streak` 写作打卡 | B/C | SQL 按 `created` 的 `YYYYMMDD` 聚合近 7 天 | 只读统计，依赖 created 格式；无写入“打卡”动作 | 名称改为“写作连续天数”或明确统计口径 |

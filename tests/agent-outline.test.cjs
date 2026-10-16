@@ -1072,6 +1072,13 @@ test("flattenOutline respects the limit and skips malformed nodes", () => {
     assert.equal(flattenOutline([{id: "20260101000003-ccccccc", name: "深", depth: 99}], 48)[0].depth, 8);
 });
 
+test("flattenOutline keeps unsupported response envelopes and no-document values empty", () => {
+    const heading = {id: "20260101000001-aaaaaaa", name: "已知标题", depth: 0};
+    assert.deepEqual(flattenOutline({data: [heading]}, 48), [], "adapter contract is a data-array response, not an envelope helper");
+    assert.deepEqual(flattenOutline({outline: [heading]}, 48), [], "unknown outline envelopes must not be guessed");
+    assert.deepEqual(flattenOutline(null, 48), [], "no active document input stays empty");
+});
+
 test("agent capabilities declare actionEffects per action name (ADR 0063)", () => {
     const captured = [];
     const host = {addAgentCapability: (options) => { captured.push(options); return "handle"; }};

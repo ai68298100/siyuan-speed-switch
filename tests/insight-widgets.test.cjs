@@ -104,6 +104,20 @@ test("current document outline adapter reuses bounded outline data", () => {
     assert.match(source, /homeCurrentDocumentMissing/);
 });
 
+test("current document outline keeps no-document and response-shape boundaries explicit", () => {
+    const source = readSourceText(require("node:path").join(__dirname, "..", "src", "index.ts"));
+    const start = source.indexOf('register("current-document-outline"');
+    const end = source.indexOf('register("today-reservations"', start);
+    assert.ok(start >= 0 && end > start, "outline adapter window must be present");
+    const window = source.slice(start, end);
+    assert.match(window, /if \(!rootId \|\| !BLOCK_ID_RE\.test\(rootId\)\) return \{items: \[\], emptyHint: this\.i18n\.homeCurrentDocumentMissing\};/,
+        "missing active document must stay an explicit empty state");
+    assert.match(window, /if \(!Array\.isArray\(json\?\.data\)\) throw new Error\("invalid_document_outline"\);/,
+        "unknown outline response shapes must fail closed");
+    assert.match(window, /const headings = flattenOutline\(json\.data, 64\);/,
+        "only the validated data array enters the bounded flattener");
+});
+
 test("document navigation adapters use bounded models and short caches", () => {
     const fs = require("node:fs");
     const path = require("node:path");
