@@ -38,7 +38,7 @@
 | `tags` 标签 | B | `/api/tag/getTag`，树节点点击打开标签 dock | T-6976 已消费 3.8.x `children/count/depth`，嵌套树、计数、搜索祖先和虚拟父节点均有模型/视图证据；路径值仍受宿主 dock 协议约束 | 后续若思源提供稳定 tag ID，再替换路径值并补真实宿主验收 |
 | `bookmarks` 书签 | B/C | `/api/bookmark/getBookmark`，点击打开书签 dock | 已兼容裸数组/包装；T-7285 兼容 `blockID`/`block_id`/`root_id` 旧字段并保留块级定位；无稳定 ID 时仍用名称协议，重名或特殊字符定位不稳定 | 改用内核稳定 ID 或显式搜索参数 |
 | `journal-monthly` 本月日记 | C | SQL 按 `YYYY-MM` 标题，首项打开/创建今日日记 | 桌面实测显示 2026-09-11；严格依赖标准日记标题 | 商店显示“标题需 YYYY-MM-DD” |
-| `note-stats` 笔记统计 | B | SQL 聚合文档数、`length` 字数、本周新增/修改 | 查询真实存在；`length` 依赖思源 blocks 字段语义，尚无旧宿主证据 | 对空库/字段缺失增加明确降级说明 |
+| `note-stats` 笔记统计 | B | SQL 聚合文档数、`length` 字数、本周新增/修改 | T-7287 已确认显式零值聚合是合法空库，缺失聚合响应保持不可用；`length` 仍依赖思源 blocks 字段语义，尚无旧宿主证据 | 取得旧宿主 `length` 语义或真实字段缺失样本后再调整统计口径 |
 | `year-progress` 年度进度 | A | 纯前端日期计算 | 无内核依赖，最稳定 | 保持 |
 | `external-local-time` 时间与日期 | A | 浏览器本地时间与 Intl 格式化 | 完全离线；三端按分钟边界刷新，隐藏和销毁时暂停 | 保持；真实宿主补主题/时区抽查 |
 | `external-weather-open-meteo` 近期天气 | B/C | Open-Meteo 地理编码与预测 API | 用户明确配置城市后才联网；固定白名单、超时、响应上限、分层缓存、来源署名和三端渲染均有自动回归 | 真实宿主验证代理网络、深浅主题、窄侧栏和城市歧义 |

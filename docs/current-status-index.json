@@ -130,7 +130,8 @@
     "T-7283",
     "T-7284",
     "T-7285",
-    "T-7286"
+    "T-7286",
+    "T-7287"
   ],
   "tasks": [
     {
@@ -3572,6 +3573,27 @@
         "docs/adr/0211-t7286-outline-legacy-envelope-boundary.md",
         "docs/dev-plan-2026-10-06.md",
         ".artifacts/T-7286-negative-outline.log"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7287",
+      "title": "笔记统计零值与缺失聚合边界",
+      "status": "completed",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "research",
+      "dependsOn": [
+        "T-7286"
+      ],
+      "evidence": [
+        "src/index.ts",
+        "src/kernel-widget-model.js",
+        "tests/kernel-widget-model.test.cjs",
+        "tests/insight-widgets.test.cjs",
+        "docs/adr/0212-t7287-note-stats-aggregate-boundary.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7287-negative-note-stats.log"
       ],
       "next": "T-7144"
     }

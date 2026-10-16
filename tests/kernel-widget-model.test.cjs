@@ -535,6 +535,17 @@ test('note stats projects a selectable primary metric and adjacent-window trend'
     assert.equal(model.normalizeNoteStatsConfig({days: 999}).days, 90);
 });
 
+test('note stats accepts an explicit zero aggregate but rejects a missing aggregate payload', () => {
+    const empty = model.buildNoteStatsSnapshot({
+        docs: 0, chars: 0, created: 0, updated: 0, previousCreated: 0, previousUpdated: 0,
+    }, {}, {}, NOW);
+    assert.ok(empty, 'SQL aggregate rows with zero values are a valid empty workspace');
+    assert.equal(empty.stat.value, '0');
+    assert.equal(empty.items[0].label, '估算字数 · 0');
+    assert.equal(model.buildNoteStatsSnapshot(null, {}, {}, NOW), null, 'missing aggregate must stay unavailable');
+    assert.equal(model.buildNoteStatsSnapshot([], {}, {}, NOW), null, 'array payloads are not aggregate rows');
+});
+
 test('note stats strength metric is opt-in, bounded, and smoothing-stable (T-6682)', () => {
     const payload = {
         docs: 120, chars: 34567, created: 4, updated: 6, previousCreated: 2, previousUpdated: 3,
