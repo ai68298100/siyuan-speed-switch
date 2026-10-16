@@ -3761,6 +3761,26 @@
         "tests/store-grouping-and-directory-protocol.test.cjs",
         "src/home-source-model.js"
       ],
+      "next": "T-7294"
+    },
+    {
+      "id": "T-7294",
+      "title": "8 大高价值核心组件 7 维价值密度与端侧适配契约",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7293"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0220-t7294-high-value-widgets-seven-dimension-quality-contract.md",
+        "tests/high-value-widgets-seven-dimension-contract.test.cjs",
+        "src/kernel-widget-model.js",
+        "src/life-widget-model.js",
+        "src/home-adapters.js"
+      ],
       "next": "T-7144"
     }
   ],
