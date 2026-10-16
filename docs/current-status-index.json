@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-16",
-  "currentTask": "T-7289",
+  "currentTask": "T-7144",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7289",
+  "nextLocalTask": "T-7163",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -3638,7 +3638,7 @@
     {
       "id": "T-7289",
       "title": "v0.47.3 发布",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "release",
       "workType": "deliverable",
@@ -3657,6 +3657,11 @@
         "docs/dev-plan-2026-10-06.md",
         ".artifacts/T-7289-verify-release.log",
         ".artifacts/T-7289-release-audit.log",
+        ".artifacts/T-7289-local-artifacts.json",
+        ".artifacts/T-7289-ci-receipt.json",
+        ".artifacts/T-7289-release-run-receipt.json",
+        ".artifacts/T-7289-release-receipt.json",
+        ".artifacts/T-7289-cloud-artifact-comparison.json",
         "package.zip"
       ],
       "next": "T-7163"
@@ -3664,7 +3669,7 @@
   ],
   "global": {
     "jsRunner": "blocked",
-    "release": "preparing v0.47.3",
+    "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
     "packageBudget": "passed: 590757 bytes is below the 591872-byte repository budget by 1115 bytes"
