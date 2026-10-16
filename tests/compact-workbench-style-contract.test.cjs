@@ -2,13 +2,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const {readSourceText} = require('./source-scan.cjs');
-const {declaresIn} = require('./css-block-scan.cjs');
+const {declaresIn, findRules} = require('./css-block-scan.cjs');
 
 const root = path.join(__dirname, '..');
 const finalSurfaceStyle = readSourceText(path.join(root, 'src', 'styles', '_12-r54-surface-adapter.scss'));
 const assembledStyles = readSourceText(path.join(root, 'src', 'index.scss'));
 
-test('compact workbench styles override the final polish layer (T-7274)', () => {
+test('compact workbench preserves visual height tiers after the final polish layer (T-7278)', () => {
     assert.ok(assembledStyles.lastIndexOf('.sw-home {') < assembledStyles.indexOf('.sw-home.sw-home--compact'),
         'the compact overrides must follow the workbench cell rules in the assembled cascade');
     assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__grid', /gap:\s*var\(--sw-space-sm,\s*6px\)/, {topLevel: true}),
@@ -27,12 +27,16 @@ test('compact workbench styles override the final polish layer (T-7274)', () => 
         'compact host navigation must use a reduced row height');
     assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__quick-actions', /display:\s*none/, {topLevel: true}),
         'compact desktop workbench must remove the duplicate bottom action rail');
-    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__cell', /max-height:\s*68px/, {topLevel: true}),
-        'compact widget cards must keep a bounded readable height');
-    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__grid', /grid-auto-rows:\s*auto/, {topLevel: true}),
-        'compact widget rows must follow content instead of the 40px layout grid');
-    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__cell', /grid-row:\s*auto\s*!important/, {topLevel: true}),
-        'compact widget cards must release their multi-row desktop spans');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__cell', /max-height:\s*none/, {topLevel: true}),
+        'compact widget cards must not be flattened by a shared height cap');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__grid', /grid-auto-rows:\s*28px/, {topLevel: true}),
+        'compact widget rows must use a small track so declared spans remain visible');
+    const compactCellRules = findRules(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__cell', {topLevel: true});
+    assert.ok(compactCellRules.length > 0, 'compact widget cell rule must be discoverable as one scoped block');
+    assert.ok(compactCellRules.every((rule) => !/grid-row:\s*auto\s*!important/.test(rule.declarations)),
+        'compact widget cards must preserve the renderer-provided multi-row spans');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__cell', /overflow:\s*hidden/, {topLevel: true}),
+        'compact widget cards must clip only within their declared content-sized span');
     assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw__home-module-item-action', /min-height:\s*24px/, {topLevel: true}),
         'compact widget rows must stay visually small');
     assert.match(finalSurfaceStyle, /@container sw-platform \(max-width: 760px\)[\s\S]*?grid-template-areas:\s*"brand actions" "nav nav"/,

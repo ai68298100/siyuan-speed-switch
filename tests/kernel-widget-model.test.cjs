@@ -405,6 +405,24 @@ test('bookmark widget reports empty entries and can hide them', () => {
     assert.equal(hidden.emptyHint, '无结果');
 });
 
+test('bookmark widget trusts valid blocks when host count is zero', () => {
+    const bookmark = {
+        name: '稍后核对',
+        count: 0,
+        blocks: [{id: '20260918120000-blockaaa', rootID: '20260918120001-rootaaa'}],
+    };
+    const visible = model.buildBookmarkListSnapshot([bookmark], {showEmpty: '否'}, {blocks: '块'}, NOW);
+    assert.equal(visible.items.length, 1);
+    assert.equal(visible.items[0].secondary, '1 块');
+    assert.match(visible.items[0].value, /^bookmark-block:/);
+});
+
+test('bookmark widget preserves an actually empty entry when no blocks exist', () => {
+    const snapshot = model.buildBookmarkListSnapshot([{name: '空分组', count: 0, blocks: []}], {}, {emptyEntry: '空书签'}, NOW);
+    assert.equal(snapshot.items[0].secondary, '空书签');
+    assert.equal(snapshot.items[0].value, 'bookmark:空分组');
+});
+
 // ---------- T-6401~T-6408 日期与剪藏入口 ----------
 test('clipped unread projection dedupes roots, reports totals, and formats path/time', () => {
     const rows = [

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>第二面板 · 微型信息条与混合拼贴对照</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, "Segoe UI", "Microsoft YaHei UI", sans-serif; color: #34332f; background: #eceae4; --line:#e4e1d9; --muted:#8b877e; --paper:#fffefa; --soft:#faf9f5; --accent:#789b77; --warm:#c48b73; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-width:320px; padding:32px; background:#eceae4; }
+    button { font:inherit; color:inherit; }
+    .intro { max-width:1040px; margin:0 auto 18px; color:#6f6b63; font-size:12px; line-height:1.6; }
+    .intro strong { color:#403e38; }
+    .boards { max-width:1040px; margin:0 auto; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; align-items:start; }
+    .board { min-width:0; overflow:hidden; border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .board.is-recommended { border-color:#b7cbb2; }
+    .board__head { min-height:36px; padding:0 10px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--line); }
+    .board__title { margin:0; font-size:11px; font-weight:700; }
+    .board__tag { margin-left:auto; color:#71886d; font-size:9px; }
+    .board__body { padding:9px; }
+    .strip { min-height:42px; padding:0 8px; display:flex; align-items:center; gap:7px; border-bottom:1px solid #efede8; }
+    .strip:last-child { border-bottom:0; }
+    .dot { width:6px; height:6px; flex:none; border-radius:50%; background:var(--accent); }
+    .strip__label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
+    .strip__meta { margin-left:auto; flex:none; color:var(--muted); font-size:9px; }
+    .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+    .tile { min-height:78px; padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--soft); }
+    .tile__label { color:#77736b; font-size:9px; }
+    .tile__value { margin-top:10px; color:#49473f; font-size:24px; font-weight:650; line-height:1; font-variant-numeric:tabular-nums; }
+    .tile__note { margin-top:6px; color:var(--muted); font-size:9px; }
+    .mosaic { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+    .mosaic .wide { grid-column:span 2; }
+    .mosaic .tall { grid-row:span 2; }
+    .mosaic .strip { min-height:40px; padding:0 7px; border:0; }
+    .mosaic .tile { min-height:70px; }
+    .mosaic .tile__value { margin-top:8px; font-size:20px; }
+    .heat { min-height:70px; padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--soft); }
+    .heat__head { display:flex; justify-content:space-between; color:#77736b; font-size:9px; }
+    .heat__cells { display:grid; grid-template-columns:repeat(14,minmax(0,1fr)); gap:2px; margin-top:12px; }
+    .heat__cells i { height:6px; border-radius:1px; background:#e2e9df; }
+    .heat__cells i:nth-child(4n+1), .heat__cells i:nth-child(7n+2) { background:#b6cbaF; }
+    .heat__cells i:nth-child(9n+4) { background:#82a67d; }
+    .note { margin-top:9px; color:var(--muted); font-size:9px; line-height:1.45; }
+    @media (max-width:860px) { body{padding:18px;} .boards{grid-template-columns:1fr;} .board{max-width:600px;} }
+    @media (prefers-color-scheme:dark) { :root{color-scheme:dark;color:#e8e5dd;background:#252622;--line:#3c3d37;--muted:#aaa69c;--paper:#2b2c29;--soft:#30312d;--accent:#8bab84;--warm:#d39a84;} body{background:#252622;} .intro{color:#aaa69c;} .intro strong{color:#e8e5dd;} .strip{border-color:#3a3b36;} .strip__label,.tile__value{color:#e5e1d8;} .tile__label,.heat__head{color:#aaa69c;} .heat__cells i{background:#414b40;} .heat__cells i:nth-child(4n+1),.heat__cells i:nth-child(7n+2){background:#637d5d;} .heat__cells i:nth-child(9n+4){background:#83a47b;} }
+  </style>
+</head>
+<body>
+  <p class="intro"><strong>同一批数据、三种视觉形态：</strong> A 把文档和任务压成信息条；B 只给数值型组件一个最小瓦片；C 混合两者，让尺寸跟内容走。C 是当前推荐方向，面板只保留标题、添加和更多入口。</p>
+  <main class="boards" aria-label="第二面板小组件视觉方案对照">
+    <section class="board" aria-labelledby="strip-title">
+      <header class="board__head"><h2 id="strip-title" class="board__title">A · 微型信息条</h2><span class="board__tag">列表优先</span></header>
+      <div class="board__body">
+        <div class="strip"><i class="dot"></i><span class="strip__label">近期文档 · 小组件交互草稿</span><time class="strip__meta">09:32</time></div>
+        <div class="strip"><i class="dot" style="background:#c48b73"></i><span class="strip__label">收藏 · Obsidian 插件收集</span><span class="strip__meta">4 个</span></div>
+        <div class="strip"><i class="dot"></i><span class="strip__label">今日日记 · 3 项待办</span><span class="strip__meta">打开</span></div>
+        <div class="strip"><i class="dot" style="background:#c9a88a"></i><span class="strip__label">今日任务 · 1/4 完成</span><span class="strip__meta">查看</span></div>
+        <p class="note">适合高频入口，几乎没有卡片壳；配置和刷新只在聚焦或编辑态出现。</p>
+      </div>
+    </section>
+
+    <section class="board" aria-labelledby="tile-title">
+      <header class="board__head"><h2 id="tile-title" class="board__title">B · 最小瓦片</h2><span class="board__tag">单值优先</span></header>
+      <div class="board__body">
+        <div class="tiles">
+          <article class="tile"><div class="tile__label">当前时间</div><div class="tile__value">09:41</div><div class="tile__note">周五 · 10月16日</div></article>
+          <article class="tile"><div class="tile__label">项目交付</div><div class="tile__value" style="color:#b77f69">12</div><div class="tile__note">天后</div></article>
+          <article class="tile"><div class="tile__label">天气</div><div class="tile__value">23°</div><div class="tile__note">晴 · 杭州</div></article>
+          <article class="tile"><div class="tile__label">未完成任务</div><div class="tile__value">3</div><div class="tile__note">今天</div></article>
+        </div>
+        <p class="note">适合时钟、倒数、天气等“一个主值”的效果插件，不使用大渐变或大数字海报。</p>
+      </div>
+    </section>
+
+    <section class="board is-recommended" aria-labelledby="mosaic-title">
+      <header class="board__head"><h2 id="mosaic-title" class="board__title">C · 混合拼贴</h2><span class="board__tag">推荐</span></header>
+      <div class="board__body">
+        <div class="mosaic">
+          <div class="strip wide"><i class="dot"></i><span class="strip__label">近期文档 · 小组件交互草稿</span><time class="strip__meta">09:32</time></div>
+          <article class="tile tall"><div class="tile__label">项目交付</div><div class="tile__value" style="color:#b77f69">12</div><div class="tile__note">天后</div></article>
+          <article class="tile"><div class="tile__label">今日日记</div><div class="tile__value">3</div><div class="tile__note">项待办</div></article>
+          <article class="tile"><div class="tile__label">天气</div><div class="tile__value">23°</div><div class="tile__note">晴 · 杭州</div></article>
+          <div class="heat wide"><div class="heat__head"><span>写作记录</span><span>近一年</span></div><div class="heat__cells"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        </div>
+        <p class="note">推荐给第二面板：宽条承载列表，瓦片承载单值；没有固定大画布，也不把效果插件套进工作台卡片。</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

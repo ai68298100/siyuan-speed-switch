@@ -119,7 +119,10 @@
     "T-7272",
     "T-7273",
     "T-7274",
-    "T-7275"
+    "T-7275",
+    "T-7276",
+    "T-7277",
+    "T-7278"
   ],
   "tasks": [
     {
@@ -3284,6 +3287,70 @@
         "README.md"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7276",
+      "title": "书签计数与有效块回退",
+      "status": "completed",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "fix",
+      "dependsOn": [
+        "T-7144"
+      ],
+      "evidence": [
+        "src/kernel-widget-model.js",
+        "tests/kernel-widget-model.test.cjs",
+        "docs/adr/0201-t7276-bookmark-count-fallback.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7276-bookmark-model.log"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7277",
+      "title": "第二面板微型信息条与混合拼贴视觉方向",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "research",
+      "dependsOn": [
+        "T-7275"
+      ],
+      "evidence": [
+        "docs/design/second-panel-micro-mosaic-prototype-2026-10-16.html",
+        "docs/research-second-panel-visual-gap-2026-10-16.md",
+        "docs/research-second-panel-2026-10-15.md",
+        "docs/adr/0202-t7277-second-panel-micro-mosaic-direction.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/e2e-compact-host-7/compact-host-probe.png",
+        ".artifacts/e2e-compact-host-narrow-2/compact-host-700.png"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7278",
+      "title": "compact 高度档位恢复",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "verification",
+      "dependsOn": [
+        "T-7277"
+      ],
+      "evidence": [
+        "src/styles/_12-r54-surface-adapter.scss",
+        "tests/compact-workbench-style-contract.test.cjs",
+        "tests/surface-switch-browser-smoke.cjs",
+        "docs/adr/0203-t7278-compact-height-tracks.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7278-negative-height-track.log",
+        ".artifacts/T-7278-negative-height-track-explicit28.log",
+        ".artifacts/T-7278-visual-regression-28-run-output.json",
+        ".artifacts/T-7278-compact-visual-metrics.json",
+        ".artifacts/surface-switch-hostcss.log"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
@@ -3291,6 +3358,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591173 bytes is below the 591872-byte repository budget by 699 bytes; current candidate package.zip is within the repository budget"
+    "packageBudget": "passed: 591179 bytes is below the 591872-byte repository budget by 693 bytes; current candidate package.zip is within the repository budget"
   }
 }

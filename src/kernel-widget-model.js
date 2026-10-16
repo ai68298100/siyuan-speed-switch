@@ -1052,7 +1052,9 @@ function buildBookmarkListSnapshot(bookmarks, config, labels = {}, now = Date.no
         const name = boundedText(bookmark.name || bookmark.bookmark, 96);
         if (!name || (query && !name.toLocaleLowerCase().includes(query))) continue;
         const rawCount = Math.trunc(Number(bookmark.count));
-        const count = Number.isFinite(rawCount) ? Math.max(0, rawCount) : Array.isArray(bookmark.blocks) ? bookmark.blocks.length : 0;
+        const blockCount = Array.isArray(bookmark.blocks) ? bookmark.blocks.length : 0;
+        // 某些宿主版本会先返回 count=0，再附带已解析的 blocks；有效块不能被空计数遮掉。
+        const count = Number.isFinite(rawCount) ? Math.max(Math.max(0, rawCount), blockCount) : blockCount;
         if (!normalized.showEmpty && count === 0) continue;
         const key = name.toLocaleLowerCase();
         const existing = byName.get(key);

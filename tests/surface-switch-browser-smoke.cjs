@@ -24,7 +24,10 @@ const bundle = esbuild.buildSync({
 fs.writeFileSync(path.join(artifactDir, "bundle.js"), bundle);
 
 const i18nJson = fs.readFileSync(path.join(repo, "src", "i18n", "zh-CN.json"), "utf8");
-const pageHtml = `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="./index.css"></head><body>
+const pageHtml = `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="./index.css">
+<!-- Keep the Dialog fixture's content/body sizing contract aligned with SiYuan.
+     The production switcher locks body scrolling and absolutely fills this pair. -->
+<style>.b3-dialog__content,.b3-dialog__body{height:100%;min-height:0}</style></head><body>
 <script>window.__stubI18n = ${i18nJson};</script>
 <script>window.__bootLog = [];</script>
 <script src="./bundle.js"></script>

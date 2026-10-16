@@ -323,16 +323,21 @@
     .sw-home__body { padding: 0 var(--sw-space-md, 8px); }
     .sw-home__grid {
         gap: var(--sw-space-sm, 6px);
-        grid-auto-rows: auto;
+        // 保留渲染层写入的 span h，让 small/medium/tall 在 compact 里仍有
+        // 可见高度差；使用小行高收紧画布，不再把所有组件压成同一条。
+        // `--sw-control-h-sm` is the global 20px control token.  Compact
+        // widget tracks intentionally use the dedicated 28px rhythm so the
+        // renderer's span values produce visible small/medium/tall shapes.
+        grid-auto-rows: 28px;
     }
     .sw-home__bar { min-height: var(--sw-control-h-sm, 28px); margin-bottom: var(--sw-space-xs, 4px); }
 
     .sw-home__cell {
         padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
         border-radius: $sw-radius-md;
-        max-height: 68px;
-        overflow: auto;
-        grid-row: auto !important;
+        max-height: none;
+        min-height: 0;
+        overflow: hidden;
         backdrop-filter: none;
         box-shadow: none;
 
