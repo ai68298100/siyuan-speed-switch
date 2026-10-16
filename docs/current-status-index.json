@@ -3723,6 +3723,27 @@
         "tests/compact-workbench-style-contract.test.cjs"
       ],
       "next": "T-7163"
+    },
+    {
+      "id": "T-7292",
+      "title": "第三方组件 Provider 7 阶段全生命周期与跨表面契约",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7291",
+        "T-7146"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0218-t7292-provider-full-lifecycle-and-cross-surface-evidence.md",
+        "tests/widget-provider-full-lifecycle-contract.test.cjs",
+        "src/home-runtime.js",
+        "src/home-adapters.js",
+        "src/external-widget-model.js"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
