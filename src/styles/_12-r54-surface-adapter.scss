@@ -538,6 +538,144 @@
         }
         .sw__home-item-bar { display: none; }
     }
+
+    // 可选效果组件也遵守 compact 的单值摘要语言；保留配置、折叠和异常入口，
+    // 只收紧常规内容的材质、字号与行距，避免天气/倒数把小窗口撑成海报卡。
+    &:not(.sw-home--mobile) .sw-home__cell:is([data-module-id="external-weather-open-meteo"], [data-module-id="countdown"]) {
+        color: var(--b3-theme-on-background);
+        background: var(--b3-theme-background);
+        background-image: none;
+        border: 1px solid var(--b3-border-color);
+        .sw-home__cell-body { padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px); }
+        .sw__home-module-header { min-height: 24px; padding: 0; margin-bottom: var(--sw-space-xs, 4px); }
+        .sw__home-module-header .sw__home-module-title { font-size: var(--sw-font-sm, 12px); }
+        .sw__home-module-toggle {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            min-height: 24px;
+            padding: 0;
+        }
+        .sw__home-module-meta:not(.is-stale),
+        .sw__home-source-health:not(.is-stale) {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip-path: inset(50%);
+        }
+        .sw__home-module-body { padding: 0; }
+        .sw__home-stat-value {
+            font-size: var(--sw-font-2xl, 20px);
+            font-weight: var(--sw-weight-semibold, 600);
+            letter-spacing: 0;
+        }
+    }
+
+    // 天气 compact：中性表面 + 温度铭牌 + 四列短预报；城市和来源仍可读但不抢主值。
+    &:not(.sw-home--mobile) .sw-home__cell[data-module-id="external-weather-open-meteo"] {
+        --sw-home-accent: var(--b3-theme-primary);
+
+        :is(.sw__home-module-header, .sw__home-module-title, .sw__home-module-meta, .sw__home-stat-label, .sw__home-stat-value) {
+            color: var(--b3-theme-on-background);
+        }
+        .sw__home-module-icon {
+            color: var(--b3-theme-primary);
+        }
+        .sw__home-module-context {
+            display: block;
+            flex: 0 1 36%;
+            max-width: 36%;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+            color: var(--b3-theme-on-surface-light);
+            font-size: var(--sw-font-xs, 11px);
+            line-height: var(--sw-leading-compact, 1.2);
+            text-align: end;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sw__home-stat {
+            align-items: baseline;
+            gap: var(--sw-space-sm, 6px);
+            min-height: 24px;
+            padding: 0;
+        }
+        .sw__home-stat-label {
+            min-width: 0;
+            overflow: hidden;
+            font-size: var(--sw-font-xs, 11px);
+            opacity: 0.78;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sw__home-module-list {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 0 var(--sw-space-sm, 6px);
+            margin-top: var(--sw-space-2xs, 2px);
+        }
+        .sw__home-module-item-action {
+            display: block;
+            min-height: 16px;
+            padding: 0;
+            font-size: var(--sw-font-xs, 11px);
+            line-height: 1;
+            text-overflow: ellipsis;
+        }
+        .sw__home-module-item-secondary {
+            color: var(--b3-theme-on-surface-light);
+            margin-left: var(--sw-space-2xs, 2px);
+        }
+        .sw__home-module-item.has-link { grid-column: 1 / -1; }
+        .sw__home-module-item.has-link .sw__home-module-item-action {
+            min-height: 12px;
+            line-height: 1;
+            color: var(--b3-theme-on-surface-light);
+            font-size: var(--sw-font-2xs, 10px);
+            opacity: 0.82;
+        }
+    }
+
+    // 倒数 compact：单值优先，里程碑徽标贴近主值，不再额外制造大块空白。
+    &:not(.sw-home--mobile) .sw-home__cell[data-module-id="countdown"] {
+        .sw__home-stat {
+            align-items: baseline;
+            gap: var(--sw-space-sm, 6px);
+            min-height: var(--sw-control-h-md, 26px);
+            padding: 0;
+        }
+        .sw__home-stat-value { line-height: 1; }
+        .sw__home-stat-label {
+            min-width: 0;
+            overflow: hidden;
+            color: var(--b3-theme-on-surface-light);
+            font-size: var(--sw-font-xs, 11px);
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sw__home-stat-milestone {
+            display: inline-flex;
+            flex: none;
+            align-items: center;
+            margin: 0 0 0 auto;
+            padding: 1px var(--sw-space-xs, 4px);
+            border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 24%, var(--b3-border-color));
+            border-radius: 999px;
+            color: var(--b3-theme-primary);
+            font-size: var(--sw-font-2xs, 10px);
+            font-weight: var(--sw-weight-medium, 500);
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .sw__home-module-list .sw__home-module-item-action {
+            min-height: var(--sw-control-h-sm, 20px);
+            padding: 0;
+            color: var(--b3-theme-on-surface-light);
+            font-size: var(--sw-font-xs, 11px);
+            line-height: var(--sw-leading-compact, 1.2);
+        }
+    }
 }
 
 // 窄紧凑工作台恢复两行头部；底部健康回执保留状态语义，头部隐藏重复徽标。

@@ -17,10 +17,6 @@ LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**.
 
 Itemized changes, validation data, and release history are in the [complete changelog](./docs/CHANGELOG.en-US.md).
 
-## Previous release updates (v0.47.0 · 2026-10-11)
-
-The R54 three-surface adapter, compact layout, and work-surface hierarchy are recorded in the [complete changelog](./docs/CHANGELOG.en-US.md).
-
 <details>
 <summary>Older release updates (v0.47.0 and earlier)</summary>
 

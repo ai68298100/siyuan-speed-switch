@@ -125,7 +125,8 @@
     "T-7278",
     "T-7279",
     "T-7280",
-    "T-7281"
+    "T-7281",
+    "T-7282"
   ],
   "tasks": [
     {
@@ -3446,6 +3447,30 @@
         ".artifacts/T-7281-verify-release-final.log"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7282",
+      "title": "可选效果组件紧凑化",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7281"
+      ],
+      "evidence": [
+        "src/styles/_12-r54-surface-adapter.scss",
+        "tests/compact-optional-widgets-style-contract.test.cjs",
+        "docs/adr/0207-t7282-compact-optional-widgets.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".tmp/T-7282/compact-effects.spec.mjs",
+        ".tmp/T-7282/negative-optional.json",
+        ".artifacts/T-7282-negative-optional-contract.log",
+        ".artifacts/T-7282-visual/metrics.json",
+        ".artifacts/T-7282-visual/results.json",
+        ".artifacts/T-7282-verify-release-final.log"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
@@ -3453,6 +3478,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591479 bytes is below the 591872-byte repository budget by 393 bytes; current candidate package.zip is within the repository budget"
+    "packageBudget": "passed: 591859 bytes is below the 591872-byte repository budget by 13 bytes; current candidate package.zip is within the repository budget"
   }
 }
