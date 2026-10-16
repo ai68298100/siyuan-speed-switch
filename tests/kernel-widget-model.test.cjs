@@ -423,6 +423,20 @@ test('bookmark widget preserves an actually empty entry when no blocks exist', (
     assert.equal(snapshot.items[0].value, 'bookmark:空分组');
 });
 
+test('bookmark widget keeps exact block targeting for legacy host field aliases', () => {
+    const snapshot = model.buildBookmarkListSnapshot([{
+        name: '旧宿主书签', count: 1,
+        blocks: [{blockID: '20260918120000-blockaaa', root_id: '20260918120001-rootaaa'}],
+    }], {}, {});
+    assert.equal(snapshot.items[0].value, 'bookmark-block:20260918120000-blockaaa:20260918120001-rootaaa');
+
+    const snakeCase = model.buildBookmarkListSnapshot([{
+        name: '旧宿主书签 2', count: 1,
+        blocks: [{block_id: '20260918120002-blockbbb', root_id: '20260918120003-rootbbb'}],
+    }], {}, {});
+    assert.equal(snakeCase.items[0].value, 'bookmark-block:20260918120002-blockbbb:20260918120003-rootbbb');
+});
+
 // ---------- T-6401~T-6408 日期与剪藏入口 ----------
 test('clipped unread projection dedupes roots, reports totals, and formats path/time', () => {
     const rows = [

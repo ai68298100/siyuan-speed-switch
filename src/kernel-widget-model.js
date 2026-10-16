@@ -1059,8 +1059,9 @@ function buildBookmarkListSnapshot(bookmarks, config, labels = {}, now = Date.no
         const key = name.toLocaleLowerCase();
         const existing = byName.get(key);
         const block = Array.isArray(bookmark.blocks) ? bookmark.blocks.find((candidate) => candidate && typeof candidate === "object") : null;
-        const blockId = boundedText(block?.id || block?.blockId, 64);
-        const rootId = boundedText(block?.rootID || block?.rootId, 64);
+        // 3.8.x 旧宿主/兼容层曾返回 blockID/block_id 与 root_id；统一投影后仍走块级精确打开。
+        const blockId = boundedText(block?.id || block?.blockId || block?.blockID || block?.block_id, 64);
+        const rootId = boundedText(block?.rootID || block?.rootId || block?.root_id, 64);
         if (!existing || count > existing.count) byName.set(key, {name, count, order: existing ? existing.order : order, blockId, rootId});
     }
     const entries = [...byName.values()];

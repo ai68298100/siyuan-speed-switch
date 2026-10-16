@@ -58,6 +58,9 @@ test('recent documents validate current metadata and retain unavailable history 
 
 test('batch-8 interaction contracts keep block bookmark targeting and fixed invalid placeholders', () => {
     assert.match(indexSource, /bookmark-block:\(\\d\{14\}-\[0-9a-z\]\+\):\(\\d\{14\}-\[0-9a-z\]\+\)/i);
+    assert.match(kernelSource, /block\?\.blockID/);
+    assert.match(kernelSource, /block\?\.block_id/);
+    assert.match(kernelSource, /block\?\.root_id/);
     const bookmark = kernel.buildBookmarkListSnapshot([{
         name: '阅读', count: 1, blocks: [{id: '20260918120000-blockaa', rootID: '20260918120001-rootaa'}],
     }], {}, {}, Date.now());

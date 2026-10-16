@@ -36,7 +36,7 @@
 | `favorites` 收藏 | B | 本地收藏；rootId 优先、旧 key 迁移后打开 | `jumpToFavorite` 已兼容移动/桌面和旧数据；无收藏为空态 | 补旧收藏迁移的真实回归 |
 | `document-sets` 文档集 | B | 本地文档集预检、确认、逐项恢复 | 复用恢复链，缺失/取消不伪造成功 | 商店描述增加“需先创建文档集” |
 | `tags` 标签 | B | `/api/tag/getTag`，树节点点击打开标签 dock | T-6976 已消费 3.8.x `children/count/depth`，嵌套树、计数、搜索祖先和虚拟父节点均有模型/视图证据；路径值仍受宿主 dock 协议约束 | 后续若思源提供稳定 tag ID，再替换路径值并补真实宿主验收 |
-| `bookmarks` 书签 | B/C | `/api/bookmark/getBookmark`，点击打开书签 dock | 已兼容裸数组/包装；当前用名称作为协议值，重名或特殊字符定位不稳定 | 改用内核稳定 ID 或显式搜索参数 |
+| `bookmarks` 书签 | B/C | `/api/bookmark/getBookmark`，点击打开书签 dock | 已兼容裸数组/包装；T-7285 兼容 `blockID`/`block_id`/`root_id` 旧字段并保留块级定位；无稳定 ID 时仍用名称协议，重名或特殊字符定位不稳定 | 改用内核稳定 ID 或显式搜索参数 |
 | `journal-monthly` 本月日记 | C | SQL 按 `YYYY-MM` 标题，首项打开/创建今日日记 | 桌面实测显示 2026-09-11；严格依赖标准日记标题 | 商店显示“标题需 YYYY-MM-DD” |
 | `note-stats` 笔记统计 | B | SQL 聚合文档数、`length` 字数、本周新增/修改 | 查询真实存在；`length` 依赖思源 blocks 字段语义，尚无旧宿主证据 | 对空库/字段缺失增加明确降级说明 |
 | `year-progress` 年度进度 | A | 纯前端日期计算 | 无内核依赖，最稳定 | 保持 |

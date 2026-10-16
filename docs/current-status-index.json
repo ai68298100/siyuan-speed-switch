@@ -127,7 +127,9 @@
     "T-7280",
     "T-7281",
     "T-7282",
-    "T-7283"
+    "T-7283",
+    "T-7284",
+    "T-7285"
   ],
   "tasks": [
     {
@@ -3506,6 +3508,50 @@
         ".artifacts/T-7283-verify-release-final.log"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7284",
+      "title": "T-7144 候选矩阵与证据准入边界",
+      "status": "completed",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "research",
+      "dependsOn": [
+        "T-7283"
+      ],
+      "evidence": [
+        "docs/t7144-candidate-matrix-2026-10-16.md",
+        "docs/adr/0209-t7284-t7144-candidate-matrix.md",
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0194-t7269-host-outline-and-e2e-isolation.md",
+        "docs/adr/0195-t7270-recent-edits-host-scale.md",
+        "docs/adr/0196-t7271-tag-path-host-boundary.md",
+        "docs/adr/0197-t7272-relations-host-boundary.md",
+        "docs/adr/0201-t7276-bookmark-count-fallback.md",
+        "docs/component-availability-audit.md"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7285",
+      "title": "书签旧宿主字段别名兼容",
+      "status": "completed",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "fix",
+      "dependsOn": [
+        "T-7284"
+      ],
+      "evidence": [
+        "src/kernel-widget-model.js",
+        "tests/kernel-widget-model.test.cjs",
+        "tests/component-specs-batch8-wiring.test.cjs",
+        "docs/adr/0210-t7285-bookmark-legacy-field-aliases.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7285-negative-bookmark-alias.log",
+        "package.zip"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
@@ -3513,6 +3559,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591864 bytes is below the 591872-byte repository budget by 8 bytes; current candidate package.zip is within the repository budget"
+    "packageBudget": "passed: 591784 bytes is below the 591872-byte repository budget by 88 bytes; current candidate package.zip is within the repository budget"
   }
 }

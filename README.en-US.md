@@ -7,8 +7,6 @@ LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**.
 > **Latest stable release: v0.47.2 (2026-10-14)**<br>
 > [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.2) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
-> **Beta notice**: 小驴考试, 小驴管家, 小驴闪卡, and 小驴常用 are beta plugins under active development and validation. Join QQ group **871707735** for bug reports and feature requests.
-
 ## What's New In v0.47.2 (2026-10-14)
 
 - Shared branding and compact top-bar hierarchy; unavailable workbench widgets keep their layouts and offer store recovery.
