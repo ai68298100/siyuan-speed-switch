@@ -765,7 +765,11 @@ test('store render recognizes focused search input', () => { const i = storeSour
 test('store render recognizes focused sort control', () => { const i = storeSource.indexOf('activeElement.matches(".sw-home-store__sort")'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 300); assert.ok(w.includes('focusKind = "sort"'), 'sort 焦点须记录 focusKind'); });
 test('store render clears stale DOM before rebuild', () => assert.match(storeSource,/catalogPane\.innerHTML = "";(?:[^\n]*\n){1,10}\s*const storeFragment = document\.createDocumentFragment\(\);\s*const state = this\.getHomeState\(\)/));
 test('store render mounts the assembled fragment once', () => assert.match(storeSource,/catalogPane\.appendChild\(storeFragment\)/));
-test('store render reads current home state', () => assert.match(secondPanelSource, /const state = this\.getHomeState\(\)/));
+test('store render prepares and reads current home state', () => {
+    assert.match(secondPanelSource, /const defaults = prepareHomeDefaultState\(this\.getHomeState\(\), device, catalogIds\);/);
+    assert.match(secondPanelSource, /if \(defaults\.changed\) this\.saveHomeState\(defaults\.state\);/);
+    assert.match(secondPanelSource, /const state = defaults\.state;/);
+});
 test('store render scopes instances to device layout', () => assert.match(secondPanelSource, /\(state\.layouts\[device\] \|\| \[\]\) as Array<any>/));
 test('store render resolves layout instance safely', () => assert.match(storeSource,/state\.instances\.find\(\(candidate: any\) => candidate\.instanceId === entry\.instanceId\)/));
 test('store render builds layout and instance maps together', () => assert.match(storeSource,/instanceByModule\.set\(inst\.moduleId, entry\);\s*instanceStateByModule\.set\(inst\.moduleId, inst\)/));

@@ -124,7 +124,8 @@
     "T-7277",
     "T-7278",
     "T-7279",
-    "T-7280"
+    "T-7280",
+    "T-7281"
   ],
   "tasks": [
     {
@@ -3411,6 +3412,40 @@
         ".artifacts/T-7280-verify-release-final.log"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7281",
+      "title": "通用默认七组件与独立紧凑排版",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7280"
+      ],
+      "evidence": [
+        "src/home-model.js",
+        "src/second-panel-ui.ts",
+        "src/home-controller.js",
+        "src/styles/_12-r54-surface-adapter.scss",
+        "tests/home-defaults.test.cjs",
+        "tests/home-controller.test.cjs",
+        "docs/adr/0206-t7281-universal-default-widgets.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7281-defaults-tests.log",
+        ".artifacts/T-7281-negative-defaults.json",
+        ".artifacts/T-7281-home-controller.log",
+        ".artifacts/T-7281-negative-clock-stale.log",
+        ".artifacts/T-7281-negative-clock.log",
+        ".artifacts/T-7281-negative-wiring-contracts.log",
+        ".artifacts/T-7281-visual/results.json",
+        ".artifacts/T-7281-visual/metrics.json",
+        ".artifacts/T-7281-visual-run.log",
+        ".artifacts/T-7281-visual-run-final.log",
+        ".artifacts/T-7281-targeted-final.log",
+        ".artifacts/T-7281-verify-release-final.log"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
@@ -3418,6 +3453,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591810 bytes is below the 591872-byte repository budget by 62 bytes; current candidate package.zip is within the repository budget"
+    "packageBudget": "passed: 591479 bytes is below the 591872-byte repository budget by 393 bytes; current candidate package.zip is within the repository budget"
   }
 }

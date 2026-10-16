@@ -11,44 +11,11 @@ LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**.
 
 ## What's New In v0.47.2 (2026-10-14)
 
-This release brings more of the R5 prototype into production, completes the compact spacing-token pass, and reduces the release archive before publishing.
+- Shared branding and compact top-bar hierarchy; unavailable workbench widgets keep their layouts and offer store recovery.
+- Keyboard activation selects store details before running actions; retry and conflict flows restore focus and announce preview readiness.
+- Fixed mobile floating-ball flick detection and consolidated shared spacing and typography, with no visual differences across both themes and tested widths.
 
-Added: Shared top-bar brand identity
-
-- Added a theme-colored brand mark, product name, and localized “Work context platform” subtitle across desktop, sidebar, and mobile surfaces.
-
-Improved: Compact top-bar hierarchy
-
-- The subtitle hides and the mark shrinks inside 560px containers, preserving space for navigation, settings, and close controls.
-
-Added: Workbench recovery for unavailable widgets
-
-- When every widget in a saved layout is unavailable, the workbench preserves the layout, explains the state, and offers a direct route to the widget store.
-
-Improved: Widget-store keyboard selection feedback
-
-- The first Enter/Space activation of a catalog card now opens its detail; a second activation invokes the detail's primary action, matching pointer selection.
-
-Fixed: Focus continuity and preview announcements
-
-- Retry, snippet-conflict close/reload, and copy-success paths return focus to the editor; the first-panel preview announces its ready state without making the full body a live region.
-
-Fixed: Mobile floating-ball flick classification
-
-- Fixed the first move crossing touch slop being mistaken for a drag; flicks restore the parked position and consume the synthetic click while slow drags and action drops keep their semantics.
-
-Improved: Continued convergence of shared typography tiers
-
-- Migrated 298 spacing, 17 font-size, 34 line-height, and 134 font-weight declarations to existing shared variables while retaining numeric fallbacks.
-- Coverage moved from 29.73%/80.27%/5.98%/7.98% to 55.94%/84.86%/35.04%/90.18%; 30 Chromium scenarios across both themes and multiple widths measured 480 elements with zero computed-style or geometry differences.
-
-Improved: Compact 2px spacing tier
-
-- Added the smallest shared spacing token and migrated 97 declarations / 99 top-level components; coverage moved from 69.09% to 73.73%, with zero computed-style or geometry differences across 30 Chromium scenarios and 480 elements.
-
-Fixed: Release archive and history footprint
-
-- Compacted README history indexes while keeping the complete bilingual changelogs; package.zip fell from 596562 B to 591332 B and is below the 591872 B release gate before verification.
+Itemized changes, validation data, and release history are in the [complete changelog](./docs/CHANGELOG.en-US.md).
 
 ## Previous release updates (v0.47.0 · 2026-10-11)
 
@@ -235,11 +202,11 @@ Read-only capabilities declare `localRead` and never declare write, egress, or e
 3. **Manage**: pin with the pin button, favorite with the star (group menu pops up); close tabs with × on the card, or right-click for the full menu (long-press on mobile).
 4. **Search**: use one field to see matching open tabs first and workspace document-title cards second.
 5. **Dock it**: hit the "Sidebar mode" toolbar button to pin the switcher to the right dock.
-6. **Workbench**: use the Workbench surface entry or `Alt+Shift+P` to open the widget workbench; cards expose source, capabilities, and health.
+6. **Workbench**: open with the surface entry or `Alt+Shift+P`; defaults include recent docs, favorites, today's journal and tasks, local time, year progress, and note stats. Edit or remove any widget.
 7. **Snippet Lab**: choose “Snippet Lab” in the switcher's platform header, or use a snippet object's “Open in lab” action. It is desktop-only; mobile shows the capability boundary.
 8. **Floating ball**: tap to restore the last surface; bind up/down/left/right flicks and More actions in Settings, with per-device 1–9 slots for actions or saved searches.
 9. **Customize**: use `+` in the bottom/right action area to add Docks, plugin commands, or change per-surface visibility.
-10. **Sizing**: desktop surfaces open fullscreen by default; adaptive and fixed sizes remain selectable in Settings.
+10. **Sizing**: a new workbench opens in a compact window; switcher and snippet lab default to fullscreen. Adjust sizes in Settings.
 
 ## Shortcuts
 

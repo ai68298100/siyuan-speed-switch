@@ -1349,9 +1349,9 @@ test('switcher and studio stay fullscreen while the workbench defaults to compac
     const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
     const settingsModel = readSourceText(path.join(__dirname, '..', 'src', 'settings-model.js'));
     const defaults = indexSource.slice(indexSource.indexOf('const DEFAULT_SETTINGS: ISwSettings = {'), indexSource.indexOf('const DEFAULT_SETTINGS: ISwSettings = {') + 1200);
-    const seedStart = secondPanelSource.indexOf('let seedX = 0;');
-    const seedEnd = secondPanelSource.indexOf('if ((seeded.instances as Array<any>).length > 0)', seedStart);
-    const seedBlock = secondPanelSource.slice(seedStart, seedEnd);
+    const defaultsStart = secondPanelSource.indexOf('const defaults = prepareHomeDefaultState(');
+    const defaultsState = secondPanelSource.indexOf('const state = defaults.state;', defaultsStart);
+    const defaultsBlock = secondPanelSource.slice(defaultsStart, defaultsState + 'const state = defaults.state;'.length);
     // 切换器默认全屏；工作台新装默认紧凑固定尺寸，已有显式设置由归一化保留。
     assert.match(defaults, /panelSizeMode: "fullscreen"/, 'the switcher must default to fullscreen');
     assert.match(defaults, /homeSizeMode: "custom"/, 'the workbench must default to compact custom sizing');
@@ -1359,17 +1359,14 @@ test('switcher and studio stay fullscreen while the workbench defaults to compac
     assert.match(defaults, /homeHeight: 390/, 'the compact workbench height must be 390px');
     assert.match(secondPanelSource, /root\.classList\.toggle\("sw-home--compact", !fullscreenMode\)/,
         'only non-fullscreen workbenches receive the compact surface class');
-    assert.ok(seedStart > 0 && seedEnd > seedStart, 'the initial seed block must exist before checking its placement');
-    assert.match(seedBlock, /const sizeKey = resolveHomeTileDefaultSize\(moduleId, supported, "small"\);/,
-        'the initial widgets must resolve their supported catalog size');
-    assert.match(seedBlock, /\["recent-documents", "favorites", "today-journal", "today-tasks"\]/,
-        'the initial compact workbench must seed four existing high-value widgets');
-    assert.match(seedBlock, /x: seedX, y: seedY, w: preset\.w, h: preset\.h, collapsed: false, size: sizeKey/,
-        'the initial widget layout must use the resolved size geometry and row cursor');
-    assert.match(seedBlock, /seedX \+= preset\.w;/,
-        'the initial widget rows must use catalog sizes and place widgets side by side');
-    assert.match(seedBlock, /if \(seedX > 0 && seedX \+ preset\.w > 12\)/,
-        'the initial widget seed must wrap mixed sizes onto a second row');
+    assert.ok(defaultsStart > 0 && defaultsState > defaultsStart,
+        'the workbench must prepare persisted defaults before rendering');
+    assert.match(defaultsBlock, /prepareHomeDefaultState\(this\.getHomeState\(\), device, catalogIds\)/,
+        'default widgets must come from the production default-state model');
+    assert.match(defaultsBlock, /if \(defaults\.changed\) this\.saveHomeState\(defaults\.state\);/,
+        'prepared defaults must be persisted exactly once when they change');
+    assert.match(defaultsBlock, /const state = defaults\.state;/,
+        'rendering must consume the prepared state rather than a stale pre-seed snapshot');
     // 片段实验室（T-6986，D1 决断）：默认仍全屏；非全屏走 resolvePanelSize 管线
     // （与工作台同语义），只有全屏模式才叠加 fullscreen 容器类。
     assert.match(defaults, /studioSizeMode: "fullscreen"/, 'the studio must default to fullscreen');

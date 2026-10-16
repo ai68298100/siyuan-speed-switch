@@ -415,7 +415,7 @@ declare module "./favorite-actions" {
     export function migrateFavoriteEntry<T extends {key?: string; rootId?: string}>(entries: T[], legacyKey: string, rootId: string): {items: T[]; changed: boolean; migrated: boolean; duplicate?: boolean};
 }
 declare module "./home-model" {
-    export function normalizeHomeState(value: unknown): {schemaVersion: number; instances: Array<{instanceId: string; moduleId: string; enabled: boolean; config: Record<string, unknown>}>; layouts: Record<string, Array<{instanceId: string; x: number; y: number; w: number; h: number; collapsed: boolean}>>};
+    export function normalizeHomeState(value: unknown): {schemaVersion: number; defaultsVersion: number; instances: Array<{instanceId: string; moduleId: string; enabled: boolean; config: Record<string, unknown>}>; layouts: Record<string, Array<{instanceId: string; x: number; y: number; w: number; h: number; collapsed: boolean}>>};
     export function resolveMobileHomeSize(value: unknown): string;
     export function buildQuickCaptureAction(value: unknown): string;
     export function parseQuickCaptureAction(value: unknown): {notebook: string; initialText: string; includeTime: boolean} | null;
@@ -7108,7 +7108,7 @@ const updatedMap: {[rootId: string]: string} = {};
             return snapshot;
         }, {timeoutMs: 1200, cacheTtlMs: 1500});
         // 笔记统计：单次聚合全库规模与两个相邻时间窗，避免四次查询产生口径漂移。
-        register("note-stats", this.i18n.homeNoteStats, "iconChart", this.i18n.homeDescNoteStats, ["loaded-protyle", "destroy-protyle"], async (config) => {
+        register("note-stats", this.i18n.homeNoteStats, "iconGraph", this.i18n.homeDescNoteStats, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const normalized = normalizeNoteStatsConfig(config);
             const notebookScope = buildNotebookBoxScope(normalized.notebook);
             const current = new Date();
@@ -7652,8 +7652,9 @@ const updatedMap: {[rootId: string]: string} = {};
         return normalizeHomeState(raw, new Set([...this.homeThirdPartyIds, ...persisted]));
     }
 
-    private saveHomeState(state: { schemaVersion: number; instances: unknown[]; layouts: Record<string, unknown[]> }) {
-        this.data[HOME_STATE_KEY] = state;
+    private saveHomeState(state: { schemaVersion: number; defaultsVersion?: number; instances: unknown[]; layouts: Record<string, unknown[]> }) {
+        // 初始化属于持久化意图，撤销布局/删空都不能让它回退到“从未打开”。
+        this.data[HOME_STATE_KEY] = {...state, defaultsVersion: Math.max(1, state.defaultsVersion || 0, this.getHomeState().defaultsVersion)};
         this.saveDataDebounced(HOME_STATE_KEY);
     }
 

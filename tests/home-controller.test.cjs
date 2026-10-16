@@ -150,6 +150,142 @@ test("local clock stat-only refresh patches without requiring rows", async () =>
     controller.dispose();
 });
 
+test("local clock heartbeat updates day progress in place including its accessible value", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    let progress = 25;
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "external-local-time", title: "Local time"},
+        read: async () => ({ok: true, snapshot: {
+            stat: {value: progress === 25 ? "06:00" : "06:15", label: "Local"},
+            items: [],
+            dayProgress: progress,
+        }}),
+    });
+    await controller.refresh();
+    const root = container.firstElementChild;
+    const meter = root.querySelector(".sw__home-day-progress");
+    const bar = meter.querySelector(".sw__home-day-progress-bar");
+    assert.equal(meter.getAttribute("aria-valuenow"), "25");
+    assert.equal(bar.style.width, "25%");
+
+    progress = 26;
+    await controller.refresh();
+    assert.equal(container.firstElementChild, root, "a heartbeat must retain the module node");
+    assert.equal(root.querySelector(".sw__home-day-progress"), meter, "a heartbeat must retain the progress node");
+    assert.equal(meter.querySelector(".sw__home-day-progress-bar"), bar, "a heartbeat must retain the fill node");
+    assert.equal(meter.getAttribute("aria-valuenow"), "26", "screen readers must receive the refreshed progress");
+    assert.equal(meter.getAttribute("aria-label"), "Day progress 26%", "the accessible description must match the refreshed value");
+    assert.equal(bar.style.width, "26%", "the visible progress must advance with the clock");
+    controller.dispose();
+});
+
+test("local clock rebuilds when day progress appears or disappears", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    let dayProgress;
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "external-local-time", title: "Local time"},
+        read: async () => ({ok: true, snapshot: {stat: {value: "00:00", label: "Local"}, items: [], dayProgress}}),
+    });
+    await controller.refresh();
+    const withoutProgress = container.firstElementChild;
+    assert.equal(container.querySelector(".sw__home-day-progress"), null);
+    dayProgress = 0;
+    await controller.refresh();
+    const withProgress = container.firstElementChild;
+    assert.notEqual(withProgress, withoutProgress, "adding progress requires the renderer to create its nodes");
+    assert.equal(container.querySelector(".sw__home-day-progress").getAttribute("aria-valuenow"), "0");
+    dayProgress = undefined;
+    await controller.refresh();
+    assert.notEqual(container.firstElementChild, withProgress, "removing progress requires the renderer to remove its nodes");
+    assert.equal(container.querySelector(".sw__home-day-progress"), null);
+    controller.dispose();
+});
+
+test("local clock exposes stale failure metadata and clears it after recovery", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    let stale = false;
+    let updatedAt = Date.now();
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "external-local-time", title: "Local time"},
+        labels: {staleRefreshFailed: "Saved content · refresh failed"},
+        read: async () => ({ok: !stale, reason: stale ? "timeout" : "", snapshot: {
+            stat: {value: "06:00", label: "Local"}, items: [{label: "Today", value: ""}],
+            updatedAt, sourceHealth: stale ? "stale" : "fresh",
+        }}),
+    });
+    await controller.refresh();
+    const freshRoot = container.firstElementChild;
+    stale = true;
+    const failed = await controller.refresh();
+    const staleRoot = container.firstElementChild;
+    const meta = staleRoot.querySelector(".sw__home-module-meta");
+    assert.equal(failed.ok, false);
+    assert.equal(meta.classList.contains("is-stale"), true, "failed clock metadata must escape the compact hidden-meta rule");
+    assert.match(meta.textContent, /Saved content · refresh failed/);
+    assert.notEqual(staleRoot, freshRoot, "entering a stale state must render its warning structure");
+    assert.equal(staleRoot.getAttribute("aria-describedby"), meta.id);
+    assert.match(staleRoot.querySelector(".sw__home-module-title").title, /Saved content · refresh failed/);
+
+    updatedAt += 60000;
+    await controller.refresh();
+    assert.equal(container.firstElementChild, staleRoot, "a repeated failed read can retain its warning nodes");
+    assert.match(meta.textContent, /Saved content · refresh failed/, "repeated failures must retain their explicit warning text");
+    assert.equal(staleRoot.querySelector(".sw__home-module-title").title, `Local time · ${meta.title}`);
+
+    stale = false;
+    await controller.refresh();
+    const recoveredRoot = container.firstElementChild;
+    const recoveredMeta = recoveredRoot.querySelector(".sw__home-module-meta");
+    assert.notEqual(recoveredRoot, staleRoot, "recovery must clear the stale warning structure");
+    assert.equal(recoveredMeta.classList.contains("is-stale"), false);
+    assert.doesNotMatch(recoveredMeta.textContent, /refresh failed/);
+    assert.doesNotMatch(recoveredRoot.querySelector(".sw__home-module-title").title, /refresh failed/);
+    assert.equal(recoveredRoot.getAttribute("aria-describedby"), recoveredMeta.id);
+    controller.dispose();
+});
+
+test("local clock heartbeat synchronizes metadata tooltip and accessible source health", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    let cached = false;
+    let updatedAt = new Date(2026, 9, 16, 6, 0).getTime();
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "external-local-time", title: "Local time"},
+        read: async () => ({ok: true, cached, snapshot: {
+            stat: {value: cached ? "06:01" : "06:00", label: "Local"}, items: [], updatedAt,
+            sourceHealth: cached ? "cached" : "fresh",
+        }}),
+    });
+    await controller.refresh();
+    const root = container.firstElementChild;
+    const meta = root.querySelector(".sw__home-module-meta");
+    const title = root.querySelector(".sw__home-module-title");
+    const health = root.querySelector(".sw__home-source-health");
+    const originalTooltip = title.title;
+    cached = true;
+    updatedAt += 60000;
+    await controller.refresh();
+    assert.equal(container.firstElementChild, root);
+    assert.notEqual(title.title, originalTooltip, "heartbeat metadata must refresh the title tooltip");
+    assert.equal(title.title, `Local time · ${meta.title}`);
+    assert.equal(root.getAttribute("aria-describedby"), meta.id, "the retained description must reference the updated metadata node");
+    assert.equal(dom.window.document.getElementById(meta.id), meta);
+    assert.equal(health.getAttribute("aria-label"), "缓存源", "the accessible source health must match the visible state");
+    assert.equal(health.title, "缓存源", "the source health tooltip must match the visible state");
+    controller.dispose();
+});
+
 test("home clock refresh rebuilds when labels or row count change", async () => {
     const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
     const container = dom.window.document.querySelector("#mount");

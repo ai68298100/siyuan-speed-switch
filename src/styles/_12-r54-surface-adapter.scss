@@ -429,8 +429,8 @@
     &:not(.sw-home--mobile) .sw__home-source-health.is-fresh { background: #3b9861; }
     &:not(.sw-home--mobile) .sw__home-source-health.is-cached { border-style: dashed; }
 
-    // 默认四卡先展示内容；完整更新时间保留在标题提示与可读描述中。
-    &:not(.sw-home--mobile) .sw-home__cell:is([data-module-id="recent-documents"], [data-module-id="favorites"], [data-module-id="today-journal"], [data-module-id="today-tasks"]) {
+    // 默认七卡先展示内容；完整更新时间保留在标题提示与可读描述中。
+    &:not(.sw-home--mobile) .sw-home__cell:is([data-module-id="recent-documents"], [data-module-id="favorites"], [data-module-id="today-journal"], [data-module-id="today-tasks"], [data-module-id="external-local-time"], [data-module-id="year-progress"], [data-module-id="note-stats"]) {
         .sw-home__cell-body { padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px); }
         .sw__home-module-header { min-height: 24px; padding: 0; margin-bottom: var(--sw-space-xs, 4px); }
         .sw__home-module-header .sw__home-module-title { font-size: var(--sw-font-sm, 12px); }
@@ -467,6 +467,76 @@
                 align-items: center;
             }
         }
+    }
+
+    // 时间铭牌：中性材质、紧凑时刻与日期，日进度只占一条细线。
+    &:not(.sw-home--mobile) .sw-home__cell[data-module-id="external-local-time"] {
+        --sw-home-cell-fg: var(--b3-theme-on-background);
+        color: var(--sw-home-cell-fg);
+        background: var(--b3-theme-background);
+        border: 1px solid var(--b3-border-color);
+
+        .sw__home-stat { min-height: 24px; }
+        .sw__home-stat .sw__home-stat-value { font-size: var(--sw-font-2xl, 20px); letter-spacing: 0; }
+        .sw__home-stat-label { display: none; }
+        .sw__home-module-list .sw__home-module-item-action {
+            padding: 0;
+            border: 0;
+            font-size: var(--sw-font-xs, 11px);
+            white-space: normal;
+            overflow-wrap: anywhere;
+            cursor: default;
+
+            &::before { display: none; }
+        }
+        .sw__home-day-progress {
+            height: 2px;
+            margin: var(--sw-space-2xs, 2px) 0 0;
+            background: color-mix(in srgb, var(--b3-theme-on-background) 8%, transparent);
+        }
+        .sw__home-day-progress-bar { height: 100%; }
+    }
+
+    // 周期进度：百分数 + 细轨道 + 并排天数，取消重复圆环。
+    &:not(.sw-home--mobile) .sw-home__cell[data-module-id="year-progress"] {
+        .sw__home-stat-copy { width: 100%; justify-content: space-between; }
+        .sw__home-stat-arc { display: none; }
+        .sw__home-progress { height: 3px; margin: var(--sw-space-2xs, 2px) 0; }
+        .sw__home-module-list { display: flex; flex-wrap: wrap; gap: 0 var(--sw-space-md, 8px); }
+        .sw__home-module-item { flex: 1 1 auto; }
+        .sw__home-module-list .sw__home-module-item-action {
+            padding: 0;
+            border: 0;
+            font-size: var(--sw-font-xs, 11px);
+            cursor: default;
+
+            &::before { display: none; }
+        }
+    }
+
+    // 笔记统计：主指标与两列明细并排，不把四项计数铺成长列表。
+    &:not(.sw-home--mobile) .sw-home__cell[data-module-id="note-stats"] {
+        .sw__home-module[data-status="ready"] .sw__home-module-body[aria-hidden="false"] {
+            display: grid;
+            grid-template-columns: minmax(64px, 1fr) minmax(0, 3fr);
+            align-items: center;
+            gap: var(--sw-space-sm, 6px);
+        }
+        .sw__home-stat-copy { flex-direction: column; align-items: flex-start; gap: var(--sw-space-2xs, 2px); }
+        .sw__home-stat-label { font-size: var(--sw-font-xs, 11px); }
+        .sw__home-module-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--sw-space-sm, 6px); }
+        .sw__home-module-list .sw__home-module-item-action {
+            padding: 0;
+            border: 0;
+            font-size: var(--sw-font-xs, 11px);
+            line-height: var(--sw-leading-compact, 1.2);
+            white-space: normal;
+            overflow-wrap: anywhere;
+            cursor: default;
+
+            &::before { display: none; }
+        }
+        .sw__home-item-bar { display: none; }
     }
 }
 

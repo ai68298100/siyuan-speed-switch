@@ -9,7 +9,7 @@ import type {EventBus, TEventBus} from "siyuan";
 import {HOME_WIDGET_SIZES, PANEL_SCALE_DEFAULT, PANEL_SIZE_MIN_PX} from "./constants";
 import type {HomeSizeMode, HomeWidgetSize} from "./constants";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries, buildHomeHealthReport, buildHomeDiagnosticSummary, formatHealthTime} from "./home-controller";
-import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, resolveHomeTileDefaultSize, LIFE_HEARTBEAT_MODULE_IDS} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, resolveHomeTileDefaultSize, LIFE_HEARTBEAT_MODULE_IDS, HOME_DEFAULT_MODULE_IDS, prepareHomeDefaultState, resolveHomeStarterSize} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
 import {createLayoutHistory, layoutSnapshotOf, pushLayoutHistory, undoLayoutHistory, redoLayoutHistory, canUndoLayoutHistory, canRedoLayoutHistory, peekUndoLabel, peekRedoLabel, reconcileLayoutSnapshot} from "./home-layout-history";
 import {openHomeConfigForm} from "./home-config-form";
@@ -23,7 +23,7 @@ import type {ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, Platfor
 
 // 空工作台只给出少量稳定、无需理解组件生态的默认入口；其余组件仍由商店按需添加。
 // 这个清单同时作为“恢复默认”范围，避免把整个目录误当成默认布局。
-const EMPTY_WORKBENCH_DEFAULT_IDS = ["recent-documents", "today-journal", "today-tasks"] as const;
+const EMPTY_WORKBENCH_DEFAULT_IDS: readonly string[] = HOME_DEFAULT_MODULE_IDS;
 
 export interface SecondPanelUiHost {
     i18n: Record<string, string>;
@@ -40,7 +40,7 @@ export interface SecondPanelUiHost {
     homeModuleOpens: Map<string, () => void>;
     homeThirdPartyIds: Set<string>;
     executeHomeCommand(command: string, close: () => void): boolean;
-    getHomeState(): {schemaVersion: number; instances: Array<{instanceId: string; moduleId: string; enabled: boolean; config: Record<string, unknown>}>; layouts: Record<string, Array<{instanceId: string; x: number; y: number; w: number; h: number; collapsed: boolean}>>};
+    getHomeState(): {schemaVersion: number; defaultsVersion?: number; instances: Array<{instanceId: string; moduleId: string; enabled: boolean; config: Record<string, unknown>}>; layouts: Record<string, Array<{instanceId: string; x: number; y: number; w: number; h: number; collapsed: boolean}>>};
     getSettings(): ISwSettings;
     openSetting(initialPanel?: string, returnTo?: PlatformSurface | null, returnContext?: PlatformSurfaceContext | null): void;
     handleHomeItemAction(item: { label?: string; value?: string; href?: string; command?: string }, close: () => void): void;
@@ -374,7 +374,9 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             defs.forEach((_def, moduleId) => {
                 if (this.homeBuiltinAdapterIds.has(moduleId) || this.homeThirdPartyIds.has(moduleId)) catalogIds.add(moduleId);
             });
-            const state = this.getHomeState();
+            const defaults = prepareHomeDefaultState(this.getHomeState(), device, catalogIds);
+            if (defaults.changed) this.saveHomeState(defaults.state);
+            const state = defaults.state;
             const layoutList = (state.layouts[device] || []) as Array<any>;
             // T-6969 Slice 3：X 英雄位约束——每面板至多 1 个 full 档，超出降级 large
             const heroCheck = enforceHomeHeroConstraint(layoutList);
@@ -423,7 +425,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     const existing = instancesByModule.get(moduleId);
                     const targetInstanceId = existing?.instanceId || moduleId;
                     const supported: string[] = Array.isArray(candidateDef.sizes) && candidateDef.sizes.length > 0 ? candidateDef.sizes : ["medium"];
-                    const sizeKey = resolveHomeTileDefaultSize(moduleId, supported, "medium");
+                    const sizeKey = resolveHomeStarterSize(moduleId, supported) || resolveHomeTileDefaultSize(moduleId, supported, "medium");
                     const preset = HOME_WIDGET_SIZES[(sizeKey || "medium") as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
                     if (!existing) {
                         const restored = {instanceId: moduleId, moduleId, config: {}, enabled: true};
@@ -732,7 +734,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                                 const next = this.getHomeState();
                                 const layoutList = (next.layouts[device] || []) as Array<any>;
                                 const supported: string[] = Array.isArray(candidateDef.sizes) && candidateDef.sizes.length > 0 ? candidateDef.sizes : ["medium"];
-                                const sizeKey = resolveHomeTileDefaultSize(moduleId, supported, "medium");
+                                const sizeKey = resolveHomeStarterSize(moduleId, supported) || resolveHomeTileDefaultSize(moduleId, supported, "medium");
                                 const preset2 = HOME_WIDGET_SIZES[(sizeKey || "medium") as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
                                 (next.instances as Array<any>).push({instanceId: moduleId, moduleId, config: {}, enabled: true});
                                 layoutList.push({instanceId: moduleId, x: 0, y: 0, w: preset2.w, h: preset2.h, collapsed: false, size: sizeKey});
@@ -1213,40 +1215,6 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             });
 
             body.appendChild(grid);
-
-            // 首次打开播种紧凑默认实例（近期文档宽卡 + 三张小卡），之后删除即保留删除。
-            if (state.instances.length === 0 && !editing) {
-                const seeded = this.getHomeState();
-                let seedX = 0;
-                let seedY = 0;
-                let seedRowHeight = 0;
-                ["recent-documents", "favorites", "today-journal", "today-tasks"].forEach((moduleId) => {
-                    if (!catalogIds.has(moduleId)) return;
-                    const definition = defs.get(moduleId);
-                    const supported: string[] = Array.isArray(definition?.sizes) && definition.sizes.length > 0 ? definition.sizes : ["medium"];
-                    const sizeKey = resolveHomeTileDefaultSize(moduleId, supported, "small");
-                    const preset = HOME_WIDGET_SIZES[(sizeKey || "small") as HomeWidgetSize] || HOME_WIDGET_SIZES.small;
-                    if (seedX > 0 && seedX + preset.w > 12) {
-                        seedX = 0;
-                        seedY += seedRowHeight;
-                        seedRowHeight = 0;
-                    }
-                    (seeded.instances as Array<any>).push({instanceId: moduleId, moduleId, enabled: true, config: {}});
-                    ((seeded.layouts[device] || []) as Array<any>).push({instanceId: moduleId, x: seedX, y: seedY, w: preset.w, h: preset.h, collapsed: false, size: sizeKey});
-                    seedX += preset.w;
-                    seedRowHeight = Math.max(seedRowHeight, preset.h);
-                    if (seedX >= 12) {
-                        seedX = 0;
-                        seedY += seedRowHeight;
-                        seedRowHeight = 0;
-                    }
-                });
-                if ((seeded.instances as Array<any>).length > 0) {
-                    this.saveHomeState(seeded);
-                    renderPanel();
-                    return;
-                }
-            }
 
             // 协议 v2 refreshOn：事件触发时只刷新订阅了该事件的组件（500ms 防抖；仅面板存活期）
             const eventModuleIds = new Map<TEventBus, Set<string>>();

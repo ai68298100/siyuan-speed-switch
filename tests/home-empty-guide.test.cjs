@@ -13,8 +13,8 @@ test('empty workbench: layered states, recommendations and default-restore (T-70
     // 分层：无组件源 vs 有源未添加
     assert.match(panelSource, /const hasSources = defs\.size > 0;/, '空态必须分层判定');
     assert.match(panelSource, /hasSources \? this\.i18n\.homeEmpty : this\.i18n\.homeEmptyNoSource/, '无源态必须有独立文案');
-    // 三推荐：精选默认清单、排除已添加、走商店同管线（默认档解析）
-    assert.match(panelSource, /const EMPTY_WORKBENCH_DEFAULT_IDS = \["recent-documents", "today-journal", "today-tasks"\]/, '推荐必须来自精选默认清单');
+    // 推荐与恢复共享开箱清单、排除已添加、走商店同管线（默认档解析）。
+    assert.match(panelSource, /const EMPTY_WORKBENCH_DEFAULT_IDS: readonly string\[\] = HOME_DEFAULT_MODULE_IDS;/, '推荐必须来自同一精选默认清单');
     assert.match(panelSource, /const candidates = EMPTY_WORKBENCH_DEFAULT_IDS\s+\.filter\(\(moduleId\) => defs\.has\(moduleId\) && !existingModules\.has\(moduleId\)\)/, '推荐必须排除已添加及目录外模块');
     assert.match(panelSource, /resolveHomeTileDefaultSize\(moduleId, supported, "medium"\)/, '推荐添加必须走默认档解析器');
     assert.match(panelSource, /layoutOpLabel = this\.i18n\.homeHistoryUpdate;/, '推荐/恢复必须入布局历史记账');

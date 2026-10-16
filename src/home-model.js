@@ -3,6 +3,64 @@
 const HOME_SCHEMA_VERSION = 1;
 const DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
 const MOBILE_HOME_SIZE = "medium";
+// 开箱组合与用户布局分开：只初始化新状态，或补全可证明未改动的旧四卡。
+const HOME_DEFAULTS_VERSION = 2;
+const HOME_DEFAULT_WIDGETS = Object.freeze([
+    {moduleId: "recent-documents", x: 0, y: 0, w: 8, h: 3, size: "wide"},
+    {moduleId: "favorites", x: 8, y: 0, w: 4, h: 3, size: "small"},
+    {moduleId: "today-journal", x: 0, y: 3, w: 4, h: 3, size: "small"},
+    {moduleId: "today-tasks", x: 4, y: 3, w: 4, h: 3, size: "small"},
+    {moduleId: "external-local-time", x: 8, y: 3, w: 4, h: 3, size: "small"},
+    {moduleId: "year-progress", x: 0, y: 6, w: 4, h: 3, size: "small"},
+    {moduleId: "note-stats", x: 4, y: 6, w: 8, h: 3, size: "wide"},
+].map(Object.freeze));
+const HOME_DEFAULT_MODULE_IDS = Object.freeze(HOME_DEFAULT_WIDGETS.map((item) => item.moduleId));
+
+function resolveHomeStarterSize(moduleId, supported) {
+    const starter = HOME_DEFAULT_WIDGETS.find((item) => item.moduleId === moduleId);
+    return starter && supported.includes(starter.size) ? starter.size : "";
+}
+
+function normalizeHomeDefaultsVersion(value, persisted = true) {
+    return Number.isSafeInteger(value) && value >= 0 && value <= 99 ? value : persisted ? 1 : 0;
+}
+
+function isOriginalFourCardState(state, device) {
+    if (device !== "desktop" || state.instances.length !== 4) return false;
+    const original = HOME_DEFAULT_WIDGETS.slice(0, 4);
+    if (!state.instances.every((item, index) => item.instanceId === original[index].moduleId
+        && item.moduleId === original[index].moduleId && item.enabled === true
+        && Object.keys(item.config || {}).length === 0)) return false;
+    return Object.entries(state.layouts).every(([surface, entries]) => {
+        if (surface !== device) return entries.length === 0;
+        return entries.length === 4 && entries.every((entry, index) => {
+            const expected = original[index];
+            return entry.instanceId === expected.moduleId && entry.collapsed === false
+                && ["x", "y", "w", "h", "size"].every((key) => entry[key] === expected[key]);
+        });
+    });
+}
+
+function prepareHomeDefaultState(state, device, availableIds) {
+    if (state.defaultsVersion >= HOME_DEFAULTS_VERSION) return {state, changed: false};
+    if (state.defaultsVersion === 1 && device !== "desktop" && isOriginalFourCardState(state, "desktop")) return {state, changed: false};
+    const fresh = state.defaultsVersion === 0 && state.instances.length === 0
+        && Object.values(state.layouts).every((entries) => entries.length === 0);
+    const upgrade = state.defaultsVersion === 1 && isOriginalFourCardState(state, device);
+    if ((fresh || upgrade) && HOME_DEFAULT_MODULE_IDS.some((id) => !availableIds.has(id))) return {state, changed: false};
+    const additions = fresh ? HOME_DEFAULT_WIDGETS : upgrade ? HOME_DEFAULT_WIDGETS.slice(4) : [];
+    const next = {...state, defaultsVersion: HOME_DEFAULTS_VERSION,
+        instances: [...state.instances], layouts: {...state.layouts}};
+    next.layouts[device] = [...(state.layouts[device] || [])];
+    additions.forEach((item, index) => {
+        const {moduleId, ...layout} = item;
+        next.instances.push({instanceId: moduleId, moduleId, enabled: true,
+            config: moduleId === "external-local-time" ? {showSeconds: "否"} : {}});
+        next.layouts[device].push({instanceId: moduleId, ...layout, collapsed: false,
+            ...(device === "mobile" ? {x: 0, y: index * 3, w: 12} : {})});
+    });
+    return {state: next, changed: true};
+}
 const AVAILABILITY_LEVELS = Object.freeze(["ready", "conditional", "external"]);
 const CONDITIONAL_MODULES = new Set([
     "today-tasks", "bookmarks", "journal-monthly", "flashcard-due", "quick-capture",
@@ -74,7 +132,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showUpdated", label: "显示更新时间", type: "select", options: ["否", "是"], defaults: "否"},
         {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
-    {moduleId: "note-stats", title: "笔记统计", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide"], protocolVersion: 2, configSchema: [
+    {moduleId: "note-stats", title: "笔记统计", icon: "iconGraph", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "days", label: "趋势窗口（天）", type: "number", min: 7, max: 90, defaults: 7},
         {key: "primaryMetric", label: "主指标", type: "select", options: ["文档数", "估算字数"], defaults: "文档数"},
@@ -794,7 +852,7 @@ function normalizeInstances(value, definitions = DEFAULT_MODULES, allowedModuleI
 /**
  * @param {unknown} value
  * @param {Set<string> | null} [allowedModuleIds]
- * @returns {{schemaVersion: number, instances: Array<{instanceId: string, moduleId: string, enabled: boolean, config: Record<string, unknown>}>, layouts: Record<string, Array<{instanceId: string, x: number, y: number, w: number, h: number, collapsed: boolean}>>}}
+ * @returns {{schemaVersion: number, defaultsVersion: number, instances: Array<{instanceId: string, moduleId: string, enabled: boolean, config: Record<string, unknown>}>, layouts: Record<string, Array<{instanceId: string, x: number, y: number, w: number, h: number, collapsed: boolean}>>}}
  */
 function normalizeHomeState(value, allowedModuleIds = null) {
     const source = value && typeof value === "object" ? value : {};
@@ -814,12 +872,13 @@ function normalizeHomeState(value, allowedModuleIds = null) {
             return true;
         });
     });
-    return {schemaVersion: HOME_SCHEMA_VERSION, instances, layouts};
+    return {schemaVersion: HOME_SCHEMA_VERSION, defaultsVersion: normalizeHomeDefaultsVersion(source.defaultsVersion, value != null), instances, layouts};
 }
 
 function migrateHomeState(value, allowedModuleIds = null) {
     const source = value && typeof value === "object" ? value : {};
     const migrated = normalizeHomeState({
+        defaultsVersion: normalizeHomeDefaultsVersion(source.defaultsVersion, value != null),
         instances: source.instances || source.widgets || [],
         layouts: source.layouts || {desktop: source.layout || []},
     }, allowedModuleIds);
@@ -978,4 +1037,4 @@ function isLifeHeartbeatModule(moduleId) {
 }
 
 module.exports = {
-    LAYOUT_SIZES,LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIconId, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+    LAYOUT_SIZES,LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, HOME_DEFAULTS_VERSION, HOME_DEFAULT_WIDGETS, HOME_DEFAULT_MODULE_IDS, resolveHomeStarterSize, normalizeHomeDefaultsVersion, prepareHomeDefaultState, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIconId, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};

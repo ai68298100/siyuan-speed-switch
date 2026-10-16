@@ -31,6 +31,7 @@ function clockPatchLabels(labels = {}) {
     return {
         cached: labels.cached || "缓存",
         updated: labels.updated || "更新",
+        staleRefreshFailed: labels.staleRefreshFailed || "旧内容（缓存）· 刷新失败",
         sourceFresh: labels.sourceFresh || "实时",
         sourceCached: labels.sourceCached || "缓存源",
         sourceStale: labels.sourceStale || "过期缓存",
@@ -41,7 +42,13 @@ function buildClockPatchPlan(root, previous, next) {
     if (!root || !previous || !next || !HOME_CLOCK_MODULE_IDS.has(next.moduleId)) return null;
     if (previous.moduleId !== next.moduleId || previous.status !== "ready" || next.status !== "ready") return null;
     if (previous.viewType || next.viewType || previous.collapsed !== next.collapsed) return null;
+    if (previous.stale !== next.stale) return null;
     if (!sameClockStatShape(previous.stat, next.stat)) return null;
+    const hasDayProgress = next.moduleId === "external-local-time" && next.dayProgress >= 0;
+    if (hasDayProgress !== (previous.moduleId === "external-local-time" && previous.dayProgress >= 0)) return null;
+    const dayProgress = hasDayProgress ? root.querySelector(".sw__home-day-progress") : null;
+    const dayProgressBar = dayProgress?.querySelector(".sw__home-day-progress-bar");
+    if (hasDayProgress && (!dayProgress || !dayProgressBar)) return null;
     const previousItems = Array.isArray(previous.items) ? previous.items : [];
     const nextItems = Array.isArray(next.items) ? next.items : [];
     if (previousItems.length !== nextItems.length) return null;
@@ -65,7 +72,7 @@ function buildClockPatchPlan(root, previous, next) {
     const nextHealth = Boolean(next.sourceHealth);
     if (previousHealth !== nextHealth) return null;
     if (previousHealth && !root.querySelector(".sw__home-source-health")) return null;
-    return {rows, nextItems, hasStat: Boolean(next.stat && next.stat.value), hasMeta: nextMeta, hasHealth: nextHealth};
+    return {rows, nextItems, hasStat: Boolean(next.stat && next.stat.value), hasMeta: nextMeta, hasHealth: nextHealth, dayProgress, dayProgressBar};
 }
 
 function patchClockView(root, previous, next, labels) {
@@ -75,6 +82,11 @@ function patchClockView(root, previous, next, labels) {
     if (plan.hasStat) {
         const statValue = root.querySelector(".sw__home-stat-value");
         if (statValue) statValue.textContent = next.stat.value;
+    }
+    if (plan.dayProgress) {
+        plan.dayProgress.setAttribute("aria-valuenow", String(next.dayProgress));
+        plan.dayProgress.setAttribute("aria-label", `Day progress ${next.dayProgress}%`);
+        plan.dayProgressBar.style.width = `${next.dayProgress}%`;
     }
     plan.rows.forEach((row, index) => {
         const item = plan.nextItems[index];
@@ -89,9 +101,11 @@ function patchClockView(root, previous, next, labels) {
     if (plan.hasMeta) {
         const meta = root.querySelector(".sw__home-module-meta");
         const updatedAt = formatUpdatedAt(next.updatedAt);
-        const metaText = [next.cached ? patchLabels.cached : "", updatedAt].filter(Boolean).join(" · ");
+        const metaText = [next.stale ? patchLabels.staleRefreshFailed : next.cached ? patchLabels.cached : "", updatedAt].filter(Boolean).join(" · ");
         meta.textContent = metaText;
         meta.setAttribute("title", `${patchLabels.updated} ${metaText}`);
+        const title = root.querySelector(".sw__home-module-title");
+        if (title) title.title = `${title.textContent} · ${meta.title}`;
     }
     if (plan.hasHealth) {
         const health = root.querySelector(".sw__home-source-health");
@@ -99,6 +113,8 @@ function patchClockView(root, previous, next, labels) {
         health.classList.add(`is-${next.sourceHealth}`);
         health.dataset.health = next.sourceHealth;
         health.textContent = next.sourceHealth === "fresh" ? patchLabels.sourceFresh : next.sourceHealth === "cached" ? patchLabels.sourceCached : patchLabels.sourceStale;
+        health.setAttribute("aria-label", health.textContent);
+        health.setAttribute("title", health.textContent);
     }
     root.dataset.status = next.status;
     root.setAttribute("aria-busy", next.ariaBusy === true ? "true" : "false");
