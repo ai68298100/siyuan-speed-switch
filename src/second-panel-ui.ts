@@ -19,7 +19,10 @@ import {encodeSurfaceFocusSource, projectWidgetObject} from "./platform-surface-
 import {resolvePanelSize} from "./settings-model";
 import {clampOversizedIcons} from "./util";
 import {mountPlatformDialogCloseHint} from "./platform-dom";
+import {getSiyuan} from "./types";
 import type {ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, PlatformSurfaceContext, PlatformSurfaceLabels} from "./index";
+
+declare const __PLUGIN_VERSION__: string;
 
 // 空工作台只给出少量稳定、无需理解组件生态的默认入口；其余组件仍由商店按需添加。
 // 这个清单同时作为“恢复默认”范围，避免把整个目录误当成默认布局。
@@ -1459,13 +1462,14 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 lastOk: this.i18n.homeHealthLastOk,
                 unknown: this.i18n.homeHealthUnknown,
                 failed: this.i18n.homeHealthGroupFailed,
+                stale: this.i18n.homeHealthStale,
                 loading: this.i18n.homeHealthGroupLoading,
                 ok: this.i18n.homeHealthGroupOk,
             };
             const dialog = new Dialog({
                 title: this.i18n.homeHealthDetailsTitle,
                 content: '<div class="sw-home-health"></div>',
-                width: this.isMobile ? "min(560px, 94vw)" : "520px",
+                width: "min(520px, 94vw)",
                 destroyCallback: () => {
                     if (returnFocus?.isConnected) {
                         try {
@@ -1597,17 +1601,64 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             }
                             actions.appendChild(retryButton);
                         }
-                        actions.appendChild(smallButton(this.i18n.homeHealthCopySummary, () => {
-                            const summary = buildHomeDiagnosticSummary(row, diagLabels);
-                            const copied = () => showMessage(this.i18n.homeHealthCopied);
-                            const failedToCopy = () => showMessage(this.i18n.homeHealthCopyFailed);
-                            if (navigator.clipboard?.writeText) {
-                                navigator.clipboard.writeText(summary).then(copied, failedToCopy);
-                            } else {
-                                failedToCopy();
-                            }
-                        }));
-                        line.appendChild(actions);
+                        const diagnosticButton = smallButton(this.i18n.homeHealthCopySummary, () => {
+                            const summary = buildHomeDiagnosticSummary(row, diagLabels, {
+                                pluginVersion: __PLUGIN_VERSION__,
+                                hostVersion: getSiyuan()?.config?.system?.kernelVersion,
+                                device,
+                                surface: "workbench",
+                            }) + "\n\n" + this.i18n.homeHealthEvidenceHint;
+                            const preview = document.createElement("section");
+                            preview.className = "sw-home-health__preview";
+                            const label = document.createElement("label");
+                            label.textContent = this.i18n.homeHealthPreview;
+                            const summaryField = document.createElement("textarea");
+                            summaryField.className = "b3-text-field sw-home-health__summary";
+                            summaryField.readOnly = true;
+                            summaryField.value = summary;
+                            label.appendChild(summaryField);
+                            const status = document.createElement("div");
+                            status.setAttribute("role", "status");
+                            const previewActions = document.createElement("div");
+                            previewActions.className = "sw-home-health__actions";
+                            const cancel = smallButton(this.i18n.cancel, () => {
+                                preview.remove();
+                                listRoot.hidden = false;
+                                (diagnosticButton.isConnected ? diagnosticButton : listRoot.querySelector("button"))?.focus();
+                            });
+                            const copy = smallButton(this.i18n.homeHealthCopyConfirm, async () => {
+                                if (copy.disabled) return;
+                                copy.disabled = true;
+                                copy.setAttribute("aria-busy", "true");
+                                status.textContent = "";
+                                try {
+                                    if (!navigator.clipboard?.writeText) throw new Error();
+                                    await navigator.clipboard.writeText(summary);
+                                    if (preview.isConnected) {
+                                        status.textContent = this.i18n.homeHealthCopied;
+                                        cancel.textContent = this.i18n.homeHealthBack;
+                                        cancel.setAttribute("aria-label", this.i18n.homeHealthBack);
+                                    }
+                                } catch (_) {
+                                    if (preview.isConnected) {
+                                        status.textContent = this.i18n.homeHealthCopyFailed;
+                                        summaryField.focus();
+                                        summaryField.select();
+                                    }
+                                } finally {
+                                    copy.disabled = false;
+                                    copy.removeAttribute("aria-busy");
+                                }
+                            });
+                            copy.dataset.action = "copy";
+                            previewActions.append(cancel, copy);
+                            preview.append(label, status, previewActions);
+                            listRoot.hidden = true;
+                            listRoot.after(preview);
+                            summaryField.focus();
+                        });
+                        actions.appendChild(diagnosticButton);
+                        line.append(info, actions);
                         listRoot.appendChild(line);
                     });
                 });

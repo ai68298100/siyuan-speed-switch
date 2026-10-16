@@ -1253,6 +1253,30 @@
     flex-direction: column;
     gap: var(--sw-space-lg, 12px);
     padding: var(--sw-space-xs, 4px) var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
+    &[hidden] { display: none; }
+}
+
+.sw-home-health__preview {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sw-space-lg, 12px);
+    padding: var(--sw-space-md, 8px);
+
+    label { min-width: 0; }
+    .sw-home-health__summary {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        height: 32vh;
+        min-height: 140px;
+        margin-top: var(--sw-space-md, 8px);
+        font-family: var(--b3-font-family-code);
+        font-size: var(--sw-font-sm, 12px);
+        line-height: 1.6;
+        resize: vertical;
+    }
+    .sw-home-health__actions { display: flex; justify-content: flex-end; gap: var(--sw-space-md, 8px); }
+    [role="status"] { font-size: var(--sw-font-sm, 12px); color: var(--b3-theme-on-surface-light); }
 }
 
 .sw-home-health__group {
@@ -1272,6 +1296,7 @@
 
 .sw-home-health__row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     padding: var(--sw-space-md, 8px) 10px;
@@ -1281,7 +1306,7 @@
 
     &--failed { border-color: color-mix(in srgb, var(--b3-theme-error) 34%, transparent); }
 
-    .sw-home-health__info { flex: 1; min-width: 0; }
+    .sw-home-health__info { flex: 1; min-width: min(100%, 180px); overflow-wrap: anywhere; }
     .sw-home-health__name { display: block; font-size: var(--sw-font-md, 13px); font-weight: var(--sw-weight-semibold, 600); }
     .sw-home-health__meta {
         display: block;
@@ -1290,7 +1315,7 @@
         font-size: var(--sw-font-xs, 11px);
         font-variant-numeric: tabular-nums;
     }
-    .sw-home-health__actions { display: flex; flex: none; gap: var(--sw-space-xs, 4px); }
+    .sw-home-health__actions { display: flex; flex-wrap: wrap; margin-left: auto; gap: var(--sw-space-xs, 4px); }
 
     // T-7011：单项重试在途——行降透明度表达进行态（aria-busy 同步供读屏），
     // prefers-reduced-motion 下不加动画，仅静默降透明。

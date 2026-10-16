@@ -5,7 +5,7 @@
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7144",
+  "nextLocalTask": "T-7163",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -131,7 +131,8 @@
     "T-7284",
     "T-7285",
     "T-7286",
-    "T-7287"
+    "T-7287",
+    "T-7288"
   ],
   "tasks": [
     {
@@ -937,7 +938,7 @@
     {
       "id": "T-7149",
       "title": "面向用户的脱敏诊断导出/复制",
-      "status": "planned",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "conditional",
@@ -947,10 +948,17 @@
       ],
       "evidence": [
         "docs/dev-plan-2026-10-06.md",
-        "docs/product-review-2026-10-06.md",
-        "docs/storage-compatibility-matrix.md",
-        "src/config-pack-model.js",
-        "src/snippet-gist.js"
+        "src/home-controller.js",
+        "src/second-panel-ui.ts",
+        "src/types.ts",
+        "webpack.config.js",
+        "src/i18n/zh-CN.json",
+        "src/i18n/en.json",
+        "tests/home-health-report.test.cjs",
+        "tests/home-health-wiring.test.cjs",
+        "tests/e2e/home-health-diagnostics.spec.mjs",
+        "docs/adr/0213-t7288-diagnostics-preview-and-field-boundary.md",
+        ".artifacts/T-7288-verify-release-final.log"
       ],
       "next": "T-7163"
     },
@@ -3596,6 +3604,35 @@
         ".artifacts/T-7287-negative-note-stats.log"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7288",
+      "title": "组件诊断预览与字段边界",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "fix",
+      "dependsOn": [
+        "T-7149"
+      ],
+      "evidence": [
+        "src/home-controller.js",
+        "src/second-panel-ui.ts",
+        "tests/home-health-report.test.cjs",
+        "tests/home-health-wiring.test.cjs",
+        "tests/e2e/home-health-diagnostics.spec.mjs",
+        "docs/adr/0213-t7288-diagnostics-preview-and-field-boundary.md",
+        "docs/dev-plan-2026-10-06.md",
+        ".artifacts/T-7288-model-negative.log",
+        ".artifacts/T-7288-wiring-negative.log",
+        ".artifacts/T-7288-diagnostics-e2e.log",
+        ".artifacts/T-7288-diagnostics-lifecycle-e2e.log",
+        ".artifacts/T-7288-diagnostics-token-e2e.log",
+        ".artifacts/T-7288-diagnostics-negative-proof.json",
+        ".artifacts/T-7288-verify-release-final.log",
+        "package.zip"
+      ],
+      "next": "T-7163"
     }
   ],
   "global": {
@@ -3603,6 +3640,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591784 bytes is below the 591872-byte repository budget by 88 bytes; current candidate package.zip is within the repository budget"
+    "packageBudget": "passed: 590845 bytes is below the 591872-byte repository budget by 1027 bytes; current candidate package.zip is within the repository budget"
   }
 }

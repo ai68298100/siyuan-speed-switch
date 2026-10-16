@@ -90,6 +90,7 @@ export interface ISiyuanUiLayout {
 }
 
 export interface ISiyuanConfig {
+    system?: {kernelVersion?: string};
     keymap?: ISiyuanKeymap;
     uiLayout?: ISiyuanUiLayout;
     ai?: ISiyuanAIConfig;

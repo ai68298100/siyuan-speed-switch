@@ -1,6 +1,7 @@
 "use strict";
 
 const {buildHomeModuleView, renderHomeModuleView, formatUpdatedAt} = require("./home-view.js");
+const {DEFAULT_MODULES, DEVICES} = require("./home-model.js");
 
 const HOME_CLOCK_MODULE_IDS = new Set(["external-local-time", "external-world-clock", "external-quote-daily"]);
 const CLOCK_PATCH_FIELDS = ["label", "href", "command", "secondary", "done", "weekend", "outside", "holiday", "count", "level", "rank"];
@@ -371,6 +372,8 @@ function selectHomeRefreshRetryEntries(entries, results) {
 // 时间——错误 reason 必须命中白名单才原样展示，否则一律折叠为 "failed"，
 // 原始异常文本、响应正文、笔记标题、URL 参数与凭据永远不会进入摘要。
 const HOME_HEALTH_REASON_WHITELIST = ["timeout", "failed", "aborted", "disposed", "stale", "offline", "unavailable", "empty"];
+// 只认可编译内置目录，不把提供方自定义 ID 当作可导出的安全文本。
+const HOME_DIAGNOSTIC_MODULE_IDS = new Set(DEFAULT_MODULES.map((entry) => entry.moduleId));
 
 function classifyHomeHealthReason(reason) {
     const value = typeof reason === "string" ? reason.trim().toLowerCase() : "";
@@ -390,7 +393,8 @@ function buildHomeHealthReport(entries) {
             title: String(entry.title || entry.moduleId || ""),
             health,
             cached: entry.cached === true,
-            reasonClass: health === "failed" ? classifyHomeHealthReason(entry.reason) : "",
+            reasonClass: health === "failed" || health === "stale"
+                ? classifyHomeHealthReason(entry.reason || (health === "stale" ? "stale" : "")) : "",
             lastAttemptAt: Number.isFinite(entry.lastAttemptAt) ? entry.lastAttemptAt : null,
             lastOkAt: Number.isFinite(entry.lastOkAt) ? entry.lastOkAt : null,
         };
@@ -402,24 +406,38 @@ function buildHomeHealthReport(entries) {
 function formatHealthTime(value, unknownLabel) {
     if (!Number.isFinite(value) || value <= 0) return unknownLabel || "未知";
     const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return unknownLabel || "未知";
     const pad2 = (n) => String(n).padStart(2, "0");
     return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
-// 脱敏摘要：只从白名单字段拼装（绝不内插异常对象/响应/URL/凭据）；
-// 未归一化的行在此处补走白名单分类，保证错误原文永远不落摘要。
-function buildHomeDiagnosticSummary(row, labels) {
+// 脱敏摘要不导出标题、实例 ID 或任意提供方 ID；上下文只接受有界版本与固定枚举。
+// 即使调用方绕过 report，状态和 reasonClass 也必须重新归一化。
+function buildHomeDiagnosticSummary(row, labels, context = {}) {
+    row = row || {};
+    context = context || {};
     const l = labels || {};
-    const statusLabel = row.health === "failed" ? (l.failed || "失败")
-        : row.health === "loading" ? (l.loading || "加载中") : (l.ok || "正常");
-    const reasonClass = row.reasonClass || classifyHomeHealthReason(row.reason);
+    const unknown = l.unknown || "未知";
+    const version = (value) => typeof value === "string" && value.length <= 40 && value === value.trim()
+        && /^(0|[1-9]\d{0,5})\.(0|[1-9]\d{0,5})\.(0|[1-9]\d{0,5})(?:-(?:alpha|beta|rc)(?:\.?(0|[1-9]\d{0,5}))?)?$/.test(value) ? value : unknown;
+    const moduleId = HOME_DIAGNOSTIC_MODULE_IDS.has(row.moduleId) ? row.moduleId
+        : typeof row.moduleId === "string" && row.moduleId ? "external-widget" : "unknown";
+    const health = ["failed", "stale", "loading", "ok"].includes(row.health) ? row.health : "loading";
+    const statusLabel = health === "failed" ? (l.failed || "失败")
+        : health === "stale" ? (l.stale || "旧内容")
+            : health === "loading" ? (l.loading || "加载中") : (l.ok || "正常");
+    const reasonClass = health === "failed" || health === "stale"
+        ? classifyHomeHealthReason(row.reasonClass || row.reason || (health === "stale" ? "stale" : "")) : "";
     const lines = [
-        `${l.head || "组件诊断"}: ${row.title} (${row.moduleId})`,
-        `${l.instance || "实例"}: ${row.instanceId}`,
+        `${l.head || "组件诊断"}: ${moduleId}`,
+        `Plugin: ${version(context.pluginVersion)}`,
+        `SiYuan: ${version(context.hostVersion)}`,
+        `Device: ${DEVICES.includes(context.device) ? context.device : unknown}`,
+        `Surface: ${context.surface === "workbench" ? "workbench" : unknown}`,
         `${l.status || "状态"}: ${statusLabel}${reasonClass ? ` (${reasonClass})` : ""}`,
-        `${l.cached || "缓存"}: ${row.cached ? (l.cachedShown || "旧内容可见") : (l.noCache || "无")}`,
-        `${l.lastAttempt || "最近尝试"}: ${formatHealthTime(row.lastAttemptAt, l.unknown || "未知")}`,
-        `${l.lastOk || "最近成功"}: ${formatHealthTime(row.lastOkAt, l.unknown || "未知")}`,
+        `${l.cached || "缓存"}: ${row.cached === true ? (l.cachedShown || "旧内容可见") : (l.noCache || "无")}`,
+        `${l.lastAttempt || "最近尝试"}: ${formatHealthTime(row.lastAttemptAt, unknown)}`,
+        `${l.lastOk || "最近成功"}: ${formatHealthTime(row.lastOkAt, unknown)}`,
     ];
     return lines.join("\n");
 }

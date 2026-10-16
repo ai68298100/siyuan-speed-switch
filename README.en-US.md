@@ -358,7 +358,7 @@ See [ROADMAP.md](./ROADMAP.md) for the planned feature order, design constraints
 
 - [ADR-0057 widget sources as first-class citizens](docs/adr/0057-widget-source-and-store-grouping.md) — widget protocol v2.4 and store source grouping
 - [ADR-0058 database table projection](docs/adr/0058-av-widget-bounded-list-projection.md) — why the database widget is a read-only bounded list projection
-- [ADR-0059/0062/0065/0067 resource self-discipline lines](docs/adr/0067-raw-bundle-line-recalibration.md) — size gates guard against runaway growth only: raw 896 KiB, 256 KiB per-entry zip, 512 KiB archive ceiling
+- [ADR-0059/0062/0065/0067 resource self-discipline lines](docs/adr/0067-raw-bundle-line-recalibration.md) — historical baselines guarding against runaway growth: raw 896 KiB, 256 KiB per-entry zip, 512 KiB archive ceiling; current budgets are listed below
 - [ADR-0063/0064 execution chain and version floor](docs/adr/0063-execution-chain-host-action-effects.md) — the execution chain runs on host confirmation cards; minAppVersion raised to 3.8.0
 
 ## Release Checklist
@@ -369,7 +369,7 @@ One command runs the automated checks:
 pnpm verify:release
 ```
 
-It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
+It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and size budgets after building: 578 KiB archive, 1160 KiB raw bundle, and 320 KiB compressed per entry (see [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)). Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
 The current version is `v0.47.2` (released; it adds the R5 brand identity, an unavailable-widget recovery surface, and reliable widget-store keyboard selection).
 
@@ -514,12 +514,12 @@ Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；En
 ### v0.29.1 (2026-09-21)
 
 - **Fixed iCal every-N-days weekday recurrence** (`FREQ=DAILY;INTERVAL=N;BYDAY=…`): previously conservatively degraded to a single occurrence, now expands correctly per RFC (e.g. "every 2 days limited to Mon/Wed").
-- **City table grows to 555 entries (wave 12)**: Sanya, Chiang Mai, Phuket, Nha Trang, Penang, Sharjah, Male, Volgograd, Azores, Kiritimati, Kinshasa, Ho Chi Minh City, Alexandria and more - all bilingual; full-table IANA validation clean.
+- **City table grows to 555 entries (wave 12)**: tourism and regional additions, all bilingual; full-table IANA validation clean.
 - **Engineering & repo**: version-consistency gate (six version surfaces must match), count-consistency gate, fixture end-to-end integration tests with a CORS fixture server, bilingual issue templates, repo metadata refresh, remote branch consolidation (4 merged branches cleaned), dependency updates.
 
 ### v0.29.0 (2026-09-21)
 
-- **World-clock city table grows to 535 entries (wave 11)**: European second-tier cities (Naples/Venice/Turin/Bordeaux/Nice/Leipzig/Dresden/Birmingham/Glasgow/Porto/Seville/Salzburg/Bern), Russia/Central Asia (Yekaterinburg/Novosibirsk/Vladivostok), the Americas (New Orleans/Austin/Nashville/Winnipeg), Oceania (Christchurch), and Asia (Hyderabad/Kabul/Guam/Kinshasa/Ho Chi Minh City) - all bilingual; full-table IANA validation clean.
+- **World-clock city table grows to 535 entries (wave 11)**: additions across Europe, Russia/Central Asia, the Americas, Oceania, and Asia, all bilingual; full-table IANA validation clean.
 - **Subscription fixes**: iCal accepts webcal:// share links and suffix-less addresses (iCloud/Nextcloud/Fastmail work as-is); RSS/Atom date parsing tries later candidates when the first tag is malformed.
 - **Quality infrastructure**: version-consistency and count-consistency gates, end-to-end loopback integration tests for the acceptance fixtures, bilingual issue templates, repo metadata refresh, dead-subgraph pruning and dead-export cleanup.
 
@@ -529,7 +529,7 @@ Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；En
 
 ### v0.28.2 (2026-09-21)
 
-- **World-clock city table grows to 460 entries (wave 9)**: English aliases completed for every major Chinese city (Dongguan/Foshan/Wuxi/Ningbo/... plus Suzhou in both languages); 25 new zone groups added in both languages — Kyoto/Hiroshima, Incheon/Daegu, Kaohsiung/Taichung, Frankfurt/Cologne/Stuttgart, Lyon/Marseille, Rotterdam, Antwerp, Gothenburg, Bergen, Krakow, Philadelphia/Orlando/Las Vegas/Portland/Minneapolis/Detroit, Guadalajara, Jeddah, Manama, Bishkek/Dushanbe/Ashgabat, San Jose, Kingston, Dakar/Abidjan/Algiers/Tunis/Tripoli/Khartoum/Luanda/Accra/Kigali/Harare/Lusaka/Maputo/Kampala/Dar es Salaam, Adelaide/Hobart/Papeete/Noumea; full-table IANA validation clean.
+- **World-clock city table grows to 460 entries (wave 9)**: Chinese-city English aliases completed plus 25 new dual-language zone groups; full-table IANA validation clean.
 - **iCal subscription URL policy relaxed**: `webcal://` share links are accepted (fetched as https); the .ics path-suffix requirement is dropped (iCloud/Nextcloud/Fastmail work as-is); security rejection rules unchanged.
 - **RSS/Atom date tolerance**: when the first date tag is malformed, later candidates (dc:date/published) are tried before giving up.
 
@@ -551,7 +551,7 @@ Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；En
 
 ### v0.27.0 (2026-09-21)
 
-- **World-clock city table grows to 338 entries (wave 8)**: closed the bilingual asymmetry — about 70 cities gained their missing language (searching 开罗 in Chinese or "Beijing" in English previously fell through); 24 new cities added in both languages, including Canberra, Darwin, Tehran, Baghdad, Ankara, Tel Aviv, Doha, Kyiv, Geneva, Brussels, Ottawa, Calgary, San Diego, Dallas, and Port Moresby; the full table passes IANA validation with zero invalid entries.
+- **World-clock city table grows to 338 entries (wave 8)**: about 70 cities gained their missing language; 24 new dual-language cities added; full-table IANA validation clean.
 - **Performance benchmarks promoted to hard gates**: after three stable releases the four benchmark classes now enforce unconditionally — the filter benchmarks measure CPU time with hard average asserts (15/48/20 ms budgets) and the 40 ms large-library pathology line also blocks on CI; pathological regressions fail precisely in every environment.
 - **Full storage-migration drill**: 12 managed keys x 5 corruption classes degrade deterministically through a sanitize fixpoint; a v0.23.5-era payload set (no schema stamp) survives the upgrade key-by-key.
 
