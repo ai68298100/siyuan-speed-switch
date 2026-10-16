@@ -47,9 +47,11 @@ Current build: `dist/index.js` 1148256 bytes; `dist/index.css` 407738 bytes; `pa
 | Android 真机验收 | 后置 | 按 D-042；当前环境无 `adb`、`java` 与设备 |
 | GitHub 发布动作 | 已完成 | 用户授权的 T-7289 已快进并推送 main/tag；`v0.47.3` 指向 `9d44b47c54d8445a35a4379d27f51b37a6272ccb`，main CI `38867726526` 与 Release `38867726040` 均成功；Release 为正式版且已设为 latest。 |
 
-## 本轮发布收口与后续验收
+## 建议发布顺序
 
 历史基线：`v0.33.0` 已完成发布；后续版本继续沿用双构建、版本/tag preflight 和发布审计。
+
+`v0.33.0` 已完成发布；本节后续步骤记录当前版本的收口与环境验收。
 
 1. 已完成 `v0.47.3` 本地发布门禁、main/tag 推送、CI/Release 与实际资产核验。
 2. 已从 Release 页面下载 `package.zip` 并核对 `plugin.json` 版本为 `0.47.3`；另一台电脑安装及个人安装更新仍后置。
