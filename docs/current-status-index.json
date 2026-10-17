@@ -3818,6 +3818,26 @@
         "src/snippet-studio-preview.js",
         "src/snippet-diff.js"
       ],
+      "next": "T-7297"
+    },
+    {
+      "id": "T-7297",
+      "title": "文档集恢复与批量打开受控执行与 6 态回执契约",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7296"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0223-t7297-document-set-restore-and-batch-open-safety-contract.md",
+        "tests/document-set-restore-agent-contract.test.cjs",
+        "src/agent-document-set-actions.js",
+        "src/agent-workspace-actions.js",
+        "src/agent-capabilities.js"
+      ],
       "next": "T-7144"
     }
   ],
