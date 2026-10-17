@@ -359,6 +359,10 @@
         box-shadow: var(--sw-focus-ring), var(--sw-polish-shadow-card);
     }
 
+    .sw__card:active {
+        transform: scale(0.992);
+    }
+
     .sw__card.sw__focused,
     .sw__card.sw__active {
         border-color: var(--b3-theme-primary);
@@ -380,6 +384,11 @@
         border-color: var(--sw-polish-line);
         border-radius: var(--sw-platform-radius-md, 12px);
         box-shadow: none;
+        transition: border-color $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease;
+
+        &:active {
+            transform: scale(0.992);
+        }
     }
 
     .sw__doc-item:hover {
