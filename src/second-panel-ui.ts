@@ -1179,6 +1179,24 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                                 beginDrag({button: 0, clientX: origin.x, clientY: origin.y, preventDefault: () => undefined});
                             }, 520);
                         });
+                    const curW = Number(layout.w) || preset.w || 6;
+                    const curH = Number(layout.h) || preset.h || 3;
+                    const widthSteps = [3, 4, 6, 8, 12];
+                    const heightSteps = [2, 3, 4, 5, 6];
+                    const widthButton = tool(`宽: ${curW}列 ▾`, () => {
+                        const nextIdx = (widthSteps.indexOf(curW) + 1) % widthSteps.length;
+                        const nextW = widthSteps[nextIdx];
+                        layoutOpLabel = "调整宽度";
+                        persistLayout({w: nextW});
+                        renderPanel();
+                    });
+                    const heightButton = tool(`高: ${curH}行 ▾`, () => {
+                        const nextIdx = (heightSteps.indexOf(curH) + 1) % heightSteps.length;
+                        const nextH = heightSteps[nextIdx];
+                        layoutOpLabel = "调整高度";
+                        persistLayout({h: nextH});
+                        renderPanel();
+                    });
                     const sizeButton = tool(this.i18n.homeSize, () => undefined);
                     sizeButton.addEventListener("click", () => {
                         disposeSizeMenu();
@@ -1189,8 +1207,50 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             renderPanel();
                         });
                     });
+
+                    const resizeHandle = document.createElement("div");
+                    resizeHandle.className = "sw-home__cell-resize-handle";
+                    resizeHandle.title = "拖拽调节宽高";
+                    resizeHandle.textContent = "⤡";
+                    let resizeCleanup: (() => void) | null = null;
+                    resizeHandle.addEventListener("pointerdown", (event) => {
+                        if (event.button !== 0 || resizeCleanup) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const startX = event.clientX, startY = event.clientY;
+                        const startW = Number(layout.w) || 6, startH = Number(layout.h) || 3;
+                        const colW = Math.max(20, (grid.clientWidth || 960) / 12);
+                        let lastW = startW, lastH = startH;
+                        cell.classList.add("sw-home__cell--resizing");
+                        const onMove = (m: PointerEvent) => {
+                            lastW = Math.max(2, Math.min(12, startW + Math.round((m.clientX - startX) / colW)));
+                            lastH = Math.max(1, Math.min(10, startH + Math.round((m.clientY - startY) / 36)));
+                            cell.style.setProperty("--sw-home-span", String(lastW));
+                            cell.style.gridRow = `span ${lastH}`;
+                        };
+                        const onEnd = () => {
+                            window.removeEventListener("pointermove", onMove);
+                            window.removeEventListener("pointerup", onEnd);
+                            window.removeEventListener("pointercancel", onEnd);
+                            cell.classList.remove("sw-home__cell--resizing");
+                            resizeCleanup = null;
+                            if (lastW !== startW || lastH !== startH) {
+                                layoutOpLabel = "自由拉伸";
+                                persistLayout({w: lastW, h: lastH});
+                                renderPanel();
+                            }
+                        };
+                        window.addEventListener("pointermove", onMove);
+                        window.addEventListener("pointerup", onEnd);
+                        window.addEventListener("pointercancel", onEnd);
+                        resizeCleanup = onEnd;
+                    });
+                    cell.appendChild(resizeHandle);
+
                     tools.append(
                         ...toolsChildren,
+                        widthButton,
+                        heightButton,
                         sizeButton,
                         tool(this.i18n.homeMoveUp, () => {
                             // T-7030：按钮/键盘/拖拽共用同一重排纯模型

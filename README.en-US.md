@@ -413,57 +413,10 @@ Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；En
 - **Third-party widget ecosystem (first external integration, Calendar)**: fixes both host defects reported in the field (widgets purged on add; previews stuck at medium); disabling/reloading a plugin no longer drops user layouts (ADR 0103); unavailable widgets are visible and removable in both panel and store; the Calendar widget gains pre-install catalog exposure; the integration guide now documents the bounded-retry registration pattern.
 - **Security**: transitive fast-uri vulnerabilities fixed (0 vulnerabilities).
 - **Verification**: full suite **6625/6625**; `tsc` clean; every new gate carries negative-injection evidence.
-### v0.44.0 (2026-09-30)
+### v0.40.0–v0.44.1 Historical Changelog (2026-09-27–2026-09-30)
 
-- **Module visibility switches**: Settings → Panels → Modules can disable the workbench / snippet studio / floating ball; the top bar consolidates into a single unified platform entry (its context menu dynamically lists enabled surfaces + settings).
-- **Snippet recycle bin**: pre-save / pre-delete / conflict-discarded versions are captured automatically; the catalog sheet offers browsing by origin, restore as a disabled draft, and delete-forever/empty with double confirmation; bounded auto-cleanup.
-- **Dual-pane preview**: the snippet studio preview becomes a Saved vs Draft comparison with a synced environment, collapsing to a single pane on narrow containers; JS preview execution is hard-sealed at the module level.
-- **Audit fixes**: rerender scene preservation (sidebar/mobile), sort menu lifecycle, import generation guard, conflict-copy receipts, same-frame hero demotion, an independent sidebar journal entry, and more.
-### v0.43.2 (2026-09-29)
-
-- **Entries & visuals**: SurfaceNav non-current items render as bordered pills (clickability visible) and gray fake entries are structurally impossible; card digit badges sit fully inside cards; the close button on all panels is prominent. Real-click cross-panel switching joined the release gates.
-
-### v0.43.1 (2026-09-29)
-
-- **Hotfix**: v0.43.0's snippet lab could not open (missing import in the preview-receipt wiring threw on chunk first render); fixed, with new mount-level regression tests. If 0.43.0's third panel would not open for you, update to this version.
-
-### v0.43.0 (2026-09-29)
-
-- **Widget store S2 (T-6967)**: sort menu into the filter row; detail meta as four plain rows; empty-catalog failure banner with retry; neutral capability chips; mobile chip snapping.
-- **Panel size unification (T-6986/T-6999)**: the snippet lab gains fullscreen/adaptive/fixed modes (default fullscreen); window settings unified under the Panels tab with preview buttons.
-- **Settings deepening (T-7002/T-7003/T-7004)**: full combobox search with in-page `/` & Ctrl+K jump, group filter chips and path badges; storage tab with all-keys bilingual groups, usage bars, schema health and cache management; three-state save receipts with retry, a 20-step undo stack, per-group restore-to-defaults, and scene-preserving external rebuilds.
-- **Switcher & workbench (T-7009/T-7011)**: async rerenders no longer jump or steal focus; health-detail retries show in-flight state and settle into real groups.
-- **Snippet preview chain (T-6987~T-6990)**: capability receipt, CSS coverage diagnostics (three verdicts + error positions), probe content extended to 17 features (callout/columns/formula/attributes/database/blocked media/document title), read-only theme token snapshots.
-- **Floating ball (T-7014)**: dialog close restores focus to the originating control.
-- **Acceptance (T-7015)**: current scene preset shows a "Current" badge; quick-bar switcher wording unified; full-page acceptance matrix and R3 integration matrix published.
-- **Verification**: full suite **6535/6535**; real-device/kernel acceptance still tracked in [BLOCKERS.md](BLOCKERS.md).
-
-### v0.42.0 (2026-09-29)
-
-- **Unified platform shell contract (T-7012)**: the surface entry vocabulary now covers the topbar context menu, plugin commands, quick actions, and the floating ball (previously silently dropped); platform navigation carries the current query across the switcher, workbench, snippet lab, and mobile; focus origin is captured when leaving a surface and restored to the source object row or search box on return; closing Settings returns to the originating surface.
-- **Switcher card focus model (T-7007)**: tab cards are real keyboard focus targets (Tab-reachable, screen-reader named); arrow keys, hover, and attached actions share one focusin-driven visual focus and preview pipeline; filter chips become an honest `aria-pressed` button group.
-- **Workbench rerender transaction (T-7010)**: scroll position and focus are captured before full-panel rerenders and restored in place afterwards; the edit toggle, refresh-all, config save, and 14+ other triggers no longer jump to top.
-- **Settings IA (T-6998)**: component-panel tint and workbench size settings fold into a dedicated Panels-tab group (previously unreachable legacy builder content).
-- **History dropdown contract (T-7016)**: per-section counts, the first-8 cap, and "expand all" behavior are pinned by contract.
-- **Verification**: full suite **6485/6485**; real-device/kernel acceptance still tracked in [BLOCKERS.md](BLOCKERS.md).
-
-### v0.41.0 (2026-09-28)
-
-- **13 deepening features**: preview pinning and find-in-preview, layout undo/redo, widget health details, document-set diffs, three-way draft leave guard with draft undo/redo, conflict-copy keep, draft find/replace, CSS preview scenes, config-pack diff with per-group apply.
-- **Workbench modernization**: material × tier system (plain/accent/dark/vibrant + S/M/L/X hero), edit wiggle mode, view-state micro headers, 45 module default tiers.
-- **58 spec cards built to spec**: nine batches fully covered; six list-stream gaps fixed (HN comment counts off-screen, visible source-date row metas, same-title dedupe, continuous ranks, RSS heartbeat + read marks + unread chip, tier hard caps).
-- **Store rebuild S1**: left catalog + right detail master-detail, zero-button rows, six source chips, Ctrl+B batch mode, mobile bottom-sheet detail.
-- **Mobile fixes**: segmented controls wrap on narrow screens; thumbnail blank-frame guard.
-- **Verification**: full suite **6452/6452**; real-device/kernel acceptance still tracked in [BLOCKERS.md](BLOCKERS.md).
-
-### v0.40.0 (2026-09-27)
-
-- **Floating-ball gesture depth**: single click, double click, and long press can each be bound to their own action; once a double-click action is bound, a single click waits briefly for disambiguation, and unbound gestures keep the zero-latency single click. A gesture binding card is available in settings.
-- **Workspace restore 2.0**: document sets remember the active document at save time and refocus it after restore; the restore preview became an inline three-section list with outside-set documents dimmed as "kept open".
-- **Snippet studio interop**: importing a usercss with variables resolves the placeholders against their defaults and keeps the metadata header (the receipt reports how many); exports carry a header that Stylus installs directly.
-- **Split-open keyboard parity**: `Ctrl+click / Ctrl+Enter` on a search result opens the document in the right split, matching the existing right-click gesture.
-- **Real-device feedback fixes**: closing a tab from the switcher on mobile stays in the plugin instead of jumping to SiYuan's native tab overview; workbench module headers no longer render duplicated titles; the workbench quick-action bar got a solid bottom-bar treatment; duplicate close buttons were consolidated.
-- **Validation boundary**: this batch passed the complete automated suite and 9 real-kernel E2E specs; real Android and desktop host acceptance remains tracked in [BLOCKERS.md](BLOCKERS.md).
+- Full historical release records for workbench visual overhaul, third-party widget ecosystem, snippet studio recycle bin, and settings deepening are documented in the [English Changelog](./docs/CHANGELOG.en-US.md).
+- **Verification**: full suite **6287/6287**, 9 real-kernel E2E specs green; real Android and desktop host acceptance tracked in [BLOCKERS.md](BLOCKERS.md).
 
 ### v0.39.0 (2026-09-27)
 
@@ -535,4 +488,3 @@ This plugin’s interaction research and implementation draw on [TCOTC/snippets]
 ## License
 
 [MIT](./LICENSE)
-

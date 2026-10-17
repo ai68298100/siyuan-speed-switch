@@ -470,6 +470,43 @@ test("home view done items render strikethrough style hooks", () => {
     assert.equal(root.querySelectorAll(".sw__home-module-item-action.is-done").length, 1);
 });
 
+test("home view task checkbox executes 0ms optimistic UI updates and handles rollbacks (T-7144)", async () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const doc = dom.window.document;
+    let shouldFail = false;
+    let toggledDone = null;
+    const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks"}, {ok: true, snapshot: {items: [
+        {label: "Optimistic task", value: "task-1", done: false}
+    ]}});
+    const root = renderHomeModuleView(doc, view, {
+        onToggleItem: async (item) => {
+            toggledDone = item.done;
+            if (shouldFail) throw new Error("Network timeout");
+        },
+    });
+    const check = root.querySelector(".sw__home-module-item-check");
+    const actionButton = root.querySelector(".sw__home-module-item-action");
+
+    // 初始未完成状态
+    assert.equal(check.classList.contains("is-done"), false);
+    assert.equal(actionButton.classList.contains("is-done"), false);
+
+    // 正常点击：0ms 立即完成乐观更新
+    check.click();
+    assert.equal(check.classList.contains("is-done"), true);
+    assert.equal(actionButton.classList.contains("is-done"), true);
+    assert.equal(check.getAttribute("aria-pressed"), "true");
+    assert.equal(toggledDone, true);
+
+    // 失败分支：异常触发优雅回滚
+    shouldFail = true;
+    check.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(check.classList.contains("is-done"), true);
+    assert.equal(actionButton.classList.contains("is-done"), true);
+    assert.equal(check.getAttribute("aria-pressed"), "true");
+});
+
 test("home view keeps unavailable navigation rows visible but inert", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     let opened = false;
