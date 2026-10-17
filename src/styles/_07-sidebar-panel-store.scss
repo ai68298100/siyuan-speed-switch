@@ -104,6 +104,10 @@
             outline: none;
         }
 
+        &:active {
+            transform: scale(0.92);
+        }
+
         &.is-done {
             border-color: var(--b3-theme-primary);
             background: var(--b3-theme-primary);

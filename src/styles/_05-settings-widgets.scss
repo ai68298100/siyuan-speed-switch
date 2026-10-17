@@ -811,6 +811,10 @@
 
 .sw-home__cell-body {
     min-width: 0;
+
+    .sw__home-stat-value {
+        font-variant-numeric: tabular-nums;
+    }
 }
 
 .sw-home__cell-tools {

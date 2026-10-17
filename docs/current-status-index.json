@@ -3941,6 +3941,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591779 bytes is below the 591872-byte repository budget by 93 bytes"
+    "packageBudget": "passed: 591176 bytes is below the 591872-byte repository budget by 696 bytes"
   }
 }

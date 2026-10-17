@@ -210,7 +210,15 @@
     &__select { min-height: 36px; }
     &__state { color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); line-height: 1.55; margin-top: var(--sw-space-md, 8px); }
     &__button { min-height: var(--sw-control-h); border: 1px solid var(--studio-line); border-radius: var(--studio-radius-sm); padding: var(--sw-space-sm, 6px) 10px; color: inherit; background: var(--b3-theme-background); cursor: pointer; font: inherit; touch-action: manipulation; transition: border-color $sw-dur-base $sw-ease, background $sw-dur-base $sw-ease, transform $sw-dur-base $sw-ease; }
-    &__button:hover, &__button[aria-pressed="true"] { border-color: var(--studio-accent); color: var(--studio-accent); background: var(--studio-accent-soft); }
+    &__button:hover, &__button[aria-pressed="true"] {
+        border-color: var(--studio-accent);
+        color: var(--studio-accent);
+        background: var(--studio-accent-soft);
+        box-shadow: 0 0 8px color-mix(in srgb, var(--studio-accent) 30%, transparent);
+    }
+    &__button[data-action="snippetFormat"]:hover {
+        box-shadow: 0 0 10px color-mix(in srgb, var(--studio-accent) 42%, transparent);
+    }
     &__button:active { transform: translateY(1px); }
     &__button.is-primary { background: var(--studio-accent); color: var(--b3-theme-on-primary, #fff); border-color: var(--studio-accent); }
     &__button.is-secondary { border-color: color-mix(in srgb, var(--studio-accent) 35%, var(--studio-line)); }
