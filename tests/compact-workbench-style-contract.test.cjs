@@ -112,6 +112,7 @@ test('compact core widgets enforce decoupled glance headers and monospace figure
 test('all platform surfaces declare consistent 1px crystalline rim-light and tactile bevels (T-7144)', () => {
     const polishStyle = readSourceText(path.join(root, 'src', 'styles', '_11-ui-polish.scss'));
     const studioStyle = readSourceText(path.join(root, 'src', 'styles', '_snippet-studio.scss'));
+    const storeStyle = readSourceText(path.join(root, 'src', 'styles', '_06-widgets-store.scss'));
 
     assert.ok(declaresIn(polishStyle, '.sw-home .sw-home__cell:hover', /box-shadow:\s*var\(--sw-rim-light,\s*none\),\s*var\(--sw-polish-shadow-card\)/),
         'workbench cells on hover must retain crystalline rim light alongside card shadow');
@@ -119,4 +120,10 @@ test('all platform surfaces declare consistent 1px crystalline rim-light and tac
         'switcher preview pane must declare crystalline rim light');
     assert.ok(declaresIn(studioStyle, '.sw-studio__preview-section', /box-shadow:\s*var\(--sw-rim-light,\s*none\),\s*var\(--studio-shadow-card\)/),
         'studio preview section must declare crystalline rim light');
+    assert.ok(declaresIn(polishStyle, '.speed-switch .sw__search-wrap .sw__search:focus', /box-shadow:\s*0\s*0\s*0\s*1px\s*var\(--b3-theme-background\),\s*var\(--sw-focus-glow/),
+        'switcher search bar focus must trigger dual-layer glow ring');
+    assert.ok(declaresIn(storeStyle, '.sw-home-store__size', /font-variant-numeric:\s*tabular-nums/),
+        'store size pills must declare tabular-nums for industrial capsule layout');
+    assert.ok(declaresIn(polishStyle, '.sw-studio .sw-studio__editor-frame .sw-studio__line-numbers', /font-variant-numeric:\s*tabular-nums/),
+        'studio line numbers must declare tabular-nums for monospace alignment');
 });

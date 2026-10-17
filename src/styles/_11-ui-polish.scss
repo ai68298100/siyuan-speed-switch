@@ -138,8 +138,10 @@
     }
 
     .sw__search-wrap .sw__search:focus {
+        outline: none;
         border-color: var(--b3-theme-primary);
         background: var(--b3-theme-surface);
+        box-shadow: 0 0 0 1px var(--b3-theme-background), var(--sw-focus-glow, 0 0 0 3px color-mix(in srgb, var(--b3-theme-primary) 32%, transparent));
     }
 
     // R4 没有把 `>` 命令模式画成独立页面；用搜索框的局部状态承接新增模式，
@@ -359,7 +361,8 @@
 
     .sw__card.sw__focused,
     .sw__card.sw__active {
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary) 68%, transparent), var(--sw-polish-shadow-card);
+        border-color: var(--b3-theme-primary);
+        box-shadow: var(--sw-rim-light, none), inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary) 68%, transparent), var(--sw-focus-glow, 0 0 12px color-mix(in srgb, var(--b3-theme-primary) 30%, transparent));
     }
 
     .sw__thumb { border-bottom-color: var(--sw-polish-line-soft); }
@@ -591,6 +594,7 @@
         border: 1px solid var(--sw-polish-line-soft);
         border-radius: var(--sw-platform-radius-sm, 8px);
         background: var(--b3-theme-background);
+        box-shadow: var(--sw-rim-light, inset 0 1px 0 0 rgba(255, 255, 255, 0.08)), var(--sw-shadow-xs, 0 1px 2px rgb(15 23 42 / 4%));
     }
 
     .sw-studio__editor-frame .sw-studio__line-numbers {
@@ -600,11 +604,15 @@
         background: color-mix(in srgb, var(--b3-theme-surface) 82%, var(--b3-theme-background));
         color: var(--b3-theme-on-surface-light);
         text-align: right;
+        box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.05);
+        font-variant-numeric: tabular-nums;
+        user-select: none;
     }
 
     .sw-studio__editor-frame .sw-studio__editor {
         border: 0;
         border-radius: 0;
+        background: transparent;
     }
 
     .sw-studio__ai-result-panel {

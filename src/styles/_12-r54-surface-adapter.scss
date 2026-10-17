@@ -409,6 +409,7 @@
         min-height: 0;
         overflow: hidden;
         backdrop-filter: none;
+        background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, transparent 65%);
         box-shadow: var(--sw-rim-light, none), var(--sw-shadow-xs, 0 1px 2px rgb(15 23 42 / 4%));
         transform: translateZ(0);
         will-change: transform;
@@ -419,7 +420,20 @@
         }
     }
 
-    .sw-home__cell-body { padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px); }
+    .sw-home__cell-body {
+        padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
+
+        .sw__home-stat-value {
+            font-family: var(--b3-font-family-code, ui-monospace, monospace);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.025em;
+            font-weight: 750;
+        }
+        .sw__home-stat-label {
+            font-size: var(--sw-font-xs, 11px);
+            opacity: 0.78;
+        }
+    }
     .sw__home-module-header {
         min-height: 24px;
         margin-bottom: var(--sw-space-xs, 4px);
@@ -471,7 +485,10 @@
         font-size: 0;
         line-height: 0;
     }
-    &:not(.sw-home--mobile) .sw__home-source-health.is-fresh { background: #3b9861; }
+    &:not(.sw-home--mobile) .sw__home-source-health.is-fresh {
+        background: #3b9861;
+        box-shadow: 0 0 6px color-mix(in srgb, #3b9861 65%, transparent);
+    }
     &:not(.sw-home--mobile) .sw__home-source-health.is-cached { border-style: dashed; }
 
     // 默认七卡先展示内容；完整更新时间保留在标题提示与可读描述中。
