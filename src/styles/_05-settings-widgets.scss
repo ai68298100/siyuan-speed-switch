@@ -829,6 +829,21 @@
     .sw-home__tool {
         padding: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
         font-size: var(--sw-font-sm, 12px);
+        border-radius: var(--sw-radius-sm, 6px);
+        transition: color $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease, border-color $sw-dur-fast $sw-ease;
+
+        &:hover {
+            border-color: var(--b3-theme-primary);
+            color: var(--b3-theme-primary);
+        }
+    }
+
+    button:last-child {
+        &:hover {
+            border-color: var(--b3-theme-error, #d23f31);
+            color: var(--b3-theme-error, #d23f31);
+            background: color-mix(in srgb, var(--b3-theme-error, #d23f31) 10%, transparent);
+        }
     }
 }
 

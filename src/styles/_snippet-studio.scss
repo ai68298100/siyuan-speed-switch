@@ -420,10 +420,12 @@
         background: var(--b3-theme-background);
         color: var(--b3-theme-on-background);
         font-size: var(--sw-font-sm, 12px);
+        transition: border-color $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease;
 
         &:focus-visible {
-            outline: 2px solid var(--b3-theme-primary);
-            outline-offset: 1px;
+            outline: none;
+            border-color: var(--studio-accent, var(--b3-theme-primary));
+            box-shadow: 0 0 0 1px var(--b3-theme-background), var(--sw-focus-glow, 0 0 0 3px color-mix(in srgb, var(--b3-theme-primary) 32%, transparent));
         }
     }
 

@@ -1133,10 +1133,12 @@
                 // T-6834 关键词高亮：审查轮 P-B 加强对比——主色底 30% + 命中字着主色，
                 // 小字号下也一眼可辨（对齐搜索引擎/VS Code 命中强度）
                 mark {
-                    padding: 0 1px;
+                    padding: 1px 3px;
                     border-radius: 3px;
-                    background: color-mix(in srgb, var(--b3-theme-primary) 30%, transparent);
+                    background: color-mix(in srgb, var(--b3-theme-primary) 22%, transparent);
                     color: var(--b3-theme-primary);
+                    font-weight: 700;
+                    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary) 30%, transparent);
                 }
             }
 
