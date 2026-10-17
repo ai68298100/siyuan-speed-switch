@@ -3799,6 +3799,25 @@
         "tests/controlled-agent-safety-contract.test.cjs",
         "src/agent-capabilities.js"
       ],
+      "next": "T-7296"
+    },
+    {
+      "id": "T-7296",
+      "title": "片段 AI 草稿隔离、CSS 沙箱与 JS 禁执行契约",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7295"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0222-t7296-snippet-ai-draft-sandbox-and-execution-guard-contract.md",
+        "tests/snippet-ai-sandbox-execution-guard-contract.test.cjs",
+        "src/snippet-studio-preview.js",
+        "src/snippet-diff.js"
+      ],
       "next": "T-7144"
     }
   ],
