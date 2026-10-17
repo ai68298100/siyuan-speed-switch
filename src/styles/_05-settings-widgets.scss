@@ -863,6 +863,30 @@
 .sw-home__cell--resizing {
     box-shadow: var(--sw-focus-ring) !important;
     user-select: none;
+
+    .sw-home__cell-resize-handle::after {
+        content: attr(data-dimensions);
+        position: absolute;
+        bottom: calc(100% + 4px);
+        right: 0;
+        padding: 2px var(--sw-space-sm, 6px);
+        border-radius: var(--sw-radius-sm, 6px);
+        background: var(--b3-theme-primary);
+        color: var(--b3-theme-on-primary, #fff);
+        font-family: var(--b3-font-family-code, ui-monospace, monospace);
+        font-size: 11px;
+        font-weight: var(--sw-weight-bold, 700);
+        white-space: nowrap;
+        pointer-events: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        z-index: 100;
+    }
+}
+
+.sw-home__cell--dragover {
+    border-color: var(--b3-theme-primary) !important;
+    box-shadow: 0 0 0 2px var(--b3-theme-primary), 0 0 16px color-mix(in srgb, var(--b3-theme-primary) 35%, transparent) !important;
+    background: color-mix(in srgb, var(--b3-theme-primary) 8%, var(--b3-theme-surface)) !important;
 }
 
 .sw-home__open {

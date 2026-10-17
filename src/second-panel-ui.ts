@@ -1258,17 +1258,20 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         const colW = Math.max(20, (grid.clientWidth || 960) / 12);
                         let lastW = startW, lastH = startH;
                         cell.classList.add("sw-home__cell--resizing");
+                        resizeHandle.setAttribute("data-dimensions", `${lastW}列 × ${lastH}行`);
                         const onMove = (m: PointerEvent) => {
                             lastW = Math.max(2, Math.min(12, startW + Math.round((m.clientX - startX) / colW)));
                             lastH = Math.max(1, Math.min(10, startH + Math.round((m.clientY - startY) / 36)));
                             cell.style.setProperty("--sw-home-span", String(lastW));
                             cell.style.gridRow = `span ${lastH}`;
+                            resizeHandle.setAttribute("data-dimensions", `${lastW}列 × ${lastH}行`);
                         };
                         const onEnd = () => {
                             window.removeEventListener("pointermove", onMove);
                             window.removeEventListener("pointerup", onEnd);
                             window.removeEventListener("pointercancel", onEnd);
                             cell.classList.remove("sw-home__cell--resizing");
+                            resizeHandle.removeAttribute("data-dimensions");
                             resizeCleanup = null;
                             if (lastW !== startW || lastH !== startH) {
                                 layoutOpLabel = "自由拉伸";
