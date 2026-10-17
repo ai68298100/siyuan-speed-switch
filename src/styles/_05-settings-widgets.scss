@@ -779,6 +779,7 @@
 // T-7054：iPad 组件质感——玻璃态背景 + 景深阴影 + hover 微浮起 + 大圆角。
 // 使用 color-mix 派生自主题变量（皮肤/暗色自适应），不引入第二套色值。
 .sw-home__cell {
+    position: relative;
     grid-column: span min(var(--sw-home-span, 6), 12);
     display: flex;
     flex-direction: column;

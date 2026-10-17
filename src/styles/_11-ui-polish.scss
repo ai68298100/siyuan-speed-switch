@@ -475,6 +475,7 @@
     .sw-home__grid { gap: 14px; }
 
     .sw-home__cell {
+        position: relative;
         padding: 0;
         border: 1px solid var(--sw-polish-line);
         // T-7231：恢复 T-7054 的层级材质。此前这里为了收平三表面观感，

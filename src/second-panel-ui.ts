@@ -623,20 +623,18 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     let rowAccum = 0;
                     list.forEach((entry, idx) => {
                         const isLast = idx === list.length - 1;
-                        const origW = Number(entry.w) || 6;
-                        if (origW >= 7) {
-                            if (rowAccum === 6) {
-                                entry.w = 6;
-                                rowAccum = 0;
-                            } else if (isLast && rowAccum === 0) {
-                                entry.w = 12;
-                                rowAccum = 0;
-                            } else {
-                                entry.w = 6;
-                                rowAccum = 6;
-                            }
-                        } else if (origW <= 6 && origW >= 4) {
+                        const isCalendar = entry.instanceId?.includes("calendar") || false;
+                        if (isCalendar) {
+                            entry.w = 12;
+                            entry.h = 6;
+                            rowAccum = 0;
+                        } else if (isLast && rowAccum === 0) {
+                            entry.w = 12;
+                            entry.h = Math.max(3, Number(entry.h) || 3);
+                            rowAccum = 0;
+                        } else {
                             entry.w = 6;
+                            entry.h = Math.max(4, Number(entry.h) || 4);
                             rowAccum = (rowAccum + 6) % 12;
                         }
                     });
@@ -840,14 +838,19 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
                 const sizeKey = this.isMobile ? resolveMobileHomeSize(supported) : this.migrateHomeLayoutSize(layout, supported);
                 const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
-                if (layout.size !== sizeKey || layout.w !== preset.w || layout.h !== preset.h) {
+                // 允许用户自由拉伸与尺寸微调：优先取 layout.w / layout.h，兜底取预设 preset
+                const customW = Number(layout.w);
+                const customH = Number(layout.h);
+                const effectiveW = Number.isFinite(customW) && customW >= 1 && customW <= 12 ? customW : preset.w;
+                const effectiveH = Number.isFinite(customH) && customH >= 1 && customH <= 10 ? customH : preset.h;
+                layout.w = effectiveW;
+                layout.h = effectiveH;
+                if (layout.size !== sizeKey) {
                     layout.size = sizeKey;
-                    layout.w = preset.w;
-                    layout.h = preset.h;
                     const persist = this.getHomeState();
                     const target = ((persist.layouts[device] || []) as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
                     if (target) {
-                        Object.assign(target, {size: sizeKey, w: preset.w, h: preset.h});
+                        target.size = sizeKey;
                         this.saveHomeState(persist);
                     }
                 }
@@ -860,8 +863,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 cell.dataset.size = sizeKey;
                 cell.dataset.moduleId = inst.moduleId;
                 cell.dataset.swObjectId = inst.instanceId;
-                cell.style.setProperty("--sw-home-span", String(Math.min(12, preset.w)));
-                cell.style.gridRow = this.isMobile ? "auto" : `span ${Math.max(1, preset.h)}`;
+                cell.style.setProperty("--sw-home-span", String(Math.min(12, effectiveW)));
+                cell.style.gridRow = this.isMobile ? "auto" : `span ${Math.max(1, effectiveH)}`;
                 // 强调色：按 moduleId 稳定散列到调色板，iPad 小组件的多彩感
                 if (homePalette === "auto") {
                     cell.style.setProperty("--sw-home-accent", this.homeAccents[[...inst.moduleId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % this.homeAccents.length]);
