@@ -93,7 +93,7 @@
         border-color: var(--sw-r54-line);
         border-radius: var(--sw-r54-radius-control);
         background: var(--sw-r54-surface);
-        box-shadow: none;
+        box-shadow: var(--sw-rim-light, none), var(--sw-r54-shadow-card, none);
     }
 
     .sw__group-header { min-height: 40px; margin-bottom: 10px; }
@@ -409,11 +409,12 @@
         min-height: 0;
         overflow: hidden;
         backdrop-filter: none;
-        box-shadow: var(--sw-rim-light, none);
+        box-shadow: var(--sw-rim-light, none), var(--sw-shadow-xs, 0 1px 2px rgb(15 23 42 / 4%));
         transform: translateZ(0);
         will-change: transform;
 
         &:hover {
+            box-shadow: var(--sw-rim-light, none), var(--sw-polish-shadow-card);
             transform: none;
         }
     }

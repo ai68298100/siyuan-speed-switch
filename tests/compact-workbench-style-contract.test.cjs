@@ -108,3 +108,15 @@ test('compact core widgets enforce decoupled glance headers and monospace figure
     assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw-home__cell[data-module-id="external-weather-open-meteo"] .sw__home-stat-value', /font-variant-numeric:\s*tabular-nums/),
         'weather temperature must declare tabular-nums for precision layout');
 });
+
+test('all platform surfaces declare consistent 1px crystalline rim-light and tactile bevels (T-7144)', () => {
+    const polishStyle = readSourceText(path.join(root, 'src', 'styles', '_11-ui-polish.scss'));
+    const studioStyle = readSourceText(path.join(root, 'src', 'styles', '_snippet-studio.scss'));
+
+    assert.ok(declaresIn(polishStyle, '.sw-home .sw-home__cell:hover', /box-shadow:\s*var\(--sw-rim-light,\s*none\),\s*var\(--sw-polish-shadow-card\)/),
+        'workbench cells on hover must retain crystalline rim light alongside card shadow');
+    assert.ok(declaresIn(polishStyle, '.speed-switch .sw__doc-preview', /box-shadow:\s*var\(--sw-rim-light,\s*none\),\s*var\(--sw-polish-shadow-card\)/),
+        'switcher preview pane must declare crystalline rim light');
+    assert.ok(declaresIn(studioStyle, '.sw-studio__preview-section', /box-shadow:\s*var\(--sw-rim-light,\s*none\),\s*var\(--studio-shadow-card\)/),
+        'studio preview section must declare crystalline rim light');
+});

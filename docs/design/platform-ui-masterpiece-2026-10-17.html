@@ -257,8 +257,27 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-radius: var(--sw-radius-lg);
   box-shadow: var(--sw-shadow-card), var(--tile-rim);
   backdrop-filter: blur(28px) saturate(190%);
-  transition: all var(--dur-spring) var(--ease-spring);
+  transition: max-width var(--dur-spring) var(--ease-spring), width var(--dur-spring) var(--ease-spring);
 }
+
+/* 多设备视口模拟自适应 */
+[data-viewport="desktop"] .app-shell { width: 100%; }
+[data-viewport="ipad"] .app-shell { max-width: 834px; margin: 0 auto; border-radius: 18px; }
+[data-viewport="mobile"] .app-shell { max-width: 393px; margin: 0 auto; border-radius: 36px; border-width: 4px; border-color: #2b303d; }
+[data-viewport="mobile"] .tab-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+[data-viewport="mobile"] .switcher-layout { grid-template-columns: 1fr; }
+[data-viewport="mobile"] .preview-rail { display: none; }
+[data-viewport="mobile"] .workbench-grid { grid-template-columns: repeat(2, 1fr); }
+[data-viewport="mobile"] .widget.span-4, [data-viewport="mobile"] .widget.span-6, [data-viewport="mobile"] .widget.span-8 { grid-column: span 2; }
+[data-viewport="mobile"] .store-layout, [data-viewport="mobile"] .studio-layout, [data-viewport="mobile"] .settings-layout { grid-template-columns: 1fr; }
+[data-viewport="mobile"] .store-sidebar, [data-viewport="mobile"] .store-detail, [data-viewport="mobile"] .studio-side, [data-viewport="mobile"] .settings-rail { display: none; }
+[data-viewport="mobile"] .store-grid { grid-template-columns: 1fr; }
+[data-viewport="dock"] .app-shell { max-width: 245px; margin: 0 auto; }
+[data-viewport="dock"] .preview-rail, [data-viewport="dock"] .store-sidebar, [data-viewport="dock"] .store-detail, [data-viewport="dock"] .studio-side, [data-viewport="dock"] .settings-rail { display: none; }
+[data-viewport="dock"] .switcher-layout, [data-viewport="dock"] .store-layout, [data-viewport="dock"] .studio-layout, [data-viewport="dock"] .settings-layout { grid-template-columns: 1fr; }
+[data-viewport="dock"] .tab-grid { grid-template-columns: 1fr; }
+[data-viewport="dock"] .workbench-grid { grid-template-columns: 1fr; }
+[data-viewport="dock"] .widget.span-4, [data-viewport="dock"] .widget.span-6, [data-viewport="dock"] .widget.span-8 { grid-column: span 1; }
 
 /* 平台顶栏 */
 .app-head {
@@ -862,6 +881,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   <button class="proto-btn" id="btnToggleNoise">噪点: 关 (纯净模式)</button>
   <span style="color:#444">|</span>
   <button class="proto-btn" id="btnToggleDensity">密度: 舒适</button>
+  <span style="color:#444">|</span>
+  <button class="proto-btn is-active" id="btnVpDesktop">🖥️ 桌面</button>
+  <button class="proto-btn" id="btnVpIpad">📱 iPad 834</button>
+  <button class="proto-btn" id="btnVpMobile">📲 手机 393</button>
+  <button class="proto-btn" id="btnVpDock">📌 窄Dock 245</button>
 </div>
 
 <main class="proto-shell">
@@ -1453,6 +1477,216 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
       });
     });
   }
+
+  // 多视口自适应模拟器切换
+  window.setViewport = function(vp) {
+    root.dataset.viewport = vp;
+    ['btnVpDesktop', 'btnVpIpad', 'btnVpMobile', 'btnVpDock'].forEach(id => {
+      document.getElementById(id)?.classList.remove('is-active');
+    });
+    const map = {
+      desktop: ['btnVpDesktop', '桌面视口 (100% 弹性响应式 940~1580px)'],
+      ipad: ['btnVpIpad', 'iPad 平板视口 (834px · 4列 Bento)'],
+      mobile: ['btnVpMobile', '手机端视口 (393px · 2列双拼 Bento)'],
+      dock: ['btnVpDock', '原生窄 Dock 视口 (245px · 单列精简流)']
+    };
+    if (map[vp]) {
+      document.getElementById(map[vp][0])?.classList.add('is-active');
+      receipt.textContent = '视口已切换为：' + map[vp][1];
+    }
+  };
+  document.getElementById('btnVpDesktop').onclick = () => setViewport('desktop');
+  document.getElementById('btnVpIpad').onclick = () => setViewport('ipad');
+  document.getElementById('btnVpMobile').onclick = () => setViewport('mobile');
+  document.getElementById('btnVpDock').onclick = () => setViewport('dock');
+
+  // 1. 切换器：页签选择与右侧大预览实时联动
+  const tabCards = document.querySelectorAll('.tab-card');
+  const previewHeadTitle = document.querySelector('.preview-head strong');
+  const previewCopyH3 = document.querySelector('.preview-copy h3');
+  const previewCopyMeta = document.querySelector('.preview-copy .row-meta');
+  tabCards.forEach(card => {
+    card.addEventListener('click', () => {
+      tabCards.forEach(c => c.classList.remove('is-selected'));
+      card.classList.add('is-selected');
+      const name = card.querySelector('.name')?.textContent || '文档预览';
+      const sub = card.querySelector('.sub')?.textContent || '';
+      if (previewHeadTitle) previewHeadTitle.textContent = name;
+      if (previewCopyH3) previewCopyH3.textContent = '实时大纲与关键事实：' + name;
+      if (previewCopyMeta) previewCopyMeta.textContent = sub + ' · 刚刚更新';
+      receipt.textContent = '已聚焦并预览：' + name + ' (按 Enter 打开)';
+    });
+  });
+
+  // 搜索框实时模糊过滤页签
+  const switcherInput = document.getElementById('switcherQuery');
+  if (switcherInput) {
+    switcherInput.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      tabCards.forEach(card => {
+        const text = (card.textContent + ' ' + (card.dataset.search || '')).toLowerCase();
+        card.style.display = (!q || text.includes(q)) ? '' : 'none';
+      });
+      receipt.textContent = q ? `搜索筛选中：“${q}” · 匹配卡片已高亮` : '已清空搜索条件 · 恢复全部 8 个页签';
+    });
+  }
+
+  // 切换器顶栏与分类过滤芯片
+  document.querySelectorAll('#screen-switcher .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('is-active'));
+      chip.classList.add('is-active');
+      const text = chip.textContent.trim();
+      receipt.textContent = '已应用过滤视图：' + text;
+    });
+  });
+
+  // 预览栏动作按钮
+  document.querySelectorAll('.preview-actions button, .preview-head button').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const txt = btn.textContent.trim() || btn.title || '动作';
+      receipt.textContent = `已触发预览操作：[${txt}]`;
+    });
+  });
+
+  // 2. 工作台：刷新全部与编排布局模式切换
+  const btnRefreshWorkbench = document.querySelector('#screen-workbench .soft-btn');
+  if (btnRefreshWorkbench) {
+    btnRefreshWorkbench.addEventListener('click', () => {
+      const widgets = document.querySelectorAll('.workbench-grid .widget');
+      widgets.forEach(w => {
+        w.style.opacity = '0.4';
+        w.style.transform = 'scale(0.98)';
+      });
+      setTimeout(() => {
+        widgets.forEach(w => {
+          w.style.opacity = '';
+          w.style.transform = '';
+        });
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        const meta = document.querySelector('#screen-workbench .row-meta');
+        if (meta) meta.textContent = `写作现场 · 4 个核心组件 · 上次刷新 ${timeStr}`;
+        receipt.textContent = `已完成全部工作台小组件强制刷新 · ${timeStr} 缓存已更新`;
+      }, 240);
+    });
+  }
+
+  const btnEditWorkbench = document.querySelector('#screen-workbench .primary-btn');
+  let isEditingLayout = false;
+  if (btnEditWorkbench) {
+    btnEditWorkbench.addEventListener('click', () => {
+      isEditingLayout = !isEditingLayout;
+      btnEditWorkbench.textContent = isEditingLayout ? '✓ 完成编排' : '编辑布局';
+      btnEditWorkbench.classList.toggle('is-editing-mode', isEditingLayout);
+      root.dataset.mode = isEditingLayout ? 'edit' : 'view';
+      receipt.textContent = isEditingLayout
+        ? '已进入布局编排态：可拖拽调整组件顺序、切换尺寸或移除组件'
+        : '已退出编排态：最新布局已自动持久化落盘';
+    });
+  }
+
+  // 3. 小组件商店：分类切换与卡片选中联动详情
+  const storeCatButtons = document.querySelectorAll('.store-sidebar button');
+  storeCatButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      storeCatButtons.forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      receipt.textContent = '已切换小组件目录：' + btn.textContent.trim();
+    });
+  });
+
+  const storeCards = document.querySelectorAll('.store-grid .store-card');
+  const storeDetailTitle = document.querySelector('.store-detail strong');
+  const storeDetailDesc = document.querySelector('.store-detail p');
+  const storeDetailIcon = document.querySelector('.store-detail div[style*="font-size:24px"]');
+  storeCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const title = card.querySelector('strong')?.textContent || '';
+      const desc = card.querySelector('p')?.textContent || '';
+      const icon = card.querySelector('.type-icon')?.textContent || '🧩';
+      if (storeDetailTitle) storeDetailTitle.textContent = title;
+      if (storeDetailDesc) storeDetailDesc.textContent = desc;
+      if (storeDetailIcon) storeDetailIcon.textContent = icon;
+      receipt.textContent = '已查看组件详情：' + title;
+    });
+  });
+
+  // 4. 代码实验室：代码片段列表点击切换草稿
+  const snippetRows = document.querySelectorAll('.studio-library .snippet-row');
+  const editorTitleHeader = document.querySelector('.editor-head strong');
+  const codePre = document.querySelector('.editor .code');
+  const sampleSnippets = {
+    'readable-focus.css': `/* 现代微质感发光焦点环 */\n.protyle :focus-visible {\n  outline: none !important;\n  box-shadow: 0 0 0 1px var(--b3-theme-background),\n              0 0 0 3px color-mix(in srgb, var(--b3-theme-primary) 38%, transparent);\n  transition: box-shadow 120ms cubic-bezier(0.16, 1, 0.3, 1);\n}`,
+    'calm-reading.css': `/* 护眼沉浸阅读背景与边距 */\n.protyle-wysiwyg {\n  max-width: 820px !important;\n  line-height: 1.8;\n  letter-spacing: 0.01em;\n}`,
+    'reading-width.css': `/* 阅读正文自适应舒适排版 */\n.protyle-content {\n  font-size: 15.5px;\n  padding: 16px 24px;\n}`,
+    'daily-capture.js': `// 每日捕获快捷脚本 (安全沙箱)\nconst now = new Date();\nconsole.log("Captured at: " + now.toISOString());`
+  };
+
+  snippetRows.forEach(row => {
+    row.addEventListener('click', () => {
+      snippetRows.forEach(r => r.classList.remove('is-active'));
+      row.classList.add('is-active');
+      const filename = row.querySelector('.row-title')?.textContent.trim() || '';
+      if (editorTitleHeader) editorTitleHeader.textContent = filename;
+      if (codePre && sampleSnippets[filename]) {
+        codePre.textContent = sampleSnippets[filename];
+      }
+      receipt.textContent = '已加载代码草稿：' + filename + ' · 安全沙箱隔离就绪';
+    });
+  });
+
+  // 差异比较与草稿保存
+  const btnDiffStudio = document.querySelector('#screen-studio .soft-btn');
+  if (btnDiffStudio) {
+    btnDiffStudio.addEventListener('click', () => {
+      alert('🔍 正在与本地已保存版本进行 Diff 比对：\n+ 添加 2 行规则声明\n- 移除 0 行历史冗余\n\n所有改动在沙箱内隔离，未直接影响思源正文。');
+      receipt.textContent = '已完成差异分析 · 2 项新增修改待用户确认';
+    });
+  }
+
+  const btnSaveStudio = document.querySelector('#screen-studio .primary-btn');
+  if (btnSaveStudio) {
+    btnSaveStudio.addEventListener('click', () => {
+      const statusDirty = document.querySelector('#screen-studio .screen-toolbar .status');
+      if (statusDirty) {
+        statusDirty.style.color = 'var(--b3-theme-success)';
+        statusDirty.style.background = 'color-mix(in srgb, var(--b3-theme-success) 12%, transparent)';
+        statusDirty.innerHTML = '<i></i>已安全保存草稿至沙箱';
+      }
+      receipt.textContent = '✨ 草稿已通过安全校验并持久化保存至 storage 目录！';
+    });
+  }
+
+  // 5. 设置页：10 标签分类导航实时切换
+  const settingsNavBtns = document.querySelectorAll('.settings-rail button');
+  const settingsTitle = document.querySelector('.setting-group h3');
+  const settingsDesc = document.querySelector('.setting-group .row-meta');
+  settingsNavBtns.forEach((btn, idx) => {
+    btn.addEventListener('click', () => {
+      settingsNavBtns.forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      const text = btn.textContent.trim();
+      if (settingsTitle) settingsTitle.textContent = `${text}选项治理`;
+      if (settingsDesc) settingsDesc.textContent = `治理${text}的核心参数与端侧行为，所有修改即时生效并在本地安全落盘。`;
+      receipt.textContent = `已进入系统设置：[${text}]`;
+    });
+  });
+
+  // 悬浮球开关
+  const floatingToggle = document.querySelector('.setting-group .setting-row:nth-child(2) .toggle') || document.querySelector('.floating-ball');
+  const floatingBallEl = document.getElementById('floatingBall');
+  document.querySelectorAll('.setting-group .toggle').forEach(tg => {
+    if (tg.id !== 'settingToggleNoise') {
+      tg.addEventListener('click', () => {
+        const on = tg.classList.toggle('is-on');
+        if (floatingBallEl) floatingBallEl.style.display = on ? 'grid' : 'none';
+        receipt.textContent = '全局悬浮球已：' + (on ? '开启 (停靠在右下角)' : '关闭 (隐藏)');
+      });
+    }
+  });
 
   // 零依赖 CSS 格式化演示
   window.formatDemoCode = function() {

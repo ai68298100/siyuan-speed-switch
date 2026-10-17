@@ -82,8 +82,29 @@
     &__library-filter:hover, &__library-filter[aria-pressed="true"] { border-color: var(--studio-accent); color: var(--studio-accent); background: var(--studio-accent-soft); }
     &__library-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: var(--sw-space-sm, 6px); min-height: 0; overflow: auto; padding-right: var(--sw-space-2xs, 2px); }
     &__library-item-wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sw-space-sm, 6px); min-width: 0; align-items: stretch; }
-    &__library-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sw-space-md, 8px); width: 100%; min-width: 0; padding: var(--sw-space-md, 8px); border: 1px solid var(--studio-line); border-radius: var(--studio-radius-sm); background: var(--b3-theme-background); color: inherit; cursor: pointer; font: inherit; text-align: left; }
-    &__library-item:hover, &__library-item.is-current, &__library-item[aria-pressed="true"] { border-color: var(--studio-accent); background: var(--studio-accent-soft); }
+    &__library-item {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: var(--sw-space-md, 8px);
+        width: 100%;
+        min-width: 0;
+        padding: var(--sw-space-md, 8px);
+        border: 1px solid var(--studio-line);
+        border-radius: var(--studio-radius-sm);
+        background: var(--b3-theme-background);
+        box-shadow: var(--sw-rim-light, none), var(--sw-shadow-xs, 0 1px 2px rgb(15 23 42 / 4%));
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+        transition: border-color $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease;
+    }
+    &__library-item:hover, &__library-item.is-current, &__library-item[aria-pressed="true"] {
+        border-color: var(--studio-accent);
+        background: var(--studio-accent-soft);
+        box-shadow: var(--sw-rim-light, none), var(--sw-polish-shadow-card, 0 4px 12px rgba(0, 0, 0, 0.08));
+    }
     &__library-toggle { min-width: 58px; padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px); border: 1px solid var(--studio-line); border-radius: var(--studio-radius-sm); background: var(--studio-surface); color: var(--studio-on-surface); cursor: pointer; font: inherit; font-size: var(--sw-font-xs, 11px); }
     &__library-toggle:hover, &__library-toggle[aria-pressed="true"] { border-color: var(--studio-accent); color: var(--studio-accent); background: var(--studio-accent-soft); }
     &__library-toggle:disabled { opacity: .52; cursor: default; }
@@ -97,7 +118,7 @@
         border: 1px solid var(--studio-line);
         border-radius: var(--studio-radius-lg);
         background: color-mix(in srgb, var(--b3-theme-background) 92%, var(--studio-surface));
-        box-shadow: var(--studio-shadow-card);
+        box-shadow: var(--sw-rim-light, none), var(--studio-shadow-card);
     }
     // Keep the preview card inside its grid row when the toolbar wraps or the
     // host window is short. The preview canvas still owns its own iframe
@@ -110,7 +131,22 @@
     // T-7205：状态徽标与平台原语（.sw-platform-status）同一语言——语义色接
     // --sw-platform-*（--studio-* 留作回退），并补 6px currentColor 色点的
     // 第二通道；gap 为色点预留（原无 gap，单行文本不受影响）。
-    &__state-badge { display: inline-flex; align-items: center; gap: var(--sw-space-sm, 6px); width: fit-content; max-width: 100%; padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px); border-radius: var(--studio-radius-pill); background: var(--studio-surface); color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    &__state-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sw-space-sm, 6px);
+        width: fit-content;
+        max-width: 100%;
+        padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
+        border-radius: var(--studio-radius-pill);
+        background: var(--studio-surface);
+        box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+        color: var(--studio-on-surface);
+        font-size: var(--sw-font-xs, 11px);
+        line-height: 1.25;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         &::before { content: ""; flex: 0 0 auto; width: 6px; height: 6px; border-radius: 999px; background: currentColor; opacity: .85; }
     }
     &__state-badge.is-ready { background: color-mix(in srgb, var(--sw-platform-success, var(--studio-success)) 13%, transparent); color: color-mix(in srgb, var(--sw-platform-success, var(--studio-success)) 78%, var(--b3-theme-on-background)); }
