@@ -1,17 +1,18 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.47.3-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.47.4-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **最近正式版：v0.47.3（2026-10-16）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.3) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **最近正式版：v0.47.4（2026-10-17）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.4) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
-## 本次更新（v0.47.3 · 2026-10-16）
+## 本次更新（v0.47.4 · 2026-10-17）
 
-- 第二面板采用紧凑卡片，天气和倒数收敛为摘要；新工作台默认七个通用组件。
-- 已有布局保持，组件可从商店添加；天气失败可重试，书签和大纲兼容修复。
-- 诊断先预览再复制，支持取消和手动复制，摘要排除标题、实例标识和原始错误。
+- 第二面板与小组件商店最现代化科技感重构：时钟去壳直出、等宽科技排版、待办复选框 0ms 乐观打勾与划线衰减、年度进度 2.8s 流光脉冲、商店卡片画廊化与图标微底衬。
+- 多端双拼 Bento 架构与 GPU 性能护栏：手机端（<=560px）时钟与天气 50% 优雅并排，长列表 100% 舒展；iPad 4列 Bento；触控隔离与硬件加速零重排。
+- 全表面渐进式质感升级：第一面板卡片消费 1px 晶体微切光、机械键帽微立体阴影、双层发光微环；强化白天陶瓷霜白质感，物理微噪点重构为全局自主可选开关。
+- 搜索页面右侧独立 34% 预览窗格优化，正文独立滚动不遮挡全库文档（闭环 Issue #15）；Phase C 受控智能与动作安全回执契约完备交付。
 
 逐项说明、验证数据与历史版本见[完整更新日志](./docs/CHANGELOG.md)。
 
@@ -385,7 +386,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和体积预算（归档 578 KiB、raw 1160 KiB、单条目压缩 320 KiB，见 [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.47.3`，包含紧凑工作台、七组件默认组合和可预览诊断。
+当前版本为 `v0.47.4`，包含最现代化科技感看板、画廊商店、多端双拼 Bento、全表面渐进质感升级与受控智能安全契约。
 
 <details>
 <summary>历史更新日志（点击展开）</summary>

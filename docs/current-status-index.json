@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-17",
-  "currentTask": "T-7144",
+  "currentTask": "T-7299",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
@@ -136,7 +136,8 @@
     "T-7289",
     "T-7290",
     "T-7291",
-    "T-7298"
+    "T-7298",
+    "T-7299"
   ],
   "tasks": [
     {
@@ -3863,6 +3864,28 @@
         "src/styles/_06-widgets-store.scss",
         "src/styles/_07-sidebar-panel-store.scss",
         "src/styles/_platform-shell.scss"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7299",
+      "title": "v0.47.4 正式版发布与资产回执",
+      "status": "in_progress",
+      "priority": "P0",
+      "owner": "release",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7298"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0221-t7299-v0474-release.md",
+        "package.json",
+        "plugin.json",
+        "README.md",
+        "README.en-US.md",
+        "docs/CHANGELOG.md",
+        "docs/CHANGELOG.en-US.md"
       ],
       "next": "T-7144"
     }

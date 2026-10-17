@@ -5,6 +5,14 @@
 
 ## Changelog (full history)
 
+### v0.47.4 (2026-10-17)
+
+- **Modern tech workbench and widget gallery overhaul**: content-first clock, monospace figures, 0ms optimistic task toggle with smooth strikethrough decay, 2.8s progress shimmer ray, and tactile store card tiles.
+- **Multi-device dual bento architecture and GPU performance guardrails**: mobile 2-column paired bento (clock and weather side by side at 50% width), iPad 4-column bento, touch isolation, and hardware-accelerated zero reflow.
+- **Progressive sensory polish across all surfaces**: first panel cards consume 1px crystalline rim light without breaking legacy DOM, micro-tactile keycaps, and dual-layer glow focus rings; light mode ceramic frost upgrade and toggleable noise grain.
+- **Search page 34% standalone preview rail optimization**: independent scrolling to prevent obscuring doc lists (closing Issue #15); Phase C controlled agent safety and execution receipt contracts fully delivered.
+- **Verification**: full test suite 8770 passed, 1 skipped; compact style contracts 6/6, mobile layout smoke PASS; package.zip 575 KiB strictly below the 578 KiB release gate.
+
 ### v0.47.3 (2026-10-16)
 
 - **Compact workbench**: reduced toolbar and card spacing, restored widget height tiers, and gave weather/countdown widgets compact layouts while retaining explicit failure and stale-content feedback.
