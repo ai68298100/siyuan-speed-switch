@@ -3781,6 +3781,24 @@
         "src/life-widget-model.js",
         "src/home-adapters.js"
       ],
+      "next": "T-7295"
+    },
+    {
+      "id": "T-7295",
+      "title": "Phase C 受控智能与 Agent 动作安全回执契约",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7294"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0221-t7295-controlled-agent-safety-and-execution-receipt-contract.md",
+        "tests/controlled-agent-safety-contract.test.cjs",
+        "src/agent-capabilities.js"
+      ],
       "next": "T-7144"
     }
   ],
