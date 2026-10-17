@@ -167,6 +167,14 @@ const ALLOWED_UNUSED = [
   "actionFileTree",
   "actionMainMenu",
   "actionGlobalSearch",
+  // T-7300/T-7301：代码片段实验室与商店经 t("snippet...") 与 action("snippetFormat") 动态消费
+  "snippetFormat",
+  "snippetFormatOnlyCss",
+  "snippetFormatted",
+  "snippetAlreadyFormatted",
+  "snippetImportMerge",
+  "snippetImportFork",
+  "snippetImportOverwrite",
 ];
 
 test("i18n: 语言文件中不允许存在源码未引用的死 key", (t) => {
