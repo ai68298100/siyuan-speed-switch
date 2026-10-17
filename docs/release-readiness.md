@@ -38,7 +38,8 @@ Current build: `dist/index.js` 1149585 bytes; `dist/index.css` 412985 bytes; `pa
 | 生产产物与包体 | 已发布并核验 | 本地与远端 `package.zip` 均为 590757 bytes，低于 591872-byte 门禁 1115 bytes；`dist/index.js` 1148256 B、CSS 407738 B。远端 SHA-256 `6651b473cc405a1dbbe3a7ee9eae6eee590c3d4948d55107881db663882c2dae`；下载实测与 GitHub digest 相符，14 个条目内容与本地全部一致。 |
 | 集市图标规范 | 已通过 | `icon.png` 160x160、18376 bytes，符合思源官方「推荐 160x160、不超过 20 KB」规范（此前 256x256、44720 bytes 超标 2.2 倍）；`preview.png` 53.1 KiB 亦在 200 KB 内 |
 | 归档可复现性 | 已通过 | `pnpm run repro:audit` 连续执行两次生产构建，并对 `dist/index.js`、`dist/index.css`、`package.zip` 做字节数与 SHA-256 比对，当前 3/3 一致；ZIP 条目时间戳 = 发版提交时间（SOURCE_DATE_EPOCH 模式，T-6474：1980 纪元曾致集市安装的文件 mtime 比云同步索引旧、版本被同步回滚） |
-| 版本元数据 | 已发布 | `0.47.3` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；已下载远端 ZIP 并确认包内 `plugin.json.version` 为 `0.47.3`。 |
+| 版本元数据 | 已发布 | `0.47.4` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；已确认包内 `plugin.json.version` 为 `0.47.4`。 |
+| 旧版本元数据（v0.47.3） | 已归档 | `0.47.3` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；已下载远端 ZIP 并确认包内 `plugin.json.version` 为 `0.47.3`。 |
 | 旧版本元数据（v0.44.1） | 已归档 | `0.44.1` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；发布批覆盖 v0.44.0 后九批+（T-7054 组件视觉重构九批次、片段实验室五批 5→26、长按拖拽 T-7068、第三方生态链 T-7069~7072、fast-uri 安全修复） |
 | 旧版本元数据（v0.44.0） | 已归档 | `0.44.0` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；发布批覆盖 v0.43.2 后七批（审计缺陷×4、模块可见性、双栏预览、片段回收站） |
 | 旧版本元数据（v0.43.2） | 已归档 | `0.43.2` 已同步 package.json、plugin.json、中英文 README 与双语 changelog；发布批覆盖 v0.42.0 后九批（商店 S2、三面板尺寸统一、设置深化、面板状态批、预览链、悬浮球、验收矩阵） |
