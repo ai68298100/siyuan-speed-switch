@@ -157,7 +157,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             return;
         }
         root.dataset.swSurface = "workbench";
-        root.classList.toggle("sw-home--compact", !fullscreenMode);
+        // 现代一瞥即知内容直出布局：全屏、跟随与紧凑视口统一继承高质感紧凑排版
+        root.classList.add("sw-home--compact");
         const dialogContainer = dialog.element.querySelector<HTMLElement>(".b3-dialog__container");
         const isTopmostDialog = () => {
             if (!dialogContainer?.isConnected || !root.isConnected || this.workbenchDialog !== dialog) return false;

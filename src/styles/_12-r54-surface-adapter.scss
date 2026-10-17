@@ -304,8 +304,9 @@
     .sw-studio__button { transition: none !important; }
 }
 
-// T-7274：只有非全屏工作台启用轻量小组件密度。
+// T-7274/T-7144：工作台默认继承现代一瞥即知轻量小组件密度与内容直出排版。
 // 该覆盖位于 R54 最终皮肤层之后的层叠位置，避免 11-ui-polish 把卡片重新放大。
+.sw-home,
 .sw-home.sw-home--compact {
     padding: var(--sw-space-md, 8px) var(--sw-space-lg, 12px);
 
@@ -781,6 +782,7 @@
 
 // 窄紧凑工作台恢复两行头部；底部健康回执保留状态语义，头部隐藏重复徽标。
 @container sw-platform (max-width: 760px) {
+    .sw-home:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header,
     .sw-home.sw-home--compact:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header {
         grid-template-columns: minmax(0, 1fr) auto;
         grid-template-areas: "brand actions" "nav nav";
@@ -788,5 +790,6 @@
         min-height: 0;
         padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
     }
+    .sw-home > .sw-platform-chrome .sw-platform-status,
     .sw-home.sw-home--compact > .sw-platform-chrome .sw-platform-status { display: none; }
 }
