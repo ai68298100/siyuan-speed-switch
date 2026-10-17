@@ -665,20 +665,26 @@
     overflow: auto;
     overscroll-behavior: contain;
     padding: 14px var(--sw-space-xl, 16px) 18px;
+    border-left: 1px solid var(--b3-border-color);
+    background: var(--b3-theme-surface);
+    box-shadow: var(--sw-rim-light, inset 0 1px 0 0 rgba(255, 255, 255, 0.45));
 }
 
 // 目录行化：非行内信息一律收起（display:none 不进 a11y 树、不占焦点序、不接收点击）
 .sw-home-store__catalog .sw-home-store__card {
     cursor: pointer;
+    transition: background-color $sw-dur-fast $sw-ease, border-color $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease;
 }
 
 .sw-home-store__catalog .sw-home-store__card:hover {
-    background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+    background: color-mix(in srgb, var(--b3-theme-primary) 6%, var(--b3-theme-surface));
+    border-color: color-mix(in srgb, var(--b3-theme-primary) 38%, var(--b3-border-color));
 }
 
 .sw-home-store__catalog .sw-home-store__card.is-active {
     background: color-mix(in srgb, var(--b3-theme-primary) 12%, var(--b3-theme-surface, transparent));
-    box-shadow: inset 2px 0 0 var(--b3-theme-primary);
+    border-color: var(--b3-theme-primary);
+    box-shadow: inset 3px 0 0 var(--b3-theme-primary);
 }
 
 .sw-home-store__catalog .sw-home-store__card .sw-home-store__support,
@@ -725,7 +731,7 @@
     border: 1px solid color-mix(in srgb, var(--b3-border-color) 76%, var(--b3-theme-primary) 24%);
     border-radius: var(--sw-radius-card, 14px);
     background: color-mix(in srgb, var(--b3-theme-surface) 92%, var(--b3-theme-primary) 8%);
-    box-shadow: var(--sw-shadow-sm, 0 6px 18px rgb(0 0 0 / 10%));
+    box-shadow: var(--sw-rim-light, inset 0 1px 0 0 rgba(255, 255, 255, 0.45)), var(--sw-shadow-sm, 0 6px 18px rgb(0 0 0 / 8%));
 }
 
 .sw-home-store__detail .sw-home-store__detail-meta {
