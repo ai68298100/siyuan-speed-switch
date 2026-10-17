@@ -820,6 +820,17 @@
     .sw__doc-preview-hint,
     .sw__doc-preview-excerpt { line-height: var(--sw-leading-reading, 1.6); }
 
+    .sw__doc-preview-heading {
+        border-radius: var(--sw-radius-sm, 6px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-xs, 4px);
+        transition: background-color $sw-dur-fast $sw-ease, color $sw-dur-fast $sw-ease;
+
+        &:hover {
+            background: color-mix(in srgb, var(--b3-theme-primary) 10%, transparent);
+            color: var(--b3-theme-primary);
+        }
+    }
+
     .sw__doc-status,
     .sw__empty,
     .sw__thumb-loading {

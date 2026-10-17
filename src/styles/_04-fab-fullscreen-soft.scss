@@ -86,7 +86,7 @@
         border-radius: 50%;
         background: var(--b3-theme-primary);
         color: var(--b3-theme-on-primary);
-        box-shadow: var(--sw-shadow-sm);
+        box-shadow: 0 4px 16px color-mix(in srgb, var(--b3-theme-primary) 35%, transparent);
         cursor: pointer;
         touch-action: none;
         pointer-events: auto;
@@ -98,6 +98,11 @@
             width: var(--sw-icon-md, 18px);
             height: 18px;
             color: var(--b3-theme-on-primary);
+        }
+
+        &:hover {
+            transform: translateX(var(--sw-fab-idle-x, 0)) scale(1.05);
+            box-shadow: 0 6px 20px color-mix(in srgb, var(--b3-theme-primary) 45%, transparent);
         }
 
         &:active {

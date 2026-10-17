@@ -704,9 +704,15 @@
     border-radius: var(--sw-platform-radius-pill, 999px);
     background: var(--b3-theme-primary);
     color: var(--b3-theme-on-primary, #fff);
+    transition: transform $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease;
 
     &:hover {
         background: color-mix(in srgb, var(--b3-theme-primary) 88%, #000);
+        box-shadow: 0 0 12px color-mix(in srgb, var(--b3-theme-primary) 40%, transparent);
+    }
+
+    &:active {
+        transform: scale(0.96);
     }
 
     &:focus-visible { box-shadow: var(--sw-focus-ring); }
