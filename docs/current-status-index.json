@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-17",
-  "currentTask": "T-7299",
+  "currentTask": "T-7144",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
@@ -137,7 +137,8 @@
     "T-7290",
     "T-7291",
     "T-7298",
-    "T-7299"
+    "T-7299",
+    "T-7300"
   ],
   "tasks": [
     {
@@ -3870,7 +3871,7 @@
     {
       "id": "T-7299",
       "title": "v0.47.4 正式版发布与资产回执",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P0",
       "owner": "release",
       "workType": "deliverable",
@@ -3888,6 +3889,28 @@
         "docs/CHANGELOG.en-US.md"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7300",
+      "title": "零依赖代码格式化器与片段三模式导入规划引擎落地",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7299"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0222-lightweight-snippet-formatter-and-import-plan.md",
+        "docs/research-tcotc-snippets-benchmark-and-fusion-2026-10-17.md",
+        "docs/design/platform-ui-masterpiece-2026-10-17.html",
+        "tests/snippet-formatter-and-import-plan.test.cjs",
+        "src/snippet-formatter.js",
+        "src/snippet-import-plan.js",
+        "src/snippet-studio-ui.js"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
@@ -3895,6 +3918,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 590757 bytes is below the 591872-byte repository budget by 1115 bytes"
+    "packageBudget": "passed: 591281 bytes is below the 591872-byte repository budget by 591 bytes"
   }
 }

@@ -9,6 +9,8 @@ const {normalizeSnippetGroupStore, addSnippetGroup, createSnippetGroupId, rename
 const {createSnippetPreview, resolvePreviewCapability, formatPreviewCapability, analyzeSelectorDiagnostics, analyzeCssCoverage} = require("./snippet-studio-preview.js");
 const {createSnippetAIClient, selectSnippetAIContext} = require("./snippet-studio-ai.js");
 const {normalizeGistSettings, maskGistToken, rememberGistLink, buildGistImportDraft, fetchGistPreview, publishGist} = require("./snippet-gist.js");
+const {formatWithCursor} = require("./snippet-formatter.js");
+const {planSnippetImport} = require("./snippet-import-plan.js");
 
 // T-6978：预览样例与探针文案共用一份构造——主编辑器实时预览与商店预览同源，
 // 新增样例/探针文案只改这里（labels 缺键回落到 preview 模块的中文兜底）。
@@ -875,6 +877,28 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     // T-6957：编辑区局部撤销/重做（可用态在 syncFields 按草稿历史同步）
     const draftUndoButton = action("snippetUndo", () => undoDraft());
     const draftRedoButton = action("snippetRedo", () => redoDraft());
+    // T-7144/T-7300：吸收 TCOTC/snippets 的格式化理念，落地 0 依赖极速代码排版
+    function formatCurrentDraft() {
+        if (!draft || draft.type !== "css") {
+            setStatus(t("snippetFormatOnlyCss"), "warn");
+            return;
+        }
+        const currentCode = editor.value || "";
+        if (!currentCode.trim()) return;
+        const startPos = editor.selectionStart || 0;
+        const {formatted, cursorOffset} = formatWithCursor(currentCode, startPos, "css");
+        if (formatted !== currentCode) {
+            editor.value = formatted;
+            editor.selectionStart = cursorOffset;
+            editor.selectionEnd = cursorOffset;
+            changed();
+            commitDraftHistory();
+            setStatus(t("snippetFormatted"), "ready");
+        } else {
+            setStatus(t("snippetAlreadyFormatted"), "ready");
+        }
+    }
+    const formatButton = action("snippetFormat", () => formatCurrentDraft(), "is-quiet");
     // T-6959：编辑区查找条开关（按需展开）
     const findToggleButton = action("snippetFindBar", () => toggleFindBar());
     const chooseButton = action("snippetChoose", () => openPicker());
@@ -902,7 +926,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     }
     const copyButton = action("snippetCopy", () => copyText(draft.content || ""));
     const snippetStoreButton = action("snippetStore", () => openPicker(true));
-    editorBar.append(editorLead, draftUndoButton, draftRedoButton, findToggleButton, chooseButton, snippetStoreButton, importButton, newButton, copyButton);
+    editorBar.append(editorLead, draftUndoButton, draftRedoButton, formatButton, findToggleButton, chooseButton, snippetStoreButton, importButton, newButton, copyButton);
     const editor = node("textarea", "sw-studio__editor");
     editor.setAttribute("aria-label", t("snippetCode"));
     // 冲突对话框销毁后宿主 Dialog 可能把焦点放回 body；关闭冲突层的

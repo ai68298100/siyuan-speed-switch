@@ -1136,6 +1136,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
                 <button class="chip">JS</button>
               </div>
               <div class="snippet-list">
+                <div style="font-size:10px;font-weight:750;color:var(--sw-subtle);margin:6px 0 2px 4px;text-transform:uppercase">🎨 视觉主题 (2)</div>
                 <button class="snippet-row is-active">
                   <span class="type-icon">C</span>
                   <span class="row-content"><span class="row-title">readable-focus.css</span><span class="row-meta">CSS · 已启用</span></span>
@@ -1143,8 +1144,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
                 </button>
                 <button class="snippet-row">
                   <span class="type-icon">C</span>
+                  <span class="row-content"><span class="row-title">calm-reading.css</span><span class="row-meta">CSS · 已启用</span></span>
+                  <span class="status ready" style="padding:1px 5px"><i></i></span>
+                </button>
+                <div style="font-size:10px;font-weight:750;color:var(--sw-subtle);margin:8px 0 2px 4px;text-transform:uppercase">🎯 编辑排版 (1)</div>
+                <button class="snippet-row">
+                  <span class="type-icon">C</span>
                   <span class="row-content"><span class="row-title">reading-width.css</span><span class="row-meta">CSS · 已保存</span></span>
                 </button>
+                <div style="font-size:10px;font-weight:750;color:var(--sw-subtle);margin:8px 0 2px 4px;text-transform:uppercase">⚡ 交互增强 (1)</div>
                 <button class="snippet-row">
                   <span class="type-icon">J</span>
                   <span class="row-content"><span class="row-title">daily-capture.js</span><span class="row-meta">JS · 禁自动执行</span></span>
@@ -1158,7 +1166,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
             <div class="editor">
               <div class="editor-head">
                 <strong>readable-focus.css</strong>
-                <span class="status ready" style="margin-left:auto"><i></i>安全沙箱</span>
+                <button class="soft-btn" style="color:#fff;padding:2px 8px;font-size:11px;margin-left:auto" onclick="formatDemoCode()" title="极速格式化排版 (0依赖 CSS 格式化器)">🧹 格式化</button>
+                <span class="status ready" style="margin-left:4px"><i></i>安全沙箱</span>
                 <button class="icon-btn" style="color:#cbd1e3" title="撤销">↶</button>
                 <button class="icon-btn" style="color:#cbd1e3" title="重做">↷</button>
               </div>
@@ -1204,7 +1213,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
             </label>
             <button class="chip is-active">精选推荐</button>
             <button class="chip">排版与主题</button>
-            <button class="chip">无障碍可访问性</button>
+            <span style="flex:1"></span>
+            <span style="font-size:11px;color:var(--sw-subtle)">导入规划:</span>
+            <button class="chip is-active" id="btnModeMerge" onclick="setImportMode('merge')">增量合并</button>
+            <button class="chip" id="btnModeFork" onclick="setImportMode('fork')">分叉克隆</button>
+            <button class="chip" id="btnModeOverwrite" onclick="setImportMode('overwrite')">镜像覆盖</button>
           </div>
           <div class="store-grid" style="grid-template-columns:repeat(3, 1fr)">
             <article class="store-card">
@@ -1440,6 +1453,28 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
       });
     });
   }
+
+  // 零依赖 CSS 格式化演示
+  window.formatDemoCode = function() {
+    receipt.textContent = '✨ 已通过零依赖极速格式化器完成排版：缩进对齐、分号闭合、光标平滑映射';
+    alert('🧹 已触发 CSS 格式化：代码缩进规范化完成，符合 Prettier 紧凑排版标准！');
+  };
+
+  // 导入规划模式切换 (merge / fork / overwrite)
+  window.setImportMode = function(mode) {
+    ['btnModeMerge', 'btnModeFork', 'btnModeOverwrite'].forEach(id => {
+      document.getElementById(id)?.classList.remove('is-active');
+    });
+    const map = {
+      merge: ['btnModeMerge', '已切换导入模式：增量合并 (Merge) —— 本地已启用状态严格保留'],
+      fork: ['btnModeFork', '已切换导入模式：分叉克隆 (Fork) —— 重新生成 ID 导入为独立新草稿'],
+      overwrite: ['btnModeOverwrite', '已切换导入模式：镜像覆盖 (Overwrite) —— 远端全量替换本地片段']
+    };
+    if (map[mode]) {
+      document.getElementById(map[mode][0])?.classList.add('is-active');
+      receipt.textContent = map[mode][1];
+    }
+  };
 
   // 真实秒表跳动走时
   setInterval(() => {
