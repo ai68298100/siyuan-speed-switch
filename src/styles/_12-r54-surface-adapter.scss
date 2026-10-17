@@ -535,6 +535,12 @@
         background: var(--b3-theme-background);
         border: 1px solid var(--b3-border-color);
 
+        &:not(.is-editing) {
+            .sw__home-module-header .sw__home-module-title {
+                display: none;
+            }
+        }
+
         .sw__home-stat { min-height: 24px; }
         .sw__home-stat .sw__home-stat-value {
             font-family: var(--b3-font-family-code, ui-monospace, monospace);
@@ -556,10 +562,17 @@
         }
         .sw__home-day-progress {
             height: 2px;
+            border-radius: 99px;
             margin: var(--sw-space-2xs, 2px) 0 0;
             background: color-mix(in srgb, var(--b3-theme-on-background) 8%, transparent);
+            overflow: hidden;
         }
-        .sw__home-day-progress-bar { height: 100%; }
+        .sw__home-day-progress-bar {
+            height: 100%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, var(--b3-theme-primary), #2dd4bf);
+            box-shadow: 0 0 6px color-mix(in srgb, #2dd4bf 50%, transparent);
+        }
     }
 
     // 周期进度：百分数 + 细轨道 + 并排天数，取消重复圆环。
@@ -674,6 +687,11 @@
             opacity: 0.78;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+        .sw__home-stat-value {
+            font-family: var(--b3-font-family-code, ui-monospace, monospace);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
         }
         .sw__home-module-list {
             grid-template-columns: repeat(4, minmax(0, 1fr)) !important;

@@ -86,3 +86,25 @@ test('compact workbench enforces mobile dual bento and GPU touch performance gua
     assert.ok(declaresIn(finalSurfaceStyle, '.sw-home .sw-home__cell:active', /transform:\s*scale\(0\.985\)/, {atRule: /@media \(pointer:\s*coarse\)/}),
         'touch devices must receive zero-cpu hardware accelerated press feedback');
 });
+
+test('platform surfaces receive progressive sensory polish without losing legacy functions (T-7291)', () => {
+    const polishStyle = readSourceText(path.join(root, 'src', 'styles', '_11-ui-polish.scss'));
+    const storeStyle = readSourceText(path.join(root, 'src', 'styles', '_06-widgets-store.scss'));
+    const sidebarStyle = readSourceText(path.join(root, 'src', 'styles', '_07-sidebar-panel-store.scss'));
+
+    assert.ok(declaresIn(polishStyle, '.speed-switch .sw__card', /box-shadow:\s*var\(--sw-rim-light,\s*none\)/),
+        'first panel switcher cards must consume sw-rim-light without breaking legacy DOM');
+    assert.ok(declaresIn(storeStyle, '.sw-home-store__card', /box-shadow:\s*var\(--sw-rim-light,\s*none\)/, {topLevel: true}),
+        'widget store cards must consume sw-rim-light for gallery tactile polish');
+    assert.ok(declaresIn(sidebarStyle, '.sw__home-progress .sw__home-progress-fill::after', /animation:\s*sw-progress-shimmer\s*2\.8s\s*infinite/),
+        'progress fill must carry futuristic shimmer ray micro-animation');
+});
+
+test('compact core widgets enforce decoupled glance headers and monospace figures (T-7144)', () => {
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw-home__cell[data-module-id="external-local-time"]:not(.is-editing) .sw__home-module-header .sw__home-module-title', /display:\s*none/),
+        'local time widget in view mode must hide redundant title for content-first glance layout');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw-home__cell[data-module-id="external-local-time"] .sw__home-stat .sw__home-stat-value', /font-variant-numeric:\s*tabular-nums/),
+        'local time digits must declare tabular-nums for zero layout jitter');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact:not(.sw-home--mobile) .sw-home__cell[data-module-id="external-weather-open-meteo"] .sw__home-stat-value', /font-variant-numeric:\s*tabular-nums/),
+        'weather temperature must declare tabular-nums for precision layout');
+});

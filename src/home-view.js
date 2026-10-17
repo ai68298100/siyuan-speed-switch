@@ -817,7 +817,34 @@ function renderHomeModuleView(doc, view, options = {}) {
                 check.innerHTML = item.done ? '<svg width="11" height="11"><use xlink:href="#iconCheck"></use></svg>' : "";
                 check.addEventListener("click", (event) => {
                     event.stopPropagation();
-                    options.onToggleItem(item, view);
+                    // T-7144 0ms 乐观更新微交互：即时切换打勾态与文字划线，失败时优雅回滚
+                    const nextDone = !item.done;
+                    item.done = nextDone;
+                    check.classList.toggle("is-done", nextDone);
+                    check.setAttribute("aria-pressed", String(nextDone));
+                    check.setAttribute("aria-label", nextDone ? "标记未完成" : "标记完成");
+                    check.innerHTML = nextDone ? '<svg width="11" height="11"><use xlink:href="#iconCheck"></use></svg>' : "";
+                    button.classList.toggle("is-done", nextDone);
+                    try {
+                        const result = options.onToggleItem(item, view);
+                        if (result && typeof result.catch === "function") {
+                            result.catch(() => {
+                                item.done = !nextDone;
+                                check.classList.toggle("is-done", !nextDone);
+                                check.setAttribute("aria-pressed", String(!nextDone));
+                                check.setAttribute("aria-label", !nextDone ? "标记未完成" : "标记完成");
+                                check.innerHTML = !nextDone ? '<svg width="11" height="11"><use xlink:href="#iconCheck"></use></svg>' : "";
+                                button.classList.toggle("is-done", !nextDone);
+                            });
+                        }
+                    } catch (_) {
+                        item.done = !nextDone;
+                        check.classList.toggle("is-done", !nextDone);
+                        check.setAttribute("aria-pressed", String(!nextDone));
+                        check.setAttribute("aria-label", !nextDone ? "标记未完成" : "标记完成");
+                        check.innerHTML = !nextDone ? '<svg width="11" height="11"><use xlink:href="#iconCheck"></use></svg>' : "";
+                        button.classList.toggle("is-done", !nextDone);
+                    }
                 });
                 row.appendChild(check);
             }

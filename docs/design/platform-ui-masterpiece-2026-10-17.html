@@ -1,0 +1,1455 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="frost" data-noise="off" data-density="comfortable">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 典藏版现代工匠级平台原型 (Platform UI Masterpiece)</title>
+<style>
+:root {
+  /* 基础动画与字体尺度 */
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-spring: 320ms;
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  /* 基础间距与圆角 */
+  --sw-space-1: 4px;
+  --sw-space-2: 8px;
+  --sw-space-3: 12px;
+  --sw-space-4: 16px;
+  --sw-space-5: 24px;
+  --sw-radius-sm: 8px;
+  --sw-radius-md: 12px;
+  --sw-radius-lg: 16px;
+  --sw-radius-pill: 999px;
+}
+
+/* 1. 🕊️ 陶瓷霜白极简 (Titanium Frost, 默认强化浅色模式：冷灰陶瓷 + 晶体纯白微倒角) */
+[data-theme="frost"] {
+  --b3-theme-primary: #5946d2;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #edf0f5;
+  --b3-theme-surface: rgba(255, 255, 255, 0.94);
+  --b3-theme-surface-lighter: #e2e6ee;
+  --b3-theme-on-background: #0f172a;
+  --b3-theme-on-surface: #1e293b;
+  --b3-theme-on-surface-light: #64748b;
+  --b3-border-color: rgba(203, 213, 225, 0.85);
+  --b3-theme-success: #15803d;
+  --b3-theme-warning: #b45309;
+  --b3-theme-error: #b91c1c;
+
+  --sw-accent: var(--b3-theme-primary);
+  --sw-bg: var(--b3-theme-background);
+  --sw-surface: var(--b3-theme-surface);
+  --sw-muted: var(--b3-theme-surface-lighter);
+  --sw-text: var(--b3-theme-on-background);
+  --sw-subtle: var(--b3-theme-on-surface-light);
+  --sw-line: var(--b3-border-color);
+
+  --tile-rim: inset 0 1px 0 0 rgba(255, 255, 255, 1), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --sw-shadow-card: 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.05);
+  --sw-shadow-float: 0 16px 42px rgba(15, 23, 42, 0.12);
+  --sw-focus: 0 0 0 1px #fff, 0 0 0 3px rgba(89, 70, 210, 0.35);
+  --header-bg: rgba(255, 255, 255, 0.85);
+}
+
+/* 2. 🌌 深空极光主题 (Cyber Aurora：深邃黑钛 + 极光漫射 + 1px 金属铣削切光) */
+[data-theme="aurora"] {
+  --b3-theme-primary: #8b79ff;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #07090e;
+  --b3-theme-surface: rgba(18, 22, 33, 0.75);
+  --b3-theme-surface-lighter: rgba(30, 36, 52, 0.65);
+  --b3-theme-on-background: #f8fafc;
+  --b3-theme-on-surface: #e2e8f0;
+  --b3-theme-on-surface-light: #94a3b8;
+  --b3-border-color: rgba(255, 255, 255, 0.08);
+  --b3-theme-success: #34d399;
+  --b3-theme-warning: #fbbf24;
+  --b3-theme-error: #f87171;
+
+  --sw-accent: var(--b3-theme-primary);
+  --sw-bg: 
+    radial-gradient(550px circle at 8% 12%, rgba(139, 121, 255, 0.15) 0%, transparent 70%),
+    radial-gradient(480px circle at 92% 88%, rgba(45, 212, 191, 0.12) 0%, transparent 65%),
+    #080a10;
+  --sw-surface: var(--b3-theme-surface);
+  --sw-muted: var(--b3-theme-surface-lighter);
+  --sw-text: var(--b3-theme-on-background);
+  --sw-subtle: var(--b3-theme-on-surface-light);
+  --sw-line: var(--b3-border-color);
+
+  --tile-rim: inset 0 1px 0 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --sw-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 12px 28px rgba(0, 0, 0, 0.35);
+  --sw-shadow-float: 0 20px 48px rgba(0, 0, 0, 0.55);
+  --sw-focus: 0 0 0 1px #080a10, 0 0 0 3px rgba(139, 121, 255, 0.55), 0 0 16px rgba(139, 121, 255, 0.35);
+  --header-bg: rgba(10, 13, 20, 0.65);
+}
+
+/* 3. ⬛ 暗曜纯黑 (Obsidian Void) */
+[data-theme="obsidian"] {
+  --b3-theme-primary: #ffffff;
+  --b3-theme-on-primary: #000000;
+  --b3-theme-background: #000000;
+  --b3-theme-surface: #0f1013;
+  --b3-theme-surface-lighter: #1b1c20;
+  --b3-theme-on-background: #ffffff;
+  --b3-theme-on-surface: #ededed;
+  --b3-theme-on-surface-light: #7e828d;
+  --b3-border-color: rgba(255, 255, 255, 0.1);
+  --b3-theme-success: #4ade80;
+  --b3-theme-warning: #facc15;
+  --b3-theme-error: #f87171;
+
+  --sw-accent: var(--b3-theme-primary);
+  --sw-bg: #030405;
+  --sw-surface: var(--b3-theme-surface);
+  --sw-muted: var(--b3-theme-surface-lighter);
+  --sw-text: var(--b3-theme-on-background);
+  --sw-subtle: var(--b3-theme-on-surface-light);
+  --sw-line: var(--b3-border-color);
+
+  --tile-rim: inset 0 1px 0 0 rgba(255, 255, 255, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --sw-shadow-card: 0 2px 5px rgba(0, 0, 0, 0.6), 0 16px 36px rgba(0, 0, 0, 0.55);
+  --sw-shadow-float: 0 24px 60px rgba(0, 0, 0, 0.65);
+  --sw-focus: 0 0 0 1px #000, 0 0 0 3px rgba(255, 255, 255, 0.6);
+  --header-bg: rgba(8, 8, 10, 0.7);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  margin: 0;
+  color: var(--sw-text);
+  background: var(--sw-bg);
+  font: 12.5px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  padding: 16px 12px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* 可选物理微噪点层 (可在控制台/设置页一键开关) */
+.noise-layer {
+  display: none;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+[data-noise="on"] .noise-layer { display: block; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { border: 0; cursor: pointer; background: transparent; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--sw-focus);
+}
+
+/* 顶部演示全局控制器 */
+.proto-controls {
+  width: min(1580px, calc(100vw - 32px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #0d1017;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 12px 32px rgba(0, 0, 0, 0.45);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 11px;
+}
+.proto-controls strong { letter-spacing: 0.02em; font-size: 12px; color: #fff; }
+.proto-controls .spacer { flex: 1; }
+.proto-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #181d2a;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all var(--dur-fast);
+}
+.proto-btn:hover, .proto-btn.is-active {
+  background: #7361fa;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 12px rgba(115, 97, 250, 0.45);
+}
+
+/* 原版 R4 双栏大外壳容器 */
+.proto-shell {
+  max-width: 1580px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 16px;
+}
+
+/* 左侧原版页面索引导航 */
+.proto-index {
+  position: sticky;
+  top: 70px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.proto-index .eyebrow {
+  margin: 2px 10px 8px;
+  color: var(--sw-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+.proto-index button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  padding: 9px 10px;
+  min-height: 38px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--sw-subtle);
+  font-weight: 600;
+  transition: all var(--dur-fast);
+}
+.proto-index button:hover {
+  background: var(--sw-muted);
+  color: var(--sw-text);
+}
+.proto-index button.is-active {
+  background: color-mix(in srgb, var(--sw-accent) 13%, transparent);
+  color: var(--sw-accent);
+  font-weight: 750;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sw-accent) 25%, transparent);
+}
+.proto-index button b {
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--sw-muted);
+  color: currentColor;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+/* 主画布 */
+.canvas { min-width: 0; }
+.app-shell {
+  min-height: 780px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--sw-surface);
+  border: 1px solid var(--sw-line);
+  border-radius: var(--sw-radius-lg);
+  box-shadow: var(--sw-shadow-card), var(--tile-rim);
+  backdrop-filter: blur(28px) saturate(190%);
+  transition: all var(--dur-spring) var(--ease-spring);
+}
+
+/* 平台顶栏 */
+.app-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--sw-line);
+  background: var(--header-bg);
+  backdrop-filter: blur(20px);
+}
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 800; white-space: nowrap; }
+.brand-mark {
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--sw-accent), #31a6a1);
+  font-size: 13px;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--sw-accent) 45%, transparent);
+}
+
+.surface-nav { display: flex; align-items: center; gap: 3px; background: var(--sw-muted); padding: 3px; border-radius: 9px; }
+.surface-nav button {
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--sw-subtle);
+  font-weight: 600;
+  transition: all var(--dur-fast);
+}
+.surface-nav button:hover { color: var(--sw-text); }
+.surface-nav button.is-active {
+  background: var(--sw-surface);
+  color: var(--sw-accent);
+  font-weight: 750;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.head-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.icon-btn, .soft-btn, .primary-btn, .danger-btn {
+  min-height: 29px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-weight: 600;
+  transition: all var(--dur-fast);
+}
+.icon-btn { width: 30px; padding: 0; background: transparent; color: var(--sw-subtle); }
+.icon-btn:hover { background: var(--sw-muted); color: var(--sw-text); }
+.soft-btn { background: color-mix(in srgb, var(--sw-accent) 12%, transparent); color: var(--sw-accent); }
+.soft-btn:hover { background: color-mix(in srgb, var(--sw-accent) 18%, transparent); }
+.primary-btn { background: var(--sw-accent); color: var(--b3-theme-on-primary); font-weight: 700; box-shadow: 0 0 12px color-mix(in srgb, var(--sw-accent) 40%, transparent); }
+.primary-btn:hover { opacity: 0.92; }
+
+/* 状态胶囊 */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--sw-line);
+  border-radius: var(--sw-radius-pill);
+  color: var(--sw-subtle);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.status.ready {
+  color: var(--b3-theme-success);
+  border-color: color-mix(in srgb, var(--b3-theme-success) 30%, var(--sw-line));
+  background: color-mix(in srgb, var(--b3-theme-success) 9%, transparent);
+}
+.status.ready i {
+  box-shadow: 0 0 6px var(--b3-theme-success);
+  animation: pulse 2.4s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.context-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--sw-line);
+  background: color-mix(in srgb, var(--sw-bg) 60%, var(--sw-surface));
+  color: var(--sw-subtle);
+  font-size: 11px;
+}
+.context-bar .title { font-size: 13px; font-weight: 800; color: var(--sw-text); }
+
+/* 机械键帽 */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 1px 6px;
+  border: 1px solid var(--sw-line);
+  border-radius: 5px;
+  background: var(--sw-surface);
+  box-shadow: var(--tile-rim), 0 1px 2px rgba(0,0,0,0.06);
+  color: var(--sw-subtle);
+  font: 700 9.5px/1 var(--font-mono);
+  white-space: nowrap;
+}
+
+.screen { display: none; min-height: 0; flex: 1; flex-direction: column; }
+.screen.is-active { display: flex; }
+.screen-body { min-height: 0; flex: 1; overflow: auto; padding: 16px; }
+
+/* ==========================================================================
+   【第一面板：切换器完整 R4 架构 + 质感加成】
+   ========================================================================== */
+.screen-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 220px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--sw-line);
+  border-radius: 10px;
+  background: var(--sw-surface);
+  box-shadow: var(--tile-rim);
+}
+.search-box span { color: var(--sw-subtle); font-size: 15px; }
+.search-box input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; font-size: 13px; font-weight: 500; }
+.chip-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.chip {
+  padding: 4px 10px;
+  border: 1px solid var(--sw-line);
+  border-radius: var(--sw-radius-pill);
+  background: var(--sw-surface);
+  color: var(--sw-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  transition: all var(--dur-fast);
+}
+.chip:hover { border-color: var(--sw-accent); color: var(--sw-text); }
+.chip.is-active {
+  border-color: color-mix(in srgb, var(--sw-accent) 40%, var(--sw-line));
+  background: color-mix(in srgb, var(--sw-accent) 12%, transparent);
+  color: var(--sw-accent);
+  font-weight: 750;
+}
+
+.section-head { display: flex; align-items: center; gap: 8px; margin: 14px 0 8px; }
+.section-head .label { color: var(--sw-subtle); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.section-head .count { color: var(--sw-subtle); font-family: var(--font-mono); }
+.section-head .line { flex: 1; height: 1px; background: var(--sw-line); }
+
+.switcher-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
+.tab-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+.tab-card {
+  position: relative;
+  min-height: 124px;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+  border: 1px solid var(--sw-line);
+  border-radius: 12px;
+  background: var(--sw-surface);
+  box-shadow: var(--tile-rim), var(--sw-shadow-card);
+  transition: all var(--dur-fast);
+}
+.tab-card:hover {
+  border-color: color-mix(in srgb, var(--sw-accent) 45%, var(--sw-line));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.tab-card.is-selected {
+  border-color: var(--sw-accent);
+  box-shadow: var(--sw-focus);
+}
+.tab-thumb {
+  height: 64px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--sw-accent) 24%, transparent), color-mix(in srgb, #31a6a1 20%, transparent));
+  position: relative;
+}
+.tab-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
+}
+.tab-card:nth-child(2) .tab-thumb { background: linear-gradient(135deg, #55b8a4aa, #d9a44c44); }
+.tab-card:nth-child(3) .tab-thumb { background: linear-gradient(135deg, #8d7be366, #62a6dd55); }
+.tab-card:nth-child(4) .tab-thumb { background: linear-gradient(135deg, #e09db855, #b994e455); }
+.tab-card:nth-child(5) .tab-thumb { background: linear-gradient(135deg, #5ec88b55, #4ba7b855); }
+.tab-card:nth-child(6) .tab-thumb { background: linear-gradient(135deg, #e8ae5c66, #d76b5655); }
+
+.tab-card .tab-meta { display: flex; align-items: center; gap: 7px; padding: 9px 10px; }
+.type-icon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 7px;
+  background: var(--sw-muted);
+  color: var(--sw-accent);
+  font-weight: 800;
+  font-size: 11px;
+}
+.tab-card .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.tab-card .sub { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sw-subtle); font-size: 10.5px; }
+.tab-card .number { position: absolute; top: 7px; right: 7px; z-index: 2; }
+
+.result-list { display: flex; flex-direction: column; gap: 6px; }
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--sw-line);
+  border-radius: 10px;
+  background: var(--sw-surface);
+  box-shadow: var(--tile-rim);
+  transition: all var(--dur-fast);
+}
+.result-row:hover {
+  background: color-mix(in srgb, var(--sw-accent) 6%, var(--sw-surface));
+  border-color: color-mix(in srgb, var(--sw-accent) 30%, var(--sw-line));
+}
+.row-content { min-width: 0; flex: 1; }
+.row-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-meta { color: var(--sw-subtle); font-size: 10.5px; }
+
+/* 切换器右侧预览栏 */
+.preview-rail {
+  min-width: 0;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  border: 1px solid var(--sw-line);
+  border-radius: 12px;
+  background: var(--sw-surface);
+  box-shadow: var(--tile-rim), var(--sw-shadow-card);
+  overflow: hidden;
+}
+.preview-head { display: flex; align-items: center; gap: 8px; padding: 11px; border-bottom: 1px solid var(--sw-line); }
+.preview-head strong { flex: 1; }
+.preview-hero { height: 90px; background: linear-gradient(135deg, color-mix(in srgb, var(--sw-accent) 28%, transparent), color-mix(in srgb, #31a6a1 22%, transparent)); }
+.preview-copy { padding: 12px; }
+.preview-copy h3 { margin: 0 0 5px; font-size: 14px; }
+.preview-copy p { margin: 0 0 10px; color: var(--sw-subtle); line-height: 1.6; }
+.preview-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ==========================================================================
+   【第二面板：工作台完整 12 列网格 + 小组件质感优化】
+   ========================================================================== */
+.workbench-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 10px; }
+.widget {
+  position: relative;
+  min-height: 140px;
+  padding: 12px;
+  border: 1px solid var(--sw-line);
+  border-radius: 12px;
+  background: var(--sw-surface);
+  box-shadow: var(--tile-rim), var(--sw-shadow-card);
+  transition: all var(--dur-fast);
+}
+.widget:hover {
+  border-color: color-mix(in srgb, var(--sw-accent) 45%, var(--sw-line));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.widget.span-4 { grid-column: span 4; }
+.widget.span-6 { grid-column: span 6; }
+.widget.span-8 { grid-column: span 8; }
+.widget .widget-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.widget-head strong { flex: 1; }
+.metric { font-size: 26px; font-weight: 800; font-family: var(--font-mono); letter-spacing: -0.02em; }
+.mini-bars { display: flex; align-items: flex-end; gap: 5px; height: 44px; margin-top: 8px; }
+.mini-bars i { display: block; width: 15%; border-radius: 3px 3px 0 0; background: color-mix(in srgb, var(--sw-accent) 70%, transparent); }
+.mini-bars i:nth-child(1){height:38%}.mini-bars i:nth-child(2){height:62%}.mini-bars i:nth-child(3){height:48%}.mini-bars i:nth-child(4){height:78%}.mini-bars i:nth-child(5){height:58%}.mini-bars i:nth-child(6){height:90%}
+
+/* 今日进度交互打勾 */
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 0;
+  cursor: pointer;
+  user-select: none;
+}
+.check-box {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--sw-subtle);
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  color: transparent;
+  transition: all var(--dur-fast);
+}
+.check-item.is-done .check-box {
+  background: var(--sw-accent);
+  border-color: var(--sw-accent);
+  color: #fff;
+}
+.check-item span {
+  transition: color var(--dur-fast), opacity var(--dur-fast);
+}
+.check-item.is-done span {
+  text-decoration: line-through;
+  color: var(--sw-subtle);
+  opacity: 0.7;
+}
+
+/* ==========================================================================
+   【小组件商店：完整 R4 三栏架构 + 现代化画廊质感】
+   ========================================================================== */
+.store-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr) 300px; gap: 14px; min-height: 590px; }
+.store-sidebar, .store-detail {
+  border: 1px solid var(--sw-line);
+  border-radius: 12px;
+  background: var(--sw-surface);
+  box-shadow: var(--tile-rim);
+  padding: 12px;
+}
+.store-sidebar h3, .store-detail h3 { margin: 0 0 10px; font-size: 12px; }
+.store-sidebar button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 3px;
+  padding: 8px 10px;
+  text-align: left;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sw-subtle);
+  font-weight: 600;
+  transition: all var(--dur-fast);
+}
+.store-sidebar button.is-active, .store-sidebar button:hover {
+  background: color-mix(in srgb, var(--sw-accent) 12%, transparent);
+  color: var(--sw-accent);
+  font-weight: 750;
+}
+.store-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.store-card {
+  min-height: 160px;
+  padding: 12px;
+  border: 1px solid var(--sw-line);
+  border-radius: 12px;
+  background: var(--sw-surface);
+  box-shadow: var(--tile-rim), var(--sw-shadow-card);
+  transition: all var(--dur-fast);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.store-card:hover {
+  border-color: var(--sw-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.store-card-head { display: flex; align-items: center; gap: 8px; }
+.store-card-head .type-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--sw-accent) 10%, transparent);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+  display: grid;
+  place-items: center;
+}
+.store-card-head strong { flex: 1; }
+.store-card p { min-height: 36px; color: var(--sw-subtle); font-size: 11px; margin: 0; line-height: 1.5; }
+.store-card footer { display: flex; align-items: center; gap: 5px; margin-top: auto; }
+
+/* ==========================================================================
+   【第三面板：片段实验室完整 R4 专业三栏结构】
+   ========================================================================== */
+.studio-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr) 300px; gap: 12px; min-height: 590px; }
+.studio-library, .studio-side {
+  min-width: 0;
+  border: 1px solid var(--sw-line);
+  border-radius: 12px;
+  background: var(--sw-surface);
+  box-shadow: var(--tile-rim);
+  padding: 11px;
+}
+.snippet-list { display: flex; flex-direction: column; gap: 4px; }
+.snippet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  transition: all var(--dur-fast);
+  text-align: left;
+}
+.snippet-row:hover, .snippet-row.is-active {
+  border-color: color-mix(in srgb, var(--sw-accent) 45%, var(--sw-line));
+  background: color-mix(in srgb, var(--sw-accent) 9%, transparent);
+}
+.editor {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--sw-line);
+  border-radius: 12px;
+  background: #181d28;
+  color: #e2e8f0;
+  box-shadow: var(--tile-rim);
+}
+[data-theme="frost"] .editor {
+  background: #1e2433;
+  color: #f1f5f9;
+}
+.editor-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.code {
+  flex: 1;
+  min-height: 380px;
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  font: 12px/1.8 var(--font-mono);
+}
+.code .ln { display: inline-block; width: 26px; color: #64748b; user-select: none; }
+.code .kw { color: #c084fc; font-weight: 700; }
+.code .prop { color: #38bdf8; }
+.code .val { color: #fde047; }
+.editor-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.fake-page {
+  height: 130px;
+  padding: 12px;
+  background: linear-gradient(145deg, #ffffff, #f1f5f9);
+  color: #1e293b;
+  border-radius: 8px;
+}
+.fake-page div { height: 6px; margin: 6px 0; border-radius: 99px; background: #cbd5e1; }
+
+/* ==========================================================================
+   【系统设置页：完整 R4 的 10 标签设置导航 + 噪点控制】
+   ========================================================================== */
+.settings-layout { display: grid; grid-template-columns: 175px minmax(0, 1fr); gap: 15px; min-height: 590px; }
+.settings-rail { display: flex; flex-direction: column; gap: 3px; }
+.settings-rail button {
+  padding: 8px 10px;
+  text-align: left;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sw-subtle);
+  font-weight: 600;
+  transition: all var(--dur-fast);
+}
+.settings-rail button.is-active, .settings-rail button:hover {
+  background: color-mix(in srgb, var(--sw-accent) 12%, transparent);
+  color: var(--sw-accent);
+  font-weight: 750;
+}
+.setting-group {
+  margin-bottom: 13px;
+  padding: 13px;
+  border: 1px solid var(--sw-line);
+  border-radius: 12px;
+  background: var(--sw-surface);
+  box-shadow: var(--tile-rim);
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 52px;
+  padding: 8px 0;
+  border-top: 1px solid var(--sw-line);
+}
+.setting-row:first-of-type { border-top: 0; }
+.toggle {
+  width: 34px;
+  height: 19px;
+  padding: 2px;
+  border-radius: 99px;
+  background: var(--sw-line);
+  cursor: pointer;
+  position: relative;
+  transition: background var(--dur-fast);
+}
+.toggle i {
+  display: block;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform var(--dur-fast);
+}
+.toggle.is-on { background: var(--sw-accent); }
+.toggle.is-on i { transform: translateX(15px); }
+
+/* 全局悬浮球 */
+.floating-ball {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--sw-accent), #36a9a1);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow: var(--sw-shadow-float);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  opacity: 0.75;
+}
+.floating-ball:hover { opacity: 1; transform: scale(1.08); }
+.floating-panel {
+  position: fixed;
+  right: 22px;
+  bottom: 80px;
+  z-index: 49;
+  width: 280px;
+  padding: 12px;
+  border: 1px solid var(--sw-line);
+  border-radius: 16px;
+  background: var(--sw-surface);
+  box-shadow: var(--sw-shadow-float), var(--tile-rim);
+  display: none;
+}
+.floating-panel.is-open { display: block; }
+.action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; margin-top: 8px; }
+.action {
+  min-height: 56px;
+  padding: 8px;
+  text-align: left;
+  border: 1px solid var(--sw-line);
+  border-radius: 10px;
+  background: var(--sw-surface);
+  box-shadow: var(--tile-rim);
+  transition: all var(--dur-fast);
+}
+.action:hover { border-color: var(--sw-accent); transform: translateY(-1px); }
+
+.app-foot {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border-top: 1px solid var(--sw-line);
+  color: var(--sw-subtle);
+  background: var(--header-bg);
+}
+.receipt { color: var(--b3-theme-success); font-weight: 600; }
+
+</style>
+</head>
+<body>
+
+<!-- 可选物理微噪点层 -->
+<div class="noise-layer"></div>
+
+<!-- 顶部演示辅助控制器 -->
+<div class="proto-controls">
+  <strong>小驴雷切 · 典藏版现代工匠级平台原型 (Masterpiece)</strong>
+  <span class="spacer"></span>
+  <button class="proto-btn is-active" id="btnThemeFrost">🕊️ 陶瓷霜白 (强化白天浅色)</button>
+  <button class="proto-btn" id="btnThemeAurora">🌌 深空极光 (科技深暗)</button>
+  <button class="proto-btn" id="btnThemeObsidian">⬛ 暗曜纯黑</button>
+  <span style="color:#444">|</span>
+  <button class="proto-btn" id="btnToggleNoise">噪点: 关 (纯净模式)</button>
+  <span style="color:#444">|</span>
+  <button class="proto-btn" id="btnToggleDensity">密度: 舒适</button>
+</div>
+
+<main class="proto-shell">
+  <!-- 左侧页面索引导航 -->
+  <nav class="proto-index" aria-label="原型页面导航">
+    <span class="eyebrow">全平台表面导航</span>
+    <button class="is-active" data-screen="switcher"><b>01</b>切换器</button>
+    <button data-screen="workbench"><b>02</b>工作台看板</button>
+    <button data-screen="component-store"><b>02+</b>小组件商店</button>
+    <button data-screen="studio"><b>03</b>代码实验室</button>
+    <button data-screen="snippet-store"><b>03+</b>片段商店</button>
+    <button data-screen="settings"><b>⚙</b>系统设置</button>
+    <span class="eyebrow" style="margin-top:15px">设计原则</span>
+    <div style="font-size:11px;color:var(--sw-subtle);line-height:1.5;padding:0 8px">
+      保持原有成熟 UI 结构不推倒重来，全面注入高端浅色陶瓷/钛银质感、1px 微内倒角切光与柔和微阴影。
+    </div>
+  </nav>
+
+  <section class="canvas">
+    <div class="app-shell" id="appShell">
+      
+      <!-- 平台统一顶栏 -->
+      <header class="app-head">
+        <div class="brand"><span class="brand-mark">驴</span><span class="brand-name">小驴雷切</span></div>
+        <nav class="surface-nav" aria-label="表面导航">
+          <button class="is-active" data-screen="switcher" aria-current="page">切换器</button>
+          <button data-screen="workbench">工作台</button>
+          <button data-screen="studio">片段实验室</button>
+        </nav>
+        <div class="head-actions">
+          <span class="status ready"><i></i>内核已连接</span>
+          <button class="icon-btn" type="button" data-screen="settings" title="打开系统设置">⚙</button>
+          <button class="icon-btn" type="button" onclick="alert('已关闭窗口，焦点平滑回到思源编辑器')" title="关闭平台">×</button>
+        </div>
+      </header>
+
+      <!-- 面包屑指示栏 -->
+      <div class="context-bar">
+        <span>工作现场</span><span>›</span>
+        <span class="title" id="contextTitle">切换器</span>
+        <span id="contextDesc" style="color:var(--sw-subtle)">找到、预览和打开内容</span>
+        <span style="flex:1"></span>
+        <span class="kbd">Tab</span><span class="kbd">Enter</span><span class="kbd">Esc 返回</span>
+      </div>
+
+      <!-- ==================== 01. 第一面板：切换器 Switcher (完整R4+质感) ==================== -->
+      <section class="screen is-active" id="screen-switcher">
+        <div class="screen-body">
+          <div class="screen-toolbar">
+            <label class="search-box">
+              <span>⌕</span>
+              <input id="switcherQuery" placeholder="搜索页签、收藏、最近、动作与全库文档..." autocomplete="off">
+              <span class="kbd">⌘K</span>
+            </label>
+            <button class="chip is-active" type="button">全部</button>
+            <button class="chip" type="button">已开 8</button>
+            <button class="chip" type="button">收藏</button>
+            <button class="chip" type="button">最近</button>
+            <button class="icon-btn" type="button" title="筛选菜单">☷</button>
+          </div>
+
+          <div class="chip-row" style="margin-bottom:10px">
+            <button class="chip is-active" type="button">打开内容</button>
+            <button class="chip" type="button">动作</button>
+            <button class="chip" type="button">工作现场</button>
+            <button class="chip" type="button">资源</button>
+            <span class="status ready"><i></i>本地优先</span>
+          </div>
+
+          <div class="switcher-layout">
+            <div class="switcher-main">
+              <div class="section-head"><span class="label">已打开 · 当前工作现场</span><span class="count">8</span><span class="line"></span><span class="kbd">1–8</span></div>
+              <div class="tab-grid" id="tabGrid">
+                <button class="tab-card is-selected"><span class="tab-thumb"></span><span class="kbd number">1</span><span class="tab-meta"><span class="type-icon">产</span><span><span class="name">产品路线图 (2026 H2)</span><span class="sub">/项目 · 正在编辑</span></span></span></button>
+                <button class="tab-card"><span class="tab-thumb"></span><span class="kbd number">2</span><span class="tab-meta"><span class="type-icon">评</span><span><span class="name">Q3 路线评审纪要</span><span class="sub">/会议 · 12 分钟前</span></span></span></button>
+                <button class="tab-card"><span class="tab-thumb"></span><span class="kbd number">3</span><span class="tab-meta"><span class="type-icon">日</span><span><span class="name">2026-10-17 日记</span><span class="sub">/日记 · 收藏</span></span></span></button>
+                <button class="tab-card"><span class="tab-thumb"></span><span class="kbd number">4</span><span class="tab-meta"><span class="type-icon">面</span><span><span class="name">面试题库整理</span><span class="sub">/学习 · 已保存</span></span></span></button>
+                <button class="tab-card"><span class="tab-thumb"></span><span class="kbd number">5</span><span class="tab-meta"><span class="type-icon">组</span><span><span class="name">组件协议 v2.4</span><span class="sub">/插件 · 3 个关联组件</span></span></span></button>
+                <button class="tab-card"><span class="tab-thumb"></span><span class="kbd number">6</span><span class="tab-meta"><span class="type-icon">学</span><span><span class="name">学习路线规划</span><span class="sub">/知识库 · 昨日</span></span></span></button>
+                <button class="tab-card"><span class="tab-thumb"></span><span class="kbd number">7</span><span class="tab-meta"><span class="type-icon">周</span><span><span class="name">团队周会模板</span><span class="sub">/模板 · 2 个引用</span></span></span></button>
+                <button class="tab-card"><span class="tab-thumb"></span><span class="kbd number">8</span><span class="tab-meta"><span class="type-icon">读</span><span><span class="name">读书笔记索引</span><span class="sub">/阅读 · 已缓存</span></span></span></button>
+              </div>
+
+              <div class="section-head"><span class="label">动作与工作现场</span><span class="line"></span></div>
+              <div class="result-list">
+                <button class="result-row"><span class="type-icon">今</span><span class="row-content"><span class="row-title">打开今日笔记</span><span class="row-meta">动作 · 创建或打开今天的日记</span></span><span class="kbd">⌘D</span></button>
+                <button class="result-row"><span class="type-icon">写</span><span class="row-content"><span class="row-title">恢复「写作」工作现场</span><span class="row-meta">工作现场 · 4 个页签 · 1 个组件</span></span><span class="status ready"><i></i>可恢复</span></button>
+              </div>
+            </div>
+
+            <!-- 右侧完整 34% 预览窗格 -->
+            <aside class="preview-rail" aria-label="内容预览">
+              <div class="preview-head"><span class="type-icon">产</span><strong>产品路线图 (2026 H2)</strong><button class="icon-btn" type="button" title="收藏">☆</button></div>
+              <div class="preview-hero"></div>
+              <div class="preview-copy">
+                <p class="row-meta">/项目/路线 · 刚刚更新</p>
+                <h3>交付节奏与验收重点</h3>
+                <p>当前文档的目录、关联工作现场与最近命中会在这里保持稳定，打开后可以从原位置返回。</p>
+                <div class="preview-actions">
+                  <button class="primary-btn" type="button">打开</button>
+                  <button class="soft-btn" type="button">新标签页</button>
+                  <button class="icon-btn" type="button" title="定位命中块">⌖</button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 02. 第二面板：工作台看板 Workbench (完整12列+质感) ==================== -->
+      <section class="screen" id="screen-workbench">
+        <div class="screen-body">
+          <div class="screen-toolbar">
+            <div><strong>当前工作台看板</strong><div class="row-meta">写作现场 · 4 个核心组件 · 上次刷新刚刚</div></div>
+            <span style="flex:1"></span>
+            <span class="status ready"><i></i>全部已就绪</span>
+            <button class="soft-btn" type="button">↻ 刷新全部</button>
+            <button class="primary-btn" type="button">编辑布局</button>
+          </div>
+
+          <div class="workbench-grid">
+            <!-- 组件 1: 当前文档上下文 -->
+            <article class="widget span-8">
+              <div class="widget-head"><span class="type-icon">文</span><strong>当前活动文档上下文</strong><span class="status ready"><i></i>实时</span></div>
+              <div class="metric">12 <small style="font-size:12px;color:var(--sw-subtle)">个关联对象</small></div>
+              <p style="color:var(--sw-subtle);margin:4px 0 0">目录 6 · 关联反链 4 · 嵌入资源 2</p>
+              <div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            </article>
+
+            <!-- 组件 2: 今日待办进度 (支持原地交互打勾) -->
+            <article class="widget span-4">
+              <div class="widget-head"><span class="type-icon">日</span><strong>今日待办进度</strong><span class="status ready"><i></i>3/4 未完</span></div>
+              <div class="check-item" onclick="this.classList.toggle('is-done')">
+                <span class="check-box">✓</span>
+                <span>完成全平台一体化原型升级</span>
+              </div>
+              <div class="check-item is-done" onclick="this.classList.toggle('is-done')">
+                <span class="check-box">✓</span>
+                <span>保持 R4 完整结构不推倒重来</span>
+              </div>
+              <div class="check-item" onclick="this.classList.toggle('is-done')">
+                <span class="check-box">✓</span>
+                <span>验证强化浅色陶瓷模式</span>
+              </div>
+            </article>
+
+            <!-- 组件 3: 保存的搜索 -->
+            <article class="widget span-4">
+              <div class="widget-head"><span class="type-icon">搜</span><strong>快捷检索与过滤</strong></div>
+              <p style="font-weight:700">“UI 设计系统” · 18 个命中</p>
+              <p style="color:var(--sw-subtle);margin-top:6px">最近命中：现代工匠级 Token 规范</p>
+            </article>
+
+            <!-- 组件 4: 时钟与时间进程 -->
+            <article class="widget span-4">
+              <div class="widget-head"><span class="type-icon">时</span><strong>时刻与专注</strong><span class="status ready"><i></i>在线</span></div>
+              <div class="metric" id="workbenchClock">10:24:36</div>
+              <p style="color:var(--sw-subtle);margin-top:4px">2026 年度时间进程已推进 79.2%</p>
+            </article>
+
+            <!-- 组件 5: 天气概览 -->
+            <article class="widget span-4">
+              <div class="widget-head"><span class="type-icon">天</span><strong>天气概览</strong><span class="status ready"><i></i>晴朗</span></div>
+              <div class="metric">23° <small style="font-size:13px;font-weight:500;color:var(--sw-subtle)">杭州</small></div>
+              <p style="color:var(--sw-subtle);margin-top:4px">空气优 28 · 微风拂面</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 02+. 小组件商店 Component Store (完整三栏+画廊质感) ==================== -->
+      <section class="screen" id="screen-component-store">
+        <div class="screen-body">
+          <div class="screen-toolbar">
+            <label class="search-box">
+              <span>⌕</span>
+              <input placeholder="搜索组件、来源或能力...">
+              <span class="kbd">/</span>
+            </label>
+            <button class="chip is-active">全部</button>
+            <button class="chip">官方内置</button>
+            <button class="chip">外部扩展</button>
+            <button class="chip">已安装</button>
+          </div>
+
+          <div class="store-layout">
+            <!-- 左侧分类目录 -->
+            <aside class="store-sidebar">
+              <h3>小组件目录</h3>
+              <button class="is-active">推荐小组件 <span>3</span></button>
+              <button>信息与上下文 <span>18</span></button>
+              <button>时间与专注 <span>9</span></button>
+              <button>任务与待办 <span>12</span></button>
+              <button>已安装组件 <span>6</span></button>
+              <hr style="border:0;border-top:1px solid var(--sw-line);margin:12px 0">
+              <span class="row-meta">设计准则</span>
+              <p class="row-meta" style="margin-top:6px">一瞥即知（Glanceable），真实 1:1 动态渲染预览，一键添加到当前看板。</p>
+            </aside>
+
+            <!-- 中间卡片网格 -->
+            <div class="store-catalog">
+              <div class="section-head"><span class="label">精选推荐</span><span class="count">3 个</span><span class="line"></span></div>
+              <div class="store-grid">
+                <article class="store-card">
+                  <div class="store-card-head"><span class="type-icon">🎯</span><strong>目标与里程碑倒数</strong><span class="status ready"><i></i>官方</span></div>
+                  <p>展示重要交付节点剩余天数，支持设置倒数里程碑。</p>
+                  <footer>
+                    <span class="row-meta">支持 1×1 / 2×1</span>
+                    <span style="flex:1"></span>
+                    <button class="primary-btn" onclick="alert('已添加到看板！')">+ 添加到看板</button>
+                  </footer>
+                </article>
+
+                <article class="store-card">
+                  <div class="store-card-head"><span class="type-icon">🌿</span><strong>写作活跃绿墙热力图</strong><span class="status">扩展</span></div>
+                  <p>展示过去一年的写作频次与字符产出绿墙。</p>
+                  <footer>
+                    <span class="row-meta">支持 2×2 / 4×2</span>
+                    <span style="flex:1"></span>
+                    <button class="primary-btn" onclick="alert('已添加到看板！')">+ 添加到看板</button>
+                  </footer>
+                </article>
+
+                <article class="store-card">
+                  <div class="store-card-head"><span class="type-icon">📔</span><strong>今日日记快捷直达</strong><span class="status ready"><i></i>核心</span></div>
+                  <p>单次点击瞬时打开或自动创建当天的日记文档。</p>
+                  <footer>
+                    <span class="row-meta">已添加</span>
+                    <span style="flex:1"></span>
+                    <button class="soft-btn">详情</button>
+                  </footer>
+                </article>
+              </div>
+            </div>
+
+            <!-- 右侧实时详情大卡 -->
+            <aside class="store-detail">
+              <h3>小组件实时详情</h3>
+              <div style="height:90px;border-radius:10px;margin-bottom:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--sw-accent) 28%,transparent),color-mix(in srgb,#49b2a5 20%,transparent));display:grid;place-items:center;font-size:24px">🎯</div>
+              <strong>目标与里程碑倒数</strong>
+              <p style="font-size:11px;color:var(--sw-subtle);margin:6px 0 12px">为重要考试、项目节点或纪念日提供精准的天数倒数提示。</p>
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--sw-subtle)">
+                <div style="display:flex;justify-content:space-between"><span>提供方</span><b style="color:var(--sw-text)">本地离线核心</b></div>
+                <div style="display:flex;justify-content:space-between"><span>权限与隐私</span><b style="color:var(--b3-theme-success)">零外部请求</b></div>
+                <div style="display:flex;justify-content:space-between"><span>支持尺寸</span><b style="color:var(--sw-text)">1×1 瓦片, 2×1 条状</b></div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 03. 第三面板：代码实验室 Snippet Studio (完整R4三栏专业结构) ==================== -->
+      <section class="screen" id="screen-studio">
+        <div class="screen-body">
+          <div class="screen-toolbar">
+            <span class="status" style="color:var(--b3-theme-warning);background:color-mix(in srgb,var(--b3-theme-warning) 10%,transparent)"><i></i>草稿已修改 · 未保存</span>
+            <span style="flex:1"></span>
+            <button class="soft-btn">比较差异</button>
+            <button class="primary-btn">保存草稿</button>
+          </div>
+
+          <div class="studio-layout">
+            <!-- 左栏：片段列表 -->
+            <aside class="studio-library">
+              <div class="search-box" style="min-height:34px;margin-bottom:8px">
+                <span>⌕</span>
+                <input placeholder="搜索代码片段...">
+              </div>
+              <div class="chip-row" style="margin-bottom:8px">
+                <button class="chip is-active">全部</button>
+                <button class="chip">CSS</button>
+                <button class="chip">JS</button>
+              </div>
+              <div class="snippet-list">
+                <button class="snippet-row is-active">
+                  <span class="type-icon">C</span>
+                  <span class="row-content"><span class="row-title">readable-focus.css</span><span class="row-meta">CSS · 已启用</span></span>
+                  <span class="status ready" style="padding:1px 5px"><i></i></span>
+                </button>
+                <button class="snippet-row">
+                  <span class="type-icon">C</span>
+                  <span class="row-content"><span class="row-title">reading-width.css</span><span class="row-meta">CSS · 已保存</span></span>
+                </button>
+                <button class="snippet-row">
+                  <span class="type-icon">J</span>
+                  <span class="row-content"><span class="row-title">daily-capture.js</span><span class="row-meta">JS · 禁自动执行</span></span>
+                  <span class="status" style="padding:1px 5px"><i></i></span>
+                </button>
+              </div>
+              <button class="soft-btn" style="width:100%;margin-top:12px" data-screen="snippet-store">打开片段商店</button>
+            </aside>
+
+            <!-- 中栏：专业代码编辑器 -->
+            <div class="editor">
+              <div class="editor-head">
+                <strong>readable-focus.css</strong>
+                <span class="status ready" style="margin-left:auto"><i></i>安全沙箱</span>
+                <button class="icon-btn" style="color:#cbd1e3" title="撤销">↶</button>
+                <button class="icon-btn" style="color:#cbd1e3" title="重做">↷</button>
+              </div>
+              <pre class="code">
+<span class="ln">1</span><span class="kw">.protyle</span> <span class="prop">:focus-visible</span> {
+<span class="ln">2</span>  <span class="prop">outline</span>: <span class="val">none</span> !important;
+<span class="ln">3</span>  <span class="prop">box-shadow</span>: <span class="val">0 0 0 1px var(--b3-theme-background)</span>,
+<span class="ln">4</span>              <span class="val">0 0 0 3px color-mix(in srgb, var(--b3-theme-primary) 38%, transparent)</span>;
+<span class="ln">5</span>  <span class="prop">transition</span>: <span class="val">box-shadow 120ms cubic-bezier(0.16, 1, 0.3, 1)</span>;
+<span class="ln">6</span>}
+              </pre>
+              <div class="editor-foot">
+                <span style="font-size:11px;color:#94a3b8">UTF-8 · CSS 规则已验证通过</span>
+                <span style="flex:1"></span>
+                <button class="soft-btn" style="color:#fff">放弃修改</button>
+              </div>
+            </div>
+
+            <!-- 右栏：效果预览与AI建议 -->
+            <aside class="studio-side">
+              <div class="section-head"><span class="label">效果实时预览</span><span class="line"></span></div>
+              <div class="fake-page">
+                <h4 style="margin:0 0 8px;font-size:12px">排版段落微预览</h4>
+                <div style="width:90%"></div>
+                <div style="width:75%"></div>
+                <div style="width:60%"></div>
+              </div>
+              <div class="section-head" style="margin-top:14px"><span class="label">AI 差异与建议</span><span class="line"></span></div>
+              <p style="font-size:11px;color:var(--sw-subtle);line-height:1.5">当前焦点环符合 WCAG 2.2 AAA 高对比度规范，已在浅色与深色模式下通过无障碍检验。</p>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 03+. 片段商店 Snippet Store ==================== -->
+      <section class="screen" id="screen-snippet-store">
+        <div class="screen-body">
+          <div class="screen-toolbar">
+            <label class="search-box">
+              <span>⌕</span>
+              <input placeholder="搜索 CSS/JS 片段...">
+              <span class="kbd">/</span>
+            </label>
+            <button class="chip is-active">精选推荐</button>
+            <button class="chip">排版与主题</button>
+            <button class="chip">无障碍可访问性</button>
+          </div>
+          <div class="store-grid" style="grid-template-columns:repeat(3, 1fr)">
+            <article class="store-card">
+              <div class="store-card-head"><span class="type-icon">C</span><strong>Readable Focus</strong><span class="status ready"><i></i>CSS</span></div>
+              <p>统一焦点环高亮，兼容浅色、深色和高对比主题。</p>
+              <footer><span class="row-meta">0.4 KB · MIT</span><span style="flex:1"></span><button class="primary-btn">+ 导入草稿</button></footer>
+            </article>
+            <article class="store-card">
+              <div class="store-card-head"><span class="type-icon">C</span><strong>Compact Sidebar</strong><span class="status">CSS</span></div>
+              <p>窄侧栏下收敛工具栏和列表密度，保留日记入口。</p>
+              <footer><span class="row-meta">0.8 KB · MIT</span><span style="flex:1"></span><button class="primary-btn">+ 导入草稿</button></footer>
+            </article>
+            <article class="store-card">
+              <div class="store-card-head"><span class="type-icon">C</span><strong>Calm Reading</strong><span class="status">CSS</span></div>
+              <p>降低背景干扰，适合长时间专注阅读和审查。</p>
+              <footer><span class="row-meta">0.6 KB · CC BY</span><span style="flex:1"></span><button class="primary-btn">+ 导入草稿</button></footer>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 04. 系统设置 Settings (完整R4 10标签导航 + 噪点控制) ==================== -->
+      <section class="screen" id="screen-settings">
+        <div class="screen-body">
+          <div class="screen-toolbar">
+            <label class="search-box">
+              <span>⌕</span>
+              <input placeholder="搜索设置项...">
+            </label>
+            <span class="status ready"><i></i>即时保存</span>
+            <button class="soft-btn">恢复本页默认</button>
+          </div>
+
+          <div class="settings-layout">
+            <nav class="settings-rail" aria-label="设置标签">
+              <button class="is-active">外观与材质</button>
+              <button>表面与面板</button>
+              <button>交互行为</button>
+              <button>快捷键管理</button>
+              <button>收藏与分组</button>
+              <button>工作区文档集</button>
+              <button>片段实验室</button>
+              <button>移动端适配</button>
+              <button>数据与存储</button>
+              <button>脱敏诊断</button>
+            </nav>
+
+            <div class="settings-content">
+              <div class="setting-group">
+                <h3>外观与材质控制</h3>
+                <p class="row-meta">控制密度、主题和平台表面的视觉层级，所有改动即时生效。</p>
+                
+                <!-- 噪点开关：响应用户对噪点做成可选的要求！ -->
+                <div class="setting-row">
+                  <span class="type-icon">✦</span>
+                  <div class="row-content">
+                    <div class="row-title">物理微噪点材质 (Micro-Noise Grain)</div>
+                    <small>模拟真实阳极氧化铝与高定磨砂胶片质感。关闭后为纯净无瑕平滑模式。</small>
+                  </div>
+                  <div class="toggle" id="settingToggleNoise" onclick="toggleNoise()"><i></i></div>
+                </div>
+
+                <div class="setting-row">
+                  <span class="type-icon">◐</span>
+                  <div class="row-content">
+                    <div class="row-title">界面主题与质感</div>
+                    <small>支持陶瓷霜白（强化浅色）、深空极光（科技深暗）、暗曜纯黑。</small>
+                  </div>
+                  <div style="display:flex;gap:4px">
+                    <button class="chip is-active" onclick="setTheme('frost')">陶瓷霜白</button>
+                    <button class="chip" onclick="setTheme('aurora')">深空极光</button>
+                    <button class="chip" onclick="setTheme('obsidian')">暗曜纯黑</button>
+                  </div>
+                </div>
+
+                <div class="setting-row">
+                  <span class="type-icon">↕</span>
+                  <div class="row-content">
+                    <div class="row-title">信息密度</div>
+                    <small>紧凑模式缩小间距，不改变移动端 44px 触控区。</small>
+                  </div>
+                  <div style="display:flex;gap:4px">
+                    <button class="chip is-active">舒适</button>
+                    <button class="chip">紧凑</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="setting-group">
+                <h3>悬浮球入口</h3>
+                <p class="row-meta">全局常驻触发器，可在任意页面快速唤回小驴雷切。</p>
+                <div class="setting-row">
+                  <span class="type-icon">◎</span>
+                  <div class="row-content">
+                    <div class="row-title">启用全局悬浮球</div>
+                    <small>支持拖拽停靠屏幕边缘，静止时半透明自动贴边。</small>
+                  </div>
+                  <div class="toggle is-on"><i></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 底部状态回执栏 -->
+      <footer class="app-foot">
+        <span class="receipt" id="receipt">就绪 · 当前结果和焦点会在异步更新后保留</span>
+        <span style="flex:1"></span>
+        <span>主动作：打开 / 添加 / 保存</span>
+        <span class="kbd">Esc</span>
+        <span>关闭</span>
+      </footer>
+
+    </div>
+  </section>
+</main>
+
+<!-- 全局悬浮球与动作面板 -->
+<button class="floating-ball" type="button" id="floatingBall" title="打开小驴雷切快捷动作">驴</button>
+<aside class="floating-panel" id="floatingPanel">
+  <header style="display:flex;align-items:center;justify-content:space-between">
+    <strong style="font-size:12px">当前上下文快捷动作</strong>
+    <button class="icon-btn" onclick="toggleFloatingPanel()">×</button>
+  </header>
+  <div class="action-grid">
+    <button class="action" onclick="showScreen('switcher');toggleFloatingPanel()"><b>切换内容</b><small class="row-meta">搜索并回到页签</small></button>
+    <button class="action" onclick="alert('已捕获至今日日记！');toggleFloatingPanel()"><b>快速捕获</b><small class="row-meta">写入今日笔记</small></button>
+    <button class="action" onclick="showScreen('workbench');toggleFloatingPanel()"><b>打开工作台</b><small class="row-meta">查看当前上下文</small></button>
+    <button class="action" onclick="alert('正在恢复写作现场...');toggleFloatingPanel()"><b>恢复现场</b><small class="row-meta">预览后再应用</small></button>
+  </div>
+</aside>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const receipt = document.getElementById('receipt');
+  const title = document.getElementById('contextTitle');
+  const desc = document.getElementById('contextDesc');
+
+  const labels = {
+    switcher: ['切换器', '找到、预览和打开内容'],
+    workbench: ['工作台看板', '查看、刷新和编排信息组件'],
+    'component-store': ['小组件商店', '按分类、能力和状态挑选组件'],
+    studio: ['代码实验室', '安全编辑、预览和审查 CSS/JS 草稿'],
+    'snippet-store': ['片段商店', '发现可审查的社区 CSS/JS 草稿'],
+    settings: ['系统设置', '治理外观、行为、数据和能力']
+  };
+
+  window.showScreen = function(name) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.toggle('is-active', el.id === 'screen-' + name));
+    document.querySelectorAll('[data-screen]').forEach(el => el.classList.toggle('is-active', el.dataset.screen === name));
+    if (labels[name]) {
+      title.textContent = labels[name][0];
+      desc.textContent = labels[name][1];
+      receipt.textContent = '已进入 ' + labels[name][0] + ' · 来源焦点已记录';
+    }
+  };
+
+  document.addEventListener('click', e => {
+    const screenBtn = e.target.closest('[data-screen]');
+    if (screenBtn) {
+      showScreen(screenBtn.dataset.screen);
+      return;
+    }
+  });
+
+  // 主题切换
+  window.setTheme = function(theme) {
+    root.dataset.theme = theme;
+    ['btnThemeFrost', 'btnThemeAurora', 'btnThemeObsidian'].forEach(id => {
+      document.getElementById(id)?.classList.toggle('is-active', id === 'btnTheme' + theme.charAt(0).toUpperCase() + theme.slice(1));
+    });
+    receipt.textContent = '主题已切换为 ' + theme + ' · 物理切光与微阴影已自适应对齐';
+  };
+  document.getElementById('btnThemeFrost').onclick = () => setTheme('frost');
+  document.getElementById('btnThemeAurora').onclick = () => setTheme('aurora');
+  document.getElementById('btnThemeObsidian').onclick = () => setTheme('obsidian');
+
+  // 噪点开关 (满足不同喜好)
+  window.toggleNoise = function() {
+    const next = root.dataset.noise === 'on' ? 'off' : 'on';
+    root.dataset.noise = next;
+    const btn = document.getElementById('btnToggleNoise');
+    if (btn) btn.textContent = next === 'on' ? '噪点: 开 (胶片质感)' : '噪点: 关 (纯净模式)';
+    document.getElementById('settingToggleNoise')?.classList.toggle('is-on', next === 'on');
+    receipt.textContent = '微噪点纹理已切换为 ' + (next === 'on' ? '开启 (模拟磨砂胶片)' : '关闭 (纯净无暇模式)');
+  };
+  document.getElementById('btnToggleNoise').onclick = toggleNoise;
+
+  // 密度切换
+  window.toggleDensity = function() {
+    const next = root.dataset.density === 'compact' ? 'comfortable' : 'compact';
+    root.dataset.density = next;
+    const btn = document.getElementById('btnToggleDensity');
+    if (btn) btn.textContent = '密度: ' + (next === 'compact' ? '紧凑' : '舒适');
+    receipt.textContent = '信息密度已切换为 ' + (next === 'compact' ? '紧凑模式' : '舒适模式');
+  };
+  document.getElementById('btnToggleDensity').onclick = toggleDensity;
+
+  // 悬浮面板开关
+  const ball = document.getElementById('floatingBall');
+  const panel = document.getElementById('floatingPanel');
+  window.toggleFloatingPanel = function() {
+    panel.classList.toggle('is-open');
+  };
+  ball.onclick = toggleFloatingPanel;
+
+  // 工作台小组件 3D 微物理与 Spotlight 追随 (带 RAF 锁帧节流)
+  if (!window.matchMedia('(hover: none) or (pointer: coarse)').matches) {
+    document.querySelectorAll('.widget, .tab-card').forEach(el => {
+      let rafId = null;
+      el.addEventListener('mousemove', (e) => {
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+          const rect = el.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          el.style.setProperty('--mouse-x', `${x}px`);
+          el.style.setProperty('--mouse-y', `${y}px`);
+
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          const tiltX = ((y - centerY) / centerY) * -1.8;
+          const tiltY = ((x - centerX) / centerX) * 1.8;
+          el.style.transform = `perspective(800px) rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg) translateY(-2px)`;
+          rafId = null;
+        });
+      });
+      el.addEventListener('mouseleave', () => {
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        el.style.transform = 'perspective(800px) rotateX(0deg) rotateY(0deg) translateY(0)';
+      });
+    });
+  }
+
+  // 真实秒表跳动走时
+  setInterval(() => {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const clock = document.getElementById('workbenchClock');
+    if (clock) clock.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }, 1000);
+})();
+</script>
+
+</body>
+</html>

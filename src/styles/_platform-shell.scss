@@ -43,7 +43,8 @@
 
     --sw-platform-shadow-card: var(--sw-card-shadow, 0 1px 2px rgb(51 58 83 / 5%), 0 8px 24px rgb(75 85 120 / 8%));
     --sw-platform-shadow-floating: var(--sw-float-shadow, 0 14px 36px rgb(55 65 100 / 15%), 0 3px 10px rgb(55 65 100 / 8%));
-    --sw-platform-focus: var(--sw-focus-ring, 0 0 0 3px color-mix(in srgb, var(--sw-platform-accent) 24%, transparent));
+    // 现代科技发光微环：内层 1px 底色隔离 + 外层 35% 柔和漫射光晕
+    --sw-platform-focus: var(--sw-focus-ring, 0 0 0 1px var(--sw-platform-bg), 0 0 0 3px color-mix(in srgb, var(--sw-platform-accent) 35%, transparent));
     --sw-platform-header-height: 64px;
 }
 
@@ -528,7 +529,7 @@
 .sw-platform-action--soft:hover { border-color: color-mix(in srgb, var(--sw-platform-accent) 40%, transparent); color: var(--sw-platform-accent); }
 
 // Keyboard hints (RZ-1/T-6871) -------------------------------------------------
-// 键位提示芯片：把快捷键常驻在界面上（Raycast/Linear 惯例），而非只写在文档里。
+// 键位提示芯片：把快捷键常驻在界面上（Raycast/Linear 惯例），升级为微立体机械键帽
 .sw-platform-kbd {
     display: inline-flex;
     align-items: center;
@@ -541,6 +542,7 @@
     border-radius: var(--sw-radius-sm, 6px);
     color: var(--sw-platform-text-muted);
     background: var(--sw-platform-surface);
+    box-shadow: inset 0 1px 0 0 color-mix(in srgb, var(--sw-platform-text-on-accent) 18%, transparent), 0 1px 2px rgba(0, 0, 0, 0.08);
     font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
     font-size: var(--sw-font-2xs, 10px);
     font-weight: var(--sw-weight-semibold, 600);

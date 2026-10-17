@@ -340,14 +340,14 @@
     .sw__card {
         border-color: var(--sw-polish-line);
         border-radius: var(--sw-platform-radius-md, 12px);
-        box-shadow: none;
+        box-shadow: var(--sw-rim-light, none);
         transition: border-color $sw-dur-base $sw-ease, box-shadow $sw-dur-base $sw-ease, transform $sw-dur-base $sw-ease, background-color $sw-dur-base $sw-ease;
     }
 
     .sw__card:hover {
         border-color: color-mix(in srgb, var(--b3-theme-primary) 52%, var(--sw-polish-line));
         background: var(--sw-polish-surface-raised);
-        box-shadow: var(--sw-polish-shadow-card);
+        box-shadow: var(--sw-rim-light, none), var(--sw-polish-shadow-card);
     }
 
     .sw__card:focus-visible {

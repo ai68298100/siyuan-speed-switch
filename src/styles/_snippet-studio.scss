@@ -151,7 +151,24 @@
     &__commands { display: flex; gap: var(--sw-space-md, 8px); flex-wrap: wrap; margin-top: var(--sw-space-lg, 12px); }
     &__editor-section { display: flex; flex-direction: column; }
     &__editor, &__ai-result { font-family: var(--b3-font-family-code, monospace); tab-size: 2; white-space: pre; resize: none; line-height: 1.55; font-size: var(--sw-font-sm, 12px); }
-    &__editor { width: 100%; flex: 1; min-height: 140px; padding: var(--sw-space-lg, 12px); border: 1px solid var(--studio-line); border-radius: 10px; background: color-mix(in srgb, var(--studio-surface) 72%, var(--b3-theme-background)); color: inherit; }
+    &__editor {
+        width: 100%;
+        flex: 1;
+        min-height: 140px;
+        padding: var(--sw-space-lg, 12px);
+        border: 1px solid var(--studio-line);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--studio-surface) 72%, var(--b3-theme-background));
+        color: inherit;
+        box-shadow: var(--sw-rim-light, inset 0 1px 0 0 rgba(255, 255, 255, 0.08));
+        transition: border-color $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease;
+
+        &:focus {
+            outline: none;
+            border-color: var(--studio-accent);
+            box-shadow: var(--sw-focus-glow, 0 0 0 3px color-mix(in srgb, var(--studio-accent) 30%, transparent));
+        }
+    }
     &__input, &__select, &__prompt, &__ai-result { max-width: 100%; border: 1px solid var(--studio-line); border-radius: var(--sw-radius-control, 10px); background: var(--b3-theme-background); color: inherit; padding: 10px 10px; }
     &__input { width: 100%; min-width: 0; }
     &__select { min-height: 36px; }

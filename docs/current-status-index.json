@@ -135,7 +135,8 @@
     "T-7288",
     "T-7289",
     "T-7290",
-    "T-7291"
+    "T-7291",
+    "T-7298"
   ],
   "tasks": [
     {
@@ -843,7 +844,9 @@
         "tests/kernel-widget-model.test.cjs",
         "tests/insight-widgets.test.cjs",
         "tests/component-specs-batch8-wiring.test.cjs",
-        "tests/kernel-widgets-wiring.test.cjs"
+        "tests/kernel-widgets-wiring.test.cjs",
+        "docs/adr/0219-core-widgets-content-first-glance-decoupling.md",
+        "docs/adr/0220-optimistic-task-toggle-and-zero-latency-interaction.md"
       ],
       "next": "T-7156",
       "inputsFrom": [
@@ -3837,6 +3840,29 @@
         "src/agent-document-set-actions.js",
         "src/agent-workspace-actions.js",
         "src/agent-capabilities.js"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7298",
+      "title": "全表面渐进式质感升级与典藏版平台演进",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7291",
+        "T-7297"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0218-progressive-sensory-polish-and-masterpiece-evolution.md",
+        "docs/design/platform-ui-masterpiece-2026-10-17.html",
+        "tests/compact-workbench-style-contract.test.cjs",
+        "src/styles/_11-ui-polish.scss",
+        "src/styles/_06-widgets-store.scss",
+        "src/styles/_07-sidebar-panel-store.scss",
+        "src/styles/_platform-shell.scss"
       ],
       "next": "T-7144"
     }
