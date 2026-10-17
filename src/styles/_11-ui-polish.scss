@@ -585,6 +585,15 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+
+        svg {
+            flex: none;
+            width: 14px;
+            height: 14px;
+            margin-right: var(--sw-space-xs, 4px);
+            opacity: 0.72;
+            vertical-align: -2px;
+        }
     }
     .sw-home__cell .sw__home-module-item-secondary {
         font-variant-numeric: tabular-nums;

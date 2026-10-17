@@ -185,21 +185,33 @@
 }
 
 .sw__home-calendar-nav {
-    display: grid;
-    grid-template-columns: 28px minmax(0, 1fr) auto 28px;
+    display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: var(--sw-space-xs, 4px);
     margin: 0 0 var(--sw-space-sm, 6px);
+
+    .sw__home-calendar-period {
+        margin-right: auto;
+        min-width: 0;
+        overflow: hidden;
+        color: var(--b3-theme-on-background);
+        font-size: 14px;
+        font-weight: var(--sw-weight-bold, 700);
+        letter-spacing: -0.02em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 
     button {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: var(--sw-control-h-md);
-        min-height: var(--sw-control-h-md);
-        padding: var(--sw-space-2xs, 2px) var(--sw-space-md, 8px);
+        min-width: var(--sw-control-h-md, 28px);
+        min-height: var(--sw-control-h-md, 28px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-xs, 4px);
         border: 0;
-        border-radius: 999px;
+        border-radius: var(--sw-radius-sm, 6px);
         background: transparent;
         color: var(--sw-home-accent, var(--b3-theme-primary));
         font-size: var(--sw-font-sm, 12px);
@@ -212,17 +224,12 @@
             box-shadow: var(--sw-focus-ring);
         }
     }
-}
 
-.sw__home-calendar-period {
-    min-width: 0;
-    overflow: hidden;
-    color: var(--b3-theme-on-background);
-    font-size: 14px;
-    font-weight: var(--sw-weight-bold, 700);
-    letter-spacing: -0.02em;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    .sw__home-calendar-period-select {
+        min-height: var(--sw-control-h-md, 28px);
+        padding: 0 var(--sw-space-sm, 6px);
+        margin-left: 2px;
+    }
 }
 
 // 日历必须显式声明 7 列网格；否则 span/button 会退化为连续文本，
