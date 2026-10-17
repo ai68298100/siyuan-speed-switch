@@ -5,6 +5,14 @@
 
 ## Changelog (full history)
 
+### v0.47.5 (2026-10-17)
+
+- **Zero-dependency lightweight code formatter**: native state-machine parser for CSS selectors, declarations, indentation, and cursor projection (`formatWithCursor`), eliminating 200KB+ Prettier overhead.
+- **3-mode snippet import planning engine**: Merge (preserves local enabled state and ordering), Fork (regenerates unique IDs for safe experimentation), and Overwrite (full mirror).
+- **Cross-surface crystalline rim-light and tactile bevel alignment**: workbench cells, preview rail, and studio sections declare 1px crystalline top highlight (`--sw-rim-light`) and ambient occlusion soft shadows.
+- **Masterpiece high-fidelity prototype fully integrates multi-device viewport simulation** (Desktop/iPad/Mobile/Dock) and 40+ interactive feedback paths.
+- **Verification**: full test suite 8777 passed, 1 skipped; compact style contracts 7/7, mobile layout smoke PASS; package.zip 578 KiB strictly below the 578 KiB release gate.
+
 ### v0.47.4 (2026-10-17)
 
 - **Modern tech workbench and widget gallery overhaul**: content-first clock, monospace figures, 0ms optimistic task toggle with smooth strikethrough decay, 2.8s progress shimmer ray, and tactile store card tiles.

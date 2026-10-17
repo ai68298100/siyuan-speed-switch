@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-17",
-  "currentTask": "T-7144",
+  "currentTask": "T-7301",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
@@ -138,7 +138,8 @@
     "T-7291",
     "T-7298",
     "T-7299",
-    "T-7300"
+    "T-7300",
+    "T-7301"
   ],
   "tasks": [
     {
@@ -3911,6 +3912,28 @@
         "src/snippet-studio-ui.js"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7301",
+      "title": "v0.47.5 正式版发布与资产回执",
+      "status": "in_progress",
+      "priority": "P0",
+      "owner": "release",
+      "workType": "deliverable",
+      "dependsOn": [
+        "T-7300"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0223-t7301-v0475-release.md",
+        "package.json",
+        "plugin.json",
+        "README.md",
+        "README.en-US.md",
+        "docs/CHANGELOG.md",
+        "docs/CHANGELOG.en-US.md"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
@@ -3918,6 +3941,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591371 bytes is below the 591872-byte repository budget by 501 bytes"
+    "packageBudget": "passed: 591166 bytes is below the 591872-byte repository budget by 706 bytes"
   }
 }
