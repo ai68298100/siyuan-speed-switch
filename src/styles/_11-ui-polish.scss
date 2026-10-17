@@ -484,11 +484,11 @@
     // polish layer is loaded last.
     :where(.sw-home__cell:not(.mat-accent):not(.mat-dark):not(.mat-vibrant)) {
         background: var(--b3-theme-surface);
-        box-shadow: var(--sw-rim-light, none), var(--sw-polish-shadow-card);
+        box-shadow: var(--sw-polish-shadow-card);
     }
 
     .sw-home__cell:hover {
-        box-shadow: var(--sw-rim-light, none), var(--sw-polish-shadow-card);
+        box-shadow: var(--sw-polish-shadow-card);
         transform: translateY(-1px);
     }
 

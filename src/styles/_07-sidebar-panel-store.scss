@@ -104,23 +104,16 @@
             outline: none;
         }
 
-        &:active {
-            transform: scale(0.9);
-        }
-
         &.is-done {
             border-color: var(--b3-theme-primary);
             background: var(--b3-theme-primary);
             color: var(--b3-theme-background);
-            box-shadow: 0 0 8px color-mix(in srgb, var(--b3-theme-primary) 50%, transparent);
         }
     }
 
     .sw__home-module-item-action.is-done {
         color: var(--b3-theme-on-surface-light);
         text-decoration: line-through;
-        opacity: 0.72;
-        transition: opacity $sw-dur-fast $sw-ease, color $sw-dur-fast $sw-ease;
     }
 }
 
@@ -344,26 +337,7 @@
         // 且只有单个元素，重排成本可忽略；而 scaleX 会把 3px 圆角一起拉伸变形，
         // 视觉收益为负。若将来进度条进入长列表并频繁更新，再评估 offscreen 方案。
         transition: width $sw-dur-panel $sw-ease;
-        position: relative;
-        overflow: hidden;
-
-        &::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
-            animation: sw-progress-shimmer 2.8s infinite;
-        }
     }
-}
-
-@keyframes sw-progress-shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .sw__home-progress .sw__home-progress-fill::after { animation: none !important; }
 }
 
 .sw__home-item-bar {

@@ -93,7 +93,7 @@
         border-color: var(--sw-r54-line);
         border-radius: var(--sw-r54-radius-control);
         background: var(--sw-r54-surface);
-        box-shadow: var(--sw-rim-light, none), var(--sw-r54-shadow-card, none);
+        box-shadow: none;
     }
 
     .sw__group-header { min-height: 40px; margin-bottom: 10px; }
@@ -304,14 +304,10 @@
     .sw-studio__button { transition: none !important; }
 }
 
-// T-7274/T-7144：工作台默认继承现代一瞥即知轻量小组件密度与内容直出排版。
+// T-7274：只有非全屏工作台启用轻量小组件密度。
 // 该覆盖位于 R54 最终皮肤层之后的层叠位置，避免 11-ui-polish 把卡片重新放大。
 .sw-home.sw-home--compact {
     padding: var(--sw-space-md, 8px) var(--sw-space-lg, 12px);
-    background:
-        radial-gradient(550px circle at 8% 10%, color-mix(in srgb, var(--b3-theme-primary) 6%, transparent) 0%, transparent 65%),
-        radial-gradient(450px circle at 92% 90%, rgba(14, 165, 233, 0.05) 0%, transparent 60%),
-        #edf0f5 !important;
 
     &:not(.sw-home--mobile) { padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px); }
 
@@ -359,7 +355,7 @@
         gap: var(--sw-space-sm, 6px);
         // 保留渲染层写入的 span h，让 small/medium/tall 在 compact 里仍有
         // 可见高度差；使用小行高收紧画布，不再把所有组件压成同一条。
-        // `--sw-control-h-sm` is the global 20px control token. Compact
+        // `--sw-control-h-sm` is the global 20px control token.  Compact
         // widget tracks intentionally use the dedicated 28px rhythm so the
         // renderer's span values produce visible small/medium/tall shapes.
         grid-auto-rows: 28px;
@@ -410,70 +406,19 @@
         padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
         border-radius: $sw-radius-md;
         max-height: none;
+        min-height: 0;
         overflow: hidden;
         backdrop-filter: none;
-        background: #ffffff !important;
-        border: 1px solid rgba(203, 213, 225, 0.85) !important;
-        box-shadow: inset 0 1px 0 0 #ffffff, 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.05) !important;
+        box-shadow: var(--sw-rim-light, none);
         transform: translateZ(0);
         will-change: transform;
 
         &:hover {
-            box-shadow: inset 0 1px 0 0 #ffffff, 0 2px 6px rgba(15, 23, 42, 0.06), 0 14px 32px rgba(15, 23, 42, 0.08) !important;
             transform: none;
         }
-
-        // 消除固定 w:8 导致的右侧大面积空缺留白（大屏自适应 Bento 平铺）
-        grid-column: span 12;
-
-        &[data-module-id="recent-documents"],
-        &[data-module-id="recent-daily-notes"] {
-            min-height: 180px;
-            .sw-home__cell-body {
-                max-height: 280px;
-                overflow-y: auto;
-                scrollbar-width: thin;
-            }
-        }
-        &[data-module-id="journal-calendar"] {
-            min-height: 290px;
-            .sw-home__cell-body {
-                min-height: 240px;
-            }
-        }
-        &[data-size="xs"] {
-            min-height: 64px;
-        }
     }
 
-    // 大屏 (>= 960px) 自适应双拼 Bento：宽卡片 50% 舒展并排，大卡片 100% 铺满，彻底消灭右侧留白
-    @media (min-width: 960px) {
-        &:not(.sw-home--mobile) .sw-home__cell[data-size="wide"],
-        &:not(.sw-home--mobile) .sw-home__cell[data-size="medium"] {
-            grid-column: span 6;
-        }
-        &:not(.sw-home--mobile) .sw-home__cell[data-size="large"] {
-            grid-column: span 12;
-        }
-        &:not(.sw-home--mobile) .sw-home__cell[data-size="xs"] {
-            grid-column: span 3;
-        }
-    }
-
-    .sw-home__cell-body {
-        padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
-
-        .sw__home-stat-value {
-            font-family: var(--b3-font-family-code, ui-monospace, monospace);
-            font-variant-numeric: tabular-nums;
-            letter-spacing: -0.025em;
-            font-weight: 750;
-        }
-        .sw__home-stat-label {
-            font-size: var(--sw-font-xs, 11px);
-            opacity: 0.78;
-        }
-    }
+    .sw-home__cell-body { padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px); }
     .sw__home-module-header {
         min-height: 24px;
         margin-bottom: var(--sw-space-xs, 4px);
@@ -525,10 +470,7 @@
         font-size: 0;
         line-height: 0;
     }
-    &:not(.sw-home--mobile) .sw__home-source-health.is-fresh {
-        background: #3b9861;
-        box-shadow: 0 0 6px color-mix(in srgb, #3b9861 65%, transparent);
-    }
+    &:not(.sw-home--mobile) .sw__home-source-health.is-fresh { background: #3b9861; }
     &:not(.sw-home--mobile) .sw__home-source-health.is-cached { border-style: dashed; }
 
     // 默认七卡先展示内容；完整更新时间保留在标题提示与可读描述中。
@@ -593,12 +535,6 @@
         background: var(--b3-theme-background);
         border: 1px solid var(--b3-border-color);
 
-        &:not(.is-editing) {
-            .sw__home-module-header .sw__home-module-title {
-                display: none;
-            }
-        }
-
         .sw__home-stat { min-height: 24px; }
         .sw__home-stat .sw__home-stat-value {
             font-family: var(--b3-font-family-code, ui-monospace, monospace);
@@ -620,17 +556,10 @@
         }
         .sw__home-day-progress {
             height: 2px;
-            border-radius: 99px;
             margin: var(--sw-space-2xs, 2px) 0 0;
             background: color-mix(in srgb, var(--b3-theme-on-background) 8%, transparent);
-            overflow: hidden;
         }
-        .sw__home-day-progress-bar {
-            height: 100%;
-            border-radius: 99px;
-            background: linear-gradient(90deg, var(--b3-theme-primary), #2dd4bf);
-            box-shadow: 0 0 6px color-mix(in srgb, #2dd4bf 50%, transparent);
-        }
+        .sw__home-day-progress-bar { height: 100%; }
     }
 
     // 周期进度：百分数 + 细轨道 + 并排天数，取消重复圆环。
@@ -746,11 +675,6 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .sw__home-stat-value {
-            font-family: var(--b3-font-family-code, ui-monospace, monospace);
-            font-variant-numeric: tabular-nums;
-            letter-spacing: -0.02em;
-        }
         .sw__home-module-list {
             grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
             gap: 0 var(--sw-space-sm, 6px);
@@ -821,7 +745,6 @@
 
 // 窄紧凑工作台恢复两行头部；底部健康回执保留状态语义，头部隐藏重复徽标。
 @container sw-platform (max-width: 760px) {
-    .sw-home:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header,
     .sw-home.sw-home--compact:not(.sw-home--mobile) > .sw-platform-chrome .sw-platform-header {
         grid-template-columns: minmax(0, 1fr) auto;
         grid-template-areas: "brand actions" "nav nav";
@@ -829,23 +752,5 @@
         min-height: 0;
         padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
     }
-    .sw-home > .sw-platform-chrome .sw-platform-status,
     .sw-home.sw-home--compact > .sw-platform-chrome .sw-platform-status { display: none; }
-}
-
-// 工作台全屏外壳背景与暗色自适应：彻底消除纯白纸片感
-.b3-dialog__container.sw-platform-dialog--workbench {
-    background: #edf0f5 !important;
-}
-
-[data-theme-mode="dark"] .b3-dialog__container.sw-platform-dialog--workbench,
-[data-theme-mode="dark"] .sw-platform-surface--workbench,
-[data-theme-mode="dark"] .sw-home.sw-home--compact {
-    background: #080a10 !important;
-}
-
-[data-theme-mode="dark"] .sw-home.sw-home--compact .sw-home__cell {
-    background: linear-gradient(135deg, rgba(23, 28, 43, 0.88) 0%, rgba(14, 17, 27, 0.9) 100%) !important;
-    border-color: rgba(255, 255, 255, 0.09) !important;
-    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.18), 0 1px 3px rgba(0, 0, 0, 0.4), 0 12px 28px rgba(0, 0, 0, 0.35) !important;
 }
