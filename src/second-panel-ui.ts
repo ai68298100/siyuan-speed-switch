@@ -612,6 +612,39 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     renderPanel();
                 });
                 banner.appendChild(bannerHint);
+                const autoAlignButton = document.createElement("button");
+                autoAlignButton.type = "button";
+                autoAlignButton.className = "b3-button b3-button--text sw-home__history";
+                autoAlignButton.textContent = "📐 自动对齐";
+                autoAlignButton.title = "自动均衡组件列宽，双拼并排与自适应铺满整行，消灭空白空隙";
+                autoAlignButton.addEventListener("click", () => {
+                    const state = this.getHomeState();
+                    const list = ((state.layouts[device] || []) as Array<any>);
+                    let rowAccum = 0;
+                    list.forEach((entry, idx) => {
+                        const isLast = idx === list.length - 1;
+                        const origW = Number(entry.w) || 6;
+                        if (origW >= 7) {
+                            if (rowAccum === 6) {
+                                entry.w = 6;
+                                rowAccum = 0;
+                            } else if (isLast && rowAccum === 0) {
+                                entry.w = 12;
+                                rowAccum = 0;
+                            } else {
+                                entry.w = 6;
+                                rowAccum = 6;
+                            }
+                        } else if (origW <= 6 && origW >= 4) {
+                            entry.w = 6;
+                            rowAccum = (rowAccum + 6) % 12;
+                        }
+                    });
+                    this.saveHomeState(state);
+                    layoutOpLabel = "自动对齐网格";
+                    renderPanel();
+                });
+                banner.appendChild(autoAlignButton);
                 if (layoutHistory && canUndoLayoutHistory(layoutHistory)) {
                     const undoButton = document.createElement("button");
                     undoButton.type = "button";
