@@ -86,6 +86,7 @@ import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resol
 import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
 import {createPlatformStatus} from "./platform-dom";
 import {mountPlatformDialogCloseHint} from "./platform-dom";
+import {mountRaikiriBridge, dispatchRaikiriNavigatedEvent} from "./api/external-bridge";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournalOutcome as ensureTodayJournalOutcomeAction, findTodayJournalOutcome as findTodayJournalOutcomeAction} from "./journal-actions";
@@ -1118,6 +1119,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 内核 JSON 请求共用超时、取消、可安全读取的重试及相同请求去重策略。
     private readonly requestService = createRequestService();
     private snippetStudioDialog: Dialog | null = null;
+    private disposeRaikiriBridge: (() => void) | null = null;
     private snippetStudioSession: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null; recentIds?: string[]} = {draft: null, baseline: null};
     // T-6869（P1-c）：平台会话级路由状态——最近表面供悬浮球恢复（无持久化，
     // 新会话回落切换器），三个表面 Dialog 各自单例守卫，防止热键/悬浮球连点叠窗。
@@ -1956,9 +1958,10 @@ export default class SpeedSwitchPlugin extends Plugin {
      * （契约对齐小驴打卡 window.siyuanCheckin：whenReady 为就绪信号）。
      * 钩子在 onLayoutReady 后挂载——它的存在本身即代表初始化完成；
      * onunload 移除，不留悬挂引用。只暴露受控动作，不泄漏内部状态。
+     * [Epoch 6] 挂载标准化生态服务桥（协议 v1），包含多端工作台呼叫与导航上下文。
      */
     private exposePublicApi() {
-        (window as any).siyuanSpeedSwitch = {
+        const legacyTarget = {
             whenReady: () => true,
             openSwitcher: () => {
                 if (!this.isMobile && !this.isUnloading) {
@@ -1966,6 +1969,72 @@ export default class SpeedSwitchPlugin extends Plugin {
                 }
             },
         };
+        (window as any).siyuanSpeedSwitch = legacyTarget;
+
+        this.disposeRaikiriBridge = mountRaikiriBridge({
+            openSwitcher: (focusSearch = true) => {
+                if (!this.isMobile && !this.isUnloading) {
+                    this.showSwitcher(focusSearch);
+                }
+            },
+            openWorkbench: (context) => {
+                if (!this.isUnloading) {
+                    this.openPlatformSurface("workbench", "switcher", {
+                        entry: context?.entry || "external-bridge",
+                    });
+                }
+            },
+            openStudio: (context) => {
+                if (!this.isUnloading && this.getAvailablePlatformSurfaces().includes("studio")) {
+                    this.openPlatformSurface("studio", "switcher", {
+                        entry: context?.entry || "external-bridge",
+                        objectId: context?.objectId,
+                        query: context?.query,
+                    });
+                }
+            },
+            getNavigationContext: () => {
+                const active = this.isMobile ? null : getActiveTab();
+                const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+                return {
+                    device: this.isMobile ? "mobile" : "desktop",
+                    activeDocument: active ? { id: this.rootIdOf(active) || "", title: this.titleOf(active) } : undefined,
+                    openTabs: opened.map((tab) => ({
+                        id: this.rootIdOf(tab) || tab.id,
+                        rootId: this.rootIdOf(tab) || undefined,
+                        title: this.titleOf(tab),
+                        path: String((tab as unknown as {path?: string; hPath?: string}).path || (tab as unknown as {hPath?: string}).hPath || ""),
+                        notebookId: resolveSearchNotebookId(tab as unknown),
+                        source: "tabs",
+                    })),
+                    closedTabs: this.getClosedHistory().map((entry) => ({
+                        id: entry.rootId,
+                        rootId: entry.rootId,
+                        title: entry.title,
+                        ts: entry.closedAt,
+                    })),
+                    documentSets: this.getDocumentSets().map((set: any) => ({
+                        name: String(set?.name || ""),
+                        count: Array.isArray(set?.entries) ? set.entries.length : 0,
+                    })),
+                    availableSurfaces: this.getAvailablePlatformSurfaces(),
+                    syncing: this.syncing,
+                };
+            },
+            getWorkspaceStats: () => {
+                const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+                return {
+                    openTabCount: opened.length,
+                    closedTabCount: this.getClosedHistory().length,
+                    documentSetCount: this.getDocumentSets().length,
+                    availableSurfaces: this.getAvailablePlatformSurfaces(),
+                    isMobile: this.isMobile,
+                };
+            },
+            searchDocuments: async (args) => {
+                return await this.searchAgentDocuments(args as unknown as Record<string, unknown>);
+            },
+        }, legacyTarget);
     }
 
     /**
@@ -2036,6 +2105,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         // T-6833：公开钩子随生命周期拆除
         if (typeof window !== "undefined") {
             delete (window as any).siyuanSpeedSwitch;
+        }
+        if (this.disposeRaikiriBridge) {
+            this.disposeRaikiriBridge();
+            this.disposeRaikiriBridge = null;
         }
         // T-6796 皮肤层：卸载时移除 body 标记，宿主恢复纯净主题
         if (typeof document !== "undefined" && document.body) {
