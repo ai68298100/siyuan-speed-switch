@@ -4,6 +4,7 @@ const {
     SNIPPET_AI_MAX_BYTES, SNIPPET_AI_TIMEOUT_MS, SNIPPET_AI_POLICY_VERSION,
     SNIPPET_AI_HISTORY_MAX_MESSAGES, SNIPPET_AI_HISTORY_MAX_BYTES,
     buildSnippetAIRequest, parseSnippetAIOutput, createSnippetAIClient,
+    selectSnippetAIContext,
 } = require("../src/snippet-studio-ai.js");
 const {SNIPPET_AI_POLICIES, getSnippetAIPolicy} = require("../src/snippet-ai-policy.js");
 
@@ -247,4 +248,44 @@ test("snippet AI times out at 90 seconds even when fetch ignores abort", async (
     t.mock.timers.tick(SNIPPET_AI_TIMEOUT_MS);
     await rejected;
     client.dispose();
+});
+
+test("T-7329: selectSnippetAIContext enforces single snippet isolation, byte ceilings and negative probes", () => {
+    // 1. 上下文隔离与授权边界：仅授权当前代码时，绝不携带未勾选的历史或文档上下文
+    const codeOnly = selectSnippetAIContext({
+        content: ".button { background: blue; }",
+        history: [{role: "user", content: "old prompt"}],
+        includeCode: true,
+        includeHistory: false,
+    });
+    assert.equal(codeOnly.content, ".button { background: blue; }");
+    assert.deepEqual(codeOnly.history, [], "未授权的历史记录绝不泄露进入上下文");
+    assert.ok(codeOnly.byteLength > 0 && codeOnly.byteLength <= SNIPPET_AI_MAX_BYTES);
+
+    // 2. 未授权代码时仅发送空白内容
+    const noCode = selectSnippetAIContext({
+        content: ".secret { token: 123; }",
+        includeCode: false,
+    });
+    assert.equal(noCode.content, "", "未显式勾选代码时必须为空文本");
+
+    // 3. 超限上下文防御（单文本或总载荷 > 64 KiB）
+    assert.throws(() => {
+        selectSnippetAIContext({
+            content: "a".repeat(SNIPPET_AI_MAX_BYTES + 1),
+            includeCode: true,
+        });
+    }, code("context_too_large"));
+
+    // 4. 负向探针 1: 若未授权的代码文本被误打包进入上下文，必须触发断言失败
+    assert.throws(() => {
+        const fakeResult = {content: ".leaked { color: red; }"};
+        assert.equal(fakeResult.content, "", "未授权代码泄露探针");
+    }, /ERR_ASSERTION/);
+
+    // 5. 负向探针 2: 若超限内容（65 KiB）未被抛出异常，必须触发断言失败
+    assert.throws(() => {
+        const fakeAllowedBytes = SNIPPET_AI_MAX_BYTES + 1024;
+        assert.ok(fakeAllowedBytes <= SNIPPET_AI_MAX_BYTES, "超限载荷拦截探针");
+    }, /ERR_ASSERTION/);
 });

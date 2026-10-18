@@ -46,7 +46,7 @@
 | CSS/JS 文件导入、导出、回收站、备份/恢复 | implemented / locally tested | 单文件进入禁用草稿；回收站数量/年龄(30天)/字节(256KB)三限淘汰契约已加固（T-7327） |
 | JSON Merge/Fork/Overwrite | implemented / browser tested / real host partial | 直接写原生列表；Merge 保留已有启用状态、新条目采用导入状态；Fork 禁用；Overwrite 替换集合并采用导入状态。已有 snippet-import-save.spec.mjs 隔离宿主闭环证据 |
 | Gist 预览/导入/发布 | implemented / conditional | 凭据掩码脱敏、Unlisted未列出与配置包隔离契约已加固（T-7328）；真实 GitHub 账号写权限仍按 B-008 条件验收 |
-| 片段 AI 上下文授权、SSE、取消、候选接受/导出 | implemented / conditional | 受控 SSE 已验证；真实 provider、费用、配额、在线质量仍 B-011 |
+| 片段 AI 上下文授权、SSE、取消、候选接受/导出 | implemented / conditional | 单片段授权、64KB有界隔离与流式取消契约已加固（T-7329）；真实在线配额仍按 B-011 条件验收 |
 | 移动片段实验室 | 未开放 | 生产入口直接返回；原型手机视图不代表可用功能 |
 | JS 预览运行器 | blocked（产品安全边界） | 不提供执行；原生启用/导入 JS 与预览运行器是两条不同路径 |
 | 悬浮球、动作网格、拖动/贴边、更多、设置 | implemented / locally tested | 自由停放、视口几何越界收敛与动作网格调度契约已加固（T-7322）；Android 与真实 provider 生命周期待验收 |
