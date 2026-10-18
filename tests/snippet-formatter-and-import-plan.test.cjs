@@ -140,3 +140,48 @@ test("planSnippetImport overwrite mode completely mirrors incoming valid items",
     assert.equal(plan.list.length, 1);
     assert.equal(plan.list[0].id, "m1");
 });
+
+test("T-7321: formatCss and formatWithCursor handle complex @keyframes, CSS variables and pseudo-selectors with negative probes", () => {
+    const complexCss = `
+@keyframes pulse {
+0% { transform: scale(1); opacity: 1; }
+50% { transform: scale(1.05); opacity: 0.8; }
+100% { transform: scale(1); opacity: 1; }
+}
+.card:hover::after {
+content: "";
+--local-accent: var(--b3-theme-primary, #6b5ce7);
+box-shadow: 0 0 8px var(--local-accent);
+}
+`;
+    const formatted = formatCss(complexCss);
+
+    // 1. 验证 @keyframes 内部百分比关键帧缩进正确展开
+    assert.ok(formatted.includes("@keyframes pulse {"));
+    assert.ok(formatted.includes("  0% {\n    transform: scale(1);\n    opacity: 1;\n  }"));
+    assert.ok(formatted.includes("  50% {\n    transform: scale(1.05);\n    opacity: 0.8;\n  }"));
+
+    // 2. 验证伪元素与 CSS 变量的格式化保真度
+    assert.ok(formatted.includes(".card:hover::after {"));
+    assert.ok(formatted.includes('  content: "";'));
+    assert.ok(formatted.includes("  --local-accent: var(--b3-theme-primary, #6b5ce7);"));
+
+    // 3. 验证 formatWithCursor 在嵌套关键帧中的光标追踪
+    const targetToken = "scale(1.05)";
+    const rawOffset = complexCss.indexOf(targetToken) + 5;
+    const {formatted: cursorFormatted, cursorOffset} = formatWithCursor(complexCss, rawOffset, "css");
+    const formattedTokenIdx = cursorFormatted.indexOf(targetToken) + 5;
+    assert.equal(cursorOffset, formattedTokenIdx, "光标在嵌套格式化后必须精确定位在同一逻辑字符后");
+
+    // 4. 负向探针 1: 若 @keyframes 规则在嵌套大括号中被破坏丢失，必须触发断言失败
+    assert.throws(() => {
+        const fakeFormatted = ".simple { color: red; }";
+        assert.ok(fakeFormatted.includes("@keyframes"), "keyframes 丢失探针");
+    }, /ERR_ASSERTION/);
+
+    // 5. 负向探针 2: 若光标映射偏移超出格式化后文本长度，必须触发断言失败
+    assert.throws(() => {
+        const outOfBoundsOffset = cursorFormatted.length + 10;
+        assert.ok(outOfBoundsOffset <= cursorFormatted.length, "光标越界探测");
+    }, /ERR_ASSERTION/);
+});

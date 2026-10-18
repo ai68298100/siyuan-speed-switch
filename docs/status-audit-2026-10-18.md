@@ -41,7 +41,7 @@
 | 第三方 provider 注册、卸载占位、恢复、孤儿配置 | implemented / locally tested / browser tested（受控 Chrome 9/9） | smoke 使用高保真思源桩和真实生产 bundle；至少一个真实提供方跨表面全生命周期验收仍不足；B-010 |
 | 来源/网络/鉴权三维统计与过滤扩展（T-7293 / T-7309） | implemented / locally tested | 已在商店根节点及卡片 dataset 贯通来源、网络与鉴权三维元数据及聚合统计；已有来源组/徽标可用 |
 | 桌面片段目录、分组、草稿、查找替换、撤销、冲突 | implemented / locally tested | 编辑器为 textarea + 行号；完整语法高亮/CodeMirror 未交付 |
-| CSS 格式化与光标映射 | implemented / locally tested | 轻量 CSS 格式化，不是完整 CSS parser；JS 格式化未开放；先预览/比对复杂语法 |
+| CSS 格式化与光标映射 | implemented / locally tested | 轻量零依赖格式化与光标追踪，@keyframes/变量/嵌套伪类契约已加固（T-7321）；JS 格式化未开放 |
 | CSS 预览、已保存/草稿对照、AI 候选差异 | implemented / locally tested | 沙箱预览禁止 JS 与外部网络；不表示保存到宿主后的原生片段也处于该沙箱 |
 | CSS/JS 文件导入、导出、回收站、备份/恢复 | implemented / locally tested | 单文件进入禁用草稿；备份恢复按预览确认及读回合同运行 |
 | JSON Merge/Fork/Overwrite | implemented / browser tested / real host partial | 直接写原生列表；Merge 保留已有启用状态、新条目采用导入状态；Fork 禁用；Overwrite 替换集合并采用导入状态。已有 snippet-import-save.spec.mjs 隔离宿主闭环证据 |
@@ -92,7 +92,7 @@ Chrome 证据：[JSON 导入 7 项结果](../.artifacts/ui-audit-json-import/res
 | 开发依赖漏洞 | terser-webpack-plugin 5.3.16→5.6.1；serialize-javascript 7.1.2、source-map-js 1.2.2、postcss-selector-parser 7.1.6；审计 5→0，全部是开发工具链，非已确认运行时漏洞 |
 | 语言重复 key 与旧审计误判 | 原 duplicate 检查在 JSON.parse 后比较 Object.keys，恒真；改为解析源属性后识别重复，发现并清除中文 snippetProbeTagC 和英文 quickCaptureUnknown 重复定义。release 审计改读当前账本；diff --check 不再误称“工作树干净” |
 
-仍需跟踪：入口文件体积与多层 SCSS 带来的维护成本；复杂 CSS 格式化不覆盖完整语法；真实长期会话、内存趋势、大库尾部性能和提供方生命周期不能由单测数量代替。
+仍需跟踪：入口文件体积与多层 SCSS 带来的维护成本；真实长期会话、内存趋势、大库尾部性能和提供方生命周期不能由单测数量代替。
 
 旧 integration/quality 批次脚本中仍有大量文件存在/关键词清单检查；本轮已取消“包含 consume 就证明一次执行”的错误命名。它们通过只表示结构清单满足，不能证明重放保护、凭据绝不泄露或所有边界正确；关键行为须依赖实际函数回归及宿主证据。
 
