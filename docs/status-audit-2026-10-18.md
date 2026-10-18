@@ -33,7 +33,7 @@
 | 收藏/分组、最近打开/关闭、日记入口、文档集保存恢复 | implemented / locally tested / real host partial | 写入、恢复与返回现场已有隔离思源证据（含 document-sets.spec.mjs、favorites-flow.spec.mjs 与 recent-closed-flow.spec.mjs 闭环）；长期大工作区现场仍待持续观测 |
 | 已开页签→已开文档内容→全库标题/受限全文 | implemented / locally tested / real host partial | API 缺失时降级；不替代原生搜索，也不承诺全库无限结果 |
 | 笔记本、类型、方式、排序与路径筛选、保存筛选 | implemented / locally tested / real host partial | 桌面路径端点已有 200/22ms 及防御契约，245px 最窄 Dock 控件可达已取证（T-7311）；移动块定位及未知旧宿主语义继续待证 |
-| 右侧内容预览、预览内查找、取消/失败重试 | implemented / locally tested | 当前真实主题与读屏体验仍待复验 |
+| 右侧内容预览、预览内查找、取消/失败重试 | implemented / locally tested | 预览窗格长内容截断防溢出与读屏 aria-live 回执契约已加固（T-7316）；当前真实主题仍待持续复验 |
 | 移动切换器、排序/分组 sheet、焦点恢复 | implemented / locally tested | Android Back、键盘、旋转、长按/滑动、触控命中仍 blocked（B-004） |
 | 工作台查看/编辑、尺寸、重排/长按、拉伸、撤销重做 | implemented / locally tested | 七档 Bento 尺寸归一化、X 英雄位与焦点环契约已固化（T-7314）；真实 Android 手势待验收 |
 | 工作台空态、缓存/陈旧、失败/重试、健康诊断 | implemented / locally tested / real host partial | 服务在线与数据健康取决于每个组件，不能用 ready 定义替代探测 |

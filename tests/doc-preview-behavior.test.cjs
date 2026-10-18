@@ -349,3 +349,50 @@ test('preview find preserves IME input and applies the committed query once (T-7
         assert.equal(bar.hidden, true, '非组合 Esc 仍关闭查找');
     } finally {f.dom.window.close();}
 });
+
+test("T-7316: doc preview bounds oversized outlines and excerpts with aria live accessibility and negative probes", async () => {
+    // 构造超长大纲（50 个标题）与超长段落文本（5000 字）
+    const oversizedOutline = Array.from({length: 50}, (_, i) => ({
+        name: `标题 ${i + 1} 超长测试大纲名称`,
+        depth: (i % 6) + 1,
+        content: `标题 ${i + 1}`,
+    }));
+    const oversizedDoc = docResponse(...Array.from({length: 30}, (_, i) => `段落 ${i + 1}: ${"正文".repeat(50)}`));
+
+    const f = fixture((url) => Promise.resolve(url.includes("Outline")
+        ? {code: 0, data: oversizedOutline}
+        : {code: 0, data: oversizedDoc.data}));
+
+    try {
+        f.schedule();
+        await f.flush();
+
+        const pane = f.box.querySelector(".sw__doc-preview");
+        assert.ok(pane, "预览窗格必须已挂载");
+
+        // 1. 验证大纲条目被严格有界截断在 12 条以内 (DOC_PREVIEW_OUTLINE_MAX)
+        const headings = pane.querySelectorAll(".sw__doc-preview-heading");
+        assert.ok(headings.length > 0 && headings.length <= 12, `大纲数量必须有界在 12 条内，实测 ${headings.length}`);
+
+        // 2. 验证正文段落数量被严格有界截断
+        const excerpts = pane.querySelectorAll(".sw__doc-preview-block");
+        assert.ok(excerpts.length > 0 && excerpts.length <= 12, `正文块必须有界在 12 块内，实测 ${excerpts.length}`);
+
+        // 3. 验证无障碍属性：状态指示器必须具备 role="status" 与 aria-live="polite"
+        const statusBadge = pane.querySelector(".sw__doc-preview-status");
+        assert.equal(statusBadge?.getAttribute("role"), "status");
+        assert.equal(statusBadge?.getAttribute("aria-live"), "polite");
+
+        // 4. 负向探针 1: 若大纲未截断（仍为 50 条），必须触发断言失败
+        assert.throws(() => {
+            assert.equal(headings.length, 50, "超限大纲未截断探针");
+        }, /ERR_ASSERTION/);
+
+        // 5. 负向探针 2: 若状态指示器丢失 aria-live 语义，必须触发断言失败
+        assert.throws(() => {
+            assert.equal(statusBadge?.getAttribute("aria-live"), null, "丢失 aria-live 探针");
+        }, /ERR_ASSERTION/);
+    } finally {
+        f.dom.window.close();
+    }
+});
