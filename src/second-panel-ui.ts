@@ -1304,16 +1304,26 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         const initialGridRow = cell.style.gridRow;
                         cell.classList.add("sw-home__cell--resizing");
                         resizeHandle.setAttribute("data-dimensions", `${lastW}列 × ${lastH}行`);
+                        let moveFrame = 0;
                         const onMove = (m: PointerEvent) => {
                             lastW = Math.max(2, Math.min(12, startW + Math.round((m.clientX - startX) / colW)));
                             lastH = Math.max(1, Math.min(10, startH + Math.round((m.clientY - startY) / 36)));
-                            cell.style.setProperty("--sw-home-span", String(lastW));
-                            cell.style.gridRow = `span ${lastH}`;
-                            resizeHandle.setAttribute("data-dimensions", `${lastW}列 × ${lastH}行`);
+                            if (!moveFrame) {
+                                moveFrame = window.requestAnimationFrame(() => {
+                                    moveFrame = 0;
+                                    cell.style.setProperty("--sw-home-span", String(lastW));
+                                    cell.style.gridRow = `span ${lastH}`;
+                                    resizeHandle.setAttribute("data-dimensions", `${lastW}列 × ${lastH}行`);
+                                });
+                            }
                         };
                         const onEnd = (commit: boolean) => {
                             if (ended) return;
                             ended = true;
+                            if (moveFrame) {
+                                window.cancelAnimationFrame(moveFrame);
+                                moveFrame = 0;
+                            }
                             window.removeEventListener("pointermove", onMove);
                             window.removeEventListener("pointerup", onPointerUp);
                             window.removeEventListener("pointercancel", onPointerCancel);

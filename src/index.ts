@@ -4622,6 +4622,7 @@ const updatedMap: {[rootId: string]: string} = {};
         const disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector<HTMLElement>(".sw__history-dd"), closeOverlay);
         // T-7040：排序浮层 disposer 由 bindSwitcherToolbarActions 返回后在释放链调用
         let disposeSortMenu: () => void = () => undefined;
+        let disposeBackTop: () => void = () => undefined;
         let switcherReleased = false;
         release.fn = () => {
             if (switcherReleased) return;
@@ -4631,6 +4632,7 @@ const updatedMap: {[rootId: string]: string} = {};
             iconObserver?.disconnect();
             if (iconClampFrame) cancelAnimationFrame(iconClampFrame);
             disposeSearchFilter();
+            disposeBackTop();
             disposeHistoryDropdown();
             disposeSortMenu();
             disposeDocSearchSession.call(this, scrollElement);
@@ -4660,8 +4662,8 @@ const updatedMap: {[rootId: string]: string} = {};
             scrollElement.focus();
         }
 
-        // 鍥炲埌椤堕儴鎸夐挳
-        this.bindSwitcherBackTop(dialog, scrollElement);
+        // 回到顶部按钮（RAF 节流与解绑通道）
+        disposeBackTop = this.bindSwitcherBackTop(dialog, scrollElement);
     }
 
     // 弹窗外观准备：全屏模式下给容器加类（去圆角/边框/最大宽度），并锁定 .b3-dialog__body 不整体滚动
@@ -4743,18 +4745,37 @@ const updatedMap: {[rootId: string]: string} = {};
         });
     }
 
-    // 绑定回到顶部按钮：滚动超过 240px 显示，点击平滑回顶
-    private bindSwitcherBackTop(dialog: Dialog, scrollElement: HTMLElement) {
+    // 绑定回到顶部按钮：滚动超过 240px 显示，点击平滑回顶（RAF 节流 + 被动监听 + 销毁解绑）
+    private bindSwitcherBackTop(dialog: Dialog, scrollElement: HTMLElement): () => void {
         const backTopBtn = dialog.element.querySelector<HTMLElement>(".sw__back-top");
         if (!backTopBtn) {
-            return;
+            return () => undefined;
         }
-        scrollElement.addEventListener("scroll", () => {
-            backTopBtn.classList.toggle("sw__show", scrollElement.scrollTop >= BACK_TOP_THRESHOLD_PX);
-        });
-        backTopBtn.addEventListener("click", () => {
+        let rafId = 0;
+        const onScroll = () => {
+            if (rafId) return;
+            rafId = window.requestAnimationFrame(() => {
+                rafId = 0;
+                backTopBtn.classList.toggle("sw__show", scrollElement.scrollTop >= BACK_TOP_THRESHOLD_PX);
+            });
+        };
+        const onClick = () => {
+            if (rafId) {
+                window.cancelAnimationFrame(rafId);
+                rafId = 0;
+            }
             scrollElement.scrollTo({top: 0, behavior: "smooth"});
-        });
+        };
+        scrollElement.addEventListener("scroll", onScroll, {passive: true});
+        backTopBtn.addEventListener("click", onClick);
+        return () => {
+            if (rafId) {
+                window.cancelAnimationFrame(rafId);
+                rafId = 0;
+            }
+            scrollElement.removeEventListener("scroll", onScroll);
+            backTopBtn.removeEventListener("click", onClick);
+        };
     }
 
     // 绑定"全屏 ⇄ 普通"原地切换按钮（与关闭弹窗不同：原地切换可以保留搜索/缩略图状态）
@@ -10029,7 +10050,12 @@ private rootIdOf(tab: Tab): string | null {
                 unbindGlobal();
             }
         }) : null;
+        let repositionRaf = 0;
         const unbindGlobal = () => {
+            if (repositionRaf) {
+                window.cancelAnimationFrame(repositionRaf);
+                repositionRaf = 0;
+            }
             document.removeEventListener("pointerdown", onDocPointerDown, true);
             window.removeEventListener("resize", onReposition);
             document.removeEventListener("scroll", onReposition, true);
@@ -10063,11 +10089,15 @@ private rootIdOf(tab: Tab): string | null {
                 closePanel();
             }
         };
-        // 视口尺寸/滚动变化时重新贴位（fixed 定位不随文档流移动）
+        // 视口尺寸/滚动变化时重新贴位（fixed 定位不随文档流移动，RAF 节流）
         const onReposition = () => {
-            if (!panel.classList.contains("fn__none") && container.isConnected) {
-                this.positionFavPanel(trigger, panel);
-            }
+            if (repositionRaf) return;
+            repositionRaf = window.requestAnimationFrame(() => {
+                repositionRaf = 0;
+                if (!panel.classList.contains("fn__none") && container.isConnected) {
+                    this.positionFavPanel(trigger, panel);
+                }
+            });
         };
         trigger.addEventListener("click", () => {
             const willOpen = panel.classList.contains("fn__none");
@@ -10081,7 +10111,7 @@ private rootIdOf(tab: Tab): string | null {
                 this.positionFavPanel(trigger, panel);
                 document.addEventListener("pointerdown", onDocPointerDown, true);
                 window.addEventListener("resize", onReposition);
-                document.addEventListener("scroll", onReposition, true);
+                document.addEventListener("scroll", onReposition, {capture: true, passive: true});
                 observer?.observe(document.body, {childList: true, subtree: true});
             } else {
                 closePanel();
@@ -13857,7 +13887,16 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     private bindSidebarToolbarEvents(element: HTMLElement, scrollElement: HTMLDivElement, refresh: IOverlayClose): () => void {
         // 搜索：与弹窗一致，页签匹配在上、全库文档在下
         const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
-        const disposeHistoryDropdown = this.setupOpenHistoryDropdown(element.querySelector<HTMLElement>(".sw__history-dd"), refresh);
+        const rawDisposeHistoryDropdown = this.setupOpenHistoryDropdown(element.querySelector<HTMLElement>(".sw__history-dd"), refresh);
+        const disposeHistoryDropdown = () => {
+            if (backTopRaf) {
+                window.cancelAnimationFrame(backTopRaf);
+                backTopRaf = 0;
+            }
+            scrollElement.removeEventListener("scroll", onBackTopScroll);
+            backTopBtn?.removeEventListener("click", onBackTopClick);
+            rawDisposeHistoryDropdown();
+        };
         this.sidebarSearchFilterDispose = searchInput
             ? bindDocSearchFilter.call(this, element, scrollElement, searchInput, refresh)
             : null;
@@ -13886,12 +13925,23 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         });
 
         const backTopBtn = element.querySelector<HTMLElement>(".sw__back-top");
-        scrollElement.addEventListener("scroll", () => {
-            backTopBtn?.classList.toggle("sw__show", scrollElement.scrollTop >= BACK_TOP_THRESHOLD_PX);
-        });
-        backTopBtn?.addEventListener("click", () => {
+        let backTopRaf = 0;
+        const onBackTopScroll = () => {
+            if (backTopRaf) return;
+            backTopRaf = window.requestAnimationFrame(() => {
+                backTopRaf = 0;
+                backTopBtn?.classList.toggle("sw__show", scrollElement.scrollTop >= BACK_TOP_THRESHOLD_PX);
+            });
+        };
+        const onBackTopClick = () => {
+            if (backTopRaf) {
+                window.cancelAnimationFrame(backTopRaf);
+                backTopRaf = 0;
+            }
             scrollElement.scrollTo({top: 0, behavior: "smooth"});
-        });
+        };
+        scrollElement.addEventListener("scroll", onBackTopScroll, {passive: true});
+        backTopBtn?.addEventListener("click", onBackTopClick);
         // T-7040：排序浮层与历史下拉共用侧栏释放通道
         return () => {
             disposeHistoryDropdown();

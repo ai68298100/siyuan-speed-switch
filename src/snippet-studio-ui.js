@@ -1878,7 +1878,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         commitDraftHistory();
     });
     editor.addEventListener("input", changed);
-    editor.addEventListener("scroll", () => { lineNumbers.scrollTop = editor.scrollTop; });
+    let editorScrollFrame = 0;
+    editor.addEventListener("scroll", () => {
+        if (editorScrollFrame) return;
+        editorScrollFrame = requestAnimationFrame(() => {
+            editorScrollFrame = 0;
+            lineNumbers.scrollTop = editor.scrollTop;
+        });
+    }, {passive: true});
     editorSection.addEventListener("keydown", (event) => {
         if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === "s" && !event.isComposing) {
             event.preventDefault();
