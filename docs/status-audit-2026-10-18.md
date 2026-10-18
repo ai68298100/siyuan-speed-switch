@@ -38,7 +38,7 @@
 | 工作台查看/编辑、尺寸、重排/长按、拉伸、撤销重做 | implemented / locally tested | 七档 Bento 尺寸归一化、X 英雄位与焦点环契约已固化（T-7314）；真实 Android 手势待验收 |
 | 工作台空态、缓存/陈旧、失败/重试、健康诊断 | implemented / locally tested / real host partial | 服务在线与数据健康取决于每个组件，健康诊断与定向重试过滤契约已加固（T-7320） |
 | 组件商店搜索、来源、预览、配置、尺寸、添加/移除 | implemented / locally tested | 生产仍为独立 Dialog；440px 内嵌 Gallery Sheet 未实现 |
-| 第三方 provider 注册、卸载占位、恢复、孤儿配置 | implemented / locally tested / browser tested（受控 Chrome 9/9） | smoke 使用高保真思源桩和真实生产 bundle；至少一个真实提供方跨表面全生命周期验收仍不足；B-010 |
+| 第三方 provider 注册、卸载占位、恢复、孤儿配置 | implemented / locally tested / browser tested（受控 Chrome 9/9） | 7 阶段全生命周期状态机、白名单约束与孤儿配置/布局协同隔离契约已加固（T-7323）；至少一个真实提供方跨表面全生命周期验收仍不足；B-010 |
 | 来源/网络/鉴权三维统计与过滤扩展（T-7293 / T-7309） | implemented / locally tested | 已在商店根节点及卡片 dataset 贯通来源、网络与鉴权三维元数据及聚合统计；已有来源组/徽标可用 |
 | 桌面片段目录、分组、草稿、查找替换、撤销、冲突 | implemented / locally tested | 编辑器为 textarea + 行号；完整语法高亮/CodeMirror 未交付 |
 | CSS 格式化与光标映射 | implemented / locally tested | 轻量零依赖格式化与光标追踪，@keyframes/变量/嵌套伪类契约已加固（T-7321）；JS 格式化未开放 |

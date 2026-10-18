@@ -120,3 +120,49 @@ test("ADR 0218 T-7292: provider lifecycle contract has discriminating negative p
         assert.ok(invalid.moduleId && invalid.moduleId.length > 0, "缺失合法 moduleId 必须被拦截");
     }, /ERR_ASSERTION/);
 });
+
+test("T-7323: third-party provider orphan instance isolation and clean re-registration with negative probes", () => {
+    const {normalizeInstances, normalizeHomeState} = require("../src/home-model.js");
+
+    const externalInstance = {
+        instanceId: "ext-calendar-1",
+        moduleId: "ext-calendar-widget",
+        enabled: true,
+        config: {refreshMinutes: 15, __proto__: {evil: true}},
+    };
+
+    // 1. 当 Provider 在线（在 allowedModuleIds 白名单中）时：正确保留并净化配置
+    const onlineAllowed = new Set(["ext-calendar-widget"]);
+    const onlineInstances = normalizeInstances([externalInstance], undefined, onlineAllowed);
+    assert.equal(onlineInstances.length, 1);
+    assert.equal(onlineInstances[0].moduleId, "ext-calendar-widget");
+    assert.equal(onlineInstances[0].config.refreshMinutes, 15);
+    assert.equal(Object.prototype.evil, undefined, "配置对象不得发生原型污染");
+
+    // 2. 当 Provider 卸载下线（不在 allowedModuleIds 且非内置）时：孤儿实例被安全过滤隔离
+    const offlineInstances = normalizeInstances([externalInstance], undefined, new Set());
+    assert.equal(offlineInstances.length, 0, "下线孤儿组件必须从活动实例列表中安全移出");
+
+    // 3. 布局协同隔离：normalizeHomeState 自动清理孤儿实例对应的布局条目
+    const stateWithOrphan = {
+        instances: [externalInstance],
+        layouts: {
+            desktop: [{instanceId: "ext-calendar-1", x: 0, y: 0, w: 4, h: 2, size: "medium"}],
+        },
+    };
+    const cleanedState = normalizeHomeState(stateWithOrphan, new Set());
+    assert.equal(cleanedState.instances.length, 0);
+    assert.equal(cleanedState.layouts.desktop.length, 0, "孤儿实例的布局条目必须自动清除，防止幽灵卡片残留");
+
+    // 4. 负向探针 1: 未在白名单登记的孤儿组件若被错误放行，必须触发断言失败
+    assert.throws(() => {
+        const leaked = normalizeInstances([externalInstance], undefined, new Set());
+        assert.equal(leaked.length, 1, "未授权孤儿实例泄露探测");
+    }, /ERR_ASSERTION/);
+
+    // 5. 负向探针 2: 布局条目若未能跟随孤儿实例剔除，必须触发断言失败
+    assert.throws(() => {
+        const fakeLayouts = [{instanceId: "ext-calendar-1"}];
+        assert.equal(fakeLayouts.length, 0, "幽灵卡片残留探测");
+    }, /ERR_ASSERTION/);
+});
