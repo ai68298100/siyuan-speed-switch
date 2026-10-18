@@ -61,7 +61,7 @@ import type {HomeWidgetSize} from "./constants";
 import {openHomeConfigForm} from "./home-config-form";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
 import {resolveWidgetCatalogState} from "./widget-catalog";
-import {buildHomeStoreProviderGroups, buildHomeStoreSourceGroups, buildHomeStoreSourceSearchText, resolveHomeModuleSource} from "./home-source-model";
+import {buildHomeStoreProviderGroups, buildHomeStoreSourceGroups, buildHomeStoreSourceSearchText, resolveHomeModuleSource, buildHomeStoreTransparencySummary} from "./home-source-model";
 import {mountPlatformDialogCloseHint} from "./platform-dom";
 
 export interface HomeStoreUiHost {
@@ -731,6 +731,15 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
             resultSummary.setAttribute("aria-live", "polite");
             resultSummary.setAttribute("aria-atomic", "true");
             resultSummary.dataset.state = "ready";
+            const initialTransparency = buildHomeStoreTransparencySummary([...activeIds].map((id) => ({
+                moduleId: id,
+                def: defs.get(id),
+                added: instanceByModule.has(id),
+            })));
+            root.dataset.transparencySummary = JSON.stringify(initialTransparency);
+            resultSummary.dataset.transparencySources = `${initialTransparency.sources.builtin}/${initialTransparency.sources.family}/${initialTransparency.sources.plugin}/${initialTransparency.sources.external}`;
+            resultSummary.dataset.transparencyNetworks = `${initialTransparency.networks.local}/${initialTransparency.networks.loopback}/${initialTransparency.networks.remote}`;
+            resultSummary.dataset.transparencyAuths = `${initialTransparency.auths.none}/${initialTransparency.auths.token}/${initialTransparency.auths.host}`;
             storeFragment.appendChild(resultSummary);
             root.dataset.query = normalizeHomeStoreQuery(searchInput.value);
 
@@ -833,6 +842,10 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 });
                 card.appendChild(selectButton);
                 card.dataset.search = `${buildHomeStoreSearchText(def, moduleId)} ${externalInfo?.providerName || ""} ${buildHomeStoreSourceSearchText(def)}`.toLowerCase();
+                const sourceMetaInfo = sourceOf(def);
+                card.dataset.sourceKind = sourceMetaInfo.kind;
+                card.dataset.sourceNetwork = sourceMetaInfo.network;
+                card.dataset.sourceAuth = sourceMetaInfo.auth;
                 card.dataset.category = def.category === "siyuan" ? "builtin" : "plugin";
                 card.dataset.availability = def.availability || "ready";
                 card.dataset.integration = externalInfo?.integration === "http" ? "network"

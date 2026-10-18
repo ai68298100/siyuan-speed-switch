@@ -1543,9 +1543,14 @@ export default class SpeedSwitchPlugin extends Plugin {
                                 notebook: target.id, path: payload.title, markdown: payload.markdown,
                             });
                             if (!created || created.code !== 0) return {docId: ""};
-                            // createDocWithMd 不回传 ID：按标题回查最近创建的同名根文档
+                            // 优先直读内核响应中的原生文档 ID（真机同步返回），免疫同名冲突与异步索引延迟
+                            if (typeof created.data === "string" && BLOCK_ID_RE.test(created.data)) {
+                                return {docId: created.data};
+                            }
+                            // 宿主兼容兜底：若旧内核未直接回传 ID，限定当前笔记本与标题回查
+                            const cleanTitle = (payload.title || "").replace(/^\/+/, "");
                             const locate = await this.fetchKernelJson("/api/query/sql", {
-                                stmt: `SELECT id FROM blocks WHERE type='d' AND content='${payload.title.split("'").join("''")}' ORDER BY created DESC LIMIT 1`,
+                                stmt: `SELECT id FROM blocks WHERE box='${target.id}' AND type='d' AND content='${cleanTitle.split("'").join("''")}' ORDER BY created DESC LIMIT 1`,
                             });
                             return {docId: (locate?.data || [])[0]?.id || ""};
                         },

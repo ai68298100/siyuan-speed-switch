@@ -434,49 +434,9 @@ Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；En
 - **Tab-change hints**: optionally show the last-updated time and a “Changed” badge for changes in the past seven days. Tab cards in the switcher, sidebar, and mobile view refresh when updated metadata arrives. This option is off by default.
 - **Validation boundary**: this batch passed automated tests and real-kernel E2E against a backup workspace; real Android and desktop host acceptance remains tracked in [BLOCKERS.md](BLOCKERS.md).
 
-### v0.37.0 (2026-09-26)
+### v0.30.0–v0.37.0 Early Release History (2026-09-22–2026-09-26)
 
-- **Platform · fullscreen by default**: the switcher, workbench and snippet studio open fullscreen by default (adaptive/custom sizes remain selectable; users who changed settings are unaffected). Opened tabs render as a 4-column large-card grid; workbench widgets render with full content.
-- **Platform · unified route context & ball restore**: singleton guards for the switcher/workbench dialogs (rapid clicks no longer stack windows); the floating ball restores the last used surface with a safe switcher fallback; workbench layout-editing state survives surface navigation.
-- **UI · unified platform language (six RZ batches)**: settings group cards with eight enums as segmented controls; keyboard hints as kbd chips; six-state status badges; kbd-skinned digit badges; workbench edit banner; store pill actions; quick-capture segmented targets with a primary pill save; stacked mobile bottom bar (44px targets). Contrast sampling fixed host warning/error colors failing 3:1 as badge small text.
-- **Snippet studio · original layout absorbed**: preview hero + properties:editor row + AI rail + catalog as an overlay picker; opens fullscreen.
-- **Engineering**: ADR 0079/0080; 26-screen full-plugin UI prototype; baseline 6201 tests.
-
-### v0.36.0 (2026-09-25)
-
-- **Keyboard · arrow-key row navigation**: after Tab focuses a search result row, ↑/↓ moves through rows with scroll follow; rows outside the doc grid keep native scrolling. The keyboard-first loop is complete: Tab into results → arrows to scan → 1-9 direct open or Enter to activate.
-- **Search · resident preview pane**: on desktop, a right-hand pane live-previews the focused document's outline (≤12 entries) and first-paragraph excerpt (≤600 chars); synced to row focus with 300ms debounce and stale-packet discard; zero new kernel endpoints.
-
-### v0.35.0 (2026-09-25)
-
-- **Search · keyword highlighting**: query terms are highlighted in doc result titles and snippets (solid mark on titles, primary tint on snippets; segment assembly with zero innerHTML; exclusions stay plain, casing preserved).
-- **Search · snippet sanitization**: the kernel's presentational `<mark>` wrappers in full-text snippets are stripped at the projection layer instead of showing as literal text (known wrappers only; literal prose like "a < b" is untouched).
-- **Keyboard · digit direct access for result rows**: in search state, 1-9 opens the first nine visible doc results (with digit badges), sharing one activation entry with clicks (same block-level hit anchoring); digit keys no longer go dead when cards hide.
-
-### v0.34.0 (2026-09-24)
-
-- **Related content**: the zero-term workbench lists backlinks/mentions of the current document (official endpoint, bounded projection, explainable truncation); click to jump.
-- **Saved searches + `>` command mode**: save and replay queries and filters; `>` enters command mode listing executable actions only.
-- **Marks + digit badges**: jump back by exact scroll ratio; the first nine visible cards carry digit badges.
-- **Multi-target quick capture**: journal/current-doc targets, destination preview, controlled write with per-step failure reasons.
-- **Preview open**: Alt+click opens search results as read-only preview tabs.
-- **Document set version history & rollback**: overwrites keep the last 3 versions, any of them can be restored reversibly; restore summary includes Essentials receipts; scene presets persist into document sets.
-- **Dynamic favorite groups**: tag + notebook scope + updated-window parameterized queries.
-- **Density tier & config pack**: compact density switch; one-click export/import of a versioned config pack (grouped apply with per-item receipts; no atomic multi-key transaction claim).
-- **Mobile floating-ball anti-misfire**: `data-prevent-swipe` contract + touch-stream interception + drag-time scroll-chain blocking; dragging the ball no longer triggers SiYuan edge swipes, while swipes elsewhere keep working.
-- **Real-instance E2E channel**: 6 real-kernel acceptance specs (desktop/mobile/readonly), plus ADR 0077 (1024 KiB raw line) and provider protocol metadata.
-### v0.30.1 (2026-09-22)
-
-- **Task Horizon mobile integration**: the floating ball can discover and invoke the task manager and quick-add plugin commands, rechecking provider capabilities before execution and safely handling failures, timeouts, and unloads.
-- **Companion version required**: the two mobile commands require the matching Task Horizon patch to be merged and released; upgrading LvSpeed Switch alone cannot create those provider-side mobile entries.
-- **Verification**: 6,020 tests across 223 files, four UI smoke suites, 22 floating-ball Chromium scenarios, and 6/6 provider integration checks passed; Android keyboard, back navigation, rotation, and task submission remain pending.
-
-### v0.30.0 (2026-09-22)
-
-- **Complete floating ball**: independent desktop, sidebar, and mobile surfaces with stable drag targets, free placement, action execution, overflow search, and keyboard-equivalent access.
-- **Configuration governance**: appearance/behavior settings, per-surface enablement and action ordering, default presets, import/export, capability states, and safe fallback.
-- **Reliability and viewport handling**: scroll/modal/fullscreen yielding, execution watchdog, visualViewport/safe-area handling, and host-aware low layering.
-- **Verification**: 6,011 tests, four UI smoke suites, 22 Chromium scenarios, and 100 real pointer drags passed.
+- Default fullscreen surfaces, arrow-key row navigation, keyword highlighting, snippet sanitization, `>` command mode, marks, and the complete floating-ball delivery are detailed in [CHANGELOG.en-US.md](./docs/CHANGELOG.en-US.md).
 
 The complete history lives in [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); the Chinese version is [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 </details>

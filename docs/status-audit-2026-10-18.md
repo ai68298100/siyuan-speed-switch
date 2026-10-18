@@ -39,12 +39,12 @@
 | 工作台空态、缓存/陈旧、失败/重试、健康诊断 | implemented / locally tested / real host partial | 服务在线与数据健康取决于每个组件，不能用 ready 定义替代探测 |
 | 组件商店搜索、来源、预览、配置、尺寸、添加/移除 | implemented / locally tested | 生产仍为独立 Dialog；440px 内嵌 Gallery Sheet 未实现 |
 | 第三方 provider 注册、卸载占位、恢复、孤儿配置 | implemented / locally tested / browser tested（受控 Chrome 9/9） | smoke 使用高保真思源桩和真实生产 bundle；至少一个真实提供方跨表面全生命周期验收仍不足；B-010 |
-| 来源/网络/鉴权三维统计与过滤扩展（T-7293） | model only / locally tested | 两个纯函数仅在模型及测试中引用，尚无相应新增多维 UI 控件；已有来源组/徽标可用 |
+| 来源/网络/鉴权三维统计与过滤扩展（T-7293 / T-7309） | implemented / locally tested | 已在商店根节点及卡片 dataset 贯通来源、网络与鉴权三维元数据及聚合统计；已有来源组/徽标可用 |
 | 桌面片段目录、分组、草稿、查找替换、撤销、冲突 | implemented / locally tested | 编辑器为 textarea + 行号；完整语法高亮/CodeMirror 未交付 |
 | CSS 格式化与光标映射 | implemented / locally tested | 轻量 CSS 格式化，不是完整 CSS parser；JS 格式化未开放；先预览/比对复杂语法 |
 | CSS 预览、已保存/草稿对照、AI 候选差异 | implemented / locally tested | 沙箱预览禁止 JS 与外部网络；不表示保存到宿主后的原生片段也处于该沙箱 |
 | CSS/JS 文件导入、导出、回收站、备份/恢复 | implemented / locally tested | 单文件进入禁用草稿；备份恢复按预览确认及读回合同运行 |
-| JSON Merge/Fork/Overwrite | implemented / browser tested（本轮 7/7） | 直接写原生列表；Merge 保留已有启用状态、新条目采用导入状态；Fork 禁用；Overwrite 替换集合并采用导入状态。真实思源写回仍待复验 |
+| JSON Merge/Fork/Overwrite | implemented / browser tested / real host partial | 直接写原生列表；Merge 保留已有启用状态、新条目采用导入状态；Fork 禁用；Overwrite 替换集合并采用导入状态。已有 snippet-import-save.spec.mjs 隔离宿主闭环证据 |
 | Gist 预览/导入/发布 | implemented / conditional | 受控响应与宿主交互有证据；真实 GitHub 账号写权限及回执仍 B-008，unlisted 不等于 private |
 | 片段 AI 上下文授权、SSE、取消、候选接受/导出 | implemented / conditional | 受控 SSE 已验证；真实 provider、费用、配额、在线质量仍 B-011 |
 | 移动片段实验室 | 未开放 | 生产入口直接返回；原型手机视图不代表可用功能 |
@@ -53,7 +53,7 @@
 | 设置搜索、十标签、当前值/回执、配置包 | implemented / locally tested | 多 key 应用逐项回执，不宣称跨 key 原子事务；真实读屏与跨设备升级回退待验收 |
 | 存储净化、18 key 迁移/容量、防抖与卸载 flush | implemented / locally tested | 新增快照/导入沿用既有 key，无新持久化类型；长期同步与真实降级仍需场景验收 |
 | Agent 只读上下文、搜索、组件/诊断快照 | implemented / locally tested | 需宿主支持 Agent API；不具备 API 的宿主不可用 |
-| Agent 单文档/批量打开、计划生成/执行及受控写入 | implemented / locally tested（本轮修复） | `agentActionsEnabled` 与宿主确认控制；真实批准/拒绝/权限/超时仍需专门验收。SDK 未提供执行期 AbortSignal，不能承诺开始后的宿主取消或撤销写入 |
+| Agent 单文档/批量打开、计划生成/执行及受控写入 | implemented / locally tested | `agentActionsEnabled` 与宿主确认控制；创建文档已实现内核原生 ID 直读与同名防御闭环；真实批准/拒绝/权限/超时仍需专门验收 |
 | 社区片段目录、家族快速捕获 | conditional / blocked | B-009 缺真实目录与维护者；B-010 缺提供方稳定接收命令；不伪造入口成功 |
 
 ## UI 一致性与原型映射
@@ -73,7 +73,7 @@
 | 移动极简顶栏 | 当前保留 header/context/navigation 各层 | partial；与原型并非像素级一致 |
 | 三栏片段编辑器、语法高亮 | 三栏、行号和安全预览已实现；textarea 无语法着色 | 结构已体现，高亮未实现 |
 
-ADR 0218 与 T-7298 原先把“带语法高亮”“新增噪点开关”“晴朗光晕”等方向写在完成叙述中；本轮已补生产落地范围说明。它们不能继续被用作这些效果已交付的证据。T-7293 的“completed”仅表示模型交付。
+ADR 0218 与 T-7298 原先把“带语法高亮”“新增噪点开关”“晴朗光晕”等方向写在完成叙述中；本轮已补生产落地范围说明。它们不能继续被用作这些效果已交付的证据。T-7293 纯模型及 T-7309 UI 元数据接线已实现。
 
 Chrome 证据：[JSON 导入 7 项结果](../.artifacts/ui-audit-json-import/results.json)、[导入覆盖确认截图](../.artifacts/ui-audit-json-import/overwrite-dialog.png)和 `tests/third-party-lifecycle-browser-smoke.cjs` 的受控 Chrome 9/9 回执。两类浏览器证据都使用假原生 store/高保真宿主桩，无思源 API 写入或真实 provider 账号。此前 375/700px compact 截图、3.8.6 dock、3.8.7 组件实测是历史 partial 证据，不覆盖本轮所有改动。
 
@@ -92,7 +92,7 @@ Chrome 证据：[JSON 导入 7 项结果](../.artifacts/ui-audit-json-import/res
 | 开发依赖漏洞 | terser-webpack-plugin 5.3.16→5.6.1；serialize-javascript 7.1.2、source-map-js 1.2.2、postcss-selector-parser 7.1.6；审计 5→0，全部是开发工具链，非已确认运行时漏洞 |
 | 语言重复 key 与旧审计误判 | 原 duplicate 检查在 JSON.parse 后比较 Object.keys，恒真；改为解析源属性后识别重复，发现并清除中文 snippetProbeTagC 和英文 quickCaptureUnknown 重复定义。release 审计改读当前账本；diff --check 不再误称“工作树干净” |
 
-仍需跟踪：入口文件体积与多层 SCSS 带来的维护成本；复杂 CSS 格式化不覆盖完整语法；Agent 创建文档仍以标题查询 ID（同名/异步索引需真实宿主专项验收）；真实长期会话、内存趋势、大库尾部性能和提供方生命周期不能由单测数量代替。
+仍需跟踪：入口文件体积与多层 SCSS 带来的维护成本；复杂 CSS 格式化不覆盖完整语法；真实长期会话、内存趋势、大库尾部性能和提供方生命周期不能由单测数量代替。
 
 旧 integration/quality 批次脚本中仍有大量文件存在/关键词清单检查；本轮已取消“包含 consume 就证明一次执行”的错误命名。它们通过只表示结构清单满足，不能证明重放保护、凭据绝不泄露或所有边界正确；关键行为须依赖实际函数回归及宿主证据。
 

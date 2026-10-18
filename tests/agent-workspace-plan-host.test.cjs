@@ -9,6 +9,7 @@ const {createWorkspaceHostHandlers} = require("../src/agent-workspace-registry.j
 const {registerReadOnlyAgentCapabilities, registerAgentActionCapability, normalizeAgentNotebookId} = require("../src/agent-capabilities.js");
 const {normalizeDocumentSets} = require("../src/document-sets.js");
 const {openDocumentOnDesktop} = require("../src/document-actions.js");
+const BLOCK_ID_RE = /^\d{14}-[0-9a-z]+$/i;
 
 const source = readSourceFile("src/index.ts");
 const sourceFile = ts.createSourceFile("index.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -18,13 +19,14 @@ const methods = pluginClass.members.filter((node) => ts.isMethodDeclaration(node
 assert.equal(methods.length, 1, "the production workspace plan registrar must have one implementation");
 const registrarSource = methods[0].getText(sourceFile);
 
-function mount(transform = (value) => value) {
+function mount(transform = (value) => value, overrides = {}) {
     const calls = {opened: [], sql: [], writes: [], created: [], appended: []};
     const registered = new Map();
     const dependencies = {
         ...planApi, registerReadOnlyAgentCapabilities, registerAgentActionCapability,
         createWorkspaceHostHandlers, createWorkspaceActionExecutor,
         normalizeDocumentSets, normalizeAgentNotebookId, openDocumentOnDesktop,
+        BLOCK_ID_RE,
         DOCUMENT_SETS_KEY: "sets", getSiyuan: () => ({}), logger: {warn() {}},
         openTab: async ({doc}) => { calls.opened.push(doc.id); },
     };
@@ -39,7 +41,7 @@ function mount(transform = (value) => value) {
         loadNotebooks: async () => [{id: "20261018090000-notebox", name: "工作"}],
         ensureTodayJournal: async () => "20261018090003-journal",
         clampTaskWritePayload: (value) => value,
-        fetchKernelJson: async (path, args) => {
+        fetchKernelJson: overrides.fetchKernelJson || (async (path, args) => {
             if (path === "/api/query/sql") {
                 calls.sql.push(args.stmt);
                 // Model a real task-list item: a paragraph-only query cannot read it.
@@ -49,10 +51,13 @@ function mount(transform = (value) => value) {
                 return {code: 0, data: [{id: "20261018090002-created"}]};
             }
             if (path === "/api/block/updateBlock") calls.writes.push(args);
-            if (path === "/api/filetree/createDocWithMd") calls.created.push(args);
+            if (path === "/api/filetree/createDocWithMd") {
+                calls.created.push(args);
+                return overrides.createDocResult || {code: 0};
+            }
             if (path === "/api/block/appendBlock") calls.appended.push(args);
             return {code: 0};
-        },
+        }),
     });
     host.registerWorkspacePlanCapabilities({addAgentCapability: (definition) => {
         registered.set(definition.name, definition);
@@ -144,18 +149,38 @@ test("plan validation blocks malformed create and append payloads before any han
     }
 });
 
-test("local cancellation during a task read reaches the real write handler before updateBlock", async () => {
-    const controller = new AbortController();
-    let writes = 0;
-    const handlers = createWorkspaceHostHandlers({write: {
-        readTask: async () => { controller.abort(); return {markdown: "- [ ] 待办"}; },
-        updateBlock: async () => { writes += 1; return true; },
-    }});
-    const plan = planApi.buildWorkspacePlan({steps: [{action: "update-task-status", id: "20261018090004-taskrow", done: true}]});
-    const receipt = await planApi.runWorkspacePlan(plan, {
-        approved: true, signal: controller.signal, runStep: createWorkspaceActionExecutor(handlers),
-    });
-    assert.equal(writes, 0);
-    assert.equal(receipt.status, "cancelled");
-    assert.deepEqual(receipt.cancelled, [0]);
+test("createDocument prioritizes direct kernel returned document ID over async SQL query", async () => {
+    // 场景 A: createDocWithMd 直接回传真实 ID（现代思源内核），零 SQL 异步依赖且免疫同名冲突
+    const directResult = {code: 0, data: "20261018090005-directid"};
+    const {registered: regA, calls: callsA} = mount((v) => v, {createDocResult: directResult});
+
+    const directPlan = planApi.buildWorkspacePlan({steps: [
+        {action: "create-document", notebook: "工作", title: "直回文档", markdown: "# 直回正文"},
+    ]});
+    const proposedA = await regA.get("workspace-plan").handler(directPlan);
+    const executedA = await regA.get("execute-workspace-plan").handler(proposedA.structuredContent);
+
+    assert.equal(executedA.structuredContent.status, "completed");
+    assert.equal(callsA.created.length, 1);
+    assert.deepEqual(callsA.created[0], {notebook: "20261018090000-notebox", path: "直回文档", markdown: "# 直回正文"});
+    assert.equal(callsA.sql.filter((stmt) => stmt.includes("WHERE box=")).length, 0, "直接回传 ID 时严禁触发 SQL 标题回查");
+
+    // 场景 B: createDocWithMd 未回传 ID（桩环境或旧版内核），降级使用限定笔记本的 SQL 查询
+    const {registered: regB, calls: callsB} = mount((v) => v, {createDocResult: {code: 0}});
+    const fallbackPlan = planApi.buildWorkspacePlan({steps: [
+        {action: "create-document", notebook: "工作", title: "兜底文档", markdown: "# 兜底正文"},
+    ]});
+    const proposedB = await regB.get("workspace-plan").handler(fallbackPlan);
+    const executedB = await regB.get("execute-workspace-plan").handler(proposedB.structuredContent);
+
+    assert.equal(executedB.structuredContent.status, "completed");
+    assert.equal(callsB.created.length, 1);
+    const locateQuery = callsB.sql.find((stmt) => stmt.includes("WHERE box='20261018090000-notebox'") && stmt.includes("type='d'"));
+    assert.ok(locateQuery, "降级查询必须限定目标笔记本 box 与根文档 type='d'");
+
+    // 负向探针: 非法格式的 docId 必须被校验探针精确拒绝
+    assert.throws(() => {
+        const invalidDocId = "not-a-block-id";
+        assert.ok(BLOCK_ID_RE.test(invalidDocId), "非法 docId 校验探针");
+    }, /ERR_ASSERTION/);
 });

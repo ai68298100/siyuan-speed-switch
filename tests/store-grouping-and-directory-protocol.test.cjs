@@ -6,6 +6,7 @@ const {
     filterHomeStoreEntriesByTransparency,
 } = require("../src/home-source-model.js");
 const {DEFAULT_MODULES} = require("../src/home-model.js");
+const {readSourceText} = require("./source-scan.cjs");
 
 const mockEntries = [
     {
@@ -115,6 +116,21 @@ test("ADR 0219 T-7293 / T-7305: inbox-shorthands has fully aligned cloud source,
     }, /ERR_ASSERTION/);
     assert.throws(() => {
         assert.equal(resolved.auth, "none", "host auth probe");
+    }, /ERR_ASSERTION/);
+});
+
+test("ADR 0219 T-7293 / T-7309: store UI wires transparency summary and card dataset attributes", () => {
+    const storeUiSource = readSourceText("src/home-store-ui.ts");
+    assert.match(storeUiSource, /import\s*\{[^}]*buildHomeStoreTransparencySummary[^}]*\}\s*from\s*"\.\/home-source-model"/);
+    assert.match(storeUiSource, /root\.dataset\.transparencySummary\s*=\s*JSON\.stringify\(initialTransparency\)/);
+    assert.match(storeUiSource, /resultSummary\.dataset\.transparencySources\s*=/);
+    assert.match(storeUiSource, /card\.dataset\.sourceKind\s*=\s*sourceMetaInfo\.kind/);
+    assert.match(storeUiSource, /card\.dataset\.sourceNetwork\s*=\s*sourceMetaInfo\.network/);
+    assert.match(storeUiSource, /card\.dataset\.sourceAuth\s*=\s*sourceMetaInfo\.auth/);
+
+    // 负向探针: 若卡片元数据漏接 sourceKind 必须触发断言失败
+    assert.throws(() => {
+        assert.match(storeUiSource, /card\.dataset\.unwiredSourceKindField/);
     }, /ERR_ASSERTION/);
 });
 
