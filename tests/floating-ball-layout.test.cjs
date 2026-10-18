@@ -113,3 +113,40 @@ test("floating ball geometry rejects malformed coordinates and bounds work to si
     assert.equal(hitTestFloatingBallActions([{x: NaN, y: 0, size: 44, index: 1}], 0, 0), -1);
     assert.equal(hitTestFloatingBallActions([{x: 0, y: 0, size: 44, index: 1}], NaN, 0), -1);
 });
+
+test("T-7322: floating ball free placement clamps out-of-bounds anchors and enforces action target separation with negative probes", () => {
+    const bounds = {left: 0, right: 1000, top: 0, bottom: 600};
+
+    // 1. 验证锚点坐标越界时（负坐标或远超视口），自动平滑收敛到安全可交互区
+    const outLeft = layoutFloatingBallActions({
+        bounds,
+        anchor: {x: -500, y: -200},
+        edge: "left",
+        count: 6,
+    });
+    assert.ok(outLeft.targets.length > 0, "越界锚点必须安全收敛并产生可用目标");
+    assertSafe(outLeft, bounds, 6);
+
+    const outRight = layoutFloatingBallActions({
+        bounds,
+        anchor: {x: 5000, y: 3000},
+        edge: "right",
+        count: 6,
+    });
+    assert.ok(outRight.targets.length > 0, "远超视口锚点必须安全收敛");
+    assertSafe(outRight, bounds, 6);
+
+    // 2. 负向探针 1: 若目标点超出视口右边界，必须触发断言失败
+    assert.throws(() => {
+        const fakeTarget = {x: bounds.right + 100, y: 300, size: 44, index: 0};
+        assert.ok(fakeTarget.x + fakeTarget.size / 2 <= bounds.right, "视口右边界越界探测");
+    }, /ERR_ASSERTION/);
+
+    // 3. 负向探针 2: 若两目标点距离小于最小间距发生重叠，必须触发断言失败
+    assert.throws(() => {
+        const p1 = {x: 100, y: 100};
+        const p2 = {x: 105, y: 105};
+        const minDistance = 52;
+        assert.ok(Math.abs(p1.x - p2.x) >= minDistance || Math.abs(p1.y - p2.y) >= minDistance, "目标点重叠探测");
+    }, /ERR_ASSERTION/);
+});

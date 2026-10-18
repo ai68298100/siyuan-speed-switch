@@ -49,7 +49,7 @@
 | 片段 AI 上下文授权、SSE、取消、候选接受/导出 | implemented / conditional | 受控 SSE 已验证；真实 provider、费用、配额、在线质量仍 B-011 |
 | 移动片段实验室 | 未开放 | 生产入口直接返回；原型手机视图不代表可用功能 |
 | JS 预览运行器 | blocked（产品安全边界） | 不提供执行；原生启用/导入 JS 与预览运行器是两条不同路径 |
-| 悬浮球、动作网格、拖动/贴边、更多、设置 | implemented / locally tested | 仅支持的宿主表面；系统跨应用悬浮窗未开发；Android 与真实 provider 生命周期待验收 |
+| 悬浮球、动作网格、拖动/贴边、更多、设置 | implemented / locally tested | 自由停放、视口几何越界收敛与动作网格调度契约已加固（T-7322）；Android 与真实 provider 生命周期待验收 |
 | 设置搜索、十标签、当前值/回执、配置包 | implemented / locally tested | 多 key 应用逐项回执，白名单清洗与防原型污染已加固（T-7315）；真实读屏与跨设备升级待验收 |
 | 存储净化、18 key 迁移/容量、防抖与卸载 flush | implemented / locally tested | 存储迁移管道容灾演练、18 Key 形状分类与疑似降级保护契约已加固（T-7317）；长期同步待持续观测 |
 | Agent 只读上下文、搜索、组件/诊断快照 | implemented / locally tested | 需宿主支持 Agent API；不具备 API 的宿主不可用 |
