@@ -67,7 +67,7 @@
 | compact 查看/编辑分离、Bento 多尺寸 | 已实现；本轮解除旧 `!important` 单列覆盖 | locally tested；最新真实窄屏/主题待验收 |
 | 待办即时勾选、划线、失败回滚 | 已修复目标态双重取反与 Promise 回滚 | locally tested；保持 14px 内芯，触控命中 44×44px |
 | 等宽时钟与可选跳秒 | `showSeconds`、秒级心跳及 tabular-nums 已实现 | 部分体现；晴朗呼吸光晕仍 prototype only |
-| 晶体微切光、机械键帽、焦点光环、流光进度 | 对应生产 token/样式已落地，有 reduced-motion 合同 | 已实现；不将静态规则通过当作所有主题视觉通过 |
+| 晶体微切光、机械键帽、焦点光环、流光进度 | 对应生产 token/样式已落地，有 reduced-motion 与高对比度（T-7318）合同 | 已实现；不将静态规则通过当作所有主题视觉通过 |
 | 噪点开关、Spotlight 鼠标跟随、3D tilt | 原型有实现，生产无对应设置/追踪处理器 | prototype only，未交付 |
 | 沉浸式画廊/Gallery Sheet | 商店预览与卡片已优化；生产仍 new Dialog | partial；440px 内嵌抽屉未开发 |
 | 移动极简顶栏 | 当前保留 header/context/navigation 各层 | partial；与原型并非像素级一致 |

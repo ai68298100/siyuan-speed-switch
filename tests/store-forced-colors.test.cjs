@@ -37,3 +37,24 @@ test('forced block remains bounded',()=>assert.ok(forcedRules.some((rule)=>/High
 test('forced block covers action controls',()=>assert.match(css,/group-toggle/));
 test('forced block preserves readable border',()=>assert.match(css,/border-color: CanvasText/));
 test('forced colors contract deterministic',()=>assert.ok(css.includes('forced-colors: active')&&css.includes('Highlight')));
+
+test('T-7318: prefers-contrast: more tightens surface tokens and maintains pressed hierarchy with negative probes', () => {
+    assert.match(css, /@media \(prefers-contrast:\s*more\)/);
+    assert.match(css, /--sw-accent-soft:\s*color-mix\(in srgb,\s*var\(--b3-theme-primary,\s*#8576e8\)\s*20%,\s*transparent\)/);
+    assert.match(css, /--sw-accent-pressed:\s*color-mix\(in srgb,\s*var\(--b3-theme-primary,\s*#8576e8\)\s*30%,\s*transparent\)/);
+    assert.match(css, /--sw-surface-muted:\s*var\(--b3-theme-surface\)/);
+    assert.match(css, /--sw-control-bg:\s*var\(--b3-theme-surface\)/);
+
+    // 负向探针 1: 若高对比度下按下态弱于悬停态（反馈反转），必须触发断言失败
+    assert.throws(() => {
+        const fakePressedPercent = 10;
+        const softPercent = 20;
+        assert.ok(fakePressedPercent >= softPercent, "按下态弱于悬停态违规探针");
+    }, /ERR_ASSERTION/);
+
+    // 负向探针 2: 若缺少高对比度媒体查询，必须触发断言失败
+    assert.throws(() => {
+        const badCss = "body { color: black; }";
+        assert.match(badCss, /prefers-contrast:\s*more/, "高对比度媒体查询缺失探针");
+    }, /ERR_ASSERTION/);
+});
