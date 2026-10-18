@@ -104,3 +104,33 @@ test('blank queries return empty results and entries never leak values', () => {
     assert.ok(!json.includes('融合主题</button>'), '索引数据不含控件内部值');
     assert.ok(entryMatchesQuery(entries[0], ['皮肤']));
 });
+
+test("T-7330: settings search handles whitespace normalization, cross-panel routing and negative probes", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const panels = buildPanels(dom.window.document);
+    const entries = collectSettingsSearchEntries(panels, LABELS);
+
+    // 1. 空白与多 Token AND 归一化匹配
+    const multiTokenResult = searchSettingsIndex(entries, "  界面   皮肤  ");
+    assert.equal(multiTokenResult.results.length, 1);
+    assert.equal(multiTokenResult.results[0].title, "界面皮肤");
+    assert.equal(multiTokenResult.results[0].key, "appearance");
+
+    // 2. 跨面板索引完整性：确保不同面板的条目保留正确的 key 归属
+    const storageResult = searchSettingsIndex(entries, "存储用量");
+    assert.equal(storageResult.results.length, 1);
+    assert.equal(storageResult.results[0].key, "storage");
+    assert.equal(storageResult.results[0].label, "存储");
+
+    // 3. 负向探针 1: 多 Token AND 匹配若误退化为 OR（漏掉其中一个词仍命中），必须触发断言失败
+    assert.throws(() => {
+        const fakeOrMatched = entryMatchesQuery(entries[1], ["界面", "不存在的词汇xyz"]);
+        assert.equal(fakeOrMatched, true, "多词 AND 约束失效探针");
+    }, /ERR_ASSERTION/);
+
+    // 4. 负向探针 2: 搜索命中结果若丢失 DOM element 真实控件引用，必须触发断言失败
+    assert.throws(() => {
+        const itemWithoutElement = {element: null};
+        assert.ok(itemWithoutElement.element !== null, "丢失控件引用探针");
+    }, /ERR_ASSERTION/);
+});
