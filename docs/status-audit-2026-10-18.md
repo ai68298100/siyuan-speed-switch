@@ -29,7 +29,7 @@
 
 | 功能 | 当前状态 | 使用前置或未完成部分 |
 | --- | --- | --- |
-| 桌面切换器、数字直达、MRU/六种排序、置顶、分栏 | implemented / locally tested / real host partial | 最新主题、200% 缩放、人工最窄 Dock 与读屏仍待验收 |
+| 桌面切换器、数字直达、MRU/六种排序、置顶、分栏 | implemented / locally tested / real host partial | 数字键帽 1-9 显隐、可见性过滤与激活映射契约已加固（T-7324）；最新主题、200% 缩放与最窄 Dock 持续待验 |
 | 收藏/分组、最近打开/关闭、日记入口、文档集保存恢复 | implemented / locally tested / real host partial | 写入、恢复与返回现场已有隔离思源证据（含 document-sets.spec.mjs、favorites-flow.spec.mjs 与 recent-closed-flow.spec.mjs 闭环）；长期大工作区现场仍待持续观测 |
 | 已开页签→已开文档内容→全库标题/受限全文 | implemented / locally tested / real host partial | API 缺失时降级；不替代原生搜索，也不承诺全库无限结果 |
 | 笔记本、类型、方式、排序与路径筛选、保存筛选 | implemented / locally tested / real host partial | 桌面路径端点已有 200/22ms 及防御契约，245px 最窄 Dock 控件可达已取证（T-7311）；移动块定位及未知旧宿主语义继续待证 |

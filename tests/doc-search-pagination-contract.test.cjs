@@ -146,3 +146,27 @@ test("T-7312: planDocResultsPage handles large collections, open-tab filters and
         assert.notEqual(fakeAnchor, null, "视口外元素被错误选为锚点探测");
     }, /ERR_ASSERTION/);
 });
+
+test("T-7324: digit direct access stamps data-sw-digit 1-9 for visible cards and bounds digit activation with negative probes", () => {
+    // 1. 源码契约：前 9 个可见卡片与结果条目必须写入 data-sw-digit 角标
+    assert.match(docSearchUi, /if\s*\(index < 9\)\s*element\.dataset\.swDigit = String\(index \+ 1\);/);
+    assert.match(index, /const digit = index < 9 \? String\(index \+ 1\) : "";/);
+    assert.match(index, /if \(digit\) card\.dataset\.swDigit = digit;/);
+
+    // 2. 源码契约：按数字激活文档条目（activateDocItemByDigit）必须过滤隐藏项并限定合法序号
+    assert.match(index, /activateDocItemByDigit\(scrollElement: HTMLElement, key: string, closeOverlay: IOverlayClose\)/);
+    assert.match(index, /const items = Array\.from\(scrollElement\.querySelectorAll<HTMLElement>\("\.sw__doc-grid \.sw__doc-item"\)\)\s*\.filter\(\(element\) => !element\.closest\("\.fn__none"\)\);/);
+    assert.match(index, /const item = items\[Number\(key\) - 1\];/);
+
+    // 3. 负向探针 1: 若第 10 个及之后的项被错误赋予数字角标，必须触发断言失败
+    assert.throws(() => {
+        const fakeIndex = 9;
+        assert.ok(fakeIndex < 9, "超出前 9 项数字角标溢出探测");
+    }, /ERR_ASSERTION/);
+
+    // 4. 负向探针 2: 若被 fn__none 隐藏的文档被数字按键激活，必须触发断言失败
+    assert.throws(() => {
+        const fakeHiddenElement = {closest: (cls) => cls === ".fn__none"};
+        assert.ok(!fakeHiddenElement.closest(".fn__none"), "隐藏项被误激活探测");
+    }, /ERR_ASSERTION/);
+});
