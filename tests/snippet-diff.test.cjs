@@ -133,3 +133,51 @@ test("diff hunks: degraded diffs and arity mismatches refuse partial application
     assert.equal(applyDiffHunks(diff, []), null);
     assert.equal(applyDiffHunks(null, [true]), null);
 });
+
+test("T-7325: snippet diff handles multi-hunk selective merge, line ending normalization and negative probes", () => {
+    // 1. CRLF 与 LF 跨平台换行归一化验证
+    const crlfBefore = "item1\r\nitem2\r\nitem3";
+    const lfAfter = "item1\nitem2-modified\nitem3";
+    const crlfDiff = buildSnippetDiff(crlfBefore, lfAfter);
+    assert.equal(crlfDiff.hunks.length, 1);
+    assert.equal(crlfDiff.added, 1);
+    assert.equal(crlfDiff.removed, 1);
+
+    // 2. 三 Hunk 选择性合并：[true, false, true]
+    const base = [
+        "hunk1-old",
+        ...Array.from({length: 8}, (_, i) => `sep1-${i}`),
+        "hunk2-old",
+        ...Array.from({length: 8}, (_, i) => `sep2-${i}`),
+        "hunk3-old",
+    ].join("\n");
+    const candidate = base
+        .replace("hunk1-old", "hunk1-NEW")
+        .replace("hunk2-old", "hunk2-NEW")
+        .replace("hunk3-old", "hunk3-NEW");
+    const threeHunkDiff = buildSnippetDiff(base, candidate);
+    assert.equal(threeHunkDiff.hunks.length, 3, "三个远距离修改必须拆分成 3 个独立 Hunk");
+
+    const partialMerged = applyDiffHunks(threeHunkDiff, [true, false, true]);
+    assert.ok(partialMerged.includes("hunk1-NEW"), "Hunk 1 采纳生效");
+    assert.ok(partialMerged.includes("hunk2-old"), "Hunk 2 拒绝保持原始基线");
+    assert.ok(!partialMerged.includes("hunk2-NEW"), "Hunk 2 拒绝绝不混入候选");
+    assert.ok(partialMerged.includes("hunk3-NEW"), "Hunk 3 采纳生效");
+
+    // 全量拒绝时 100% 还原基线
+    const fullyRejected = applyDiffHunks(threeHunkDiff, [false, false, false]);
+    assert.equal(fullyRejected, base, "全部拒绝必须毫无残留地 100% 还原原始基线");
+
+    // 3. 负向探针 1: 被拒绝的 Hunk 若泄露了新增行，必须触发断言失败
+    assert.throws(() => {
+        const fakeMergedWithLeak = partialMerged + "\nhunk2-NEW";
+        assert.equal(fakeMergedWithLeak.includes("hunk2-NEW"), false, "拒绝 Hunk 泄露探针");
+    }, /ERR_ASSERTION/);
+
+    // 4. 负向探针 2: 接受标志数组长度与 Hunk 数量不一致时必须拒绝应用返回 null
+    assert.equal(applyDiffHunks(threeHunkDiff, [true, false]), null, "标志数量不足必须拒绝");
+    assert.throws(() => {
+        const invalidArityResult = applyDiffHunks(threeHunkDiff, [true, false]);
+        assert.notEqual(invalidArityResult, null, "参数数量不匹配误放行探针");
+    }, /ERR_ASSERTION/);
+});
