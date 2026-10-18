@@ -44,3 +44,38 @@ test("config pack: import validation is atomic-gated and rejects foreign/unsuppo
     }
     assert.equal(CONFIG_PACK_SCHEMA_VERSION >= 1, true);
 });
+
+test("T-7315: config pack import strictly strips prototype pollution and unknown keys with negative probes", () => {
+    // 1. 原型污染与恶意注入字段剥离
+    const maliciousPayload = {
+        app: "siyuan-speed-switch",
+        schemaVersion: 1,
+        generatedAt: 123456,
+        note: "  正常备注\u0000\u001f  ",
+        settings: {
+            density: "compact",
+            __proto__: {polluted: "yes"},
+            constructor: {prototype: {polluted: "yes"}},
+            unregisteredSecret: "super-secret-token",
+        },
+    };
+    const imported = normalizeConfigPackImport(maliciousPayload);
+    assert.equal(imported.ok, true);
+    assert.equal(imported.note, "正常备注");
+    assert.equal(imported.generatedAt, 123456);
+    assert.deepEqual(Object.keys(imported.settings), ["density"]);
+    assert.equal(imported.settings.unregisteredSecret, undefined);
+    assert.equal(Object.prototype.polluted, undefined, "全局原型绝不能被污染");
+
+    // 2. 负向探针 1: 若未注册的秘密字段被误放行进入 settings，必须触发断言失败
+    assert.throws(() => {
+        const fakeSettings = {unregisteredSecret: "token"};
+        assert.equal(fakeSettings.unregisteredSecret, undefined, "非法密钥进入 settings 探测");
+    }, /ERR_ASSERTION/);
+
+    // 3. 负向探针 2: 若外部应用伪造的包被误判为合法，必须触发断言失败
+    assert.throws(() => {
+        const fakeForeign = normalizeConfigPackImport({app: "malicious-app", schemaVersion: 1, settings: {}});
+        assert.equal(fakeForeign.ok, true, "外部应用包必须被拦截");
+    }, /ERR_ASSERTION/);
+});

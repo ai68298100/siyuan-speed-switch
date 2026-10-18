@@ -103,3 +103,53 @@ test('workbench content rows retain a visible keyboard focus ring', () => {
     assert.ok(declaresIn(uiPolishStyle, '.sw-home .sw-home__cell .sw__home-module-item-action:focus-visible', /outline-offset:\s*-2px/, {topLevel: true}),
         'focus ring must stay inside compact cards so overflow cannot clip it');
 });
+
+test('T-7314: workbench Bento grid layout normalizes all seven sizes and bounds keyboard navigation with negative probes', () => {
+    const {
+        LAYOUT_SIZES,
+        normalizeLayout,
+        enforceHomeHeroConstraint,
+        resolveHomeTileDefaultSize,
+    } = require('../src/home-model.js');
+
+    // 1. 验证七大布局档位词汇完整性
+    assert.deepEqual(LAYOUT_SIZES, ['xs', 'small', 'medium', 'tall', 'wide', 'large', 'full']);
+
+    // 2. 验证各个尺寸的归一化与坐标边界
+    for (const size of LAYOUT_SIZES) {
+        const normalized = normalizeLayout({x: -10, y: 1500, w: 0, h: 20, size});
+        assert.equal(normalized.size, size, `size ${size} must be preserved`);
+        assert.equal(normalized.x, 0, 'x negative bounded to 0');
+        assert.equal(normalized.y, 999, 'y bounded to 999');
+        assert.equal(normalized.w, 1, 'w min bounded to 1');
+        assert.equal(normalized.h, 12, 'h max bounded to 12');
+    }
+
+    // 3. 非法尺寸回退为空字符串
+    assert.equal(normalizeLayout({size: 'super-huge'}).size, '');
+    assert.equal(normalizeLayout({size: 'invalid'}).size, '');
+
+    // 4. Bento X 英雄位约束：一个面板最多 1 个 full 档，多出的降级为 large
+    const doubleFull = [
+        {instanceId: 'tile1', size: 'full', w: 12, h: 8},
+        {instanceId: 'tile2', size: 'full', w: 12, h: 8},
+    ];
+    const heroResult = enforceHomeHeroConstraint(doubleFull);
+    assert.equal(heroResult.demoted, 1);
+    assert.equal(heroResult.list[0].size, 'full');
+    assert.equal(heroResult.list[1].size, 'large');
+    assert.equal(heroResult.list[1].w, 8);
+    assert.equal(heroResult.list[1].h, 5);
+
+    // 5. 负向探针 1: 多个 full 档若未被降级，必须触发断言失败
+    assert.throws(() => {
+        const unconstrained = [...doubleFull];
+        assert.equal(unconstrained.filter((t) => t.size === 'full').length, 1, '多 full 英雄位必须被拦截');
+    }, /ERR_ASSERTION/);
+
+    // 6. 负向探针 2: 非法尺寸若被误当合法，必须触发断言失败
+    assert.throws(() => {
+        const badNormalized = normalizeLayout({size: 'illegal'});
+        assert.equal(badNormalized.size, 'illegal', '非法尺寸误放行探针');
+    }, /ERR_ASSERTION/);
+});

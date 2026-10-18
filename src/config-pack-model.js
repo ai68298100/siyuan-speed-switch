@@ -54,15 +54,20 @@ function normalizeConfigPackImport(payload) {
     }
     const settings = {};
     for (const key of CONFIG_PACK_SETTINGS_KEYS) {
-        if (payload.settings[key] !== undefined) settings[key] = payload.settings[key];
+        if (Object.hasOwn(payload.settings, key) && payload.settings[key] !== undefined) {
+            settings[key] = payload.settings[key];
+        }
     }
+    const note = typeof payload.note === "string"
+        ? payload.note.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, CONFIG_PACK_NOTE_MAX)
+        : "";
     return {
         ok: true,
         settings,
         documentSets: ds ?? null,
         schemaVersion: payload.schemaVersion,
-        generatedAt: Number.isFinite(payload.generatedAt) ? payload.generatedAt : 0,
-        note: typeof payload.note === "string" ? payload.note.slice(0, CONFIG_PACK_NOTE_MAX) : "",
+        generatedAt: Number.isFinite(payload.generatedAt) && payload.generatedAt > 0 ? Math.floor(payload.generatedAt) : 0,
+        note,
     };
 }
 
