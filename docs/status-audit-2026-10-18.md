@@ -43,7 +43,7 @@
 | 桌面片段目录、分组、草稿、查找替换、撤销、冲突 | implemented / locally tested | 独立分组管理（增删改查、折叠、拖拽归组、未分组过滤）与元数据投影契约已加固（T-7326）；编辑器为 textarea+行号 |
 | CSS 格式化与光标映射 | implemented / locally tested | 轻量零依赖格式化与光标追踪，@keyframes/变量/嵌套伪类契约已加固（T-7321）；JS 格式化未开放 |
 | CSS 预览、已保存/草稿对照、AI 候选差异 | implemented / locally tested | 沙箱预览禁止 JS 与外部网络；AI 候选行级差异与多 Hunk 选择性合并契约已加固（T-7325） |
-| CSS/JS 文件导入、导出、回收站、备份/恢复 | implemented / locally tested | 单文件进入禁用草稿；备份恢复按预览确认及读回合同运行 |
+| CSS/JS 文件导入、导出、回收站、备份/恢复 | implemented / locally tested | 单文件进入禁用草稿；回收站数量/年龄(30天)/字节(256KB)三限淘汰契约已加固（T-7327） |
 | JSON Merge/Fork/Overwrite | implemented / browser tested / real host partial | 直接写原生列表；Merge 保留已有启用状态、新条目采用导入状态；Fork 禁用；Overwrite 替换集合并采用导入状态。已有 snippet-import-save.spec.mjs 隔离宿主闭环证据 |
 | Gist 预览/导入/发布 | implemented / conditional | 受控响应与宿主交互有证据；真实 GitHub 账号写权限及回执仍 B-008，unlisted 不等于 private |
 | 片段 AI 上下文授权、SSE、取消、候选接受/导出 | implemented / conditional | 受控 SSE 已验证；真实 provider、费用、配额、在线质量仍 B-011 |

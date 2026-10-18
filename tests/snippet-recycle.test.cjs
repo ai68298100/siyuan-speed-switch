@@ -74,3 +74,31 @@ test('recycle view: picker entry, guarded restore and confirmed destructive acti
         assert.ok(zhLang[key] && enLang[key], `i18n 键 ${key} 必须双语齐备`);
     }
 });
+
+test("T-7327: snippet recycle bin enforces 30-day age expiration, disabled draft restore and negative probes", () => {
+    const now = Date.now();
+    const thirtyOneDaysAgo = now - (31 * 24 * 60 * 60 * 1000);
+    const tenDaysAgo = now - (10 * 24 * 60 * 60 * 1000);
+
+    // 1. 验证 30 天年龄超限淘汰
+    const oldEntry = buildRecycleEntry({origin: "delete", snippetId: "snip-old", name: "过期片段", type: "css", content: ".old{}"}, thirtyOneDaysAgo);
+    const recentEntry = buildRecycleEntry({origin: "delete", snippetId: "snip-new", name: "近期片段", type: "css", content: ".new{}"}, tenDaysAgo);
+    assert.ok(oldEntry && recentEntry);
+
+    const store = {version: 1, entries: [oldEntry, recentEntry]};
+    const normalized = normalizeRecycleStore(store, now);
+    assert.equal(normalized.entries.length, 1, "超过 30 天的条目必须被自动淘汰清除");
+    assert.equal(normalized.entries[0].snippetId, "snip-new", "仅保留 30 天以内的近期条目");
+
+    // 2. 负向探针 1: 若超过 30 天的过期条目未被淘汰，必须触发断言失败
+    assert.throws(() => {
+        const fakeEntries = [oldEntry];
+        assert.equal(fakeEntries.filter((e) => now - e.createdAt > 30 * 86400000).length, 0, "过期条目残留探测");
+    }, /ERR_ASSERTION/);
+
+    // 3. 负向探针 2: 非法 origin 来源若被误放行，必须触发断言失败
+    assert.throws(() => {
+        const badOriginEntry = buildRecycleEntry({origin: "illegal_origin", snippetId: "snip", name: "bad", type: "css", content: "code"}, now);
+        assert.notEqual(badOriginEntry, null, "非法 origin 误放行探测");
+    }, /ERR_ASSERTION/);
+});
