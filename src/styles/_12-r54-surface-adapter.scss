@@ -806,3 +806,153 @@
     }
     .sw-home.sw-home--compact > .sw-platform-chrome .sw-platform-status { display: none; }
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// 高对比度模式 (W3C forced-colors: active / Windows High Contrast · Epoch 5)
+// 补全系统变量映射、轮廓、边框与无障碍焦点环（系统剔除 box-shadow）
+// ══════════════════════════════════════════════════════════════════════════
+@media (forced-colors: active) {
+    :is(.speed-switch, .sw-fab-root, .sw-settings, .sw-settings-dialog, .sw-home, .sw-studio, .sw-platform-shell, .sw-platform-surface) {
+        --sw-page-bg: Canvas;
+        --sw-control-bg: Canvas;
+        --sw-surface-muted: Canvas;
+        --sw-accent-soft: Canvas;
+        --sw-accent-pressed: Highlight;
+        --sw-r54-canvas: Canvas;
+        --sw-r54-surface: Canvas;
+        --sw-r54-soft: Canvas;
+        --sw-r54-line: CanvasText;
+        --sw-r54-line-soft: CanvasText;
+        --sw-r54-shadow-card: none;
+        --sw-shadow-xs: none;
+        --sw-shadow-sm: none;
+        --sw-shadow-md: none;
+        --sw-sheet-shadow: none;
+        --sw-rim-light: none;
+        --sw-focus-glow: none;
+
+        --b3-theme-background: Canvas;
+        --b3-theme-surface: Canvas;
+        --b3-theme-on-background: CanvasText;
+        --b3-theme-on-surface: CanvasText;
+        --b3-theme-primary: Highlight;
+        --b3-theme-on-primary: HighlightText;
+        --b3-border-color: CanvasText;
+        --b3-dialog-shadow: none;
+
+        .sw__dock,
+        .sw__toolbar,
+        .sw__tab-preview,
+        .sw__doc-preview,
+        .sw__empty,
+        .sw-home__cell,
+        .sw-home__bar,
+        .sw-home-store__card,
+        .sw-studio__preview-section,
+        .sw-studio__editor-section,
+        .sw-studio__details,
+        .sw-studio__ai,
+        .sw-studio__button,
+        .sw-studio__library-item,
+        .sw-studio__catalog-item,
+        .b3-button,
+        .b3-text-field,
+        .b3-select,
+        .sw__dock-item,
+        .sw-platform-header,
+        .sw-platform-surface-nav__item,
+        .sw-fab-btn {
+            border: 1px solid CanvasText;
+        }
+
+        .b3-dialog__container,
+        .sw-settings-dialog,
+        .speed-switch.sw__body {
+            border: 2px solid CanvasText;
+            background: Canvas;
+        }
+
+        .b3-button--primary,
+        .sw-studio__button.is-primary {
+            background: Highlight !important;
+            color: HighlightText !important;
+            border: 1px solid Highlight !important;
+        }
+
+        .sw__dock-item.active,
+        .sw-home-store__tab.is-active,
+        .sw-platform-surface-nav__item.is-active,
+        .sw__list-item--active,
+        .sw-studio__library-item.is-active {
+            outline: 2px solid Highlight !important;
+            outline-offset: 1px;
+            background: Highlight !important;
+            color: HighlightText !important;
+        }
+
+        :where(button, a, input, select, textarea, [tabindex="0"]):focus-visible,
+        .b3-button:focus-visible,
+        .b3-text-field:focus-visible,
+        .b3-select:focus-visible,
+        .sw__dock-item:focus-visible,
+        .sw-home__cell:focus-visible,
+        .sw-studio__button:focus-visible,
+        .sw-fab-btn:focus-visible {
+            outline: 2px solid Highlight !important;
+            outline-color: Highlight !important;
+            outline-offset: 2px;
+        }
+
+        // 状态指示器与开关：禁止系统颜色破坏语义
+        .sw__dot,
+        .sw-badge,
+        .sw-chip-icon,
+        .sw__status-indicator,
+        .sw__home-source-health,
+        .sw__home-module-item-check,
+        input[type="checkbox"].b3-switch,
+        input[type="checkbox"].b3-switch::after,
+        svg {
+            forced-color-adjust: none;
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 用户高对比度偏好 (prefers-contrast: more · Epoch 5)
+// 强化容器与控件边框，粗体强调激活项，加粗焦点环
+// ══════════════════════════════════════════════════════════════════════════
+@media (prefers-contrast: more) {
+    :is(.speed-switch, .sw-fab-root, .sw-settings, .sw-settings-dialog, .sw-home, .sw-studio, .sw-platform-shell, .sw-platform-surface) {
+        .sw__dock,
+        .sw__toolbar,
+        .sw__tab-preview,
+        .sw__doc-preview,
+        .sw-home__cell,
+        .sw-home-store__card,
+        .sw-studio__preview-section,
+        .sw-studio__editor-section,
+        .b3-button,
+        .b3-text-field,
+        .b3-select,
+        .sw__dock-item {
+            border: 1px solid var(--b3-theme-on-background);
+        }
+
+        .sw__dock-item.active,
+        .sw-home-store__tab.is-active,
+        .sw-platform-surface-nav__item.is-active,
+        .sw__list-item--active,
+        .sw-studio__library-item.is-active {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 1px;
+            font-weight: 700;
+        }
+
+        :where(button, a, input, select, textarea, [tabindex="0"]):focus-visible {
+            outline: 3px solid var(--b3-theme-primary);
+            outline-offset: 2px;
+        }
+    }
+}
+
