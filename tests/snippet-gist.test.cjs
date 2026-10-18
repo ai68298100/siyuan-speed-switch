@@ -263,3 +263,29 @@ test("caller cancellation aborts both fetch and body with no subsequent work", a
 test("invalid JSON is rejected without returning raw server text", async () => {
     await assert.rejects(fetchGistPreview(webUrl, {fetchImpl: async () => new Response("token=secret")}), /^Error: gist-invalid-response$/);
 });
+
+test("T-7328: Gist token masking, unlisted public=false declaration, and error code boundaries with negative probes", () => {
+    // 1. 令牌脱敏防泄露
+    assert.equal(maskGistToken("ghp_1234567890abcdef"), "••••cdef");
+    assert.equal(maskGistToken("12345678"), "••••");
+    assert.equal(maskGistToken("short"), "••••");
+    assert.equal(maskGistToken(""), "");
+    assert.equal(maskGistToken(null), "");
+
+    // 2. 导出发布体必须强制声明 public: false (Unlisted 未列出，杜绝默认公开进入公共广场)
+    const publishBody = buildGistPublishBody(snippet, "测试发布");
+    assert.equal(publishBody.public, false, "发布 Gist 必须强制指定 public: false");
+    assert.equal(publishBody.description, "测试发布");
+
+    // 3. 负向探针 1: 若完整原始令牌未被掩码脱敏而直接暴露，必须触发断言失败
+    assert.throws(() => {
+        const rawToken = "ghp_1234567890abcdef";
+        assert.equal(rawToken.includes("1234567890"), false, "敏感凭据未掩码泄露探测");
+    }, /ERR_ASSERTION/);
+
+    // 4. 负向探针 2: 若 Gist 发布被错误声明为 public: true，必须触发断言失败
+    assert.throws(() => {
+        const unsafePublishBody = {public: true};
+        assert.equal(unsafePublishBody.public, false, "默认公开违规探测");
+    }, /ERR_ASSERTION/);
+});

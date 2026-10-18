@@ -56,6 +56,19 @@ body[data-sw-skin="apple"] {
         border-radius: 14px;
         box-shadow: 0 8px 22px rgba(29, 35, 60, .14);
     }
+
+    @media (prefers-contrast: more) {
+        @include sw-skin-root-vars {
+            --b3-theme-on-surface-light: #1d1d1f;
+            --b3-border-color: rgba(0, 0, 0, .42);
+        }
+        .speed-switch .sw__card,
+        .speed-switch .sw__doc-item,
+        .sw-home__cell,
+        .speed-switch .sw__search {
+            border: 1px solid rgba(0, 0, 0, .42);
+        }
+    }
 }
 
 // ==================== 2. 暗夜玻璃 · Dark Glass（T-6798） ====================
@@ -103,6 +116,19 @@ body[data-sw-skin="midnight"] {
         box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
         color: #e8eaf4;
     }
+
+    @media (prefers-contrast: more) {
+        @include sw-skin-root-vars {
+            --b3-theme-on-surface-light: #ffffff;
+            --b3-border-color: rgba(255, 255, 255, .45);
+        }
+        .speed-switch .sw__card,
+        .speed-switch .sw__doc-item,
+        .sw-home__cell,
+        .speed-switch .sw__search {
+            border: 1px solid rgba(255, 255, 255, .45);
+        }
+    }
 }
 
 // ==================== 3. 暖纸墨水 · Paper（T-6798） ====================
@@ -144,6 +170,18 @@ body[data-sw-skin="paper"] {
     .sw__floating-ball-action {
         border-radius: 10px;
         box-shadow: 0 3px 10px rgba(120, 100, 70, .16);
+    }
+
+    @media (prefers-contrast: more) {
+        @include sw-skin-root-vars {
+            --b3-theme-on-surface-light: #2f2a22;
+            --b3-border-color: #8c7d6b;
+        }
+        .speed-switch .sw__card,
+        .speed-switch .sw__doc-item,
+        .sw-home__cell {
+            border-color: #8c7d6b;
+        }
     }
 }
 
