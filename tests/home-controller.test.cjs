@@ -662,3 +662,44 @@ test("home controller mounts a provided snapshot instantly and skips the loading
     assert.equal(container.textContent.includes("fresh-item"), true, "静默更新为最新内容");
     controller.dispose();
 });
+
+test("T-7320: home controller isolates healthy widgets, classifies failure backoff, and filters retry targets with negative probes", async () => {
+    const entries = [
+        {moduleId: "weather", refresh: async () => ({ok: true})},
+        {moduleId: "news", refresh: async () => ({ok: false, reason: "timeout"})},
+        {moduleId: "tasks", refresh: async () => ({ok: false, reason: "aborted"})},
+        {moduleId: "clock", refresh: async () => ({ok: false, reason: "stale"})},
+        {moduleId: "quotes", refresh: async () => ({ok: false, reason: "failed"})},
+    ];
+
+    const results = await refreshHomeModules(entries, {concurrency: 2});
+    assert.equal(results.length, 5);
+
+    // 1. 验证失败总数统计过滤掉了 aborted 与 stale
+    const failures = countHomeRefreshFailures(results);
+    assert.equal(failures, 2, "仅统计真实失败组件，忽略 aborted 与 stale");
+
+    // 2. 验证失败原因分类准确
+    const summary = summarizeHomeRefreshFailures(results);
+    assert.equal(summary.timeout, 1);
+    assert.equal(summary.failed, 1);
+    assert.equal(summary.other, 0);
+
+    // 3. 验证定向重试只选中超时和失败项，健康项与已取消项绝不重发
+    const retryEntries = selectHomeRefreshRetryEntries(entries, results);
+    assert.deepEqual(retryEntries.map((e) => e.moduleId), ["news", "quotes"]);
+
+    // 4. 负向探针 1: 中断信号被误计入失败总数必须触发断言失败
+    assert.throws(() => {
+        const fakeAbortedResult = [{ok: false, reason: "aborted"}];
+        assert.equal(countHomeRefreshFailures(fakeAbortedResult), 1, "aborted 误当失败探测");
+    }, /ERR_ASSERTION/);
+
+    // 5. 负向探针 2: 健康组件被错误选入重试队列必须触发断言失败
+    assert.throws(() => {
+        const fakeEntries = [{moduleId: "weather"}];
+        const fakeResults = [{ok: true}];
+        const selected = selectHomeRefreshRetryEntries(fakeEntries, fakeResults);
+        assert.equal(selected.length, 1, "正常组件进入重试队列探测");
+    }, /ERR_ASSERTION/);
+});

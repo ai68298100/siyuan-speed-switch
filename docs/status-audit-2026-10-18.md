@@ -36,7 +36,7 @@
 | 右侧内容预览、预览内查找、取消/失败重试 | implemented / locally tested | 预览窗格长内容截断防溢出与读屏 aria-live 回执契约已加固（T-7316）；当前真实主题仍待持续复验 |
 | 移动切换器、排序/分组 sheet、焦点恢复 | implemented / locally tested | 底部 Sheet 模态声明（role=dialog、aria-modal）、Escape/Backdrop 拦截及焦点安全恢复契约已加固（T-7319）；真实 Android 触控仍按 B-004 后置 |
 | 工作台查看/编辑、尺寸、重排/长按、拉伸、撤销重做 | implemented / locally tested | 七档 Bento 尺寸归一化、X 英雄位与焦点环契约已固化（T-7314）；真实 Android 手势待验收 |
-| 工作台空态、缓存/陈旧、失败/重试、健康诊断 | implemented / locally tested / real host partial | 服务在线与数据健康取决于每个组件，不能用 ready 定义替代探测 |
+| 工作台空态、缓存/陈旧、失败/重试、健康诊断 | implemented / locally tested / real host partial | 服务在线与数据健康取决于每个组件，健康诊断与定向重试过滤契约已加固（T-7320） |
 | 组件商店搜索、来源、预览、配置、尺寸、添加/移除 | implemented / locally tested | 生产仍为独立 Dialog；440px 内嵌 Gallery Sheet 未实现 |
 | 第三方 provider 注册、卸载占位、恢复、孤儿配置 | implemented / locally tested / browser tested（受控 Chrome 9/9） | smoke 使用高保真思源桩和真实生产 bundle；至少一个真实提供方跨表面全生命周期验收仍不足；B-010 |
 | 来源/网络/鉴权三维统计与过滤扩展（T-7293 / T-7309） | implemented / locally tested | 已在商店根节点及卡片 dataset 贯通来源、网络与鉴权三维元数据及聚合统计；已有来源组/徽标可用 |
