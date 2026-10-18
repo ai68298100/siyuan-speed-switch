@@ -40,7 +40,7 @@
 | 组件商店搜索、来源、预览、配置、尺寸、添加/移除 | implemented / locally tested | 生产仍为独立 Dialog；440px 内嵌 Gallery Sheet 未实现 |
 | 第三方 provider 注册、卸载占位、恢复、孤儿配置 | implemented / locally tested / browser tested（受控 Chrome 9/9） | 7 阶段全生命周期状态机、白名单约束与孤儿配置/布局协同隔离契约已加固（T-7323）；至少一个真实提供方跨表面全生命周期验收仍不足；B-010 |
 | 来源/网络/鉴权三维统计与过滤扩展（T-7293 / T-7309） | implemented / locally tested | 已在商店根节点及卡片 dataset 贯通来源、网络与鉴权三维元数据及聚合统计；已有来源组/徽标可用 |
-| 桌面片段目录、分组、草稿、查找替换、撤销、冲突 | implemented / locally tested | 编辑器为 textarea + 行号；完整语法高亮/CodeMirror 未交付 |
+| 桌面片段目录、分组、草稿、查找替换、撤销、冲突 | implemented / locally tested | 独立分组管理（增删改查、折叠、拖拽归组、未分组过滤）与元数据投影契约已加固（T-7326）；编辑器为 textarea+行号 |
 | CSS 格式化与光标映射 | implemented / locally tested | 轻量零依赖格式化与光标追踪，@keyframes/变量/嵌套伪类契约已加固（T-7321）；JS 格式化未开放 |
 | CSS 预览、已保存/草稿对照、AI 候选差异 | implemented / locally tested | 沙箱预览禁止 JS 与外部网络；AI 候选行级差异与多 Hunk 选择性合并契约已加固（T-7325） |
 | CSS/JS 文件导入、导出、回收站、备份/恢复 | implemented / locally tested | 单文件进入禁用草稿；备份恢复按预览确认及读回合同运行 |

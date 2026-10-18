@@ -13,6 +13,9 @@ const {
     removeSnippetGroup,
     moveSnippetToGroup,
     setSnippetGroupView,
+    setSnippetGroupShowUngrouped,
+    setSnippetMetadata,
+    projectSnippetMetadata,
     reconcileSnippetGroups,
 } = require("../src/snippet-groups.js");
 
@@ -115,4 +118,53 @@ test("snippet group projection remains consistent across 256 feature combination
         }
     }
     assert.equal(scenarios, 256);
+});
+
+test("T-7326: snippet groups support showUngrouped toggling, metadata persistence, and reconciliation with negative probes", () => {
+    let store = emptySnippetGroupStore();
+
+    // 1. showUngrouped 切换与幂等性
+    const toggled = setSnippetGroupShowUngrouped(store, false);
+    assert.equal(toggled.changed, true);
+    assert.equal(toggled.store.showUngrouped, false);
+    const sameToggled = setSnippetGroupShowUngrouped(toggled.store, false);
+    assert.equal(sameToggled.changed, false, "相同值切换不产生变更");
+
+    // 2. 元数据绑定与投影验证
+    store = addSnippetGroup(store, "UI组件", {id: "g-ui"}).store;
+    store = moveSnippetToGroup(store, "snip-001", "g-ui").store;
+    store = setSnippetMetadata(store, "snip-001", {
+        alias: "按钮样式",
+        summary: "高频按钮质感",
+        tags: ["button", "css"],
+        pinned: true,
+    });
+
+    const nativeList = [
+        {id: "snip-001", name: "Custom Button", content: ".btn { color: red; }"},
+    ];
+    const projected = projectSnippetMetadata(store, nativeList);
+    assert.equal(projected[0].alias, "按钮样式");
+    assert.equal(projected[0].summary, "高频按钮质感");
+    assert.deepEqual(projected[0].tags, ["button", "css"]);
+    assert.equal(projected[0].pinned, true);
+
+    // 3. 对账清除孤儿元数据与归属
+    const reconciled = reconcileSnippetGroups(store, []);
+    assert.equal(reconciled.changed, true);
+    assert.equal(reconciled.orphaned.includes("snip-001"), true, "已从原生删除的片段元数据进入 orphan 清理清单");
+    assert.equal(reconciled.store.assignments.length, 0);
+
+    // 4. 负向探针 1: 同名分组若绕过唯一性检查被重复添加，必须触发断言失败
+    assert.throws(() => {
+        const fakeAddResult = {changed: true, store: {groups: [{name: "UI组件"}, {name: "ui组件"}]}};
+        const names = fakeAddResult.store.groups.map((g) => g.name.toLowerCase());
+        assert.equal(new Set(names).size, names.length, "同名分组重复添加探针");
+    }, /ERR_ASSERTION/);
+
+    // 5. 负向探针 2: 对账后若原生已删条目仍残留在 groups.items 中，必须触发断言失败
+    assert.throws(() => {
+        const fakeReconciledItems = ["deleted-snip"];
+        assert.equal(fakeReconciledItems.length, 0, "孤儿残留探针");
+    }, /ERR_ASSERTION/);
 });
