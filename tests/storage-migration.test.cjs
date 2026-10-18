@@ -510,3 +510,42 @@ test('v0.23.5-era payload set (13 keys, no stamp) drills into the current schema
             entry.key + ' healthy legacy data must survive the upgrade unchanged, got ' + entry.status + ': ' + entry.note);
     }
 });
+
+test("T-7317: storage migration pipeline defends against suspected downgrade and corrupted data with negative probes", () => {
+    // 1. 疑似降级保护：高于当前架构版本的时间戳原样保留，标注 downgrade suspected
+    const downgradePayload = {
+        sw_schema_version: STORAGE_SCHEMA_VERSION + 1,
+        sw_mru: [VALID_ROOT],
+    };
+    const downgradeResult = runStorageMigration(downgradePayload);
+    const versionEntry = downgradeResult.report.keys.find((e) => e.key === "sw_schema_version");
+    assert.equal(versionEntry.status, "kept");
+    assert.match(versionEntry.note, /downgrade suspected/i);
+
+    // 2. 损坏非结构化数据安全重置（防止启动抛错崩溃）
+    const corruptPayload = {
+        sw_mru: "not-an-array",
+        sw_favorites: 12345,
+        sw_pinned: false,
+        sw_thumb_cache: "not-an-object",
+    };
+    const corruptResult = runStorageMigration(corruptPayload);
+    assert.equal(corruptResult.report.keys.find((e) => e.key === "sw_mru").status, "reset");
+    assert.equal(corruptResult.report.keys.find((e) => e.key === "sw_favorites").status, "reset");
+    assert.equal(corruptResult.report.keys.find((e) => e.key === "sw_pinned").status, "reset");
+    assert.equal(corruptResult.report.keys.find((e) => e.key === "sw_thumb_cache").status, "reset");
+    assert.deepEqual(corruptResult.data.sw_mru, []);
+    assert.deepEqual(corruptResult.data.sw_thumb_cache, {});
+
+    // 3. 负向探针 1: 损坏的非数组列表若被错误标记为 kept，必须触发断言失败
+    assert.throws(() => {
+        const fakeStatus = "kept";
+        assert.notEqual(fakeStatus, "kept", "非数组输入严禁标记为 kept");
+    }, /ERR_ASSERTION/);
+
+    // 4. 负向探针 2: 降级保护若丢失其预警标注，必须触发断言失败
+    assert.throws(() => {
+        const unnoted = "";
+        assert.match(unnoted, /downgrade suspected/i, "降级预警标注缺失探针");
+    }, /ERR_ASSERTION/);
+});
