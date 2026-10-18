@@ -14,7 +14,7 @@ function assertAdapter(source) {
     assert.equal(declaresIn(source, ".sw-studio__header", /min-height:\s*64px/, base), true);
     assert.equal(declaresIn(source, ".sw-studio__button", /min-height:\s*40px/, base), true);
     assert.equal(declaresIn(source, ".sw-platform-surface", /container-type:\s*inline-size/, base), true);
-    assert.equal(declaresIn(source, ".sw-home__cell", /grid-column:\s*1 \/ -1/, {atRule: /max-width:\s*560px/}), true);
+    assert.equal(declaresIn(source, ".sw-home.sw-home--mobile .sw-home__cell", /grid-column:\s*1 \/ -1\s*!important/, {atRule: /max-width:\s*560px/}), true);
 }
 
 test("T-7242 R54 surface adapter keeps the three surfaces on one visual contract", () => {
@@ -31,4 +31,10 @@ test("T-7242 adapter contract has a discriminating negative probe", () => {
     );
     assert.throws(() => assertAdapter(injected), /true|strict equal/i,
         "removing the workbench card border must fail the adapter contract");
+    const missingMobileFullRow = styles.replace(
+        "    .sw-home.sw-home--mobile .sw-home__cell { grid-column: 1 / -1 !important; }",
+        "    .sw-home.sw-home--mobile .sw-home__cell { grid-column: span 1 !important; }",
+    );
+    assert.throws(() => assertAdapter(missingMobileFullRow), /true|strict equal/i,
+        "removing the mobile full-row override must fail the adapter contract");
 });

@@ -42,19 +42,19 @@ test('brand widget audit keeps at least ten scoped candidates without claiming f
     for (const brand of ['Apple', 'Huawei', 'OPPO', 'Xiaomi']) assert.match(audit, new RegExp(brand, 'i'));
 });
 
-test('mobile component panel is explicitly single-column', () => {
+test('mobile component panel uses the dual-bento contract', () => {
     const panelSource = readSourceText(path.join(root, 'src', 'second-panel-ui.ts'));
     // R4 重构（D-376）：设置页“主页”分节的构建在 settings-sections.ts。
     const sections = readSourceText(path.join(root, 'src', 'settings-sections.ts'));
     const styles = readSourceText(path.join(root, 'src', 'index.scss'));
     assert.match(panelSource, /this\.isMobile \? resolveMobileHomeSize\(supported\)/);
-    assert.match(panelSource, /cell\.style\.setProperty\("--sw-home-span", String\(Math\.min\(12, preset\.w\)\)\)/);
+    assert.match(panelSource, /cell\.style\.setProperty\("--sw-home-span", String\(Math\.min\(12, effectiveW\)\)\)/);
     assert.match(panelSource, /cell\.style\.gridRow = this\.isMobile \? "auto" :/);
     assert.match(storeUiSource,/device === "mobile" \? \[resolveMobileHomeSize\(declaredSizes\)\]/);
     assert.match(sections, /mobileHomePanelFixed/);
-    assert.equal(declaresIn(styles, '.sw-home--mobile .sw-home__grid', /grid-template-columns:\s*1fr !important/, {topLevel: true}), true);
+    assert.equal(declaresIn(styles, '.sw-home.sw-home--mobile .sw-home__grid', /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\) !important/, {atRule: /max-width:\s*560px/}), true);
     assert.equal(declaresIn(styles, '.sw-home--mobile .sw-home__grid', /grid-auto-rows:\s*auto !important/, {topLevel: true}), true);
-    assert.equal(declaresIn(styles, '.sw-home--mobile .sw-home__cell', /grid-column:\s*1 \/ -1 !important/, {topLevel: true}), true);
+    assert.equal(declaresIn(styles, '.sw-home.sw-home--mobile .sw-home__cell', /grid-column:\s*1 \/ -1 !important/, {atRule: /max-width:\s*560px/}), true);
     assert.equal(declaresIn(styles, '.sw-home--mobile .sw-home__cell', /grid-row:\s*auto !important/, {topLevel: true}), true);
     assert.equal(declaresIn(styles, '.sw-home--mobile .sw-home__cell', /min-height:\s*112px/, {topLevel: true}), true);
     for (const control of ['.sw__home-module-toggle', '.sw__home-module-retry', '.sw__home-module-item-action', '.sw-home__tool', '.sw-home__open']) {
@@ -62,4 +62,12 @@ test('mobile component panel is explicitly single-column', () => {
         assert.equal(declaresIn(styles, selector, /min-height:\s*44px/, {topLevel: true}), true, selector);
         assert.equal(declaresIn(styles, selector, /touch-action:\s*manipulation/, {topLevel: true}), true, selector);
     }
+});
+
+test('mobile dual-bento contract fails when the 2-column override is removed', () => {
+    const styles = readSourceText(path.join(root, 'src', 'styles', '_12-r54-surface-adapter.scss'));
+    const injected = styles.replace(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\) !important/g, 'grid-template-columns: 1fr !important');
+    assert.notEqual(injected, styles, 'the production dual-column declaration must be present in the fixture');
+    assert.equal(declaresIn(injected, '.sw-home.sw-home--mobile .sw-home__grid', /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\) !important/, {atRule: /max-width:\s*560px/}), false,
+        'removing the dual-column declaration must make the contract fail');
 });

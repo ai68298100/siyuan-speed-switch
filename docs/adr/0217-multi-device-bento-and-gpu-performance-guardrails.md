@@ -31,3 +31,7 @@
   - 临时注释掉 `repeat(2, minmax(0, 1fr))`，测试精确红屏拦截（`ERR_ASSERTION: narrow container must use a 2-column mobile dual bento grid instead of full row stacking`），还原后 100% 复绿；
 - 生产构建与移动端测试：`tests/mobile-toolbar-layout.cjs` PASS；`npx tsc --noEmit` 0 错误；`package.zip 577 KiB` 处于 578 KiB 发布门禁之内；
 - 全设备可交互原型：[`docs/design/cyber-tactile-glance-prototype-2026-10-17.html`](../design/cyber-tactile-glance-prototype-2026-10-17.html)（在 `http://127.0.0.1:8765/` 运行，支持 桌面 920px、iPad 834px、iPhone 393px、Android 412px、Dock 245px 一键切换验证）。
+
+## 实现校正（T-7302，2026-10-18）
+
+初版规则曾被 `_05-settings-widgets.scss` 的移动单列 `!important` 规则遮蔽，导致 ADR 所述窄容器双列与 `xs` 并排在真实生产层叠中不生效。`_12-r54-surface-adapter.scss` 现以 `.sw-home.sw-home--mobile` 同时提高选择器特异性并保留 `!important`，分别覆盖网格列数、默认整行卡片与 `xs` 微卡列跨度；`tests/compact-workbench-style-contract.test.cjs` 已锁定这组三项声明，并用删除 `!important` 的违规注入确认门禁会精确失败。

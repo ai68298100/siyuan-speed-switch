@@ -144,7 +144,10 @@ function planSnippetImport(localSnippets = [], incomingSnippets = [], {
     }
 
     return {
-        list: [...additions, ...merged],
+        // Keep the native order stable and append new entries after it. The
+        // planner is consumed by a whole-list replacement API, so prepending
+        // here would silently reshuffle the user's existing snippets.
+        list: [...merged, ...additions],
         addedCount,
         updatedCount,
         skippedCount

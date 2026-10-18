@@ -99,8 +99,15 @@
         flex-wrap: wrap;
 
         input { flex: 1 1 100%; }
-        .sw-home-store__guide { flex: 1 1 46%; min-height: 32px; }
-        .sw-home-store__clear-search { margin-left: -40px; z-index: 1; }
+        // 说明与清除仍保持窄屏一行布局，但触控命中区统一到 44px。
+        .sw-home-store__guide { flex: 1 1 46%; min-height: 44px; }
+        .sw-home-store__clear-search {
+            width: 44px;
+            height: 44px;
+            min-height: 44px;
+            margin-left: -44px;
+            z-index: 1;
+        }
     }
 
     // T-6967 S2：排序已在筛选行尾（.sw-home-store__filter-bar），窄屏不再并入搜索行；

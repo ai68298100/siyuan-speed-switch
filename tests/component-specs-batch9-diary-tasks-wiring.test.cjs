@@ -139,7 +139,8 @@ test('diary and task adapters keep bounded SQL and controlled interaction wiring
     assert.match(tasks, /buildTodayTasksSnapshot\(/);
     assert.match(indexSource, /flipTaskMarkdown\(/);
     assert.match(indexSource, /fetchKernelJson\("\/api\/block\/updateBlock"/);
-    assert.match(secondPanelSource, /if \(!ok\) showMessage\(this\.i18n\.homeTaskToggleFailed\)/);
+    assert.match(secondPanelSource, /if \(!ok\)\s*\{\s*showMessage\(this\.i18n\.homeTaskToggleFailed\)/);
+    assert.match(secondPanelSource, /toggleHomeTaskBlock\(item, desiredDone\)/);
 
     const flashcards = slice('flashcard-due', 'random-review');
     assert.match(flashcards, /\/api\/riff\/getNotebookRiffDueCards/);

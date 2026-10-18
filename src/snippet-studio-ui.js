@@ -204,6 +204,13 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetFindConfirm: locale.i18n.snippetFindConfirm,
         snippetFindNone: locale.i18n.snippetFindNone,
         snippetFindDone: locale.i18n.snippetFindDone,
+        snippetFormat: locale.i18n.snippetFormat,
+        snippetFormatOnlyCss: locale.i18n.snippetFormatOnlyCss,
+        snippetFormatted: locale.i18n.snippetFormatted,
+        snippetAlreadyFormatted: locale.i18n.snippetAlreadyFormatted,
+        snippetImportMerge: locale.i18n.snippetImportMerge,
+        snippetImportFork: locale.i18n.snippetImportFork,
+        snippetImportOverwrite: locale.i18n.snippetImportOverwrite,
         snippetScene: locale.i18n.snippetScene,
         snippetSceneReading: locale.i18n.snippetSceneReading,
         snippetSceneTable: locale.i18n.snippetSceneTable,
@@ -231,6 +238,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetBackupHint: locale.i18n.snippetBackupHint,
         snippetFailed: locale.i18n.snippetFailed,
         snippetImport: locale.i18n.snippetImport,
+        snippetImportPackage: locale.i18n.snippetImportPackage,
+        snippetImportPackageHint: locale.i18n.snippetImportPackageHint,
+        snippetPackageImported: locale.i18n.snippetPackageImported,
+        snippetImportInvalid: locale.i18n.snippetImportInvalid,
         snippetImported: locale.i18n.snippetImported,
         snippetInvalid: locale.i18n.snippetInvalid,
         snippetJS: locale.i18n.snippetJS,
@@ -493,6 +504,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let restoreUndo = session.restoreUndo ? normalizeSnippetBackup(session.restoreUndo) : null;
     let lastSnapshotSignature = "";
     let restoreDialog = null;
+    let importPlanDialog = null;
+    let importPlanCancel = null;
     let gistSettings = (() => {
         try { return normalizeGistSettings(gist?.load?.()); } catch (_) { return normalizeGistSettings(null); }
     })();
@@ -940,7 +953,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     editorFrame.append(lineNumbers, editor);
     const fileInput = node("input");
     fileInput.type = "file";
-    fileInput.accept = ".css,.js";
+    fileInput.accept = ".css,.js,.json,application/json";
     fileInput.hidden = true;
     const restoreInput = node("input");
     restoreInput.type = "file";
@@ -1307,6 +1320,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     dualPaneObserver?.observe(previewShell);
     const errorText = (error) => {
         const code = String(error?.message || error?.code || "");
+        if (code === "snippet-import-invalid") return t("snippetImportInvalid");
         if (code.startsWith("gist-")) {
             if (code === "gist-write-unknown") return t("snippetGistPending");
             if (code === "gist-request-rejected") return t("snippetGistFailed");
@@ -2525,7 +2539,114 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             }
         })();
     });
-    // T-7046：导入代际保护——file.text() 返回后核对代际与草稿现场：
+    // T-7300：JSON 片段包进入原生列表前必须显式选择导入策略。CSS/JS 单文件
+    // 仍只进入当前禁用草稿；JSON 才会调用纯规划引擎并通过 restoreSnapshot
+    // 一次性写回，避免逐条 mutate 造成半完成列表。
+    function chooseImportMode(count) {
+        importPlanCancel?.();
+        return new Promise((resolve) => {
+            let dialog;
+            let closed = false;
+            let keydown = () => {};
+            const cleanup = () => {
+                doc.removeEventListener("keydown", keydown, true);
+                if (importPlanDialog === dialog) {
+                    importPlanDialog = null;
+                    importPlanCancel = null;
+                }
+            };
+            try {
+                dialog = new Dialog({
+                    title: t("snippetImportPackage"),
+                    content: '<div class="sw-studio__import-plan"></div>',
+                    width: "min(520px, 94vw)",
+                    destroyCallback: () => {
+                        cleanup();
+                        if (!closed) {
+                            closed = true;
+                            resolve(null);
+                        }
+                    },
+                });
+            } catch (_) {
+                resolve(null);
+                return;
+            }
+            importPlanDialog = dialog;
+            const box = dialog.element?.querySelector?.(".sw-studio__import-plan");
+            if (!box) {
+                dialog.destroy?.();
+                resolve(null);
+                return;
+            }
+            const hint = node("p", "sw-studio__hint", `${t("snippetImportPackage")} · ${count}`);
+            const modeHint = node("p", "sw-studio__hint", t("snippetImportPackageHint"));
+            const selectMode = node("select", "sw-studio__select");
+            selectMode.setAttribute("aria-label", t("snippetImportPackage"));
+            for (const [value, label] of [["merge", "snippetImportMerge"], ["fork", "snippetImportFork"], ["overwrite", "snippetImportOverwrite"]]) {
+                selectMode.appendChild(new win.Option(t(label), value));
+            }
+            const actions = node("div", "sw-studio__commands");
+            const cancel = node("button", "b3-button b3-button--text", t("snippetClose"));
+            cancel.type = "button";
+            const confirm = node("button", "b3-button b3-button--cancel", t("snippetImportPackage"));
+            confirm.type = "button";
+            actions.append(cancel, confirm);
+            box.append(hint, modeHint, selectMode, actions);
+            const close = (mode) => {
+                if (closed) return;
+                closed = true;
+                cleanup();
+                dialog.destroy?.();
+                resolve(mode);
+            };
+            importPlanCancel = () => close(null);
+            keydown = (event) => {
+                if (event.key !== "Escape") return;
+                event.preventDefault();
+                event.stopPropagation();
+                close(null);
+            };
+            doc.addEventListener("keydown", keydown, true);
+            cancel.addEventListener("click", () => close(null));
+            confirm.addEventListener("click", () => close(selectMode.value));
+            confirm.focus?.({preventScroll: true});
+        });
+    }
+
+    async function applyPlannedImport(incoming, mode, generation, startedRevision) {
+        if (disposed || generation !== importGeneration || revision !== startedRevision) return false;
+        if (typeof store.restoreSnapshot !== "function") throw new Error("snippet-import-unsupported");
+        const current = await readStudioSnapshot();
+        if (disposed || generation !== importGeneration || revision !== startedRevision) return false;
+        const plan = planSnippetImport(current.snippets, incoming, {mode});
+        if (plan.skippedCount > 0 && plan.addedCount === 0 && plan.updatedCount === 0) throw new Error("snippet-invalid");
+        if (plan.addedCount === 0 && plan.updatedCount === 0 && plan.skippedCount === 0 && mode !== "overwrite") {
+            setStatus(t("snippetPackageImported"), "ready");
+            return true;
+        }
+        const expectedSignature = snippetSnapshotSignature(current);
+        busy = true;
+        setStatus(t("snippetLoading"), "busy");
+        syncFields();
+        try {
+            const confirmed = await store.restoreSnapshot(expectedSignature, {snippets: plan.list, settings: current.settings});
+            if (disposed || generation !== importGeneration) return false;
+            applyStudioSnapshot(confirmed, true);
+            const changed = plan.addedCount + plan.updatedCount;
+            const skipped = plan.skippedCount ? ` · ${t("snippetInvalid")} ${plan.skippedCount}` : "";
+            setStatus(`${t("snippetPackageImported")} ${changed}${skipped}`, "ready");
+            return true;
+        } catch (error) {
+            if (!disposed) setStatus(error?.writeLanded ? t("snippetLoading") : errorText(error), "error");
+            return false;
+        } finally {
+            busy = false;
+            if (!disposed) syncFields();
+        }
+    }
+
+    // T-7046：导入代际保护——file.text() 返回后核对导入代际与草稿现场：
     // ①另一轮导入已开始（importGeneration 前移）；②读取期间编辑过草稿或切换过
     // 片段（revision 在 changed/AI 接受/choose 三条路径都自增）。迟到文件诚实
     // 丢弃，不覆盖新草稿、不触发另一轮 choose。
@@ -2533,9 +2654,23 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const generation = ++importGeneration;
         const startedRevision = revision;
         try {
-            if (file.size > SNIPPET_CODE_MAX) throw new Error("size_limit");
+            const isJson = /\.json$/i.test(String(file?.name || ""));
+            const maxBytes = isJson ? SNIPPET_BACKUP_MAX_BYTES : SNIPPET_CODE_MAX;
+            if (Number(file?.size) > maxBytes) throw new Error("size_limit");
             const text = await file.text();
             if (disposed || generation !== importGeneration || revision !== startedRevision) return;
+            if (isJson) {
+                let parsed;
+                try { parsed = JSON.parse(text); } catch (_) { throw new Error("snippet-import-invalid"); }
+                const incoming = Array.isArray(parsed) ? parsed
+                    : Array.isArray(parsed?.snippets) ? parsed.snippets
+                        : parsed && typeof parsed === "object" ? [parsed] : null;
+                if (!incoming) throw new Error("snippet-import-invalid");
+                const mode = await chooseImportMode(incoming.length);
+                if (!mode || disposed || generation !== importGeneration || revision !== startedRevision) return;
+                await applyPlannedImport(incoming, mode, generation, startedRevision);
+                return;
+            }
             const imported = parseSnippetImport(file.name, text);
             choose(imported, null);
             setStatus(imported.varsResolved
@@ -3192,6 +3327,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         dispose() {
             disposed = true;
             cancelGistRequest(false);
+            importPlanCancel?.();
+            importPlanDialog?.destroy?.();
+            importPlanDialog = null;
             aiGeneration += 1;
             session.draft = {...draft};
             session.baseline = baseline ? {...baseline} : null;

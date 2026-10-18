@@ -63,7 +63,7 @@ export interface SecondPanelUiHost {
         searchInput: HTMLInputElement | null, close: () => void, selector?: string): void;
     resolvePanelDialogSize(settings: ISwSettings, fullscreen: boolean): {width: number; height: number};
     saveHomeState(state: { schemaVersion: number; instances: unknown[]; layouts: Record<string, unknown[]> }): void;
-    toggleHomeTaskBlock(item: { value?: string; done?: boolean }): Promise<boolean>;
+    toggleHomeTaskBlock(item: { value?: string; done?: boolean }, desiredDone?: boolean): Promise<boolean>;
 }
 
 export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfaceContext | null) {
@@ -235,7 +235,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         iconObserver?.observe(root, {childList: true, subtree: true});
         const homePalette = settings.homePalette || "auto";
         root.classList.add(`sw-home--palette-${homePalette}`);
-        // 手机端强制单列堆叠（12 列网格在窄屏会把小组件压成窄条）
+        // 移动端使用 R54 容器布局：xs 微卡双列，其余尺寸按可用宽度展开。
         if (this.isMobile) root.classList.add("sw-home--mobile");
         const device = this.isMobile ? "mobile" : "desktop";
         // 面板闭包持有当前渲染的控制器列表，工具栏"刷新全部"可跨渲染访问
@@ -248,6 +248,19 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         const homeRefreshObservers: IntersectionObserver[] = [];
         let homeRefreshBatchController: AbortController | null = null;
         let panelEventCleanup: (() => void) | null = null;
+        // Resize gestures attach listeners to window, while the handle itself is
+        // rebuilt on every render. Keep the active cleanup functions at panel
+        // scope so a rerender or dialog destroy cannot strand a gesture.
+        const activeDragCleanups = new Set<() => void>();
+        const clearDragInteractions = () => {
+            [...activeDragCleanups].forEach((cleanup) => cleanup());
+            activeDragCleanups.clear();
+        };
+        const activeResizeCleanups = new Set<() => void>();
+        const clearResizeInteractions = () => {
+            [...activeResizeCleanups].forEach((cleanup) => cleanup());
+            activeResizeCleanups.clear();
+        };
         const clearDeferredRefreshes = () => {
             homeRefreshTimers.splice(0).forEach((handle) => {
                 const cancelIdle = (window as any).cancelIdleCallback;
@@ -350,6 +363,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             panelEventCleanup?.();
             panelEventCleanup = null;
             clearDeferredRefreshes();
+            clearDragInteractions();
+            clearResizeInteractions();
             root.innerHTML = "";
             if (this.mountPlatformChrome && platformLabels) this.mountPlatformChrome(root, {
                 surface: "workbench",
@@ -647,6 +662,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     const undoButton = document.createElement("button");
                     undoButton.type = "button";
                     undoButton.className = "b3-button b3-button--text sw-home__history";
+                    undoButton.dataset.homeAction = "undo";
                     undoButton.textContent = this.i18n.homeUndo;
                     const undoTarget = peekUndoLabel(layoutHistory) || this.i18n.homeHistoryUpdate;
                     undoButton.setAttribute("aria-label", this.i18n.homeUndoLabel.replace("{x}", undoTarget));
@@ -663,6 +679,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     const redoButton = document.createElement("button");
                     redoButton.type = "button";
                     redoButton.className = "b3-button b3-button--text sw-home__history";
+                    redoButton.dataset.homeAction = "redo";
                     redoButton.textContent = this.i18n.homeRedo;
                     const redoTarget = peekRedoLabel(layoutHistory) || this.i18n.homeHistoryUpdate;
                     redoButton.setAttribute("aria-label", this.i18n.homeRedoLabel.replace("{x}", redoTarget));
@@ -920,6 +937,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         sourceFresh: this.i18n.homeSourceFresh,
                         sourceCached: this.i18n.homeSourceCached,
                         sourceStale: this.i18n.homeSourceStale,
+                        taskDone: this.i18n.homeTaskMarkDone,
+                        taskUndone: this.i18n.homeTaskMarkUndone,
                         previousMonth: this.i18n.homeCalendarPreviousMonth,
                         nextMonth: this.i18n.homeCalendarNextMonth,
                         today: this.i18n.homeCalendarToday,
@@ -983,11 +1002,25 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         this.homePanelSnapshots.delete(inst.instanceId);
                         openHomeConfigForm.call(this, inst, def.configSchema || [], () => renderPanel());
                     },
-                    onToggleItem: (item: { label?: string; value?: string; done?: boolean }) => {
-                        void (async () => {
-                            const ok = await this.toggleHomeTaskBlock(item);
-                            if (!ok) showMessage(this.i18n.homeTaskToggleFailed);
-                            await controller.refresh(inst.config || {}, {force: true});
+                    onToggleItem: (item: { label?: string; value?: string; done?: boolean }, _view?: unknown, desiredDone?: boolean) => {
+                        return (async (): Promise<boolean> => {
+                            let ok = false;
+                            try {
+                                ok = await this.toggleHomeTaskBlock(item, desiredDone);
+                            } catch (_) {
+                                ok = false;
+                            }
+                            if (!ok) {
+                                showMessage(this.i18n.homeTaskToggleFailed);
+                                return false;
+                            }
+                            try {
+                                await controller.refresh(inst.config || {}, {force: true});
+                            } catch (_) {
+                                // Keep the successful write; the controller
+                                // owns readback error/retry presentation.
+                            }
+                            return true;
                         })();
                     },
                 });
@@ -1099,6 +1132,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             const startX = event.clientX;
                             const startY = event.clientY;
                             let active = false;
+                            let finished = false;
                             let hoverId: string | null = null;
                             let lastKnownX = startX;
                             let lastClientY = startY;
@@ -1153,6 +1187,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                                 ensureEdgeLoop();
                             };
                             const finish = (commit: boolean) => {
+                                if (finished) return;
+                                finished = true;
                                 window.removeEventListener("pointermove", onMove);
                                 window.removeEventListener("pointerup", onUp);
                                 window.removeEventListener("pointercancel", onCancel);
@@ -1163,6 +1199,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                                 cell.classList.remove("sw-home__cell--dragging");
                                 cell.removeAttribute("data-prevent-swipe");
                                 dragCleanup = null;
+                                activeDragCleanups.delete(cleanup);
                                 if (commit && active && hoverId && hoverId !== inst.instanceId) {
                                     commitMove(moveLayoutEntry((this.getHomeState().layouts[device] || []) as Array<any>, inst.instanceId, hoverId));
                                 }
@@ -1179,7 +1216,9 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             window.addEventListener("pointerup", onUp);
                             window.addEventListener("pointercancel", onCancel);
                             window.addEventListener("keydown", onKey, true);
-                            dragCleanup = () => finish(false);
+                            const cleanup = () => finish(false);
+                            dragCleanup = cleanup;
+                            activeDragCleanups.add(cleanup);
                         };
                         dragHandle.addEventListener("pointerdown", beginDrag);
                         // T-7068：移动端长按单元格任意处进入拖拽——520ms 静置且位移 ≤6px
@@ -1196,6 +1235,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                                 if (!holdTimer) return;
                                 window.clearTimeout(holdTimer);
                                 holdTimer = 0;
+                                holdOrigin = null;
+                                activeDragCleanups.delete(cancelHold);
                                 cell.classList.remove("sw-home__cell--hold");
                                 window.removeEventListener("pointermove", onHoldMove);
                                 window.removeEventListener("pointerup", onHoldUp);
@@ -1214,6 +1255,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                                 if (!origin) return;
                                 beginDrag({button: 0, clientX: origin.x, clientY: origin.y, preventDefault: () => undefined});
                             }, 520);
+                            activeDragCleanups.add(cancelHold);
                         });
                     const curW = Number(layout.w) || preset.w || 6;
                     const curH = Number(layout.h) || preset.h || 3;
@@ -1257,6 +1299,9 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         const startW = Number(layout.w) || 6, startH = Number(layout.h) || 3;
                         const colW = Math.max(20, (grid.clientWidth || 960) / 12);
                         let lastW = startW, lastH = startH;
+                        let ended = false;
+                        const initialSpan = cell.style.getPropertyValue("--sw-home-span");
+                        const initialGridRow = cell.style.gridRow;
                         cell.classList.add("sw-home__cell--resizing");
                         resizeHandle.setAttribute("data-dimensions", `${lastW}列 × ${lastH}行`);
                         const onMove = (m: PointerEvent) => {
@@ -1266,23 +1311,44 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             cell.style.gridRow = `span ${lastH}`;
                             resizeHandle.setAttribute("data-dimensions", `${lastW}列 × ${lastH}行`);
                         };
-                        const onEnd = () => {
+                        const onEnd = (commit: boolean) => {
+                            if (ended) return;
+                            ended = true;
                             window.removeEventListener("pointermove", onMove);
-                            window.removeEventListener("pointerup", onEnd);
-                            window.removeEventListener("pointercancel", onEnd);
+                            window.removeEventListener("pointerup", onPointerUp);
+                            window.removeEventListener("pointercancel", onPointerCancel);
+                            window.removeEventListener("keydown", onKeydown, true);
                             cell.classList.remove("sw-home__cell--resizing");
                             resizeHandle.removeAttribute("data-dimensions");
                             resizeCleanup = null;
+                            activeResizeCleanups.delete(cleanup);
+                            if (!commit) {
+                                if (initialSpan) cell.style.setProperty("--sw-home-span", initialSpan);
+                                else cell.style.removeProperty("--sw-home-span");
+                                cell.style.gridRow = initialGridRow;
+                                return;
+                            }
                             if (lastW !== startW || lastH !== startH) {
                                 layoutOpLabel = "自由拉伸";
                                 persistLayout({w: lastW, h: lastH});
                                 renderPanel();
                             }
                         };
+                        const onPointerUp = () => onEnd(true);
+                        const onPointerCancel = () => onEnd(false);
+                        const onKeydown = (key: KeyboardEvent) => {
+                            if (key.key !== "Escape") return;
+                            key.preventDefault();
+                            key.stopPropagation();
+                            onEnd(false);
+                        };
+                        const cleanup = () => onEnd(false);
                         window.addEventListener("pointermove", onMove);
-                        window.addEventListener("pointerup", onEnd);
-                        window.addEventListener("pointercancel", onEnd);
-                        resizeCleanup = onEnd;
+                        window.addEventListener("pointerup", onPointerUp);
+                        window.addEventListener("pointercancel", onPointerCancel);
+                        window.addEventListener("keydown", onKeydown, true);
+                        activeResizeCleanups.add(cleanup);
+                        resizeCleanup = cleanup;
                     });
                     cell.appendChild(resizeHandle);
 
@@ -1787,7 +1853,9 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         releasePanel = () => {
             if (panelReleased) return;
             panelReleased = true;
+            clearDragInteractions();
             disposeSizeMenu();
+            clearResizeInteractions();
             clearDeferredRefreshes();
             iconObserver?.disconnect();
             if (iconClampFrame) cancelAnimationFrame(iconClampFrame);

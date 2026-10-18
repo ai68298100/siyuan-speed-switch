@@ -265,7 +265,8 @@ test("workbench can add missing curated defaults without replacing existing layo
     for (const moduleId of available) expect(modules.filter(id => id === moduleId)).toHaveLength(1);
     expect(after.layouts.desktop.find(item => item.instanceId === "e2e-kept-default")).toMatchObject({x: 3, y: 2});
 
-    const undo = root.locator(".sw-home__edit-banner button.sw-home__history");
+    const undo = root.locator('.sw-home__edit-banner button.sw-home__history')
+        .filter({hasText: /Undo|撤销/i});
     await expect(undo).toBeVisible();
     await undo.click();
     await expect.poll(() => page.evaluate(() => window.__restoreDefaultsFixture.state.instances.length)).toBe(before.instances.length);

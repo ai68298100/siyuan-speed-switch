@@ -228,7 +228,7 @@
     .sw__home-calendar-period-select {
         min-height: var(--sw-control-h-md, 28px);
         padding: 0 var(--sw-space-sm, 6px);
-        margin-left: 2px;
+        margin-left: var(--sw-space-2xs, 2px);
     }
 }
 

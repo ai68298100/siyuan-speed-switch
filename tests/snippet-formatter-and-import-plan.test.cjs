@@ -29,6 +29,15 @@ test("formatCss indents rules, normalizes spaces and preserves block comments", 
     assert.ok(formatted.includes("@media (max-width: 560px) {\n  .protyle {\n    font-size: 14px;\n  }\n}"));
 });
 
+test("formatCss keeps string whitespace, comments in declarations, and semicolons inside functions", () => {
+    const formatted = formatCss('a{content:"hello   world";background:url(data:image/svg+xml;utf8,<svg viewBox="0 0 10 10"></svg>);color:red /* inline */;}');
+    assert.match(formatted, /content: "hello   world";/, "字符串内部空格不得被压缩");
+    assert.match(formatted, /background: url\(data:image\/svg\+xml;utf8,<svg viewBox="0 0 10 10"><\/svg>\);/, "data URI 内的分号不得拆断声明");
+    assert.match(formatCss('a{background:url(data:image/svg+xml;utf8,<svg>{x}</svg>);}') , /background: url\(data:image\/svg\+xml;utf8,<svg>\{x\}<\/svg>\);/, "函数值内的大括号不得被误当作 CSS 块边界");
+    assert.match(formatted, /color: red \/\* inline \*\/;/, "声明尾部注释不得变成独立伪声明");
+    assert.match(formatCss('@import url("https://example.test/a.css");'), /@import url\("https:\/\/example\.test\/a\.css"\);/, "无冒号声明不得把 URL 协议误判为属性名");
+});
+
 test("formatWithCursor projects cursor position across whitespace normalization", () => {
     const raw = ".test { color:red; }";
     // 光标位于 "red" 之后 (offset 17)
@@ -83,6 +92,7 @@ test("planSnippetImport merge mode updates matching ID, preserves enabled state,
     // 新增的 s3 正常导入
     const s3 = plan.list.find(s => s.id === "s3");
     assert.equal(s3.name, "Brand New");
+    assert.deepEqual(plan.list.map((item) => item.id), ["s1", "s2", "s3"], "新增条目应追加而非重排本地条目");
 });
 
 test("planSnippetImport fork mode generates fresh IDs and imports as disabled copies", () => {

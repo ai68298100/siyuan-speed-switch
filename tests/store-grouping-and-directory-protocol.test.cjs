@@ -5,6 +5,7 @@ const {
     buildHomeStoreTransparencySummary,
     filterHomeStoreEntriesByTransparency,
 } = require("../src/home-source-model.js");
+const {DEFAULT_MODULES} = require("../src/home-model.js");
 
 const mockEntries = [
     {
@@ -94,6 +95,27 @@ test("ADR 0219 T-7293: filterHomeStoreEntriesByTransparency filters entries clea
     // 容错与全选
     assert.equal(filterHomeStoreEntriesByTransparency(null).length, 0);
     assert.equal(filterHomeStoreEntriesByTransparency(mockEntries, {}).length, 4);
+});
+
+test("ADR 0219 T-7293 / T-7305: inbox-shorthands has fully aligned cloud source, remote network and host auth metadata", () => {
+    const inboxDef = DEFAULT_MODULES.find((m) => m && m.moduleId === "inbox-shorthands");
+    assert.ok(inboxDef, "inbox-shorthands must exist in DEFAULT_MODULES");
+    assert.equal(inboxDef.availability, "external");
+
+    const resolved = resolveHomeModuleSource(inboxDef);
+    assert.equal(resolved.kind, "external");
+    assert.equal(resolved.network, "remote");
+    assert.equal(resolved.auth, "host");
+    assert.equal(resolved.pluginId, "siyuan-cloud");
+    assert.equal(resolved.label, "思源云端收集箱");
+
+    // 负向探针: 若将远程与鉴权误降级为 local/none 必须断言失败
+    assert.throws(() => {
+        assert.equal(resolved.network, "local", "remote network probe");
+    }, /ERR_ASSERTION/);
+    assert.throws(() => {
+        assert.equal(resolved.auth, "none", "host auth probe");
+    }, /ERR_ASSERTION/);
 });
 
 test("ADR 0219 T-7293: directory protocol contract has discriminating negative probes", () => {

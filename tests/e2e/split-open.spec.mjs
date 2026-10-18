@@ -7,9 +7,11 @@ import {openApp, openSwitcher, createClient} from "./helpers/app.mjs";
 const RUN = String(Date.now()).slice(-6);
 const NOTEBOOK_PREFIX = "速切E2E分屏";
 const NOTEBOOK_NAME = `${NOTEBOOK_PREFIX}-${RUN}`;
+const BASE_TITLE = `速切分屏基准${RUN}`;
 const DOC_TITLE = `速切分屏文档${RUN}`;
 
 let notebookId = "";
+let baseDocId = "";
 
 async function removeLegacyNotebooks(client) {
     const listed = await client.postChecked("/api/notebook/lsNotebooks", {});
@@ -34,16 +36,32 @@ test("ctrl+click on a search result opens the document in a right split", async 
             markdown: `# ${DOC_TITLE}\n\n${DOC_TITLE} 的内容首段`,
         });
         expect(String(doc || "").length).toBeGreaterThan(0);
+        const baseDoc = await client.postChecked("/api/filetree/createDocWithMd", {
+            notebook: notebookId,
+            path: `/${BASE_TITLE}`,
+            markdown: `# ${BASE_TITLE}\n\n用于提供右侧分屏的现有页签`,
+        });
+        baseDocId = String(baseDoc || "");
         await expect.poll(async () => {
             const docs = await client.postChecked("/api/filetree/searchDocs", {k: DOC_TITLE});
             return Array.isArray(docs) && docs.some(item => item.id === doc
                 || String(item.path || "").includes(doc));
         }, {timeout: 20000}).toBe(true);
+        await expect.poll(async () => {
+            const docs = await client.postChecked("/api/filetree/searchDocs", {k: BASE_TITLE});
+            return Array.isArray(docs) && docs.some(item => item.id === baseDocId
+                || String(item.path || "").includes(baseDocId));
+        }, {timeout: 20000}).toBe(true);
 
         await openApp(page);
         await openSwitcher(page);
-        const search = page.locator("input.sw__search");
-        await search.fill(DOC_TITLE);
+        const search = page.locator("input.sw__search").first();
+        await search.fill(BASE_TITLE);
+        await page.waitForSelector(".sw__doc-item", {timeout: 30000});
+        await page.locator(".sw__doc-item", {hasText: BASE_TITLE}).first().click();
+        await expect(page.locator(".protyle").first()).toBeVisible({timeout: 30000});
+        await openSwitcher(page);
+        await page.locator("input.sw__search").last().fill(DOC_TITLE);
         await page.waitForSelector(".sw__doc-item", {timeout: 30000});
 
         const dumpLayout = () => page.evaluate(() => {

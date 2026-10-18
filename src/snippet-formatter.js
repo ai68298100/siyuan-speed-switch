@@ -16,91 +16,88 @@ function formatCss(code, { indent = DEFAULT_INDENT } = {}) {
 
     let formatted = "";
     let depth = 0;
-    let inComment = false;
     let inString = false;
     let stringChar = "";
+    let escaped = false;
+    let parenDepth = 0;
     let buffer = "";
 
     const trimmed = code.trim();
+
+    const appendLine = (line, lineDepth = depth) => {
+        const value = String(line || "").trim();
+        if (!value) return;
+        formatted += `${indent.repeat(Math.max(0, lineDepth))}${value}\n`;
+    };
+
+    const flushDeclaration = (withSemicolon = false) => {
+        const value = buffer.trim();
+        buffer = "";
+        if (!value) return;
+        const declaration = withSemicolon && !value.endsWith(";") ? `${value};` : value;
+        appendLine(normalizeDeclaration(declaration));
+    };
 
     for (let i = 0; i < trimmed.length; i++) {
         const char = trimmed[i];
         const nextChar = trimmed[i + 1] || "";
 
-        // 处理块注释 /* ... */
+        // 处理块注释 /* ... */。注释放在行首时单独成行；落在声明中时
+        // 保留在声明值里，避免 `color:red /* c */;` 被拆成伪声明。
         if (!inString && char === "/" && nextChar === "*") {
-            inComment = true;
-            buffer += "/*";
-            i++;
-            continue;
-        }
-        if (inComment) {
-            buffer += char;
-            if (char === "*" && nextChar === "/") {
-                inComment = false;
-                buffer += "/";
-                i++;
-                // 注释结束后另起一行或追加
-                const curIndent = indent.repeat(depth);
-                formatted += (formatted.endsWith("\n") ? "" : "\n") + curIndent + buffer.trim() + "\n";
-                buffer = "";
-            }
+            const end = trimmed.indexOf("*/", i + 2);
+            const comment = end < 0 ? trimmed.slice(i) : trimmed.slice(i, end + 2);
+            if (buffer.trim()) buffer += comment;
+            else appendLine(comment);
+            i = end < 0 ? trimmed.length : end + 1;
             continue;
         }
 
         // 处理字符串引号
-        if (!inComment && (char === '"' || char === "'")) {
+        if (char === '"' || char === "'") {
             if (!inString) {
                 inString = true;
                 stringChar = char;
-            } else if (char === stringChar && trimmed[i - 1] !== "\\") {
+                escaped = false;
+            } else if (char === stringChar && !escaped) {
                 inString = false;
+                stringChar = "";
             }
             buffer += char;
+            escaped = inString && char === "\\" && !escaped;
             continue;
         }
         if (inString) {
             buffer += char;
+            escaped = char === "\\" && !escaped;
             continue;
         }
 
+        // 括号内的分号属于值（尤其是 data URI），不能结束 CSS 声明。
+        if (char === "(") parenDepth++;
+        else if (char === ")") parenDepth = Math.max(0, parenDepth - 1);
+
         // 遇到大括号开启
-        if (char === "{") {
+        if (char === "{" && parenDepth === 0) {
             const selector = buffer.trim();
             buffer = "";
-            const curIndent = indent.repeat(depth);
-            if (formatted.length > 0 && !formatted.endsWith("\n\n")) {
-                if (!formatted.endsWith("\n")) formatted += "\n";
-            }
-            if (selector) {
-                formatted += (formatted.endsWith("\n") ? curIndent : " ") + selector + " {\n";
-            } else {
-                formatted += " {\n";
-            }
+            if (selector) appendLine(`${selector} {`);
+            else appendLine("{");
             depth++;
             continue;
         }
 
         // 遇到大括号闭合
-        if (char === "}") {
-            const lastDecl = buffer.trim();
-            buffer = "";
-            if (lastDecl) {
-                const curIndent = indent.repeat(depth);
-                formatted += curIndent + normalizeDeclaration(lastDecl) + "\n";
-            }
+        if (char === "}" && parenDepth === 0) {
+            flushDeclaration();
             depth = Math.max(0, depth - 1);
-            const closeIndent = indent.repeat(depth);
-            formatted += closeIndent + "}\n";
+            appendLine("}");
             continue;
         }
 
         // 遇到分号（CSS 声明结束）
-        if (char === ";") {
-            const decl = (buffer + ";").trim();
-            buffer = "";
-            const curIndent = indent.repeat(depth);
-            formatted += curIndent + normalizeDeclaration(decl) + "\n";
+        if (char === ";" && parenDepth === 0) {
+            flushDeclaration(true);
             continue;
         }
 
@@ -109,11 +106,7 @@ function formatCss(code, { indent = DEFAULT_INDENT } = {}) {
     }
 
     // 剩余尾部内容
-    const rest = buffer.trim();
-    if (rest) {
-        const curIndent = indent.repeat(depth);
-        formatted += curIndent + normalizeDeclaration(rest) + "\n";
-    }
+    flushDeclaration();
 
     return formatted.trim();
 }
@@ -124,7 +117,7 @@ function formatCss(code, { indent = DEFAULT_INDENT } = {}) {
  */
 function normalizeDeclaration(decl) {
     if (!decl) return "";
-    const colonIdx = decl.indexOf(":");
+    const colonIdx = findTopLevelColon(decl);
     if (colonIdx === -1) return decl;
 
     const prop = decl.slice(0, colonIdx).trim();
@@ -134,10 +127,114 @@ function normalizeDeclaration(decl) {
     if (!val.endsWith(";") && !val.endsWith("}")) {
         val += ";";
     }
-    // 压缩内部连续多余空格
-    val = val.replace(/\s+/g, " ");
+    // 压缩普通空白，但保留字符串与注释中的字节。否则
+    // `content: "a   b"` 会被静默改写，data URI/正则字面量也会损坏。
+    val = collapseCssWhitespace(val);
 
     return `${prop}: ${val}`;
+}
+
+function findTopLevelColon(value) {
+    let parenDepth = 0;
+    let inString = false;
+    let stringChar = "";
+    let escaped = false;
+    let inComment = false;
+    for (let i = 0; i < value.length; i++) {
+        const char = value[i];
+        const next = value[i + 1] || "";
+        if (inComment) {
+            if (char === "*" && next === "/") {
+                inComment = false;
+                i++;
+            }
+            continue;
+        }
+        if (!inString && char === "/" && next === "*") {
+            inComment = true;
+            i++;
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            if (!inString) {
+                inString = true;
+                stringChar = char;
+                escaped = false;
+            } else if (char === stringChar && !escaped) {
+                inString = false;
+                stringChar = "";
+            }
+            escaped = inString && char === "\\" && !escaped;
+            continue;
+        }
+        if (inString) {
+            escaped = char === "\\" && !escaped;
+            continue;
+        }
+        if (char === "(") parenDepth++;
+        else if (char === ")") parenDepth = Math.max(0, parenDepth - 1);
+        else if (char === ":" && parenDepth === 0) return i;
+    }
+    return -1;
+}
+
+function collapseCssWhitespace(value) {
+    let output = "";
+    let inString = false;
+    let stringChar = "";
+    let escaped = false;
+    let inComment = false;
+    let pendingSpace = false;
+    const appendPendingSpace = (nextChar) => {
+        if (pendingSpace && output && !/[([{]$/.test(output) && !/[,;)]}]$/.test(nextChar)) output += " ";
+        pendingSpace = false;
+    };
+    for (let i = 0; i < value.length; i++) {
+        const char = value[i];
+        const next = value[i + 1] || "";
+        if (inComment) {
+            output += char;
+            if (char === "*" && next === "/") {
+                output += "/";
+                i++;
+                inComment = false;
+            }
+            continue;
+        }
+        if (!inString && char === "/" && next === "*") {
+            appendPendingSpace(char);
+            output += "/*";
+            i++;
+            inComment = true;
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            if (!inString) {
+                appendPendingSpace(char);
+                inString = true;
+                stringChar = char;
+                escaped = false;
+            } else if (char === stringChar && !escaped) {
+                inString = false;
+                stringChar = "";
+            }
+            output += char;
+            escaped = inString && char === "\\" && !escaped;
+            continue;
+        }
+        if (inString) {
+            output += char;
+            escaped = char === "\\" && !escaped;
+            continue;
+        }
+        if (/\s/.test(char)) {
+            pendingSpace = true;
+            continue;
+        }
+        appendPendingSpace(char);
+        output += char;
+    }
+    return output.trim();
 }
 
 /**

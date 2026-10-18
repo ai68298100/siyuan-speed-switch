@@ -29,7 +29,7 @@ test("document-context uses the bounded SQL fallback for closed documents", () =
 });
 
 test("document-context reuses the existing outline endpoint", () => {
-    assert.match(source, /fetchKernelJson\("\/api\/outline\/getDocOutline", \{id, preview: false\}\)/);
+    assert.match(source, /fetchKernelJson\("\/api\/outline\/getDocOutline", \{id, preview: true\}\)/);
 });
 
 test("document-context uses tab metadata before the SQL fallback", () => {
@@ -123,8 +123,8 @@ test("document-context does not expose metadata missing input", () => {
     assert.doesNotMatch(source, /metadataMissing:/);
 });
 
-test("document-context outline request keeps preview disabled", () => {
-    assert.match(source, /getDocOutline", \{id, preview: false\}/);
+test("document-context outline request enables heading tree response", () => {
+    assert.match(source, /getDocOutline", \{id, preview: true\}/);
 });
 
 test("document-context keeps stable unavailable error", () => {
@@ -186,8 +186,8 @@ test("document-context preserves outline failure distinction", () => {
     assert.match(source, /: "unavailable"\),/);
 });
 
-test("document-context keeps outline endpoint preview disabled", () => {
-    assert.match(source, /preview: false/);
+test("document-context keeps outline endpoint preview enabled", () => {
+    assert.match(source, /preview: true/);
 });
 
 test("document-context remains metadata-first for skip mode", () => {

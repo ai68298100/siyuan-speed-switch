@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-17",
+  "updated": "2026-10-18",
   "currentTask": "T-7144",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7119",
+  "nextLocalTask": "T-7144",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -136,10 +136,18 @@
     "T-7289",
     "T-7290",
     "T-7291",
+    "T-7292",
+    "T-7293",
+    "T-7294",
+    "T-7295",
+    "T-7296",
+    "T-7297",
     "T-7298",
     "T-7299",
     "T-7300",
-    "T-7301"
+    "T-7301",
+    "T-7302",
+    "T-7303"
   ],
   "tasks": [
     {
@@ -849,7 +857,14 @@
         "tests/component-specs-batch8-wiring.test.cjs",
         "tests/kernel-widgets-wiring.test.cjs",
         "docs/adr/0219-core-widgets-content-first-glance-decoupling.md",
-        "docs/adr/0220-optimistic-task-toggle-and-zero-latency-interaction.md"
+        "docs/adr/0220-optimistic-task-toggle-and-zero-latency-interaction.md",
+        "docs/adr/0225-t7144-outline-host-fallback-and-toggle-race.md",
+        "tests/home-view.test.cjs",
+        "tests/outline-endpoint-preview-contract.test.cjs",
+        "tests/document-context-wiring.test.cjs",
+        "tests/agent-outline.test.cjs",
+        "tests/e2e/t7144-widgets.spec.mjs",
+        ".artifacts/e2e/probe-outline-2026-10-18.log"
       ],
       "next": "T-7156",
       "inputsFrom": [
@@ -3934,6 +3949,78 @@
         "docs/CHANGELOG.en-US.md"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7302",
+      "title": "待办目标态回执、片段文案与移动双拼层叠收口",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "fix",
+      "dependsOn": [
+        "T-7301"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "src/home-view.js",
+        "src/index.ts",
+        "src/second-panel-ui.ts",
+        "src/home-store-ui.ts",
+        "src/styles/_12-r54-surface-adapter.scss",
+        "tests/home-view.test.cjs",
+        "tests/store-mobile-layout-contract.test.cjs"
+      ],
+      "next": "T-7303"
+    },
+    {
+      "id": "T-7303",
+      "title": "完整状态审计、生产接线修复与原型证据边界校准",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "fix",
+      "dependsOn": [
+        "T-7302"
+      ],
+      "evidence": [
+        "docs/status-audit-2026-10-18.md",
+        "docs/adr/0224-status-audit-and-production-boundaries-2026-10-18.md",
+        "docs/dev-plan-2026-10-06.md",
+        "tests/agent-workspace-plan-host.test.cjs",
+        "tests/home-resize-hit-target.test.cjs",
+        "tests/snippet-formatter-and-import-plan.test.cjs",
+        "src/snippet-studio-ui.js",
+        "pnpm-lock.yaml",
+        ".artifacts/ui-audit-json-import/results.json",
+        "tests/third-party-lifecycle-browser-smoke.cjs"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7304",
+      "title": "UI 状态反馈一致性与真实宿主 E2E 收口",
+      "status": "in_progress",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "fix",
+      "dependsOn": [
+        "T-7303"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "src/styles/_12-r54-surface-adapter.scss",
+        "src/second-panel-ui.ts",
+        "src/home-view.js",
+        "src/home-store-ui.ts",
+        "src/i18n/en.json",
+        "src/i18n/zh-CN.json",
+        "tests/compact-workbench-style-contract.test.cjs",
+        "tests/home-view.test.cjs",
+        "tests/e2e/split-open.spec.mjs",
+        "tests/e2e/workbench-information.spec.mjs",
+        ".artifacts/e2e/results.json"
+      ],
+      "next": "T-7144"
     }
   ],
   "global": {
@@ -3941,6 +4028,6 @@
     "release": "published",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 588631 bytes is below the 591872-byte repository budget by 3241 bytes"
+    "packageBudget": "passed: 591166 bytes is below the 591872-byte repository budget by 706 bytes (remote v0.47.5 package.zip; local working-tree snapshots require separate measurement)"
   }
 }

@@ -353,7 +353,8 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     pointer-events: auto;
-    transition: color $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease, border-color $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease;
+    // T-7027: surface switching must acknowledge pointer/touch activation immediately.
+    transition: none;
 }
 
 .sw-platform-surface-nav__icon { flex: 0 0 18px; width: 18px; height: 18px; pointer-events: none; }

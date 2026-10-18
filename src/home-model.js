@@ -422,7 +422,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showRank", label: "显示置顶序号", type: "select", options: ["否", "是"], defaults: "否"},
         {key: "showUnavailable", label: "显示不可用文档", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
-    {moduleId: "inbox-shorthands", title: "收集箱", icon: "iconInbox", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+    {moduleId: "inbox-shorthands", title: "收集箱", icon: "iconInbox", category: "siyuan", availability: "external", source: {pluginId: "siyuan-cloud", name: "思源云端收集箱", icon: "iconInbox", collection: "收集箱", kind: "external"}, network: "remote", auth: "host", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "page", label: "云端页码", type: "number", min: 1, max: 100, defaults: 1},
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
         {key: "query", label: "筛选标题或正文", type: "text", defaults: ""},

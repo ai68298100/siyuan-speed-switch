@@ -7,6 +7,14 @@ const exists = (file) => fs.existsSync(path.join(root, file));
 const srcFiles = fs.readdirSync(path.join(root, 'src')).filter((name) => /\.(?:ts|js)$/.test(name));
 const testFiles = fs.readdirSync(path.join(root, 'tests')).filter((name) => name.endsWith('.test.cjs'));
 const hostTestFiles = fs.readdirSync(path.join(root, 'tests', 'host')).filter((name) => name.endsWith('.test.cjs'));
+const ts = require('typescript');
+// These locales are flat JSON dictionaries. Inspect source properties before
+// JSON.parse discards duplicate names; Object.keys(parsed) cannot detect them.
+const sourceKeys = (file) => {
+    const expression = ts.parseJsonText(file, read(file)).statements[0]?.expression;
+    return expression && ts.isObjectLiteralExpression(expression)
+        ? expression.properties.map((property) => property.name?.text).filter((name) => typeof name === 'string') : [];
+};
 const checks = [];
 const add = (name, ok) => checks.push({name, ok: Boolean(ok)});
 const allSrc = srcFiles.map((name) => read(`src/${name}`)).join('\n');
@@ -20,7 +28,10 @@ add('i18n Chinese values are strings', Object.values(zh).every((value) => typeof
 add('i18n English values are strings', Object.values(en).every((value) => typeof value === 'string'));
 add('truncation key exists in both locales', 'homeConfigOptionsTruncated' in zh && 'homeConfigOptionsTruncated' in en);
 add('truncation copy is non-empty', zh.homeConfigOptionsTruncated.length > 0 && en.homeConfigOptionsTruncated.length > 0);
-add('i18n JSON has no duplicate keys', zhKeys.length === new Set(zhKeys).size && enKeys.length === new Set(enKeys).size);
+add('i18n JSON has no duplicate keys', ['src/i18n/zh-CN.json', 'src/i18n/en.json'].every((file) => {
+    const names = sourceKeys(file);
+    return names.length >= 100 && names.length === new Set(names).size;
+}));
 add('i18n files are UTF-8 readable', read('src/i18n/zh-CN.json').includes('homeConfigOptionsTruncated') && read('src/i18n/en.json').includes('homeConfigOptionsTruncated'));
 add('source has no console.log', !/console\.log\s*\(/.test(allSrc));
 add('source has no debugger', !/\bdebugger\b/.test(allSrc));
@@ -61,10 +72,11 @@ add('widget protocol ADR references exist', exists('docs/adr/0057-widget-source-
 add('schema ADR references exist', exists('docs/adr/0034-quick-action-schema-version.md'));
 add('release readiness references current raw-line ADR', read('docs/release-readiness.md').split(/\r?\n/).some((line) =>
     line.startsWith('<!-- Current artifact snapshot:') && line.includes('raw self-discipline line ' + RAW_BUNDLE_BUDGET_BYTES / 1024 + ' KiB (ADR ' + RAW_BUNDLE_BUDGET_ADR + ',')));
-add('roadmap has current section', read('ROADMAP.md').includes('8.0.4 2026-09-19'));
+add('roadmap has current version', read('ROADMAP.md').includes('v' + JSON.parse(read('package.json')).version));
 add('current engineering blocker status is explicit and clear', read('BLOCKERS.md').split(/\r?\n/)
     .filter((line) => line.startsWith('<!-- Current engineering blockers:')).join('\n') === '<!-- Current engineering blockers: none -->');
-add('dev plan has next batch', read('docs/dev-plan-2026-09-19.md').includes('T-6552'));
+add('active dev plan records current task', read(JSON.parse(read('docs/current-status-index.json')).activePlan)
+    .includes(JSON.parse(read('docs/current-status-index.json')).currentTask));
 add('quality audit is local-only', !/https?:\/\//.test(read('scripts/quality-batch-audit.cjs')));
 add('quality audit has exactly fifty checks', (read('scripts/quality-batch-audit.cjs').match(/add\('/g) || []).length === 50);
 

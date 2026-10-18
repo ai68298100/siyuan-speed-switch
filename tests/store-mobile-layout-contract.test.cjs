@@ -54,7 +54,14 @@ test('mobile tabs remain horizontally scrollable', () => assert.ok(declaresIn(cs
 test('mobile tabs contain inline overscroll', () => assert.ok(declaresIn(css, '.sw-home-store__tabs', /overscroll-behavior-inline: contain/, narrow)));
 test('mobile tabs use momentum scrolling', () => assert.ok(declaresIn(css, '.sw-home-store__tabs', /-webkit-overflow-scrolling: touch/, narrow)));
 test('mobile tabs keep thin scrollbar', () => assert.ok(declaresIn(css, '.sw-home-store__tabs', /scrollbar-width: thin/, narrow)));
-test('mobile tabs keep touch height', () => assert.ok(declaresIn(css, '.sw-home-store__tab', /min-height: 36px/, narrow)));
+test('mobile tabs keep the 44px touch target', () => assert.ok(declaresIn(css, '.sw-home-store__tab', /min-height: 44px/, narrow)));
+test('mobile guide keeps the 44px touch target', () => assert.ok(declaresIn(css, '.sw-home-store__search .sw-home-store__guide', /min-height: 44px/, narrow)));
+test('mobile clear search keeps a 44px touch target', () => {
+    assert.ok(declaresIn(css, '.sw-home-store__search .sw-home-store__clear-search', /width: 44px/, narrow));
+    assert.ok(declaresIn(css, '.sw-home-store__search .sw-home-store__clear-search', /height: 44px/, narrow));
+    assert.ok(declaresIn(css, '.sw-home-store__search .sw-home-store__clear-search', /min-height: 44px/, narrow));
+    assert.ok(declaresIn(css, '.sw-home-store__search .sw-home-store__clear-search', /margin-left: -44px/, narrow));
+});
 test('mobile tabs preserve horizontal padding', () => assert.ok(declaresIn(css, '.sw-home-store__tab', /padding-inline: var\(--sw-space-lg,\s*12px\)/, narrow)));
 test('mobile summary shares bounded width rule', () => assert.ok(declaresIn(css, '.sw-home-store__summary', /max-width: 100%/, narrow)));
 test('mobile cards fill row width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /width: 100%/, narrow)));
@@ -318,7 +325,7 @@ test('store preview read passes resolved size', () => assert.match(storeSource,/
 test('store preview controller provides error label', () => assert.match(secondPanelSource, /error: this\.i18n\.homeModuleError/));
 test('store preview controller provides retry label', () => assert.match(secondPanelSource, /retry: this\.i18n\.homeRetry/));
 test('store preview item activation closes dialog', () => assert.match(secondPanelSource, /this\.handleHomeItemAction\(item, \(\) => dialog\.destroy\(\)\)/));
-test('store preview task failure is surfaced', () => assert.match(secondPanelSource, /if \(!ok\) showMessage\(this\.i18n\.homeTaskToggleFailed\)/));
+test('store preview task failure is surfaced', () => assert.match(secondPanelSource, /if \(!ok\)\s*\{\s*showMessage\(this\.i18n\.homeTaskToggleFailed\)/));
 test('store preview task toggle refreshes content', () => assert.match(storeSource,/await controller\?\.refresh\(\)/));
 test('store preview disposal is idempotent', () => assert.match(source, /if \(disposed\) return;\s*disposed = true/));
 test('store preview disposal releases controller', () => assert.match(storeSource,/controller\?\.dispose\(\)/));
@@ -576,9 +583,10 @@ test('preview metadata adds privacy chip', () => assert.match(storeSource,/addMe
 test('preview metadata adds surface chip', () => assert.match(storeSource,/addMeta\(host\.i18n\.homeStorePreviewSurface/));
 test('preview metadata adds size chip', () => assert.match(storeSource,/sizeChip\.textContent = host\.i18n\.homeStorePreviewSize/));
 test('preview read preserves caller read options', () => assert.match(secondPanelSource, /\{\.\.\.readOptions, size: sizeKey\}/));
-test('preview task toggle keeps item done metadata', () => assert.match(secondPanelSource, /onToggleItem: \(item: \{ label\?: string; value\?: string; done\?: boolean \}\)/));
-test('preview task toggle is asynchronous', () => { const i = secondPanelSource.indexOf('onToggleItem:'); assert.ok(i >= 0); const w = secondPanelSource.slice(i, i + 300); assert.ok(w.includes('void (async () =>'), 'onToggleItem 须为异步'); });
-test('preview task toggle calls host adapter', () => assert.match(secondPanelSource, /const ok = await this\.toggleHomeTaskBlock\(item\)/));
+test('preview task toggle keeps item done metadata', () => assert.match(secondPanelSource, /onToggleItem: \(item: \{ label\?: string; value\?: string; done\?: boolean \}, _view\?: unknown, desiredDone\?: boolean\)/));
+test('preview task toggle is asynchronous and returns its Promise', () => { const i = secondPanelSource.indexOf('onToggleItem:'); assert.ok(i >= 0); const w = secondPanelSource.slice(i, i + 500); assert.ok(w.includes('return (async (): Promise<boolean>'), 'onToggleItem 须返回可观察的异步结果'); });
+test('preview task toggle calls host adapter with the desired state', () => assert.match(secondPanelSource, /ok = await this\.toggleHomeTaskBlock\(item, desiredDone\)/));
+test('store preview task toggle calls host adapter with the desired state', () => assert.match(storeSource, /ok = await host\.toggleHomeTaskBlock\(item, desiredDone\)/));
 test('preview task toggle refreshes after attempt', () => assert.match(storeSource,/await controller\?\.refresh\(\);/));
 test('preview dispose guards repeated calls', () => assert.match(source, /if \(disposed\) return;/));
 test('preview no longer wraps the original dialog destroy', () => assert.doesNotMatch(source, /dialog\.destroy\.bind\(dialog\)/));

@@ -441,7 +441,8 @@
         -webkit-overflow-scrolling: touch;
         scroll-snap-type: x proximity;
     }
-    .sw-home-store__tab { flex: 0 0 auto; min-height: 36px; padding-inline: var(--sw-space-lg, 12px) !important; scroll-snap-align: start; scroll-margin-inline: 4px; }
+    // 窄屏 tab 保留紧凑视觉内芯，但把可点击命中区提升到 44px。
+    .sw-home-store__tab { flex: 0 0 auto; min-height: 44px; padding-inline: var(--sw-space-lg, 12px) !important; scroll-snap-align: start; scroll-margin-inline: 4px; }
     .sw-home-store__card { width: 100%; max-width: 100%; padding: var(--sw-space-lg, 12px) var(--sw-space-lg, 12px); }
     .sw-home-store__preview { max-width: 100%; overflow: hidden; }
     .sw-home-store__sizes .sw-home-store__add { margin-inline-start: auto; }

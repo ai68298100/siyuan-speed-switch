@@ -457,10 +457,27 @@ test("home view renders task checkboxes and forwards toggles", () => {
     const checks = root.querySelectorAll(".sw__home-module-item-check");
     assert.equal(checks.length, 1); // 仅带 done 的条目有勾选框
     assert.equal(checks[0].getAttribute("aria-pressed"), "false");
+    assert.equal(checks[0].getAttribute("aria-label"), "标记完成");
     checks[0].click();
+    assert.equal(checks[0].getAttribute("aria-label"), "标记未完成");
     const plain = root.querySelectorAll(".sw__home-module-item-action")[1];
     plain.click();
     assert.deepEqual(calls, ["toggle:1", "item:2"]);
+});
+
+test("home view task checkbox labels can follow the active locale", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks"}, {ok: true, snapshot: {items: [
+        {label: "Open task", value: "1", done: false},
+    ]}});
+    const root = renderHomeModuleView(dom.window.document, view, {
+        labels: {taskDone: "Mark complete", taskUndone: "Mark incomplete"},
+        onToggleItem: () => undefined,
+    });
+    const check = root.querySelector(".sw__home-module-item-check");
+    assert.equal(check.getAttribute("aria-label"), "Mark complete");
+    check.click();
+    assert.equal(check.getAttribute("aria-label"), "Mark incomplete");
 });
 
 test("home view done items render strikethrough style hooks", () => {
@@ -505,6 +522,55 @@ test("home view task checkbox executes 0ms optimistic UI updates and handles rol
     assert.equal(check.classList.contains("is-done"), true);
     assert.equal(actionButton.classList.contains("is-done"), true);
     assert.equal(check.getAttribute("aria-pressed"), "true");
+});
+
+test("home view forwards the explicit target state and rolls back a false Promise (T-7302)", async () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const seen = [];
+    const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks"}, {ok: true, snapshot: {items: [
+        {label: "Targeted task", value: "task-2", done: false},
+    ]}});
+    const root = renderHomeModuleView(dom.window.document, view, {
+        onToggleItem: (item, view, desiredDone) => {
+            seen.push([item.done, view.moduleId, desiredDone]);
+            return Promise.resolve(false);
+        },
+    });
+    const check = root.querySelector(".sw__home-module-item-check");
+    check.click();
+    assert.equal(check.getAttribute("aria-pressed"), "true", "toggle remains optimistic before the Promise settles");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual(seen, [[true, "tasks", true]], "the host keeps the historical view argument and receives the desired state explicitly");
+    assert.equal(check.getAttribute("aria-pressed"), "false", "a false write result restores the previous state");
+});
+
+test("home view ignores stale toggle failures after a newer click (T-7144)", async () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const pending = [];
+    const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks"}, {ok: true, snapshot: {items: [
+        {label: "Rapid task", value: "task-race", done: false},
+    ]}});
+    const root = renderHomeModuleView(dom.window.document, view, {
+        onToggleItem: (item, _view, desiredDone) => new Promise((resolve, reject) => {
+            pending.push({item, desiredDone, resolve, reject});
+        }),
+    });
+    const check = root.querySelector(".sw__home-module-item-check");
+
+    check.click();
+    check.click();
+    assert.equal(pending.length, 2);
+    assert.equal(pending[0].desiredDone, true);
+    assert.equal(pending[1].desiredDone, false);
+    assert.equal(check.getAttribute("aria-pressed"), "false", "the latest click remains optimistic");
+
+    pending[0].resolve(false);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(check.getAttribute("aria-pressed"), "false", "a stale failure cannot roll back the newer state");
+
+    pending[1].reject(new Error("current write failed"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(check.getAttribute("aria-pressed"), "true", "the current failure still rolls back its own click");
 });
 
 test("home view keeps unavailable navigation rows visible but inert", () => {

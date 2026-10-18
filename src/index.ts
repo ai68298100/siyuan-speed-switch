@@ -140,6 +140,7 @@ import {
     runWorkspacePlan,
 } from "./agent-workspace-plan";
 import {createWorkspaceHostHandlers} from "./agent-workspace-registry";
+import {createWorkspaceActionExecutor} from "./agent-workspace-actions";
 import {normalizeRssReadState} from "./rss-model";
 import {buildActivityWatchBucketsUrl, normalizeActivityWatchBuckets} from "./life-widget-model";
 import {loadActivityWatchBuckets} from "./life-widget-network";
@@ -378,7 +379,7 @@ declare module "./home-runtime" {
 
 declare module "./home-view" {
     export function buildHomeModuleView(module: unknown, result: unknown, options?: {collapsed?: boolean}): unknown;
-    export function renderHomeModuleView(doc: unknown, view: unknown, options?: {labels?: Record<string, string>; onToggle?: (view: unknown) => void; onItem?: (item: unknown, view: unknown) => void; onCalendarNavigate?: (direction: number, view: unknown) => void; onCalendarJump?: (step: number, view: unknown) => void; onCalendarPeriod?: (offset: number, view: unknown) => void; calendarPeriodOptions?: Array<{offset: number; label: string}>; onRetry?: (view: unknown) => void}): unknown;
+    export function renderHomeModuleView(doc: unknown, view: unknown, options?: {labels?: Record<string, string>; onToggle?: (view: unknown) => void; onItem?: (item: unknown, view: unknown) => void; onToggleItem?: (item: unknown, view: unknown, done: boolean) => boolean | Promise<boolean> | void; onCalendarNavigate?: (direction: number, view: unknown) => void; onCalendarJump?: (step: number, view: unknown) => void; onCalendarPeriod?: (offset: number, view: unknown) => void; calendarPeriodOptions?: Array<{offset: number; label: string}>; onRetry?: (view: unknown) => void}): unknown;
 }
 declare module "./home-controller" {
     export function createHomeModuleController(options: Record<string, unknown>): {
@@ -1484,8 +1485,9 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // T-1219 执行链（ADR 0063 宿主路线）：
     // - propose（只读，localRead）：把请求步骤归一化为固定白名单动作计划（≤8 步、带过期），不执行；
-    // - execute（localWrite）：整份计划是一次确认单元——宿主确认卡展示计划并承担批准/超时/取消，
-    //   批准后按序执行并返回有界回执。结构/过期校验在执行侧强制；单步失败不阻断其余步骤。
+    // - execute（localWrite）：整份计划是一次确认单元——宿主确认卡承担执行前批准/取消，
+    //   当前 SDK handler 不提供执行期 AbortSignal。批准后按序执行并返回有界回执；
+    //   结构/过期校验在执行侧强制，单步失败不阻断其余步骤。
     private registerWorkspacePlanCapabilities(pluginWithAgent: {addAgentCapability?: (options: Record<string, unknown>) => string}) {
         registerReadOnlyAgentCapabilities(pluginWithAgent, [{
             spec: WORKSPACE_PLAN_SPEC,
@@ -1521,7 +1523,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                     write: {
                         readTask: async (id: string) => {
                             const json = await this.fetchKernelJson("/api/query/sql", {
-                                stmt: `SELECT markdown, content FROM blocks WHERE id='${id}' AND type='p'`,
+                                stmt: `SELECT markdown, content FROM blocks WHERE id='${id}' AND type IN ('i','p')`,
                             });
                             return (json?.data || [])[0];
                         },
@@ -1557,20 +1559,12 @@ export default class SpeedSwitchPlugin extends Plugin {
                         notebook: normalizeAgentNotebookId(this.getSettings().journalNotebook),
                     },
                 });
-                const actionMap: Record<string, (step: Record<string, unknown>, context: {signal?: AbortSignal}) => Promise<unknown>> = {
-                    "open-document": handlers.openDocument,
-                    "open-documents": handlers.openDocuments,
-                    "restore-document-set": handlers.restoreDocumentSet,
-                    "update-task-status": handlers.updateTaskStatus,
-                    "create-document": handlers.createDocument,
-                    "append-to-journal": handlers.appendToJournal,
-                };
                 const receipt = await runWorkspacePlan(plan, {
-                    approved: true, // 宿主确认卡即审批：本能力声明 localWrite，批准/超时/取消由宿主承担
-                    runStep: async (step: Record<string, unknown>) => {
-                        const handler = actionMap[String(step.action)];
-                        return handler ? handler(step, {}) : {status: "failed", reason: "unsupported_action"};
-                    },
+                    // The host handler receives (args, app), with no AbortSignal
+                    // in siyuan 1.2.8. Its confirmation card approves this run;
+                    // local runner callers may pass signal through to the executor.
+                    approved: true,
+                    runStep: createWorkspaceActionExecutor(handlers),
                 });
                 return {structuredContent: receipt, result: JSON.stringify(receipt)};
             },
@@ -5562,6 +5556,7 @@ const updatedMap: {[rootId: string]: string} = {};
             labels: options.labels,
             onItem: options.onItem,
             onToggle: options.onToggle,
+            onToggleItem: options.onToggleItem,
             read: (nextConfig: Record<string, unknown>, readOptions: Record<string, unknown>) => this.homeRuntime.read(moduleId, device, nextConfig, readOptions),
         } as any);
     }
@@ -5578,6 +5573,7 @@ const updatedMap: {[rootId: string]: string} = {};
             labels: options.labels,
             onItem: options.onItem,
             onToggle: options.onToggle,
+            onToggleItem: options.onToggleItem,
             read: (module: any, config: Record<string, unknown>, readOptions: Record<string, unknown>) => this.homeRuntime.read(module.moduleId, device, config, readOptions),
         } as any);
     }
@@ -7464,7 +7460,9 @@ const updatedMap: {[rootId: string]: string} = {};
                 : this.getActiveTab();
             const rootId = active ? this.rootIdOf(active) : "";
             if (!rootId || !BLOCK_ID_RE.test(rootId)) return {items: [], emptyHint: this.i18n.homeCurrentDocumentMissing};
-            const json = await this.fetchKernelJson("/api/outline/getDocOutline", {id: rootId, preview: false});
+            // SiYuan 3.8.x only returns the heading tree when preview is enabled;
+            // preview=false yields an empty response for the same document id.
+            const json = await this.fetchKernelJson("/api/outline/getDocOutline", {id: rootId, preview: true});
             if (!Array.isArray(json?.data)) throw new Error("invalid_document_outline");
             const headings = flattenOutline(json.data, 64);
             const snapshot = buildOutlineWidgetSnapshot(headings, config, {
@@ -7944,10 +7942,10 @@ const updatedMap: {[rootId: string]: string} = {};
         return String(markdown).replace(/\u0000/g, "").slice(0, 65536);
     }
 
-    private async toggleHomeTaskBlock(item: { value?: string; done?: boolean }): Promise<boolean> {
+    private async toggleHomeTaskBlock(item: { value?: string; done?: boolean }, desiredDone?: boolean): Promise<boolean> {
         const id = String(item.value || "");
         if (!BLOCK_ID_RE.test(id)) return false;
-        const target = !(item.done === true);
+        const target = typeof desiredDone === "boolean" ? desiredDone : !(item.done === true);
         const rowJson = await this.fetchKernelJson("/api/query/sql", {
             stmt: `SELECT markdown FROM blocks WHERE id='${id}' AND type IN ('i','p')`,
         });
@@ -8639,7 +8637,13 @@ const updatedMap: {[rootId: string]: string} = {};
     // 获取当前活动页签（可能为 undefined）
     private getActiveTab(): Tab | undefined {
         try {
-            return getActiveTab() || undefined;
+            // The default `wndActive=true` guard returns undefined whenever the
+            // host window is not OS-focused (headless/remote WebView, a dock
+            // opened from another window, or a background automation run).
+            // Keep that result as the fast path, then ask SiYuan for the
+            // current tab without the focus gate so read-only widgets still
+            // follow the document the user just opened.
+            return getActiveTab() || getActiveTab(false) || undefined;
         } catch (e) {
             logger.warn("get active tab fail", e);
         }
@@ -8663,7 +8667,7 @@ const updatedMap: {[rootId: string]: string} = {};
                         const id = normalizeAgentDocumentId(args?.id);
                         if (!id) return {error: "invalid document id"};
                         const limit = Math.min(48, Math.max(1, Math.trunc(Number(args?.limit) || 40)));
-                        const json = await this.fetchKernelJson("/api/outline/getDocOutline", {id, preview: false});
+                        const json = await this.fetchKernelJson("/api/outline/getDocOutline", {id, preview: true});
                         if (!json || json.code !== 0) return {error: "outline unavailable"};
                         const headings = flattenOutline(Array.isArray(json.data) ? json.data : [], limit);
                         const content = {id, headings};
@@ -8729,7 +8733,7 @@ const updatedMap: {[rootId: string]: string} = {};
                         let outlineJson: any = null;
                         if (request.includeOutline) {
                             try {
-                                outlineJson = await this.fetchKernelJson("/api/outline/getDocOutline", {id, preview: false});
+                                outlineJson = await this.fetchKernelJson("/api/outline/getDocOutline", {id, preview: true});
                                 outlineAvailable = Boolean(outlineJson && outlineJson.code === 0 && Array.isArray(outlineJson.data));
                             } catch (error) {
                                 outlineAvailable = false;

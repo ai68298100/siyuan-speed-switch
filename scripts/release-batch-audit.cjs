@@ -9,6 +9,7 @@ const exists = (file) => fs.existsSync(path.join(root, file));
 const checks = [];
 const add = (name, ok, detail = '') => checks.push({name, ok: Boolean(ok), detail});
 const contains = (file, needle) => read(file).includes(needle);
+const activePlan = JSON.parse(read('docs/current-status-index.json')).activePlan;
 
 add('package metadata exists', exists('package.json'));
 const pkg = JSON.parse(read('package.json'));
@@ -21,7 +22,7 @@ add('release check script exists', typeof pkg.scripts?.['release:check'] === 'st
 add('release audit script is wired', typeof pkg.scripts?.['release:audit'] === 'string');
 add('roadmap exists', exists('ROADMAP.md'));
 add('blockers exists', exists('BLOCKERS.md'));
-add('current dev plan exists', exists('docs/dev-plan-2026-09-19.md'));
+add('current dev plan exists', typeof activePlan === 'string' && exists(activePlan));
 add('release readiness exists', exists('docs/release-readiness.md'));
 add('ADR directory exists', exists('docs/adr'));
 add('README Chinese exists', exists('README.md'));
@@ -37,10 +38,10 @@ add('release checker has shared drift guard', contains('scripts/release-readines
 add('readiness records bundle', /`dist\/index\.js` \d+ bytes/.test(read('docs/release-readiness.md')));
 add('readiness records archive', /`package\.zip` \d+ bytes/.test(read('docs/release-readiness.md')));
 add('readiness records v0.23.5', contains('docs/release-readiness.md', 'v0.23.5'));
-add('roadmap records current baseline', contains('ROADMAP.md', '8.0.4 2026-09-19'));
-add('roadmap records main sha', contains('ROADMAP.md', '459056b'));
-add('roadmap records release tag sha', contains('ROADMAP.md', '8d2e498'));
-add('roadmap avoids unique feedback claim in current section', contains('ROADMAP.md', '2 个 Issue'));
+add('roadmap retains historical baseline', contains('ROADMAP.md', '8.0.4 2026-09-19'));
+add('roadmap retains historical main sha', contains('ROADMAP.md', '459056b'));
+add('roadmap retains historical release tag sha', contains('ROADMAP.md', '8d2e498'));
+add('roadmap retains historical issue count', contains('ROADMAP.md', '2 个 Issue'));
 add('blockers records Android limitation', contains('BLOCKERS.md', 'Android'));
 add('blockers records path evidence', contains('BLOCKERS.md', 'path-filter-host-evidence'));
 add('dev plan records T-6492', contains('docs/dev-plan-2026-09-19.md', 'T-6492'));
@@ -58,7 +59,7 @@ add('release host README exists', exists('tests/host/README.md'));
 add('release quality test exists', exists('tests/host/release-quality.test.cjs'));
 add('release checker is in verify command', pkg.scripts['verify:release'].includes('release:check'));
 add('release audit uses local files only', !/https?:\/\//.test(read('scripts/release-batch-audit.cjs')));
-add('git worktree is clean before audit', cp.execFileSync('git', ['diff', '--check'], {cwd: root}).toString() === '');
+add('git diff has no whitespace errors', cp.execFileSync('git', ['diff', '--check'], {cwd: root}).toString() === '');
 add('origin remote is configured', cp.execFileSync('git', ['remote', 'get-url', 'origin'], {cwd: root}).toString().trim().includes('siyuan-speed-switch'));
 const [aheadCount, behindCount] = cp.execFileSync('git', ['rev-list', '--left-right', '--count', 'HEAD...origin/main'], {cwd: root})
     .toString().trim().split(/\s+/).map((value) => Number(value));

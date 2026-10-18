@@ -22,19 +22,15 @@
 
 为了保护全体用户的隐私与数据安全，**请绝对不要在公开 GitHub Issue、社区论坛或聊天群中公开发布未修复的安全漏洞细节或攻击载荷 (PoC)**！
 
-### 1. 优先渠道：GitHub 私密漏洞报告 (Recommended)
-本仓库支持 GitHub 官方的 **Private Vulnerability Reporting（私密漏洞报告）** 机制：
-1. 请前往仓库的 [Security Advisories 页面](https://github.com/ai68298100/siyuan-speed-switch/security/advisories/new)；
-2. 点击 **“Report a vulnerability”**（报告漏洞）；
-3. 详细填写受影响的版本、漏洞类型、复现步骤与影响范围；
-4. 该报告仅仓库维护者可见，在补丁正式发布前全程保密。
+### 1. GitHub 私密漏洞报告（当前未启用）
+GitHub 的 **Private Vulnerability Reporting（私密漏洞报告）** 是否可用取决于仓库 Security 设置与账号权限；截至 2026-10-18，本仓库 API 返回 `enabled: false`，因此不能承诺“Report a vulnerability”入口可提交。若仓库维护者之后在 GitHub Security 设置中开启该功能，可优先使用 [Security Advisories 页面](https://github.com/ai68298100/siyuan-speed-switch/security/advisories/new)，并填写受影响版本、漏洞类型、复现步骤与影响范围。
 
-### 2. 备用渠道：若私密通道受限
-如果 GitHub 私密报告通道对您的账户不可用：
+### 2. 备用渠道：公开 Issue 只请求私密沟通
+如果 GitHub 私密报告通道未启用或对您的账户不可用：
 1. 请在 Issue 列表中提交一个**不包含任何技术漏洞细节与利用代码**的占位请求：
    - **标题**：`[Security] Request private disclosure channel`
    - **正文**：说明发现了安全相关问题，请求维护者提供私密沟通渠道；
-2. 维护者将尽快在 Issue 中提供安全的点对点沟通通道。
+2. 维护者确认后再提供安全的点对点沟通通道；在此之前请勿公开漏洞细节、PoC、凭据或工作区数据。
 
 ---
 

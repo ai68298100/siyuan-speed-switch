@@ -6,6 +6,7 @@ const {declaresIn, findRules} = require('./css-block-scan.cjs');
 
 const root = path.join(__dirname, '..');
 const finalSurfaceStyle = readSourceText(path.join(root, 'src', 'styles', '_12-r54-surface-adapter.scss'));
+const uiPolishStyle = readSourceText(path.join(root, 'src', 'styles', '_11-ui-polish.scss'));
 const assembledStyles = readSourceText(path.join(root, 'src', 'index.scss'));
 
 test('compact workbench preserves visual height tiers after the final polish layer (T-7278)', () => {
@@ -77,12 +78,28 @@ test('compact workbench decuples view and edit state while reducing shell chrome
 });
 
 test('compact workbench enforces mobile dual bento and GPU touch performance guardrails (T-7291)', () => {
-    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home__grid', /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/, {atRule: /@container sw-r54-surface \(max-width:\s*560px\)/}),
-        'narrow container must use a 2-column mobile dual bento grid instead of full row stacking');
-    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home__cell\[data-size="xs"\]', /grid-column:\s*span 1/, {atRule: /@container sw-r54-surface \(max-width:\s*560px\)/}),
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--mobile .sw-home__grid', /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important/, {atRule: /@container sw-r54-surface \(max-width:\s*560px\)/}),
+        'narrow container must override the legacy !important stack with a 2-column mobile dual bento grid');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--mobile .sw-home__cell\[data-size="xs"\]', /grid-column:\s*span 1\s*!important/, {atRule: /@container sw-r54-surface \(max-width:\s*560px\)/}),
         'xs micro-tiles must pair up into a 2-column layout on mobile screens');
     assert.ok(declaresIn(finalSurfaceStyle, '.sw-home.sw-home--compact .sw-home__cell', /will-change:\s*transform/, {topLevel: true}),
         'compact cells must declare will-change transform for GPU composite layer isolation');
     assert.ok(declaresIn(finalSurfaceStyle, '.sw-home .sw-home__cell:active', /transform:\s*scale\(0\.985\)/, {atRule: /@media \(pointer:\s*coarse\)/}),
         'touch devices must receive zero-cpu hardware accelerated press feedback');
+});
+
+test('narrow unavailable workbench ghosts fill the diagnostic work area', () => {
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home__grid--unavailable .sw-home__cell--unavailable', /grid-column:\s*1\s*\/\s*-1\s*!important/, {atRule: /@container sw-r54-surface \(max-width:\s*560px\)/}),
+        'narrow unavailable ghost cards must span the full diagnostic grid');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home__grid--unavailable .sw-home__cell--unavailable', /width:\s*100%/, {atRule: /@container sw-r54-surface \(max-width:\s*560px\)/}),
+        'narrow unavailable ghost cards must fill the work area width');
+    assert.ok(declaresIn(finalSurfaceStyle, '.sw-home__grid--unavailable .sw-home__cell--unavailable', /min-width:\s*0/, {atRule: /@container sw-r54-surface \(max-width:\s*560px\)/}),
+        'narrow unavailable ghost cards must remain shrinkable');
+});
+
+test('workbench content rows retain a visible keyboard focus ring', () => {
+    assert.ok(declaresIn(uiPolishStyle, '.sw-home .sw-home__cell .sw__home-module-item-action:focus-visible', /outline:\s*2px solid var\(--sw-platform-accent,\s*var\(--b3-theme-primary\)\)/, {topLevel: true}),
+        'workbench content rows must keep a visible focus ring in the final polish layer');
+    assert.ok(declaresIn(uiPolishStyle, '.sw-home .sw-home__cell .sw__home-module-item-action:focus-visible', /outline-offset:\s*-2px/, {topLevel: true}),
+        'focus ring must stay inside compact cards so overflow cannot clip it');
 });

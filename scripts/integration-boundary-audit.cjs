@@ -49,7 +49,7 @@ add('agent unload cleanup is represented', allSrc.includes('onunload') || allSrc
 add('open action batch is capped', allSrc.includes('5'));
 add('workspace plan requires approval', allSrc.includes('approval'));
 add('workspace plan expires', allSrc.includes('expires'));
-add('workspace execution is one-shot', allSrc.includes('consume'));
+add('source mentions consume (inventory only, not execution replay protection)', allSrc.includes('consume'));
 add('storage migration is observable', allSrc.includes('storageHealth'));
 add('storage keys are centralized', allSrc.includes('PERSISTENT_KEYS'));
 add('data change refresh avoids write loop', allSrc.includes('dataChangeReloadInFlight'));
@@ -61,5 +61,6 @@ add('integration audit has exactly fifty checks', (read('scripts/integration-bou
 
 const failed = checks.filter((item) => !item.ok);
 for (const item of checks) console.log(`${item.ok ? 'PASS' : 'FAIL'} ${item.name}`);
+console.log('NOTE: integration checks inventory source tokens; use behavioral tests and host evidence for execution guarantees.');
 console.log(`integration-boundary-audit: ${checks.length - failed.length}/${checks.length} passed`);
 process.exitCode = failed.length ? 1 : 0;

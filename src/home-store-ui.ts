@@ -83,7 +83,7 @@ export interface HomeStoreUiHost {
     saveHomeState(state: {schemaVersion: number; instances: Array<{instanceId: string; moduleId: string; enabled: boolean; config: Record<string, unknown>}>; layouts: Record<string, Array<{instanceId: string; x: number; y: number; w: number; h: number; collapsed: boolean}>>}): void;
     removeHomeInstance(instanceId: string): void;
     handleHomeItemAction(item: {label?: string; value?: string; href?: string; command?: string}, close: () => void): void;
-    toggleHomeTaskBlock(item: {value?: string; done?: boolean}): Promise<boolean>;
+    toggleHomeTaskBlock(item: {value?: string; done?: boolean}, desiredDone?: boolean): Promise<boolean>;
     openHomeWidgetGuide(): void;
 }
 
@@ -180,14 +180,31 @@ function mountStoreWidgetPreview(
             sourceFresh: host.i18n.homeSourceFresh,
             sourceCached: host.i18n.homeSourceCached,
             sourceStale: host.i18n.homeSourceStale,
+            taskDone: host.i18n.homeTaskMarkDone,
+            taskUndone: host.i18n.homeTaskMarkUndone,
         },
         calendarWeekdays: host.i18n.homeCalendarWeekdays,
         onItem: (item: { label?: string; value?: string; href?: string }) => host.handleHomeItemAction(item, onClose),
-        onToggleItem: (item: { label?: string; value?: string; done?: boolean }) => {
-            void (async () => {
-                const ok = await host.toggleHomeTaskBlock(item);
-                if (!ok) showMessage(host.i18n.homeTaskToggleFailed);
-                await controller?.refresh();
+        onToggleItem: (item: { label?: string; value?: string; done?: boolean }, _view?: unknown, desiredDone?: boolean) => {
+            return (async (): Promise<boolean> => {
+                let ok = false;
+                try {
+                    ok = await host.toggleHomeTaskBlock(item, desiredDone);
+                } catch (_) {
+                    ok = false;
+                }
+                if (!ok) {
+                    showMessage(host.i18n.homeTaskToggleFailed);
+                    return false;
+                }
+                try {
+                    await controller?.refresh();
+                } catch (_) {
+                    // The write succeeded; a readback failure must not undo
+                    // the optimistic state. The controller exposes its own
+                    // error/retry state for the refresh attempt.
+                }
+                return true;
             })();
         },
     });

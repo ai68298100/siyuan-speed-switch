@@ -213,6 +213,61 @@ test("fetch: global failure preserves opened-tab layer and exposes retry callbac
     assert.equal(host.retryCalls, 1, "重试回调必须重新进入搜索应用入口");
 });
 
+test("fetch: title search error triggers full-text fallback recovery and renders fallback results", async () => {
+    let fallbackCalls = 0;
+    const fallbackResults = [{id: "20260901000000-fb0001", rootId: "20260901000000-fb0001", title: "全文回退结果", path: "/全文回退"}];
+    const runner = makeRunner({
+        fetch: async () => {
+            throw new Error("searchDocs endpoint simulated network failure");
+        },
+        runFullTextSearchFallback: async () => {
+            fallbackCalls += 1;
+            return fallbackResults;
+        },
+    });
+    const host = makeHost(runner.requestKernelJsonOutcome);
+    const scrollElement = surface();
+    const version = beginSearch(getDocSession(host, scrollElement));
+    await runner.call(host, scrollElement, input("fail-title"), "fail-title", version, () => {}, {}, "key:fail-title", "fail-title");
+
+    assert.equal(fallbackCalls, 1, "标题搜索失败必须触发全文回退调用");
+    assert.equal(host.rendered.length, 1, "全文回退结果必须正常渲染");
+    assert.equal(host.rendered[0].mode, "results");
+    assert.deepEqual(host.rendered[0].docs, fallbackResults, "渲染的文档列表必须与全文回退结果一致");
+    assert.ok(host.healthReports.some((r) => r.fallbackReason === "title-unavailable"), "健康快照必须记录 title-unavailable");
+
+    // 负向探针: 若回退结果未被渲染或被篡改为空，必须触发断言失败
+    assert.throws(() => {
+        assert.equal(host.rendered[0].docs.length, 0, "回退丢失探测");
+    }, /ERR_ASSERTION/);
+});
+
+test("fetch: title search empty result triggers full-text fallback recovery and renders fallback results", async () => {
+    let fallbackCalls = 0;
+    const fallbackResults = [{id: "20260901000000-fb0002", rootId: "20260901000000-fb0002", title: "空标题回退", path: "/空标题"}];
+    const runner = makeRunner({
+        fetch: async () => titleResponse([]),
+        runFullTextSearchFallback: async () => {
+            fallbackCalls += 1;
+            return fallbackResults;
+        },
+    });
+    const host = makeHost(runner.requestKernelJsonOutcome);
+    const scrollElement = surface();
+    const version = beginSearch(getDocSession(host, scrollElement));
+    await runner.call(host, scrollElement, input("empty-title"), "empty-title", version, () => {}, {}, "key:empty-title", "empty-title");
+
+    assert.equal(fallbackCalls, 1, "标题搜索为空必须触发全文回退调用");
+    assert.equal(host.rendered.length, 1, "全文回退结果必须正常渲染");
+    assert.deepEqual(host.rendered[0].docs, fallbackResults);
+    assert.ok(host.healthReports.some((r) => r.fallbackUsed === true), "健康快照必须记录 fallbackUsed: true");
+
+    // 负向探针: 若未触发回退调用必须失败
+    assert.throws(() => {
+        assert.equal(fallbackCalls, 0, "回退调用缺失探测");
+    }, /ERR_ASSERTION/);
+});
+
 function getDocSession(host, scrollElement) {
     let session = host.docSearchState.sessions.get(scrollElement);
     if (!session) {

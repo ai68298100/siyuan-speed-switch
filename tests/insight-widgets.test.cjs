@@ -98,7 +98,7 @@ test("current document outline adapter reuses bounded outline data", () => {
     const path = require("node:path");
     const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     assert.match(source, /register\("current-document-outline"/);
-    assert.match(source, /fetchKernelJson\("\/api\/outline\/getDocOutline", \{id: rootId, preview: false\}\)/);
+    assert.match(source, /fetchKernelJson\("\/api\/outline\/getDocOutline", \{id: rootId, preview: true\}\)/);
     assert.match(source, /flattenOutline\(json\.data, 64\)/);
     assert.match(source, /buildOutlineWidgetSnapshot\(headings, config/);
     assert.match(source, /homeCurrentDocumentMissing/);

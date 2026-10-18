@@ -74,6 +74,8 @@
   "homeModuleError": "Failed to load",
   "homeBlocked": "Unavailable",
   "homeRetry": "Retry",
+  "homeTaskMarkDone": "Mark complete",
+  "homeTaskMarkUndone": "Mark incomplete",
   "homeCollapse": "Collapse",
   "homeExpand": "Expand",
   "homeCached": "Cached",
@@ -121,7 +123,6 @@
   "quickCaptureFailed": "Append failed, please retry",
   "quickCaptureUnknown": "The request was sent, but the result could not be confirmed. Check the target document; this dialog is locked to prevent a duplicate append.",
   "quickCapturePending": "Result needs verification",
-  "quickCaptureUnknown": "The request was sent, but the result could not be confirmed. Check the target document before retrying.",
   "homeClippedUnread": "Clipped to read",
   "homeDescClippedUnread": "Provided by a clipping plugin that supports the clipped-unread protocol; ordinary tags are not treated as clipping data",
   "homeClippedProviderMissing": "Install and enable a clipping plugin that supports the clipped-unread protocol",
@@ -1515,7 +1516,11 @@
   ,"snippetChoose": "Choose snippet"
   ,"snippetRecent": "Recent snippets"
   ,"snippetClose": "Close"
-  ,"snippetImport": "Import disabled draft"
+  ,"snippetImport": "Import file"
+  ,"snippetImportPackage": "Import snippet package"
+  ,"snippetImportPackageHint": "Confirmation writes directly to the native snippet list. Merge preserves existing enabled states and uses imported states for new entries; Fork creates disabled copies; Overwrite replaces the entire list using imported states."
+  ,"snippetPackageImported": "Snippet package imported into the native list."
+  ,"snippetImportInvalid": "Invalid snippet package. Check the JSON format and snippet fields."
   ,"snippetNew": "New"
   ,"snippetCopy": "Copy"
   ,"snippetCopied": "Snippet content copied to clipboard."

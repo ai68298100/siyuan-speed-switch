@@ -1,5 +1,7 @@
 # Agent 受控执行链（T-122~T-194）交付状态证据
 
+> **历史结论，已被后续接线取代**：本文正文保留 2026-09-15 的审计。T-6680 已将 plan/actions/registry/host-actions/write-actions/document-set-actions 接入生产；2026-10-18 T-7303 又修复单目标 ids→id、schema 与 executor 路由。当前仍未接线的是 capability-definitions/probe 等契约，不应据本文旧结论断言整条执行链未上线。真实确认/权限及执行期取消边界见 [最新审计](status-audit-2026-10-18.md)。
+
 > 生成日期：2026-09-15　用途：为 TODO 台账中 71 项 `T-122~T-194` 的裁定提供可核对证据。
 > 关联决策：D-283（执行链拆到 v0.18）、D-111（写入动作仍等待独立审批与宿主验证）、D-352。
 

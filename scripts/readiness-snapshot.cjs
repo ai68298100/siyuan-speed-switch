@@ -58,6 +58,7 @@ doc = doc.replace(/dist\/index\.js \d+ bytes; dist\/index\.css \d+ bytes; packag
     `dist/index.js ${size} bytes; dist/index.css ${css} bytes; package.zip ${zip} bytes`);
 doc = doc.replace(/`dist\/index\.js` \d+ bytes; `dist\/index\.css` \d+ bytes; `package\.zip` \d+ bytes/g,
     `\`dist/index.js\` ${size} bytes; \`dist/index.css\` ${css} bytes; \`package.zip\` ${zip} bytes`);
+doc = doc.replace(/当前工作树 ZIP 为 \d+ bytes/g, `当前工作树 ZIP 为 ${zip} bytes`);
 
 // 2) 生产产物表行：三类数字与余量
 doc = doc.replace(/`dist\/index\.js` \d+ bytes（\d+ KiB 自律线内，余量 -?\d+ bytes，ADR \d{4}）/,

@@ -49,9 +49,21 @@ async function main() {
     let socket;
     try {
         const portFile = path.join(profile, "DevToolsActivePort");
-        for (let attempt = 0; !fs.existsSync(portFile) && attempt < 100; attempt += 1) await delay(100);
-        assert.ok(fs.existsSync(portFile), "Chromium must publish its debugging port");
-        const port = Number(fs.readFileSync(portFile, "utf8").split(/\r?\n/)[0]);
+        // Chromium creates DevToolsActivePort before it has flushed the first
+        // line on some Windows/Chrome combinations. Waiting only for the file
+        // path can therefore parse an empty value and surface a misleading
+        // `fetch failed (bad port)` error. Poll until a bounded positive port
+        // is available while retaining the existing 10s startup budget.
+        let port = 0;
+        for (let attempt = 0; attempt < 100 && !port; attempt += 1) {
+            if (fs.existsSync(portFile)) {
+                const firstLine = fs.readFileSync(portFile, "utf8").split(/\r?\n/)[0].trim();
+                const parsed = Number(firstLine);
+                if (Number.isInteger(parsed) && parsed > 0 && parsed <= 65535) port = parsed;
+            }
+            if (!port) await delay(100);
+        }
+        assert.ok(port, "Chromium must publish a valid debugging port");
         const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then((response) => response.json());
         const target = targets.find((entry) => entry.type === "page");
         assert.ok(target?.webSocketDebuggerUrl, "isolated Chromium page must exist");

@@ -64,7 +64,7 @@ const candidates = [process.env.BROWSER_PATH,
     "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
     "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
     "C:/Program Files/Google/Chrome/Application/chrome.exe",
-].filter((c) => fs.existsSync(c));
+].filter(Boolean).filter((c) => fs.existsSync(c));
 const browserPath = candidates[0];
 if (!browserPath) throw new Error("Chromium not found");
 
@@ -135,7 +135,7 @@ async function main() {
             return window.__plugin.getHomeModules("desktop").some((m) => m.moduleId === "calendar-recent-periodic");
         })()`);
         assert.equal(registered, true, "case 1: 模拟 Calendar 注册必须成功（getHomeModules 可见）");
-        console.log("case 1 (register, real host API): OK");
+        console.log("case 1 (register, production adapter contract in controlled Chrome): OK");
 
         // —— 第 2 步：打开商店，卡片可见（未添加）——
         await evalJs(`__OpenStore.call(window.__plugin, "desktop", () => {})`);
@@ -148,22 +148,21 @@ async function main() {
         assert.deepEqual(cardInfo, {added: "false", tiles: true}, "case 2: 商店必须展示 Calendar 卡片（未添加 + 五档尺寸瓦片）");
         console.log("case 2 (store card visible, not added): OK");
 
-        // —— 第 3 步：选 wide 档 → 预览（T-7069：预览必须跟随所选尺寸而非恒 medium）——
-        assert.equal(await click(`document.querySelector('.sw-home-store__card[data-module-id="calendar-recent-periodic"] .sw-home-store__size[data-size="wide"]')`), true, "wide 尺寸瓦片必须存在");
-        await delay(150);
-        assert.equal(await click(`document.querySelector('.sw-home-store__card[data-module-id="calendar-recent-periodic"] .sw-home-store__preview-btn')`), true, "预览按钮必须存在");
+        // —— 第 3 步：选择目录卡 → 详情内联预览 → 选 wide 档（生产主从商店语义）——
+        assert.equal(await click(`document.querySelector('.sw-home-store__card[data-module-id="calendar-recent-periodic"] .sw-home-store__card-head')`), true, "目录卡标题必须可选中");
+        await delay(250);
+        assert.equal(await evalJs(`document.querySelector('.sw-home-store')?.dataset.selectedModule`), "calendar-recent-periodic", "case 3: 目录选择必须打开对应详情");
+        assert.equal(await click(`document.querySelector('.sw-home-store__detail .sw-home-store__size[data-size="wide"]')`), true, "详情 wide 尺寸瓦片必须存在");
         await delay(700);
         const preview = await evalJs(`(() => {
-            const el = document.querySelector(".sw-store-preview");
+            const el = document.querySelector('.sw-home-store__detail .sw-home-store__live-preview .sw-store-preview');
             if (!el) return null;
-            return {size: el.dataset.size, items: el.querySelectorAll(".sw-store-preview__body li, .sw-store-preview__body .sw-home-cell-item, .sw-store-preview__body *").length};
+            return {size: el.dataset.size, busy: el.getAttribute('aria-busy'), items: el.querySelectorAll('.sw-store-preview__body *').length};
         })()`);
-        assert.ok(preview, "预览对话框必须打开");
-        assert.equal(preview.size, "wide", "case 3: 预览必须使用所选 wide 档（修复前恒 medium）");
-        console.log("case 3 (preview honors selected size): OK ->", JSON.stringify(preview));
-        // 关闭预览对话框（保留商店）
-        await evalJs(`document.querySelectorAll(".b3-dialog").forEach((d) => { if (!d.querySelector(".sw-home-store") && d.isConnected) d.remove(); })`);
-        await delay(150);
+        assert.ok(preview, "详情内联预览必须打开");
+        assert.equal(preview.size, "wide", "case 3: 详情预览必须使用所选 wide 档");
+        assert.equal(preview.busy, "false", "case 3: 详情预览必须结束加载");
+        console.log("case 3 (inline preview honors selected size): OK ->", JSON.stringify(preview));
 
         // —— 第 4 步：添加 → 状态持久化 → 反复归一化不丢（calendar#17 核心 repro）——
         assert.equal(await click(`document.querySelector('.sw-home-store__card[data-module-id="calendar-recent-periodic"] .sw-home-store__add')`), true, "添加按钮必须存在");
@@ -185,7 +184,7 @@ async function main() {
         console.log("case 4 (add survives repeated normalization): OK");
 
         // —— 第 5 步：工作台面板真实渲染第三方组件内容 ——
-        await evalJs(`document.querySelectorAll(".b3-dialog").forEach((d) => { if (d.querySelector(".sw-home-store") && d.isConnected) d.remove(); })`);
+        await evalJs(`document.querySelector('.sw-home-store__close')?.click()`);
         await evalJs(`window.__plugin.openPlatformSurface("workbench")`);
         await delay(900);
         const cell = await evalJs(`(() => {

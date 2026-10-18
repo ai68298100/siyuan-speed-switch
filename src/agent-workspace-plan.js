@@ -1,7 +1,7 @@
 "use strict";
 
-// v0.17 Agent groundwork: dry-run plans are deliberately standalone until
-// host-level approval, cancellation and expiry semantics are verified.
+// Fixed workspace plans are proposed read-only, then executed after the host's
+// whole-plan confirmation. Local callers can additionally supply an AbortSignal.
 const {normalizeAgentDocumentId, normalizeAgentDocumentIds, normalizeAgentNotebookId, sanitizeJournalAppend} = require("./agent-capabilities.js");
 
 const MAX_PLAN_STEPS = 8;
@@ -63,6 +63,10 @@ const WORKSPACE_PLAN_SPEC = Object.freeze({
                         ids: {type: "array", maxItems: 5, items: {type: "string", maxLength: 64}},
                         setId: {type: "string", maxLength: 64},
                         done: {type: "boolean"},
+                        notebook: {type: "string", maxLength: 64},
+                        title: {type: "string", maxLength: 128},
+                        markdown: {type: "string", maxLength: 4096},
+                        content: {type: "string", maxLength: 512},
                         requiresWrite: {type: "boolean"},
                     },
                     required: ["index", "action", "requiresWrite"],
@@ -96,7 +100,7 @@ const WORKSPACE_PLAN_RECEIPT_SCHEMA = Object.freeze({
 const WORKSPACE_EXECUTE_SPEC = Object.freeze({
     name: "execute-workspace-plan",
     title: "小驴雷切执行工作区计划",
-    description: "执行一份未过期的工作区计划：按序运行固定白名单动作（最多 8 步）并返回有界回执。整份计划是一次确认单元，取消/超时由宿主确认卡承担。",
+    description: "执行一份未过期的工作区计划：按序运行固定白名单动作（最多 8 步）并返回有界回执。整份计划是一次确认单元，可在宿主确认卡中取消；当前宿主未提供执行期间的取消信号。",
     inputSchema: WORKSPACE_PLAN_SPEC.outputSchema,
     outputSchema: WORKSPACE_PLAN_RECEIPT_SCHEMA,
 });
@@ -162,6 +166,14 @@ function validateWorkspacePlan(plan) {
         if (step.action === "open-documents" && (!Array.isArray(step.ids) || !step.ids.length || step.ids.length > 5 || normalizeAgentDocumentIds(step.ids, 5).length !== step.ids.length)) return {ok: false, reason: "invalid_targets"};
         if (step.action === "restore-document-set" && (typeof step.setId !== "string" || !step.setId.trim())) return {ok: false, reason: "invalid_set"};
         if (step.action === "update-task-status" && typeof step.done !== "boolean") return {ok: false, reason: "invalid_done"};
+        if (step.action === "create-document" && (
+            typeof step.notebook !== "string" || !step.notebook.trim() || step.notebook.length > 64
+            || typeof step.title !== "string" || !step.title.trim() || step.title.length > 128
+            || typeof step.markdown !== "string" || step.markdown.length > 4096
+        )) return {ok: false, reason: "invalid_payload"};
+        if (step.action === "append-to-journal" && (
+            typeof step.content !== "string" || !sanitizeJournalAppend(step.content) || step.content.length > 512
+        )) return {ok: false, reason: "invalid_payload"};
     }
     return {ok: true};
 }
@@ -208,7 +220,7 @@ async function runWorkspacePlan(plan, options = {}) {
             continue;
         }
         try {
-            const result = await options.runStep(plan.steps[index], index);
+            const result = await options.runStep(plan.steps[index], index, {signal: options.signal});
             results[index] = result && typeof result === "object" ? result : {status: "completed"};
         } catch (error) {
             results[index] = {status: "failed", reason: error?.reason || error?.code || "executor_failed"};

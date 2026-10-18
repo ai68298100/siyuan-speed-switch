@@ -554,7 +554,7 @@
         justify-content: center;
         width: 22px;
         height: 22px;
-        border-radius: 6px;
+        border-radius: $sw-radius-sm;
         background: color-mix(in srgb, var(--b3-theme-primary) 8%, transparent);
         color: var(--b3-theme-primary);
     }
@@ -586,6 +586,13 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+
+        // 基础层的 hover/focus 共用规则会关闭 outline；最终视觉层恢复
+        // 键盘焦点环，避免 compact/窄屏卡片里焦点只剩颜色变化。
+        &:focus-visible {
+            outline: 2px solid var(--sw-platform-accent, var(--b3-theme-primary));
+            outline-offset: -2px;
+        }
 
         svg {
             flex: none;

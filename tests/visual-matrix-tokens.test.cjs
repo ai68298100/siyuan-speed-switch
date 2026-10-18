@@ -48,7 +48,7 @@ async function run() {
     const candidates = [process.env.BROWSER_PATH,
         'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
         'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
-        'C:/Program Files/Google/Chrome/Application/chrome.exe'].filter((c) => fs.existsSync(c));
+        'C:/Program Files/Google/Chrome/Application/chrome.exe'].filter(Boolean).filter((c) => fs.existsSync(c));
     const child = spawn(candidates[0], ['--headless=new', '--disable-gpu', '--no-first-run', '--allow-file-access-from-files',
         '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], {stdio: 'ignore', windowsHide: true});
     try {

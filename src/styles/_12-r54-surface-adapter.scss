@@ -262,13 +262,24 @@
     .speed-switch .sw__scroll { padding: var(--sw-r54-space-3) var(--sw-r54-space-3) 20px; }
     .speed-switch .sw__dock { display: none; }
     .sw-home { padding: var(--sw-r54-space-3) var(--sw-r54-space-3) 0; }
-    .sw-home__cell { grid-column: 1 / -1; }
-    .sw-home__grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    // _05-settings-widgets.scss keeps the legacy mobile stack with !important.
+    // Match that specificity and importance here so ADR 0217's two-column
+    // surface rule is the effective production cascade.
+    .sw-home.sw-home--mobile .sw-home__cell { grid-column: 1 / -1 !important; }
+    .sw-home.sw-home--mobile .sw-home__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         gap: var(--sw-space-sm, 6px);
     }
     // 手机端2列双拼Bento：微瓦片(xs)占1列并排，列表与大卡占满2列(1/-1)
-    .sw-home__cell[data-size="xs"] { grid-column: span 1; }
+    .sw-home.sw-home--mobile .sw-home__cell[data-size="xs"] { grid-column: span 1 !important; }
+    // When every saved widget is unavailable, the ghost cards are diagnostic
+    // placeholders rather than layout tiles. Keep each one readable across
+    // the full narrow work area instead of preserving its stale desktop span.
+    .sw-home__grid--unavailable .sw-home__cell--unavailable {
+        grid-column: 1 / -1 !important;
+        width: 100%;
+        min-width: 0;
+    }
     .sw-studio__layout {
         display: flex;
         flex: 1 1 auto;
@@ -295,6 +306,47 @@
         transform: scale(0.985);
         transition: transform $sw-dur-fast $sw-ease;
     }
+
+    // 待办勾选框保留 14px 视觉内芯；透明伪元素把触控命中区扩到 44px，
+    // 不改变行高或卡片密度。
+    .sw-home .sw__home-module-list .sw__home-module-item-check {
+        position: relative;
+        z-index: 1;
+        width: 14px;
+        height: 14px;
+        touch-action: manipulation;
+    }
+    .sw-home .sw__home-module-list .sw__home-module-item-check::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 44px;
+        height: 44px;
+        transform: translateY(-50%);
+        pointer-events: auto;
+        background: transparent;
+    }
+}
+
+// isMobile 由宿主注入，即使设备没有暴露 coarse pointer 也保留同一命中区。
+.sw-home.sw-home--mobile .sw__home-module-list .sw__home-module-item-check {
+    position: relative;
+    z-index: 1;
+    width: 14px;
+    height: 14px;
+    touch-action: manipulation;
+}
+.sw-home.sw-home--mobile .sw__home-module-list .sw__home-module-item-check::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translateY(-50%);
+    pointer-events: auto;
+    background: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

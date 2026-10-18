@@ -245,6 +245,8 @@ function renderHomeModuleView(doc, view, options = {}) {
         sourceFresh: "实时",
         sourceCached: "缓存源",
         sourceStale: "过期缓存",
+        taskDone: "标记完成",
+        taskUndone: "标记未完成",
         staleRefreshFailed: "旧内容（缓存）· 刷新失败",
         timeout: "请求超时",
         unsupported: "宿主不支持",
@@ -809,37 +811,51 @@ function renderHomeModuleView(doc, view, options = {}) {
             if (item.href) row.classList.add("has-link");
             if (canToggle && typeof item.done === "boolean") {
                 const check = doc.createElement("button");
+                let toggleRevision = 0;
                 check.type = "button";
                 check.className = "sw__home-module-item-check" + (item.done ? " is-done" : "");
-                check.setAttribute("aria-label", item.done ? "标记未完成" : "标记完成");
+                check.setAttribute("aria-label", item.done ? labels.taskUndone : labels.taskDone);
                 check.setAttribute("aria-pressed", String(item.done));
                 // 显式尺寸兜底：同 .sw__home-weekday-dot——尺寸仅来自插件 CSS 的 11px 规则
                 check.innerHTML = item.done ? '<svg width="11" height="11"><use xlink:href="#iconCheck"></use></svg>' : "";
                 check.addEventListener("click", (event) => {
                     event.stopPropagation();
-                    const nextDone = !item.done;
+                    const revision = ++toggleRevision;
+                    const previousDone = item.done === true;
+                    const nextDone = !previousDone;
                     item.done = nextDone;
                     check.classList.toggle("is-done", nextDone);
                     check.setAttribute("aria-pressed", String(nextDone));
+                    check.setAttribute("aria-label", nextDone ? labels.taskUndone : labels.taskDone);
                     check.innerHTML = nextDone ? '<svg width="11" height="11"><use xlink:href="#iconCheck"></use></svg>' : "";
                     button.classList.toggle("is-done", nextDone);
+                    const rollback = () => {
+                        // A slower response from an earlier click must not
+                        // overwrite a newer optimistic state.
+                        if (revision !== toggleRevision) return;
+                        item.done = previousDone;
+                        check.classList.toggle("is-done", previousDone);
+                        check.setAttribute("aria-pressed", String(previousDone));
+                        check.setAttribute("aria-label", previousDone ? labels.taskUndone : labels.taskDone);
+                        check.innerHTML = previousDone ? '<svg width="11" height="11"><use xlink:href="#iconCheck"></use></svg>' : "";
+                        button.classList.toggle("is-done", previousDone);
+                    };
                     try {
-                        const result = options.onToggleItem(item, view);
-                        if (result && typeof result.catch === "function") {
-                            result.catch(() => {
-                                item.done = !nextDone;
-                                check.classList.toggle("is-done", !nextDone);
-                                check.setAttribute("aria-pressed", String(!nextDone));
-                                check.innerHTML = !nextDone ? '<svg width="11" height="11"><use xlink:href="#iconCheck"></use></svg>' : "";
-                                button.classList.toggle("is-done", !nextDone);
-                            });
+                        // Pass the desired state explicitly. `item.done` is already
+                        // optimistic at this point, so inferring the target in the
+                        // host would invert the write a second time.
+                        // Keep the historical `(item, view)` argument order;
+                        // append the explicit target state for host writers.
+                        const result = options.onToggleItem(item, view, nextDone);
+                        if (result && typeof result.then === "function") {
+                            Promise.resolve(result).then((ok) => {
+                                if (ok === false) rollback();
+                            }, rollback);
+                        } else if (result === false) {
+                            rollback();
                         }
                     } catch (_) {
-                        item.done = !nextDone;
-                        check.classList.toggle("is-done", !nextDone);
-                        check.setAttribute("aria-pressed", String(!nextDone));
-                        check.innerHTML = !nextDone ? '<svg width="11" height="11"><use xlink:href="#iconCheck"></use></svg>' : "";
-                        button.classList.toggle("is-done", !nextDone);
+                        rollback();
                     }
                 });
                 row.appendChild(check);
