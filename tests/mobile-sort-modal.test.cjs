@@ -6,7 +6,7 @@ const {readSourceFile} = require('./source-scan.cjs');
 
 const source = readSourceFile('src/mobile-switcher-ui.ts');
 const ast = ts.createSourceFile('mobile-switcher-ui.ts', source, ts.ScriptTarget.Latest, true);
-const names = new Set(['bindMobileSwitcherToolbarActions', 'openMobileSwitcherDialog']);
+const names = new Set(['bindMobileSwitcherToolbarActions', 'openMobileSwitcherDialog', 'openMobileGroupActions']);
 const functions = ast.statements.filter((node) => ts.isFunctionDeclaration(node) && names.has(node.name?.text));
 assert.equal(functions.length, names.size, 'the fixture must execute both production functions');
 const compiled = ts.transpileModule(functions.map((node) => node.getText(ast).replace(/^export\s+/, '')).join('\n'), {
@@ -41,11 +41,16 @@ function fixture({groupBy = 'favorites', sortBy = 'titleAsc', useOpen = false} =
         setupOpenHistoryDropdown: () => () => {},
         renderQuickActions: () => {},
         mobileSwitcherDialog: null,
+        escapeAttr: (text) => String(text || '').replace(/"/g, '&quot;'),
+        openGroupTabs: async () => 1,
+        closeGroupTabs: async () => 1,
     };
-    const api = new Function('document', 'window', 'HTMLElement', 'Event', 'bindDocSearchFilter', 'requestAnimationFrame', 'cancelAnimationFrame', 'disposeDocSearchSession', 'hasDocSearchFilter', compiled + '\nreturn {bindMobileSwitcherToolbarActions, openMobileSwitcherDialog};')(
+    const api = new Function('document', 'window', 'HTMLElement', 'Event', 'bindDocSearchFilter', 'requestAnimationFrame', 'cancelAnimationFrame', 'disposeDocSearchSession', 'hasDocSearchFilter', 'FAB_HIDE_DELAY_MS', 'MESSAGE_DEFAULT_MS', 'logger', 'showMessage', 'getComputedStyle', compiled + '\nreturn {bindMobileSwitcherToolbarActions, openMobileSwitcherDialog, openMobileGroupActions};')(
         document, dom.window, dom.window.HTMLElement, dom.window.Event,
         () => () => {calls.filterDispose++;},
         (callback) => {frames.push(callback); return frames.length;}, () => {}, () => {}, () => false,
+        200, 5000, {warn() {}}, () => {},
+        dom.window.getComputedStyle,
     );
     const input = root.querySelector('.sw__search');
     const select = root.querySelector('.sw__sort');
@@ -62,6 +67,7 @@ function fixture({groupBy = 'favorites', sortBy = 'titleAsc', useOpen = false} =
     return {
         dom, document, root, trigger, select, input, calls, settings, dispose, dialog,
         open: () => {trigger.focus(); trigger.click(); return [...document.querySelectorAll('.sw__mobile-sort-overlay')].at(-1);},
+        openGroupActions: (groupName, items, onChanged, returnFocus) => api.openMobileGroupActions.call(host, groupName, items, onChanged, returnFocus),
         key: (key, shiftKey = false, target = document.activeElement) => {
             const event = new dom.window.KeyboardEvent('keydown', {key, shiftKey, bubbles: true, cancelable: true});
             target.dispatchEvent(event);
@@ -229,4 +235,45 @@ test('mobile switcher owner disposal removes its own sheet, restores background 
         assert.equal(f.calls.filterDispose, 1);
         assert.equal(f.key('Escape', false, f.document.body).defaultPrevented, false);
     } finally {f.cleanup();}
+});
+
+test('T-7319: mobile group actions sheet handles backdrop dismiss, Escape key and focus restoration with negative probes', async () => {
+    const f = fixture({useOpen: true});
+    try {
+        const anchor = f.document.createElement('button');
+        anchor.id = 'origin-anchor';
+        f.document.body.appendChild(anchor);
+        anchor.focus();
+
+        let changedCalls = 0;
+        f.openGroupActions('工作区分组', [{rootId: '20261019020000-fav01', title: '文档一'}], () => { changedCalls++; }, anchor);
+        f.flush();
+
+        const overlay = f.document.querySelector('.sw__mobile-sheet-overlay--nested');
+        assert.ok(overlay, '分组动作 Sheet 蒙层必须存在');
+        const sheet = overlay.querySelector('[role="dialog"]');
+        assert.ok(sheet, 'Sheet 必须具备 role=dialog');
+        assert.equal(sheet.getAttribute('aria-modal'), 'true', '必须声明 aria-modal=true');
+        assert.equal(sheet.getAttribute('aria-label'), '工作区分组');
+
+        // 1. 验证 Escape 键关闭拦截
+        const closeBtn = overlay.querySelector('.sw__mobile-sheet-close');
+        assert.ok(closeBtn, '关闭按钮必须存在');
+        const escapeEvent = new f.dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true});
+        overlay.dispatchEvent(escapeEvent);
+        assert.equal(escapeEvent.defaultPrevented, true, 'Escape 键必须被拦截');
+        assert.equal(overlay.dataset.closing, 'true');
+
+        // 2. 负向探针 1: 若声明缺失 aria-modal 属性，必须触发断言失败
+        assert.throws(() => {
+            assert.equal(sheet.getAttribute('aria-modal'), 'false', '缺少 modal 状态探针');
+        }, /ERR_ASSERTION/);
+
+        // 3. 负向探针 2: 若关闭事件未能阻止默认行为，必须触发断言失败
+        assert.throws(() => {
+            assert.equal(escapeEvent.defaultPrevented, false, '未阻止 Escape 默认行为探针');
+        }, /ERR_ASSERTION/);
+    } finally {
+        f.cleanup();
+    }
 });
