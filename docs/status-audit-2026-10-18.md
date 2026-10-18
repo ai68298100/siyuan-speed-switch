@@ -51,6 +51,7 @@
 | JS 预览运行器 | blocked（产品安全边界） | 不提供执行；原生启用/导入 JS 与预览运行器是两条不同路径 |
 | 悬浮球、动作网格、拖动/贴边、更多、设置 | implemented / locally tested | 自由停放、视口几何越界收敛与动作网格调度契约已加固（T-7322）；Android 与真实 provider 生命周期待验收 |
 | 设置搜索、十标签、当前值/回执、配置包 | implemented / locally tested | 跨十标签全局搜索、多词AND归一化与活控件引用契约已加固（T-7330）；真实读屏待验收 |
+| 统一请求调度、重试退避与异常分类 | implemented / locally tested | 序列化深度溢出防御、统一异常状态码分类与最大重试钳制契约已加固（T-7331）；网络波动恢复已获单测覆盖 |
 | 存储净化、18 key 迁移/容量、防抖与卸载 flush | implemented / locally tested | 存储迁移管道容灾演练、18 Key 形状分类与疑似降级保护契约已加固（T-7317）；长期同步待持续观测 |
 | Agent 只读上下文、搜索、组件/诊断快照 | implemented / locally tested | 需宿主支持 Agent API；不具备 API 的宿主不可用 |
 | Agent 单文档/批量打开、计划生成/执行及受控写入 | implemented / locally tested | `agentActionsEnabled` 与宿主确认控制；创建文档已实现内核原生 ID 直读与同名防御闭环；真实批准/拒绝/权限/超时仍需专门验收 |
