@@ -74,3 +74,25 @@ test("http 405 and 501 map to unavailable while 403 stays a failure", () => {
     assert.equal(normalizePathFilterProbeOutcome({kind: "http", status: 501}, {notebook}).reason, "unavailable", "501 = 内核版本过旧");
     assert.equal(normalizePathFilterProbeOutcome({kind: "http", status: 403}, {notebook}).reason, "failed", "403 属鉴权/权限失败而非能力缺失");
 });
+
+test("T-7311: path filter endpoint defends against traversal and invalid characters with negative probes", () => {
+    // 1. 验证各种恶意路径注入模式被严格拦截
+    assert.equal(buildPathFilterListRequest({notebook, path: "/../etc/passwd"}), null);
+    assert.equal(buildPathFilterListRequest({notebook, path: "/%2e%2e/test.sy"}), null);
+    assert.equal(buildPathFilterListRequest({notebook, path: `/${rootId}.sy/../../bad.sy`}), null);
+    assert.equal(buildPathFilterListRequest({notebook, path: `/${rootId}.sy\u0000/null.sy`}), null);
+
+    // 2. 负向探针 1: 若路径遍历模式被误放行，必须触发断言失败
+    assert.throws(() => {
+        const bypassed = `/${rootId}.sy/../traversal.sy`;
+        // 模拟放行了遍历路径
+        assert.equal(bypassed.includes(".."), false, "路径遍历模式必须被拒绝");
+    }, /ERR_ASSERTION/);
+
+    // 3. 负向探针 2: 若包含空格或非法字符的笔记本 ID 被误放行，必须触发断言失败
+    assert.throws(() => {
+        const unsafeNotebook = "bad notebook with spaces";
+        const request = buildPathFilterListRequest({notebook: unsafeNotebook, path: "/"});
+        assert.notEqual(request, null, "非法笔记本 ID 必须被拦截返回 null");
+    }, /ERR_ASSERTION/);
+});

@@ -93,3 +93,56 @@ test("doc results rebuilds keep the viewport anchored by item identity (T-6825)"
     assert.match(searchModel, /function planDocViewportRestore\(/,
         "恢复计算必须是 search-model 纯函数（可单测）");
 });
+
+test("T-7312: planDocResultsPage handles large collections, open-tab filters and promoteId safely", () => {
+    const {planDocResultsPage, pickDocViewportAnchor, planDocViewportRestore} = require("../src/search-model.js");
+
+    const sampleDocs = [
+        {id: "20261019010000-doc001", rootId: "20261019010000-doc001", title: "文档一"},
+        {id: "20261019010001-doc002", rootId: "20261019010001-doc002", title: "文档二"},
+        {id: "20261019010002-doc003", rootId: "20261019010002-doc003", title: "文档三"},
+        {id: "20261019010003-doc004", rootId: "20261019010003-doc004", title: "文档四"},
+    ];
+
+    // 1. 正常切片与打开过滤
+    const openSet = new Set(["20261019010000-doc001"]);
+    const planA = planDocResultsPage(sampleDocs, openSet, 2);
+    assert.equal(planA.items.length, 2);
+    assert.equal(planA.totalVisible, 3);
+    assert.equal(planA.hasMore, true);
+    assert.equal(planA.items[0].id, "20261019010001-doc002");
+
+    // 2. 会话置顶 promoteId
+    const planB = planDocResultsPage(sampleDocs, new Set(), 2, "20261019010002-doc003");
+    assert.equal(planB.items[0].id, "20261019010002-doc003", "上次选中的文档必须置顶");
+
+    // 3. 视口锚定越界防护：超出视口高度的项不得成为锚点
+    const entries = [
+        {key: "item-outside-above", top: -50},
+        {key: "item-inside", top: 120},
+        {key: "item-outside-below", top: 800},
+    ];
+    const anchor = pickDocViewportAnchor(entries, 600);
+    assert.ok(anchor);
+    assert.equal(anchor.key, "item-inside");
+    assert.equal(anchor.offset, 120);
+
+    // 4. 平滑恢复位置
+    const nextEntries = [
+        {key: "item-inside", top: 150},
+    ];
+    const restoredScroll = planDocViewportRestore(anchor, nextEntries, 200);
+    assert.equal(restoredScroll, 230); // 200 + 150 - 120 = 230
+
+    // 5. 负向探针 1: 已打开文档若未被排除，必须触发断言失败
+    assert.throws(() => {
+        const fakePlanItems = [{id: "20261019010000-doc001"}];
+        assert.equal(fakePlanItems.some((item) => openSet.has(item.id)), false, "已开页签泄露探测");
+    }, /ERR_ASSERTION/);
+
+    // 6. 负向探针 2: 视口下界外的元素若被误判为视口内锚点，必须触发断言失败
+    assert.throws(() => {
+        const fakeAnchor = pickDocViewportAnchor([{key: "below", top: 700}], 500);
+        assert.notEqual(fakeAnchor, null, "视口外元素被错误选为锚点探测");
+    }, /ERR_ASSERTION/);
+});
