@@ -6,8 +6,11 @@ declare module "*.scss" {
 declare module "./action-palette-ui" {
     export interface IActionPaletteHandle {
         root: HTMLElement;
+        element?: HTMLElement;
         searchInput: HTMLInputElement;
+        searchEl?: HTMLInputElement;
         listElement: HTMLElement;
+        listEl?: HTMLElement;
         getState: () => any;
         updateQuery: (newQuery: string) => void;
         selectIndex: (index: number) => void;
@@ -16,7 +19,7 @@ declare module "./action-palette-ui" {
     }
     export function mountActionPalette(
         container: HTMLElement,
-        actions?: any[],
+        actions: any[],
         options?: any
     ): IActionPaletteHandle;
 }

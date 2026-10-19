@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-19",
-  "currentTask": "T-7144",
+  "updated": "2026-10-20",
+  "currentTask": "T-7345",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7144",
+  "nextLocalTask": "T-7345",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -156,7 +156,10 @@
     "T-7339",
     "T-7340",
     "T-7341",
-    "T-7342"
+    "T-7342",
+    "T-7343",
+    "T-7344",
+    "T-7345"
   ],
   "tasks": [
     {
@@ -4219,6 +4222,68 @@
         "tests/production-graph-isolation.test.cjs"
       ],
       "next": "T-7144"
+    },
+    {
+      "id": "T-7343",
+      "title": "深入穿透检索运行时管线接入与去重锚定修正",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7342"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0236-t7343-penetration-fetch-raw-bundle-recalibration.md",
+        "src/doc-search-ui.ts",
+        "src/search-model.js",
+        "src/index.ts",
+        "tests/penetration-search-fetch.test.cjs",
+        "tests/doc-search-fetch-behavior.test.cjs",
+        "tests/search-orchestration-composition.test.cjs",
+        "tests/second-round-widgets.test.cjs",
+        "scripts/release-readiness-metrics.cjs"
+      ],
+      "next": "T-7344"
+    },
+    {
+      "id": "T-7344",
+      "title": "动作画板挂载到切换器主 UI（右键菜单与 Tab/⌘K 次级动作唤出）",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7343"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0237-t7344-action-palette-main-ui-wiring.md",
+        "src/index.ts",
+        "src/styles/_11-ui-polish.scss",
+        "src/action-palette-ui.js",
+        "src/declarations.d.ts",
+        "tests/action-palette-main-wiring.test.cjs",
+        "scripts/release-readiness-metrics.cjs",
+        "tests/second-round-widgets.test.cjs"
+      ],
+      "next": "T-7345"
+    },
+    {
+      "id": "T-7345",
+      "title": "动作画板与深入穿透检索多端 E2E 交互与快捷键断言验证",
+      "status": "in_progress",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "verification",
+      "dependsOn": [
+        "T-7344"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7346"
     }
   ],
   "global": {

@@ -1297,3 +1297,244 @@
         padding-inline: 14px;
     }
 }
+
+// T-7344：次级动作画板（Action Palette）高质感自适应样式
+// 1. 深浅色主题完整继承思源 --b3-theme-* 变量与半透明毛玻璃底板
+// 2. 动效遵循 $sw-dur-panel / $sw-ease 曲线，并在 prefers-reduced-motion 下降级
+// 3. 移动端在 600px 以下自适应为底部抽屉（Bottom Sheet），适配 safe-area 与触控区
+.sw__palette-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: clamp(48px, 12vh, 120px);
+    padding-inline: var(--sw-space-md, 8px);
+    background-color: rgba(0, 0, 0, 0.45);
+    backdrop-filter: var(--sw-blur-sm);
+    -webkit-backdrop-filter: var(--sw-blur-sm);
+    animation: swPaletteBackdropFade $sw-dur-base $sw-ease;
+    box-sizing: border-box;
+}
+
+@keyframes swPaletteBackdropFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.sw__palette {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 540px;
+    max-height: min(520px, 75vh);
+    background: var(--b3-theme-surface, #ffffff);
+    color: var(--b3-theme-on-surface, #24292f);
+    border: 1px solid var(--b3-border-color, rgba(0, 0, 0, 0.12));
+    border-radius: var(--sw-radius-lg, 12px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22), 0 4px 12px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    user-select: none;
+    animation: swPaletteScaleIn $sw-dur-panel $sw-ease;
+    box-sizing: border-box;
+
+    .sw__palette-search {
+        display: flex;
+        align-items: center;
+        padding: var(--sw-space-lg, 12px) var(--sw-space-xl, 16px);
+        border-bottom: 1px solid var(--b3-border-color, rgba(0, 0, 0, 0.08));
+        background: transparent;
+        box-sizing: border-box;
+
+        input,
+        &[role="combobox"] input,
+        &.b3-text-field {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: var(--sw-font-lg, 15px);
+            color: var(--b3-theme-on-surface, #24292f);
+            box-shadow: none;
+
+            &::placeholder {
+                color: var(--b3-theme-on-surface-light, rgba(128, 128, 128, 0.7));
+            }
+        }
+    }
+
+    .sw__palette-list {
+        margin: 0;
+        padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
+        list-style: none;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        display: flex;
+        flex-direction: column;
+        gap: var(--sw-space-2xs, 2px);
+        box-sizing: border-box;
+    }
+
+    .sw__palette-section {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+
+        + .sw__palette-section {
+            margin-top: var(--sw-space-sm, 6px);
+            padding-top: var(--sw-space-sm, 6px);
+            border-top: 1px solid color-mix(in srgb, var(--b3-border-color) 40%, transparent);
+        }
+    }
+
+    .sw__palette-section-title {
+        padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px) var(--sw-space-xs, 4px);
+        font-size: var(--sw-font-xs, 11px);
+        font-weight: 600;
+        color: var(--b3-theme-on-surface-light, rgba(128, 128, 128, 0.8));
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .sw__palette-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: var(--sw-space-md, 8px) 10px;
+        border-radius: $sw-radius-sm;
+        font-size: var(--sw-font-md, 13px);
+        color: var(--b3-theme-on-surface, #24292f);
+        cursor: pointer;
+        transition: background $sw-dur-fast $sw-ease, color $sw-dur-fast $sw-ease;
+        outline: none;
+        box-sizing: border-box;
+
+        &:hover {
+            background: color-mix(in srgb, var(--b3-theme-primary) 8%, transparent);
+        }
+
+        &.is-selected {
+            background: color-mix(in srgb, var(--b3-theme-primary) 15%, transparent);
+            color: var(--b3-theme-primary);
+            font-weight: 500;
+        }
+
+        &.is-destructive {
+            color: var(--b3-theme-error, #d83b01);
+
+            &:hover,
+            &.is-selected {
+                background: color-mix(in srgb, var(--b3-theme-error, #d83b01) 12%, transparent);
+                color: var(--b3-theme-error, #d83b01);
+            }
+        }
+    }
+
+    .sw__palette-item-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+
+        svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+    }
+
+    .sw__palette-item-label {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .sw__palette-item-shortcut {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px var(--sw-space-sm, 6px);
+        font-size: var(--sw-font-xs, 11px);
+        font-family: inherit;
+        border-radius: 4px;
+        background: color-mix(in srgb, var(--b3-theme-on-surface) 8%, transparent);
+        color: var(--b3-theme-on-surface-light, rgba(128, 128, 128, 0.9));
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 50%, transparent);
+        margin-left: auto;
+    }
+
+    .sw__palette-empty {
+        padding: var(--sw-space-2xl, 24px) var(--sw-space-xl, 16px);
+        text-align: center;
+        font-size: var(--sw-font-md, 13px);
+        color: var(--b3-theme-on-surface-light, rgba(128, 128, 128, 0.7));
+    }
+
+    &--mobile {
+        @media (max-width: 600px) {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-width: 100%;
+            border-radius: 16px 16px 0 0;
+            border-bottom: none;
+            padding-bottom: max(var(--sw-space-lg, 12px), env(safe-area-inset-bottom, 12px));
+            animation: swPaletteSlideUp $sw-dur-panel $sw-ease;
+
+            .sw__palette-item {
+                min-height: 44px;
+                padding: 10px 14px;
+            }
+        }
+    }
+}
+
+@keyframes swPaletteScaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.97) translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes swPaletteSlideUp {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sw__palette-backdrop,
+    .sw__palette,
+    .sw__palette-item {
+        animation: none !important;
+        transition: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+}
+
+@media (forced-colors: active) {
+    .sw__palette {
+        border: 2px solid CanvasText;
+        box-shadow: none;
+    }
+    .sw__palette-item.is-selected {
+        background: Highlight;
+        color: HighlightText;
+    }
+    .sw__palette-item-shortcut {
+        border: 1px solid ButtonText;
+    }
+}

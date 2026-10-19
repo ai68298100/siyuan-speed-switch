@@ -8,7 +8,7 @@ import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSessio
 import {buildRequestKey, createRequestService} from "./request-service";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, normalizeOfficialRecentHistory, formatChangedWindowStart, updatedChangedWithin, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, buildSearchHealthSnapshot, buildSearchDocumentFilterMatcher, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, formatUpdatedBadge, isSemanticEmbeddingConfigured, matchesParsedQuery, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId, updateSavedSearchEntry} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, buildSearchHealthSnapshot, buildSearchDocumentFilterMatcher, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, formatUpdatedBadge, isSemanticEmbeddingConfigured, matchesParsedQuery, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId, updateSavedSearchEntry, extractActionContext, getAvailableActions} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayJournalSnapshot, normalizeTodayJournalConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
 import {favoriteDocumentIdsForProbe, buildFavoritesWidgetSnapshot, buildDocumentSetsWidgetSnapshot, normalizeFixedDocumentConfig, buildFixedDocumentSnapshot} from "./document-widget-model";
@@ -467,6 +467,26 @@ export interface ITabGroupRenderCtx {
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
 type Tab = ReturnType<typeof getAllTabs>[number];
+type CardMenuHandlers = {
+    onActivate?: (tab: Tab) => void;
+    onTogglePin?: (tab: Tab, card: HTMLElement) => void;
+    onToggleFav?: (tab: Tab, card: HTMLElement) => void;
+    onCloseTab?: (tab: Tab, card: HTMLElement) => void;
+};
+
+export interface IActionPaletteHandle {
+    root: HTMLElement;
+    element?: HTMLElement;
+    searchInput: HTMLInputElement;
+    searchEl?: HTMLInputElement;
+    listElement: HTMLElement;
+    listEl?: HTMLElement;
+    getState: () => any;
+    updateQuery: (newQuery: string) => void;
+    selectIndex: (index: number) => void;
+    dispose: () => void;
+    isDisposed: () => boolean;
+}
 type KernelRequestOutcome =
     | {ok: true; value: any; attempts: number; outcome: "success"}
     | {ok: false; error: {kind: string; status?: number}; attempts: number; outcome: "failed" | "unknown"};
@@ -11889,6 +11909,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             this.openCardMenu(this.cardTabs.get(card) || tab, card, handlers, event.clientX, event.clientY);
         });
         this.cardMenuHandlers.set(card, handlers);
+        // T-7344：卡片次级动作快捷键唤出（⌘K / Ctrl+K）
+        card.addEventListener("keydown", (event: KeyboardEvent) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.openCardActionPalette(this.cardTabs.get(card) || tab, card, handlers);
+            }
+        });
         if (this.isMobile) {
             this.bindCardLongPress(card, tab, handlers);
         }
@@ -12088,6 +12116,153 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         card.addEventListener("touchcancel", cancel);
     }
 
+    // T-7344：卡片次级动作画板（Tab / ⌘K / 右键菜单"更多动作"唤出）
+    private openCardActionPalette(tab: Tab, card?: HTMLElement, handlers?: CardMenuHandlers): IActionPaletteHandle | null {
+        if (!tab) return null;
+        const rootId = this.rootIdOf(tab);
+        const title = this.titleOf(tab) || rootId || "未命名文档";
+        const isPinned = card ? card.classList.contains("sw__pinned") : false;
+        const isFaved = card ? card.classList.contains("sw__fav") : false;
+
+        const context = extractActionContext({
+            tab,
+            card,
+            rootId,
+            title,
+            isPinned,
+            isFaved,
+        });
+
+        const actions = getAvailableActions(context, {
+            platform: this.isMobile ? "mobile" : "desktop",
+            i18n: this.i18n,
+        });
+
+        if (!actions || actions.length === 0) {
+            return null;
+        }
+
+        const backdrop = document.createElement("div");
+        backdrop.className = "sw__palette-backdrop";
+        backdrop.setAttribute("role", "presentation");
+        document.body.appendChild(backdrop);
+
+        let handle: IActionPaletteHandle | null = null;
+        const closeOverlay = () => {
+            if (handle && !handle.isDisposed()) {
+                handle.dispose();
+            }
+            if (backdrop.parentElement) {
+                backdrop.parentElement.removeChild(backdrop);
+            }
+        };
+
+        backdrop.addEventListener("click", (e) => {
+            if (e.target === backdrop) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeOverlay();
+            }
+        });
+
+        handle = mountActionPalette(backdrop, actions, {
+            platform: this.isMobile ? "mobile" : "desktop",
+            title,
+            targetContext: context,
+            onClose: () => {
+                closeOverlay();
+            },
+            onExecute: (action: {id: string}, ctx: any) => {
+                closeOverlay();
+                this.executePaletteAction(action.id, tab, card, handlers, ctx);
+            },
+        }) as unknown as IActionPaletteHandle;
+
+        return handle;
+    }
+
+    private executePaletteAction(
+        actionId: string,
+        tab: Tab,
+        card?: HTMLElement,
+        handlers?: CardMenuHandlers,
+        _ctx?: any
+    ): void {
+        const rootId = this.rootIdOf(tab);
+        const title = this.titleOf(tab) || rootId;
+        const effectiveHandlers = handlers || (card ? this.cardMenuHandlers.get(card) : undefined);
+        const destroySwitcher = () => {
+            if (this.platformSwitcherDialog) {
+                this.platformSwitcherDialog.destroy();
+                this.platformSwitcherDialog = null;
+            }
+        };
+        const copyToClipboard = (text: string) => {
+            if (navigator?.clipboard?.writeText) {
+                void navigator.clipboard.writeText(text);
+                showMessage(this.i18n.snippetCopied || "已复制到剪贴板");
+            }
+        };
+
+        switch (actionId) {
+            case "open-active":
+                if (effectiveHandlers?.onActivate) {
+                    effectiveHandlers.onActivate(tab);
+                }
+                break;
+            case "open-right":
+                if (rootId) {
+                    destroySwitcher();
+                    void openTab({app: this.app, doc: {id: rootId}, position: "right"});
+                }
+                break;
+            case "open-bottom":
+                if (rootId) {
+                    destroySwitcher();
+                    void openTab({app: this.app, doc: {id: rootId}, position: "bottom"});
+                }
+                break;
+            case "open-preview":
+                if (rootId) {
+                    destroySwitcher();
+                    void openTab({app: this.app, doc: {id: rootId, mode: "preview"}});
+                }
+                break;
+            case "toggle-pin":
+                if (card && effectiveHandlers?.onTogglePin) {
+                    effectiveHandlers.onTogglePin(tab, card);
+                }
+                break;
+            case "toggle-fav":
+                if (card && effectiveHandlers?.onToggleFav) {
+                    effectiveHandlers.onToggleFav(tab, card);
+                }
+                break;
+            case "close-tab":
+                if (card && effectiveHandlers?.onCloseTab) {
+                    effectiveHandlers.onCloseTab(tab, card);
+                }
+                break;
+            case "copy-block-link":
+                if (rootId) copyToClipboard(`siyuan://blocks/${rootId}`);
+                break;
+            case "copy-markdown-link":
+                if (rootId) copyToClipboard(`[${title}](siyuan://blocks/${rootId})`);
+                break;
+            case "copy-id":
+                if (rootId) copyToClipboard(rootId);
+                break;
+            case "copy-path":
+                {
+                    const docPath = (tab as any)?.doc?.path || (tab as any)?.path || rootId;
+                    if (docPath) copyToClipboard(String(docPath));
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
     // 卡片操作菜单（桌面右键 / 手机长按共用）：置顶 / 收藏 / 分组 / 关闭
     private openCardMenu(tab: Tab, card: HTMLElement,
                          handlers: {
@@ -12133,6 +12308,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 click: () => this.openGroupDialog(tab, card),
             });
         }
+        // T-7344：次级动作画板（Tab / ⌘K 统一动作入口，提供分屏、复制链接、关闭等聚合操作）
+        menu.addItem({
+            label: `${this.i18n.actionPaletteTitle || "动作画板"} (⌘K)`,
+            icon: "iconSparkles",
+            click: () => {
+                this.openCardActionPalette(tab, card, handlers);
+            },
+        });
         menu.addItem({
             label: this.i18n.close,
             icon: "iconClose",

@@ -270,8 +270,11 @@ function mountActionPalette(container, actions = [], options = {}) {
 
     return {
         root,
+        element: root,
         searchInput,
+        searchEl: searchInput,
         listElement,
+        listEl: listElement,
         getState: () => state,
         updateQuery: (newQuery) => {
             if (disposed) return;

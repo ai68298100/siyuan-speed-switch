@@ -29,8 +29,13 @@
 // raw 产物增长到 1,189,884 B（净增 ~8.0 KiB）。穿透检索是既有纯模型
 // 契约（T-7338/T-7340）的生产兑现，无冗余死重可剥；raw 观察线
 // 1160 -> 1164 KiB。归档包与压缩入口上限维持不变（586 KiB / 288 KiB）。
-const RAW_BUNDLE_BUDGET_BYTES = 1164 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0236";
+// ADR 0237 (2026-10-20): 次级动作画板切换器主 UI 挂载（T-7344）把
+// 卡片右键菜单、⌘K 快捷唤出、动作上下文抽取与分屏/复制调度接入生产，
+// 并补充全套深浅色/毛玻璃/移动端抽屉样式；减量审计提取公共剪贴板/弹窗辅助
+// 消除 720 B 重复逻辑后，raw 产物为 1,196,626 B（超出 1164 KiB 4.6 KiB）。
+// raw 观察线 1164 -> 1170 KiB。归档包门限微调 586 -> 590 KiB（package.zip 602,045 B，余量 2,115 B）。
+const RAW_BUNDLE_BUDGET_BYTES = 1170 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0237";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout
@@ -67,8 +72,11 @@ const RAW_BUNDLE_BUDGET_ADR = "0236";
 // production lines; the working tree package.zip was 598398 B (+382 B over 584 KiB).
 // Reduction audit: T-7342 is pure domain model, reuses penetration-search-model,
 // with safe SQL generation and bounded LIMIT.
+// ADR 0237 (2026-10-20): recalibrated 586 -> 590 KiB after T-7344 action-palette-main-wiring
+// (卡片右键菜单/⌘K 快捷键/动作执行调度/全套深浅色与移动端抽屉 SCSS 样式)；
+// 生产构建 package.zip 为 602,045 B，在 590 KiB（604,160 B）门禁内留有 2,115 B 健康余量。
 // Per-entry compressed line (320 KiB, ADR 0089) unchanged.
-const ARCHIVE_BUDGET_BYTES = 586 * 1024;
+const ARCHIVE_BUDGET_BYTES = 590 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
 // writing-streak second wave (T-6681) shrank headroom to 11780 bytes. Same
