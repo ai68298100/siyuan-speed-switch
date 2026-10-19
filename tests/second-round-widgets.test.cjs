@@ -103,11 +103,11 @@ test("second-round schemas land in semantic sections and stay bounded", () => {
     }
 });
 
-test("ADR 0125 recalibrates the raw bundle self-discipline line after the current batch", () => {
+test("ADR 0236 recalibrates the raw bundle self-discipline line after the current batch", () => {
     const gate = readSourceText(path.join(__dirname, "host", "release-quality.test.cjs"));
     assert.match(gate, /metrics\.RAW_BUNDLE_BUDGET_BYTES/);
-    // ADR 0098 是历史基线；当前线由 ADR 0125 校准至 1160 KiB。
-    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1160 * 1024);
+    // ADR 0098/0125 是历史基线；当前线由 ADR 0236 校准至 1164 KiB。
+    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1164 * 1024);
     // 校准日期备注本身就在注释里——按门禁清单 D-395 例外用原始文本断言注释
     const gateRaw = fs.readFileSync(path.join(__dirname, "host", "release-quality.test.cjs"), "utf8");
     assert.match(gateRaw, /2026-09-23 \(ADR 0074\)/);
@@ -124,6 +124,11 @@ test("ADR 0125 recalibrates the raw bundle self-discipline line after the curren
     const adr125 = fs.readFileSync(path.join(__dirname, "..", "docs", "adr", "0125-raw-bundle-line-recalibration.md"), "utf8");
     assert.match(adr125, /1152 KiB/);
     assert.match(adr125, /1160 KiB/);
+    // T-7343：深入穿透检索接线后由 ADR 0236 校准到 1164 KiB，归档包上限不变。
+    const adr236 = fs.readFileSync(path.join(__dirname, "..", "docs", "adr", "0236-t7343-penetration-fetch-raw-bundle-recalibration.md"), "utf8");
+    assert.match(adr236, /1160 KiB/);
+    assert.match(adr236, /1164 KiB/);
+    assert.match(adr236, /586 KiB/, "归档包 586 KiB 上限必须保持不变");
     const zh = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "zh-CN.json"), "utf8"));
     const en = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "en.json"), "utf8"));
     assert.equal(zh.homeCountdownElapsed, "已经 {n} 天");

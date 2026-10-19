@@ -1498,7 +1498,8 @@ function resolveDocSearchResultId(doc) {
     if ((doc?.kind === "heading" || doc?.kind === "block") && doc?.blockId && BLOCK_ID_RE.test(String(doc.blockId))) {
         return String(doc.blockId);
     }
-    const rootId = String(doc?.rootId || "");
+    // T-7343：内核 /api/filetree/searchDocs 返回蛇形 root_id，与既有 camelCase 一并接受
+    const rootId = String(doc?.rootId || doc?.root_id || "");
     if (BLOCK_ID_RE.test(rootId)) return rootId;
     const directId = String(doc?.id || "");
     if (BLOCK_ID_RE.test(directId)) return directId;

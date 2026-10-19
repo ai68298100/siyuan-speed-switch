@@ -23,8 +23,14 @@
 // 1,181,710 B. Reduction review found no removable entry dead weight;
 // recalibrate the raw observation line 1152 -> 1160 KiB. Archive and
 // compressed-entry ceilings remain unchanged.
-const RAW_BUNDLE_BUDGET_BYTES = 1160 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0125";
+// ADR 0236 (2026-10-20): 深入穿透检索运行时接线（T-7343）把
+// planPenetrationSearchRequest / aggregatePenetrationResults 的穿透分流、
+// 跨文档两段式大纲解析与 heading/block 图标分支接入主搜索管线，
+// raw 产物增长到 1,189,884 B（净增 ~8.0 KiB）。穿透检索是既有纯模型
+// 契约（T-7338/T-7340）的生产兑现，无冗余死重可剥；raw 观察线
+// 1160 -> 1164 KiB。归档包与压缩入口上限维持不变（586 KiB / 288 KiB）。
+const RAW_BUNDLE_BUDGET_BYTES = 1164 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0236";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout

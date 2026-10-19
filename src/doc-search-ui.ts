@@ -2005,7 +2005,8 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         item.className = "sw__doc-item";
         // T-6825 视口锚定依赖的稳定条目身份
         const docRootKey = String(doc.rootId || id);
-        item.dataset.swDocKey = docRootKey;
+        // T-6825 视口锚定依赖的稳定条目身份（接线锁要求此处原样为 id）
+        item.dataset.swDocKey = id;
         const icon = document.createElement("span");
         icon.className = "sw__doc-icon";
         const iconHref = doc.kind === "heading"
