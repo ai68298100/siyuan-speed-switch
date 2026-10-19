@@ -53,7 +53,7 @@
 | 设置搜索、十标签、当前值/回执、配置包 | implemented / locally tested | 跨十标签全局搜索、多词AND归一化与活控件引用契约已加固（T-7330）；真实读屏待验收 |
 | 统一请求调度、重试退避与异常分类 | implemented / locally tested | 序列化深度溢出防御、统一异常状态码分类与最大重试钳制契约已加固（T-7331）；网络波动恢复已获单测覆盖 |
 | 存储净化、18 key 迁移/容量、防抖与卸载 flush | implemented / locally tested | 存储迁移管道容灾演练、18 Key 形状分类与疑似降级保护契约已加固（T-7317）；长期同步待持续观测 |
-| Agent 只读上下文、搜索、组件/诊断快照 | implemented / locally tested | 需宿主支持 Agent API；不具备 API 的宿主不可用 |
+| Agent 只读上下文、搜索、组件/诊断快照 | implemented / locally tested | 需宿主支持 Agent API；输入输出 Schema 严格有界、只读零副作用与超长截断契约已加固（T-7332） |
 | Agent 单文档/批量打开、计划生成/执行及受控写入 | implemented / locally tested | `agentActionsEnabled` 与宿主确认控制；创建文档已实现内核原生 ID 直读与同名防御闭环；真实批准/拒绝/权限/超时仍需专门验收 |
 | 社区片段目录、家族快速捕获 | conditional / blocked | B-009 缺真实目录与维护者；B-010 缺提供方稳定接收命令；不伪造入口成功 |
 
