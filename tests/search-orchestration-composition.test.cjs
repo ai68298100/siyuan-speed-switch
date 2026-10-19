@@ -17,6 +17,8 @@ const {
     normalizeSearchResult,
     planDocResultsPage,
     resolveSearchNotebookId,
+    // T-7334：runDocSearchFetch 依赖首字母缩写重排，AST 抽取后必须一并注入。
+    rankDocumentsByPathAcronym,
 } = require("../src/search-model.js");
 
 const uiSource = readSourceFile("src/doc-search-ui.ts");
@@ -44,7 +46,7 @@ function makeRunner(overrides = {}) {
         "filterDocSearchResults", "canUseTitleSearch", "buildSearchCacheKey", "cacheSearchResult",
         "DOC_SEARCH_FETCH_LIMIT", "logger", "fetch", "buildOpenedDocumentSearchRequests",
         "extractSearchRecords", "normalizeSearchResult", "buildFullTextSearchRequest",
-        "aggregateSearchResults", "resolveSearchNotebookId",
+        "aggregateSearchResults", "resolveSearchNotebookId", "rankDocumentsByPathAcronym",
         `${compiledFunctions}\nreturn {runDocSearchFetch, runOpenedDocumentContentSearch, runFullTextSearchFallback};`,
     )(
         new WeakMap(), 0,
@@ -78,6 +80,7 @@ function makeRunner(overrides = {}) {
         overrides.buildFullTextSearchRequest || buildFullTextSearchRequest,
         overrides.aggregateSearchResults || aggregateSearchResults,
         overrides.resolveSearchNotebookId || resolveSearchNotebookId,
+        overrides.rankDocumentsByPathAcronym || rankDocumentsByPathAcronym,
     );
     runner.requestKernelJsonOutcome = async (url, body, options = {}) => {
         try {

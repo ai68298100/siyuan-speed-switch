@@ -166,8 +166,27 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // 上限随 ADR 0188 校准 75→76。
     // 2026-10-18 执行链复核：补齐实际缺失的 agent-workspace-actions 生产接线，
     // 使单目标 ids 经过归一化再进入 host handler；实测 77，上限按实际增量 76→77。
+    // T-7334：path-acronym-model 路径首字母缩写纯模型入图（经 search-model 复用），
+    // 实测 78；上限按同口径校准 77→78（先例 T-6814/T-6950/T-7260），包体预算由
+    // release-readiness 快照独立审查。
+    // T-7335：action-palette-model 次级动作画板模型入图（经 search-model 统一导出），
+    // 实测 79；上限按同口径校准 78→79，包体预算由 release-readiness 快照独立审查。
+    // T-7336：av-board-model 属性视图轻量只读看板模型入图（经 kernel-widget-model 复用），
+    // 实测 80；上限按同口径校准 79→80，包体预算由 release-readiness 快照独立审查。
+    // T-7337：flashcard-review-model 闪卡间隔重复复习模型入图（经 kernel-widget-model 复用），
+    // 实测 81；上限按同口径校准 80→81，包体预算由 release-readiness 快照独立审查。
+    // T-7338：penetration-search-model 深入穿透检索模型入图（经 search-model 统一再导出），
+    // 实测 82；上限按同口径校准 81→82，包体预算由 release-readiness 快照独立审查。
+    // T-7339：action-palette-navigation 键盘导航状态机入图（经 search-model 复用），
+    // 实测 83；上限按同口径校准 82→83，包体预算由 release-readiness 快照独立审查。
+    // T-7340：action-palette-panel 面板 DOM 模型层入图（经 search-model 统一再导出），
+    // 实测 84；上限按同口径校准 83→84，包体预算由 release-readiness 快照独立审查。
+    // T-7341：action-palette-ui 真实 DOM 装配层入图（经 index.ts 引入），
+    // 实测 85；上限按同口径校准 84→85，包体预算由 release-readiness 快照独立审查。
+    // T-7342：penetration-search-orchestration 运行时编排模型入图（经 search-model 复用），
+    // 实测 86；上限按同口径校准 85→86，包体预算由 release-readiness 快照独立审查。
     // 包体复核：raw 1024 KiB 自律线、zip 硬上限与压缩条目线均独立审查（见 release-readiness 快照）。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 77, `production graph grew to ${graph.size} modules; audited ceiling is 77`);
+    assert.ok(graph.size <= 86, `production graph grew to ${graph.size} modules; audited ceiling is 86`);
 });

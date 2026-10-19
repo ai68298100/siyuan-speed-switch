@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-18",
+  "updated": "2026-10-19",
   "currentTask": "T-7144",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
@@ -147,7 +147,16 @@
     "T-7300",
     "T-7301",
     "T-7302",
-    "T-7303"
+    "T-7303",
+    "T-7334",
+    "T-7335",
+    "T-7336",
+    "T-7337",
+    "T-7338",
+    "T-7339",
+    "T-7340",
+    "T-7341",
+    "T-7342"
   ],
   "tasks": [
     {
@@ -3999,7 +4008,7 @@
     {
       "id": "T-7304",
       "title": "UI 状态反馈一致性与真实宿主 E2E 收口",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "fix",
@@ -4019,6 +4028,195 @@
         "tests/e2e/split-open.spec.mjs",
         "tests/e2e/workbench-information.spec.mjs",
         ".artifacts/e2e/results.json"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7334",
+      "title": "路径首字母模糊加速打分与既有结果重排",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7333"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0226-t7334-path-acronym-scoring.md",
+        "src/path-acronym-model.js",
+        "src/search-model.js",
+        "src/doc-search-ui.ts",
+        "src/index.ts",
+        "tests/path-acronym-model.test.cjs"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7335",
+      "title": "次级动作画板纯领域模型与档案预算微调",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7334"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0227-t7335-action-palette-model.md",
+        "src/action-palette-model.js",
+        "src/search-model.js",
+        "src/api/external-bridge.js",
+        "scripts/release-readiness-metrics.cjs",
+        "tests/action-palette-model.test.cjs",
+        "tests/production-graph-isolation.test.cjs"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7336",
+      "title": "思源原生属性视图(av)轻量只读看板模型",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7335"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0228-t7336-av-board-model.md",
+        "src/av-board-model.js",
+        "src/kernel-widget-model.js",
+        "tests/av-board-model.test.cjs",
+        "tests/production-graph-isolation.test.cjs"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7337",
+      "title": "闪卡间隔重复复习模型与档案预算微调",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7336"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0229-t7337-flashcard-review-model.md",
+        "src/flashcard-review-model.js",
+        "src/kernel-widget-model.js",
+        "scripts/release-readiness-metrics.cjs",
+        "tests/flashcard-review-model.test.cjs",
+        "tests/production-graph-isolation.test.cjs"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7338",
+      "title": "深入穿透检索模型(:大纲穿透与^块搜索)",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7337"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0230-t7338-penetration-search-model.md",
+        "src/penetration-search-model.js",
+        "src/search-model.js",
+        "tests/penetration-search-model.test.cjs",
+        "tests/production-graph-isolation.test.cjs"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7339",
+      "title": "Action Palette 键盘导航状态机",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7338"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0231-t7339-action-palette-navigation.md",
+        "src/action-palette-navigation.js",
+        "src/search-model.js",
+        "tests/action-palette-navigation.test.cjs",
+        "tests/production-graph-isolation.test.cjs"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7340",
+      "title": "Action Palette 面板 DOM 模型层与档案预算微调",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7339"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0232-t7340-action-palette-panel.md",
+        "src/action-palette-panel.js",
+        "src/search-model.js",
+        "scripts/release-readiness-metrics.cjs",
+        "tests/action-palette-panel.test.cjs",
+        "tests/production-graph-isolation.test.cjs"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7341",
+      "title": "Action Palette 真实 DOM 装配与 Disposer 契约",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7340"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0233-t7341-action-palette-ui.md",
+        "src/action-palette-ui.js",
+        "src/declarations.d.ts",
+        "src/index.ts",
+        "src/i18n/zh-CN.json",
+        "src/i18n/en.json",
+        "tests/i18n.test.cjs",
+        "tests/action-palette-ui.test.cjs",
+        "tests/production-graph-isolation.test.cjs"
+      ],
+      "next": "T-7144"
+    },
+    {
+      "id": "T-7342",
+      "title": "深入穿透检索运行时编排与安全只读 SQL 生成",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7341"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0234-t7342-penetration-search-orchestration.md",
+        "src/penetration-search-orchestration.js",
+        "src/search-model.js",
+        "tests/penetration-search-orchestration.test.cjs",
+        "tests/production-graph-isolation.test.cjs"
       ],
       "next": "T-7144"
     }

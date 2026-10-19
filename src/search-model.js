@@ -1,6 +1,56 @@
 "use strict";
 
 const {graphemeSlice} = require("./util.js");
+// T-7334：路径首字母缩写打分（纯模型，供统一索引与文档结果排序复用）。
+const {
+    isAcronymQuery: isPathAcronymQuery,
+    scorePathAcronym,
+    rankByPathAcronym: rankDocsByPathAcronym,
+} = require("./path-acronym-model.js");
+// T-7335：次级动作画板模型（纯模型，条目上下文/可用动作/过滤与回执）。
+const {
+    ACTION_SECTIONS,
+    extractActionContext,
+    getBuiltinActionDefinitions,
+    getAvailableActions,
+    filterPaletteActions,
+    createActionExecutionReceipt,
+} = require("./action-palette-model.js");
+// T-7338：Obsidian 风格深入穿透检索模型（: 大纲穿透 / ^ 块检索语法与过滤）。
+const {
+    SEARCH_MODES,
+    parsePenetrationQuery,
+    findOutlineColonIndex,
+    filterOutlineHeadings,
+    normalizePenetrationBlockResult,
+} = require("./penetration-search-model.js");
+// T-7339：次级动作画板键盘导航状态机（Tab/⌘K 唤出与上下/回车键盘交互）。
+const {
+    PALETTE_KEY_ACTIONS,
+    createPaletteNavigationState,
+    updatePaletteQuery,
+    movePaletteSelection,
+    dispatchPaletteKey,
+} = require("./action-palette-navigation.js");
+// T-7340：次级动作画板面板 DOM 模型层（声明式结构 + a11y 契约 + 跨端 className 字典）。
+const {
+    PANEL_SECTION_ORDER,
+    PANEL_CLASSNAMES,
+    PANEL_LABELS,
+    buildActionPalettePanelModel,
+    assertActionPalettePanelContract,
+} = require("./action-palette-panel.js");
+// T-7342：深入穿透检索运行时编排模型（端点规划、防注入 SQL 生成与大纲/块响应聚合）。
+const {
+    MAX_SQL_NEEDLE_LENGTH,
+    DEFAULT_BLOCK_LIMIT,
+    MAX_BLOCK_LIMIT,
+    escapeSqlLiteral,
+    buildBlockSearchSql,
+    planPenetrationSearchRequest,
+    flattenOutlineTree,
+    aggregatePenetrationResults,
+} = require("./penetration-search-orchestration.js");
 
 // Pure search-domain helpers. This module intentionally has no DOM or SiYuan
 // API dependency so the eventual desktop/sidebar/mobile adapters can share
@@ -1328,6 +1378,23 @@ function filterSearchDocuments(documents, filters = {}) {
     return (Array.isArray(documents) ? documents : []).filter(matchesScope);
 }
 
+// ==================== T-7334 路径首字母缩写重排 ====================
+// 文档结果来自内核标题/全文搜索，只有这些记录携带 notebook+目录+文档名的完整
+// 路径，因此缩写加速只作用于这一层：把 `syk` 命中 `思源库/研发/小驴雷切` 的
+// 结果提到前面。只重排、不新增、不删减，未命中项保持内核原始顺序稳定后置。
+function rankDocumentsByPathAcronym(documents, query, options = {}) {
+    const safeOptions = options && typeof options === "object" ? options : {};
+    if (!Array.isArray(documents) || !isPathAcronymQuery(query)) {
+        return Array.isArray(documents) ? documents.slice() : [];
+    }
+    return rankDocsByPathAcronym(documents, query, {
+        ...safeOptions,
+        pathOf: (doc) => (doc && typeof doc === "object"
+            ? String(doc.hPath || doc.path || "")
+            : ""),
+    });
+}
+
 function normalizeSearchDocumentFilters(filters = {}) {
     const source = filters && typeof filters === "object" ? filters : {};
     return {
@@ -1872,6 +1939,34 @@ module.exports = {
     groupSearchResults,
     filterOpenTabs,
     parseSearchTerms,
+    scorePathAcronym,
+    rankDocumentsByPathAcronym,
+    ACTION_SECTIONS,
+    extractActionContext,
+    getBuiltinActionDefinitions,
+    getAvailableActions,
+    filterPaletteActions,
+    createActionExecutionReceipt,
+    SEARCH_MODES,
+    parsePenetrationQuery,
+    findOutlineColonIndex,
+    filterOutlineHeadings,
+    normalizePenetrationBlockResult,
+    PALETTE_KEY_ACTIONS,
+    createPaletteNavigationState,
+    updatePaletteQuery,
+    movePaletteSelection,
+    dispatchPaletteKey,
+    PANEL_SECTION_ORDER,
+    PANEL_CLASSNAMES,
+    PANEL_LABELS,
+    buildActionPalettePanelModel,
+    assertActionPalettePanelContract,
+    escapeSqlLiteral,
+    buildBlockSearchSql,
+    planPenetrationSearchRequest,
+    flattenOutlineTree,
+    aggregatePenetrationResults,
     isSemanticEmbeddingConfigured,
     mergeSearchLayers,
     shouldSearchRemote,

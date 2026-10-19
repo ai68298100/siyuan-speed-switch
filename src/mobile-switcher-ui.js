@@ -1,0 +1,773 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.openMobileSwitcherDialog = openMobileSwitcherDialog;
+exports.bindMobileSwitcherToolbarActions = bindMobileSwitcherToolbarActions;
+exports.renderMobileList = renderMobileList;
+exports.openMobileGroupActions = openMobileGroupActions;
+// 小驴雷切 —— 移动端切换器 UI 链路（P1-1a 自 index.ts 原样搬移，ADR 0048）
+// 本群以 this 参数模式运行：调用方式 renderMobileList.call(host, ...)。
+// host 契约见 MobileSwitcherUiHost；群内互调在本模块内直接 .call(this)，
+// 留宿主的成员保持 this.xxx。
+// 注意：下列签名是从迁移前 index.ts 的类声明逐项同步而来，改宿主实现时此处须同步。
+const siyuan_1 = require("siyuan");
+const constants_1 = require("./constants");
+const logger_1 = require("./logger");
+const util_1 = require("./util");
+const doc_search_ui_1 = require("./doc-search-ui");
+const util_2 = require("./util");
+const search_model_1 = require("./search-model");
+const platform_surface_model_1 = require("./platform-surface-model");
+const constants_2 = require("./constants");
+function openMobileSwitcherDialog(tabs, focusSearch = false, returnTo = "switcher", context) {
+    var _a, _b, _c, _d;
+    const settings = this.getSettings();
+    // 手机端当前页签高亮：MobileTabs 的 activeTabID（renderMobileList 仅读取其 id）
+    const activeTab = this.isMobile
+        ? { id: this.getMobileActiveTabId() }
+        : this.getActiveTab();
+    // T-6869 单例守卫：连点入口不再叠出多个移动切换器，先销毁旧实例再开新。
+    if ((_a = this.mobileSwitcherDialog) === null || _a === void 0 ? void 0 : _a.element.isConnected)
+        this.mobileSwitcherDialog.destroy();
+    // T-6481：destroyCallback 在构造期就要成型，而资源在后面才创建，故用 holder 传递；
+    // FAB 恢复并入同一个释放入口，不再覆写 dialog.destroy。
+    const switcherRelease = { fn: () => undefined };
+    const dialog = this.createMobileSwitcherDialog(switcherRelease);
+    const releaseFab = this.suspendFABForDialog();
+    (_b = dialog.element.querySelector(".b3-dialog__container")) === null || _b === void 0 ? void 0 : _b.classList.add("sw-mobile-switcher-dialog");
+    const mobileBody = dialog.element.querySelector(".sw__mobile");
+    if (mobileBody && this.mountPlatformChrome && this.getPlatformSurfaceLabels) {
+        const navigatePlatformSurface = this.openPlatformSurface
+            ? (surface) => {
+                var _a, _b;
+                if (!dialog.element.isConnected)
+                    return;
+                // T-7012：导航离开前捕获焦点来源，配合 query 透传供返回后恢复现场。
+                const focusSource = (0, platform_surface_model_1.encodeSurfaceFocusSource)(((_a = dialog.element.ownerDocument) === null || _a === void 0 ? void 0 : _a.activeElement) || null);
+                dialog.destroy();
+                (_b = this.openPlatformSurface) === null || _b === void 0 ? void 0 : _b.call(this, surface, returnTo, Object.assign({ entry: "surface-nav", objectKind: context === null || context === void 0 ? void 0 : context.objectKind, objectId: context === null || context === void 0 ? void 0 : context.objectId, query: context === null || context === void 0 ? void 0 : context.query }, (focusSource ? { focusSource } : {})));
+            }
+            : undefined;
+        this.mountPlatformChrome(mobileBody, {
+            surface: "switcher",
+            labels: this.getPlatformSurfaceLabels(),
+            available: ((_c = this.getAvailablePlatformSurfaces) === null || _c === void 0 ? void 0 : _c.call(this)) || ["switcher", "workbench"],
+            context: context || null,
+            status: { state: "ready", label: this.i18n.platformConnected || "Kernel connected" },
+            onNavigate: navigatePlatformSurface,
+            onHelp: () => { var _a; return (_a = this.openPlatformGuide) === null || _a === void 0 ? void 0 : _a.call(this, "switcher"); },
+            helpLabel: this.i18n.platformGuideButton,
+            onClose: () => dialog.destroy(),
+            closeLabel: this.i18n.close,
+            closeHint: this.i18n.platformCloseHint || "退出",
+        });
+    }
+    let readyFrame = null;
+    let readyFrameCancel = null;
+    let revealCancelled = false;
+    let rendered = false;
+    let stableFrames = 0;
+    let previousWidth = 0;
+    let previousHeight = 0;
+    const revealWhenReady = (attempt = 0) => {
+        if (revealCancelled || !(mobileBody === null || mobileBody === void 0 ? void 0 : mobileBody.isConnected))
+            return;
+        const bodyRect = mobileBody.getBoundingClientRect();
+        const toolbar = mobileBody.querySelector(".sw__mobile-toolbar");
+        const scroll = mobileBody.querySelector(".sw__scroll");
+        const toolbarRect = toolbar === null || toolbar === void 0 ? void 0 : toolbar.getBoundingClientRect();
+        const icon = mobileBody.querySelector(".sw__search-icon");
+        const iconRect = icon === null || icon === void 0 ? void 0 : icon.getBoundingClientRect();
+        const toolbarStyle = toolbar ? getComputedStyle(toolbar) : null;
+        const hasStableGeometry = rendered
+            && bodyRect.width > 0 && bodyRect.height > 0
+            && !!toolbarRect && toolbarRect.width > 0
+            && (toolbarStyle === null || toolbarStyle === void 0 ? void 0 : toolbarStyle.display) === "flex"
+            && !!iconRect && iconRect.width > 0 && iconRect.width <= 32
+            && iconRect.height > 0 && iconRect.height <= 32
+            && (!scroll || scroll.clientWidth > 0)
+            && toolbarRect.width <= bodyRect.width + 2;
+        if (hasStableGeometry && Math.abs(bodyRect.width - previousWidth) < 1 && Math.abs(bodyRect.height - previousHeight) < 1) {
+            stableFrames += 1;
+        }
+        else {
+            stableFrames = 0;
+        }
+        previousWidth = bodyRect.width;
+        previousHeight = bodyRect.height;
+        // Never reveal a zero-sized or structurally collapsed dialog.  The
+        // bounded retry is only a last-resort guard for WebViews that do
+        // not deliver a second animation frame; it still requires the
+        // body/toolbar geometry to be usable.
+        const hasFallbackGeometry = bodyRect.width > 0 && bodyRect.height > 0
+            && !!toolbarRect && toolbarRect.width > 0
+            && (toolbarStyle === null || toolbarStyle === void 0 ? void 0 : toolbarStyle.display) === "flex"
+            && (!scroll || scroll.clientWidth > 0)
+            && toolbarRect.width <= bodyRect.width + 2;
+        if (stableFrames >= 2 || (attempt >= 30 && hasFallbackGeometry)) {
+            // 图标尺寸兜底：symbol 有了 CARD_ICON_SPRITE 兜底，**尺寸**此前仍完全依赖
+            // 插件 CSS。手机 WebView 首开（同步占用主线程时更慢）会让裸 <svg> 退回
+            // 浏览器默认 300×150，把顶栏撑成"巨型图标 + 控件竖排"——即"刚进去出现
+            // 大图标"。这里在可见前扫一遍容器，只修正实测已异常的图标，
+            // 正常路径一个节点都不碰，因此不带来任何视觉回归。
+            const clamped = (0, util_1.clampOversizedIcons)(mobileBody);
+            if (clamped > 0) {
+                logger_1.logger.warn("mobile switcher icon size fallback applied", { count: clamped });
+            }
+            mobileBody.classList.remove("sw__mobile--initializing");
+            mobileBody.style.removeProperty("visibility");
+            mobileBody.style.removeProperty("opacity");
+            mobileBody.style.removeProperty("pointer-events");
+            if (!hasStableGeometry && attempt >= 30) {
+                logger_1.logger.warn("mobile switcher revealed after layout timeout", { width: bodyRect.width, height: bodyRect.height });
+            }
+            readyFrame = null;
+            readyFrameCancel = null;
+            return;
+        }
+        if (typeof requestAnimationFrame === "function") {
+            const frame = requestAnimationFrame(() => revealWhenReady(attempt + 1));
+            readyFrame = frame;
+            readyFrameCancel = () => cancelAnimationFrame(frame);
+        }
+        else {
+            const timer = window.setTimeout(() => revealWhenReady(attempt + 1), 16);
+            readyFrame = timer;
+            readyFrameCancel = () => window.clearTimeout(timer);
+        }
+    };
+    if (typeof requestAnimationFrame === "function") {
+        const frame = requestAnimationFrame(() => revealWhenReady());
+        readyFrame = frame;
+        readyFrameCancel = () => cancelAnimationFrame(frame);
+    }
+    else {
+        const timer = window.setTimeout(() => revealWhenReady(), 16);
+        readyFrame = timer;
+        readyFrameCancel = () => window.clearTimeout(timer);
+    }
+    const searchInput = dialog.element.querySelector(".sw__search");
+    const sortSelect = dialog.element.querySelector(".sw__sort");
+    const scrollElement = dialog.element.querySelector(".sw__scroll");
+    // 关键修复：Dialog 先把元素挂到 DOM，b3-dialog--open 类要等 50ms 超时才补上，
+    // 期间容器处于 transform: scale(.8) 过渡态；手机 WebView 中带 backdrop-filter 的
+    // 子元素在该动画窗口内会渲染错乱（图标巨大/位置错位），动画结束又自愈——
+    // 即"刚打开闪一下错乱"的根因。禁用动画让容器同步进入最终态，彻底消除该窗口
+    const dialogBody = dialog.element.querySelector(".b3-dialog__body");
+    if (dialogBody) {
+        dialogBody.classList.add("sw-scroll-locked");
+    }
+    // 清理缩略图缓存中已无对应打开页签的孤儿条目
+    this.pruneThumbCache(tabs);
+    let unregisterRefresh = () => undefined;
+    let disposeMobileToolbar = () => undefined;
+    let disposeHistoryDropdown = () => undefined;
+    // 释放入口：宿主 destroyCallback（Escape/点击外部/程序调用）统一收敛到这里。
+    let mobileReleased = false;
+    switcherRelease.fn = () => {
+        if (mobileReleased)
+            return;
+        mobileReleased = true;
+        revealCancelled = true;
+        readyFrameCancel === null || readyFrameCancel === void 0 ? void 0 : readyFrameCancel();
+        readyFrame = null;
+        readyFrameCancel = null;
+        // Sorting is rendered in a body-level portal so it can escape the
+        // host Dialog's clipping/stacking context.  Always tear that
+        // portal down with its owner, including Escape and route changes.
+        disposeMobileToolbar();
+        disposeHistoryDropdown();
+        unregisterRefresh();
+        if (scrollElement) {
+            doc_search_ui_1.disposeDocSearchSession.call(this, scrollElement);
+        }
+        releaseFab();
+    };
+    const closeOverlay = () => dialog.destroy();
+    // 装配工具栏与列表渲染
+    if (!searchInput || !sortSelect || !scrollElement) {
+        (0, siyuan_1.showMessage)(this.i18n.mobileLayoutFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+        dialog.destroy();
+        return;
+    }
+    // 先装配列表拿到 renderMobileList，再绑定工具栏（排序切换复用装配期 renderMobileList）；
+    // 列表首渲染只依赖 sortSelect 值，不依赖工具栏绑定，对调安全
+    sortSelect.value = settings.sortBy;
+    const { renderMobileList } = this.renderMobileSwitcherList(dialog, scrollElement, sortSelect, settings);
+    const refreshMobileSurface = () => {
+        renderMobileList();
+        if (searchInput.value.trim() !== "" || doc_search_ui_1.hasDocSearchFilter.call(this, scrollElement)) {
+            this.applySearch(scrollElement, searchInput, closeOverlay);
+        }
+        this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
+    };
+    unregisterRefresh = this.registerSwitcherRefresh(refreshMobileSurface);
+    disposeMobileToolbar = bindMobileSwitcherToolbarActions.call(this, dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList, context);
+    disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector(".sw__history-dd"), closeOverlay);
+    this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
+    rendered = true;
+    // Explicit search actions (for example from the floating ball) opt in
+    // to focus. Ordinary mobile switcher opens deliberately leave focus
+    // untouched so the WebView does not summon the keyboard immediately.
+    if (focusSearch) {
+        searchInput.focus();
+    }
+    // 把 FAB 关闭时的 FAB 恢复优先级插在 destroy 之后；保证打开收藏弹窗关闭后会回到列表
+    (_d = dialog.element.querySelector(".sw__mobile-fav-btn")) === null || _d === void 0 ? void 0 : _d.addEventListener("click", (event) => {
+        this.showMobileFavSheet(dialog, closeOverlay, () => renderMobileList(), event.currentTarget);
+    });
+    // 手机端不自动聚焦搜索框：避免一打开就弹出输入法，需要搜索时点击输入框
+}
+// 构造手机端切换器 Dialog（极简：搜索 + 排序 + 收藏 + 日记 + 设置 + 滚动区）
+function bindMobileSwitcherToolbarActions(dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList, context) {
+    var _a, _b, _c;
+    const disposeSearchFilter = doc_search_ui_1.bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay);
+    let activeSortOverlay = null;
+    const backgroundState = new Map();
+    const sortButton = dialog.element.querySelector(".sw__sort-btn");
+    // T-7176：关闭排序 sheet 后回焦触发按钮。
+    let sortTrigger = null;
+    const closeSortOverlay = (restoreFocus = true) => {
+        if (!activeSortOverlay)
+            return;
+        activeSortOverlay === null || activeSortOverlay === void 0 ? void 0 : activeSortOverlay.remove();
+        activeSortOverlay = null;
+        backgroundState.forEach(({ inert, hidden }, element) => {
+            if (inert === null)
+                element.removeAttribute("inert");
+            else
+                element.setAttribute("inert", inert);
+            if (hidden === null)
+                element.removeAttribute("aria-hidden");
+            else
+                element.setAttribute("aria-hidden", hidden);
+        });
+        backgroundState.clear();
+        sortButton === null || sortButton === void 0 ? void 0 : sortButton.setAttribute("aria-expanded", "false");
+        const focusTarget = sortTrigger || sortButton;
+        if (restoreFocus && (focusTarget === null || focusTarget === void 0 ? void 0 : focusTarget.isConnected))
+            focusTarget.focus({ preventScroll: true });
+        sortTrigger = null;
+    };
+    const sortFocusStops = () => activeSortOverlay
+        ? Array.from(activeSortOverlay.querySelectorAll("button:not(:disabled)")).filter((button) => button.tabIndex >= 0)
+        : [];
+    const ownsSortLayer = () => !!(activeSortOverlay === null || activeSortOverlay === void 0 ? void 0 : activeSortOverlay.isConnected) && !activeSortOverlay.closest("[inert]");
+    const onDocumentKeyDown = (event) => {
+        var _a;
+        if (!ownsSortLayer())
+            return;
+        if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            closeSortOverlay();
+        }
+        else if (event.key === "Tab") {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const stops = sortFocusStops();
+            const index = stops.indexOf(document.activeElement);
+            const nextIndex = index < 0 ? (event.shiftKey ? stops.length - 1 : 0)
+                : (index + (event.shiftKey ? -1 : 1) + stops.length) % stops.length;
+            (_a = stops[nextIndex]) === null || _a === void 0 ? void 0 : _a.focus({ preventScroll: true });
+        }
+        else if (!(activeSortOverlay === null || activeSortOverlay === void 0 ? void 0 : activeSortOverlay.contains(event.target))) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    };
+    const onDocumentFocus = (event) => {
+        var _a;
+        if (ownsSortLayer() && !(activeSortOverlay === null || activeSortOverlay === void 0 ? void 0 : activeSortOverlay.contains(event.target))) {
+            (_a = sortFocusStops()[0]) === null || _a === void 0 ? void 0 : _a.focus({ preventScroll: true });
+        }
+    };
+    const onDocumentPointer = (event) => {
+        if (!ownsSortLayer() || (activeSortOverlay === null || activeSortOverlay === void 0 ? void 0 : activeSortOverlay.contains(event.target)))
+            return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    };
+    document.addEventListener("keydown", onDocumentKeyDown, true);
+    document.addEventListener("focusin", onDocumentFocus, true);
+    document.addEventListener("pointerdown", onDocumentPointer, true);
+    document.addEventListener("click", onDocumentPointer, true);
+    // 隐藏 FAB 推迟到按钮 click 处是因为 openSetting 可能也关闭原 dialog
+    (_a = dialog.element.querySelector(".sw__settings-btn")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", () => {
+        var _a;
+        const focusSource = (0, platform_surface_model_1.encodeSurfaceFocusSource)(((_a = dialog.element.ownerDocument) === null || _a === void 0 ? void 0 : _a.activeElement) || null);
+        const query = searchInput.value.trim() || (context === null || context === void 0 ? void 0 : context.query) || "";
+        dialog.destroy();
+        // T-7012：设置从移动切换器打开，关闭后恢复切换器。
+        this.openSetting(undefined, "switcher", Object.assign(Object.assign(Object.assign(Object.assign({ entry: "back" }, ((context === null || context === void 0 ? void 0 : context.objectKind) ? { objectKind: context.objectKind } : {})), ((context === null || context === void 0 ? void 0 : context.objectId) ? { objectId: context.objectId } : {})), (query ? { query } : {})), (focusSource ? { focusSource } : {})));
+    });
+    (_b = dialog.element.querySelector(".sw__mobile-close-btn")) === null || _b === void 0 ? void 0 : _b.addEventListener("click", () => dialog.destroy());
+    // 顶栏日记按钮：打开/新建当日日记（关闭弹窗并恢复 FAB，未设默认日记本时首次点击弹出选择）
+    (_c = dialog.element.querySelector(".sw__journal-btn")) === null || _c === void 0 ? void 0 : _c.addEventListener("click", () => {
+        var _a;
+        dialog.destroy();
+        (_a = this.fabElement) === null || _a === void 0 ? void 0 : _a.classList.remove("sw__fab--hidden");
+        this.openJournal();
+    });
+    const sortLabels = {
+        mru: this.i18n.sortMru,
+        layout: this.i18n.sortLayout,
+        layoutDesc: this.i18n.sortLayoutDesc,
+        updatedDesc: this.i18n.sortUpdatedDesc,
+        titleAsc: this.i18n.sortTitleAsc,
+        titleDesc: this.i18n.sortTitleDesc,
+    };
+    const updateSortButton = () => {
+        if (!sortButton)
+            return;
+        const label = sortLabels[sortSelect.value] || this.i18n.sortMru;
+        // 显式尺寸兜底：与 buildMobileSwitcherHtml 同因（样式未就绪时裸 svg 会退回 300×150）
+        sortButton.innerHTML = '<svg width="18" height="18"><use xlink:href="#iconSort"></use></svg>';
+        sortButton.title = label;
+        sortButton.setAttribute("aria-label", `${this.i18n.setSortBy}: ${label}`);
+    };
+    updateSortButton();
+    sortButton === null || sortButton === void 0 ? void 0 : sortButton.setAttribute("aria-haspopup", "dialog");
+    sortButton === null || sortButton === void 0 ? void 0 : sortButton.setAttribute("aria-expanded", "false");
+    sortButton === null || sortButton === void 0 ? void 0 : sortButton.addEventListener("click", () => {
+        closeSortOverlay(false);
+        sortTrigger = sortButton;
+        const overlay = document.createElement("div");
+        overlay.className = "sw__mobile-sort-overlay";
+        // WebView 里的思源 Dialog 可能建立新的 stacking context，内联层级作为最后一道兜底。
+        overlay.style.position = "fixed";
+        overlay.style.inset = "0";
+        overlay.style.zIndex = "2147483647";
+        const sheet = document.createElement("div");
+        sheet.className = "sw__mobile-sort-sheet";
+        sheet.setAttribute("role", "dialog");
+        sheet.setAttribute("aria-modal", "true");
+        const sheetLabel = this.i18n.mobileSortAndGroupTitle || `${this.i18n.setSortBy} / ${this.i18n.groupModeTitle}`;
+        sheet.setAttribute("aria-label", sheetLabel);
+        // Keep the close hint beside the heading instead of inside it.  A
+        // heading's textContent is consumed by screen readers and tests as
+        // the dialog name; including the visual "Esc 退出" hint there
+        // makes the accessible name noisy and duplicates the hint.
+        sheet.innerHTML = '<div class="sw__mobile-sheet-handle" aria-hidden="true"></div><div class="sw__mobile-sheet-title"><span class="sw__mobile-sheet-title-text"></span></div><span class="sw__mobile-sheet-close-hint" aria-label="Esc"></span>';
+        sheet.querySelector(".sw__mobile-sheet-title-text").textContent = sheetLabel;
+        const sortHint = sheet.querySelector(".sw__mobile-sheet-close-hint");
+        sortHint.innerHTML = `<kbd>Esc</kbd><span>${this.i18n.platformCloseHint || "退出"}</span>`;
+        sortHint.setAttribute("aria-label", `Esc ${this.i18n.platformCloseHint || "退出"}`);
+        const list = document.createElement("div");
+        list.className = "sw__mobile-sort-list";
+        list.setAttribute("role", "menu");
+        list.setAttribute("aria-label", this.i18n.setSortBy);
+        // 分组方式区：与桌面一体化菜单同语义（分组在前，组内排序在后）
+        const groupTitle = document.createElement("div");
+        groupTitle.className = "sw__mobile-sheet-section";
+        groupTitle.textContent = this.i18n.groupModeTitle;
+        sheet.appendChild(groupTitle);
+        const groupList = document.createElement("div");
+        groupList.className = "sw__mobile-sort-list";
+        groupList.setAttribute("role", "menu");
+        groupList.setAttribute("aria-label", this.i18n.groupModeTitle);
+        const groupOptions = [
+            { value: "notebook", label: this.i18n.groupNotebook },
+            { value: "favorites", label: this.i18n.groupFavorites },
+            { value: "createdMonth", label: this.i18n.groupCreatedMonth },
+            { value: "none", label: this.i18n.groupNone },
+        ];
+        const currentGroup = this.getSettings().groupBy;
+        groupOptions.forEach(({ value, label }) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__mobile-sort-option";
+            item.setAttribute("role", "menuitemradio");
+            item.tabIndex = value === currentGroup ? 0 : -1;
+            item.setAttribute("aria-checked", String(value === currentGroup));
+            item.innerHTML = '<span>' + label + '</span>' + (value === currentGroup ? '<svg><use xlink:href="#iconCheck"></use></svg>' : '');
+            item.addEventListener("click", () => {
+                this.updateSettings({ groupBy: value });
+                closeSortOverlay();
+                renderMobileList();
+                const searchEl = dialog.element.querySelector(".sw__search");
+                if (searchEl) {
+                    searchEl.value = "";
+                    this.applySearch(scrollElement, searchEl, closeOverlay);
+                }
+            });
+            // T-7176：分组选项方向键循环（与排序选项同模式）
+            item.addEventListener("keydown", (event) => {
+                if (event.key !== "ArrowDown" && event.key !== "ArrowUp")
+                    return;
+                event.preventDefault();
+                const options = Array.from(groupList.querySelectorAll(".sw__mobile-sort-option"));
+                const index = options.indexOf(item);
+                const next = options[(index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length];
+                next.focus();
+            });
+            groupList.appendChild(item);
+        });
+        sheet.appendChild(groupList);
+        const sortTitle = document.createElement("div");
+        sortTitle.className = "sw__mobile-sheet-section";
+        sortTitle.textContent = this.i18n.groupSortTitle;
+        sheet.appendChild(sortTitle);
+        Object.entries(sortLabels).forEach(([value, label]) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__mobile-sort-option";
+            item.setAttribute("role", "menuitemradio");
+            item.tabIndex = value === sortSelect.value ? 0 : -1;
+            item.setAttribute("aria-checked", String(value === sortSelect.value));
+            item.innerHTML = `<span>${label}</span>${value === sortSelect.value ? '<svg><use xlink:href="#iconCheck"></use></svg>' : ""}`;
+            item.addEventListener("click", () => {
+                sortSelect.value = value;
+                closeSortOverlay();
+                sortSelect.dispatchEvent(new Event("change"));
+            });
+            list.appendChild(item);
+        });
+        [groupList, list].forEach((menu) => {
+            const options = Array.from(menu.querySelectorAll(".sw__mobile-sort-option"));
+            if (!options.some((option) => option.tabIndex === 0))
+                options[0].tabIndex = 0;
+            menu.addEventListener("keydown", (event) => {
+                const item = event.target.closest(".sw__mobile-sort-option");
+                const index = item ? options.indexOf(item) : -1;
+                if (index < 0 || !["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
+                    return;
+                event.preventDefault();
+                event.stopPropagation();
+                const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? options.length - 1
+                    : (index + (["ArrowDown", "ArrowRight"].includes(event.key) ? 1 : -1) + options.length) % options.length;
+                const next = options[nextIndex];
+                options.forEach((option) => option.tabIndex = option === next ? 0 : -1);
+                next.focus({ preventScroll: true });
+            });
+        });
+        sheet.appendChild(list);
+        const closeButton = document.createElement("button");
+        closeButton.type = "button";
+        closeButton.className = "sw__mobile-sort-option sw__mobile-sort-close";
+        closeButton.textContent = this.i18n.close;
+        closeButton.addEventListener("click", () => closeSortOverlay());
+        sheet.appendChild(closeButton);
+        overlay.appendChild(sheet);
+        document.body.appendChild(overlay);
+        // T-7176：打开后入焦首个选项
+        var first = overlay.querySelector("button");
+        if (first)
+            first.focus({ preventScroll: true });
+        activeSortOverlay = overlay;
+        sortButton === null || sortButton === void 0 ? void 0 : sortButton.setAttribute("aria-expanded", "true");
+        const focusSelection = () => { var _a; return (_a = sortFocusStops()[0]) === null || _a === void 0 ? void 0 : _a.focus({ preventScroll: true }); };
+        focusSelection();
+        Array.from(document.body.children).forEach((element) => {
+            if (element === overlay || !(element instanceof HTMLElement))
+                return;
+            backgroundState.set(element, { inert: element.getAttribute("inert"), hidden: element.getAttribute("aria-hidden") });
+            element.setAttribute("inert", "");
+            element.setAttribute("aria-hidden", "true");
+        });
+        overlay.addEventListener("click", (event) => {
+            event.stopPropagation();
+            if (event.target === overlay)
+                closeSortOverlay();
+        });
+        // Android back/Escape should close only the transient sort sheet;
+        // do not leave a body-level portal intercepting later taps.
+        overlay.addEventListener("keydown", (event) => {
+            event.stopPropagation();
+            const button = event.target.closest("button");
+            if (button && (event.key === "Enter" || event.key === " ")) {
+                event.preventDefault();
+                button.click();
+            }
+            if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                closeSortOverlay();
+                return;
+            }
+            // T-7176：Tab 循环约束——首/末回绕，焦点不逃逸 sheet
+            if (event.key === "Tab") {
+                const focusables = Array.from(overlay.querySelectorAll("button, input, [tabindex]:not([tabindex=\"-1\"])")).filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null);
+                if (focusables.length === 0)
+                    return;
+                const first = focusables[0];
+                const last = focusables[focusables.length - 1];
+                if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault();
+                    last.focus({ preventScroll: true });
+                }
+                else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first.focus({ preventScroll: true });
+                }
+            }
+        });
+        this.scheduleAnimationFrame(() => {
+            if (overlay.isConnected && !sheet.contains(document.activeElement))
+                focusSelection();
+        });
+        this.scheduleAnimationFrame(() => { if (sheet.isConnected)
+            sheet.classList.add("sw__mobile-sort-sheet--open"); });
+    });
+    sortSelect.addEventListener("change", () => {
+        sortSelect.size = 0;
+        sortSelect.classList.add("fn__none");
+        sortSelect.style.removeProperty("position");
+        sortSelect.style.removeProperty("left");
+        sortSelect.style.removeProperty("top");
+        sortSelect.style.removeProperty("z-index");
+        updateSortButton();
+        this.updateSettings({ sortBy: sortSelect.value });
+        // 排序切换：复用装配期 renderMobileList（重读最新列表 + 共享 updatedMap），再清搜索词重过滤
+        renderMobileList();
+        searchInput.value = "";
+        this.applySearch(scrollElement, searchInput, closeOverlay);
+    });
+    this.bindSearchInputComposition(searchInput, () => {
+        this.applySearch(scrollElement, searchInput, closeOverlay);
+    });
+    return () => {
+        disposeSearchFilter();
+        document.removeEventListener("keydown", onDocumentKeyDown, true);
+        document.removeEventListener("focusin", onDocumentFocus, true);
+        document.removeEventListener("pointerdown", onDocumentPointer, true);
+        document.removeEventListener("click", onDocumentPointer, true);
+        closeSortOverlay(false);
+    };
+}
+// 装配手机端列表渲染：返回 renderMobileList 函数以便收藏弹窗的 onTabsChanged 回调触发刷新
+function renderMobileList(scrollElement, tabs, activeTab, opts, sortBy, updatedMap = {}) {
+    var _a;
+    // 复用旧卡片（同 renderList）：关闭页签/排序切换后重排不重建缩略图
+    const reusable = new Map();
+    scrollElement.querySelectorAll(".sw__card").forEach((card) => {
+        if (card.dataset.tabId) {
+            reusable.set(card.dataset.tabId, card);
+        }
+    });
+    // T-7039：重绘现场保持——清空前捕获滚动与焦点卡片；焦点在滚动区外
+    // （搜索框/打开中的 sheet，均在 body 层）不抢焦点、仅保滚动。
+    // 异步 notebook/更新时间补全触发的整表重建不再跳顶丢焦点。
+    const sceneActive = scrollElement.ownerDocument.activeElement;
+    const sceneFocus = sceneActive && typeof sceneActive.closest === "function"
+        ? sceneActive : null;
+    const focusInList = !!sceneFocus && scrollElement.contains(sceneFocus);
+    const focusCardId = focusInList ? ((_a = sceneFocus.closest(".sw__card")) === null || _a === void 0 ? void 0 : _a.getAttribute("data-tab-id")) || null : null;
+    const scrollTopBefore = scrollElement.scrollTop;
+    scrollElement.innerHTML = "";
+    const settings = this.getSettings();
+    scrollElement.style.setProperty("--sw-thumb-height", `${settings.mobileThumbHeight}px`);
+    const activeTabId = activeTab === null || activeTab === void 0 ? void 0 : activeTab.id;
+    const mru = this.getMru();
+    const pinned = new Set(this.getPinned());
+    const favorites = new Set(this.getFavorites().map((item) => item.key));
+    // 手机端不分窗口分组，全部扁平化
+    const ctx = { reusable, activeTabId, pinned, favorites, mru, settings, updatedMap, opts };
+    const all = [];
+    const groupMode = settings.groupBy;
+    const renderMobileNamedGroup = (label, icon, key, count, ordered) => {
+        const collapsed = this.groupCollapseState.has(key);
+        const groupEl = document.createElement("div");
+        groupEl.className = "sw__group sw__group--named" + (collapsed ? " sw__group--collapsed" : "");
+        const header = document.createElement("button");
+        header.type = "button";
+        header.className = "sw__group-header";
+        header.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        header.innerHTML = '<svg class="sw__group-chevron"><use xlink:href="#' + (collapsed ? "iconRight" : "iconDown") + '"></use></svg>'
+            + '<svg class="sw__group-icon"><use xlink:href="#' + (icon || "iconFile") + '"></use></svg>'
+            + '<span class="sw__group-title"></span>'
+            + '<span class="sw__group-count">' + count + '</span>';
+        header.querySelector(".sw__group-title").textContent = label;
+        header.addEventListener("click", () => {
+            var _a;
+            const nextCollapsed = !this.groupCollapseState.has(key);
+            if (nextCollapsed)
+                this.groupCollapseState.add(key);
+            else
+                this.groupCollapseState.delete(key);
+            groupEl.classList.toggle("sw__group--collapsed", nextCollapsed);
+            header.setAttribute("aria-expanded", nextCollapsed ? "false" : "true");
+            (_a = header.querySelector(".sw__group-chevron use")) === null || _a === void 0 ? void 0 : _a.setAttribute("xlink:href", "#" + (nextCollapsed ? "iconRight" : "iconDown"));
+        });
+        groupEl.appendChild(header);
+        const groupGrid = this.buildMobileGroupGrid(settings);
+        this.renderMobileCardsInGroup(groupGrid, ordered, ctx).forEach((item) => all.push(item));
+        groupEl.appendChild(groupGrid);
+        scrollElement.appendChild(groupEl);
+    };
+    if (groupMode === "none") {
+        const items = tabs.map((tab) => ({ tab }));
+        const ordered = this.sortGroupItems(items, sortBy, mru, pinned, updatedMap);
+        renderMobileNamedGroup("", "", "all", ordered.length, ordered);
+    }
+    else {
+        const favoriteGroupByKey = new Map();
+        this.getFavorites().forEach((fav) => favoriteGroupByKey.set(fav.key, fav.group || ""));
+        const notebookMap = new Map((this.notebookListCache || []).map((nb) => [nb.id, nb.name]));
+        const defs = (0, util_2.groupTabsByMode)(tabs, groupMode, {
+            pinKeyOf: (tab) => this.pinKeyOf(tab),
+            isFavorite: (key) => favorites.has(key),
+            favoriteGroupOf: (key) => favoriteGroupByKey.get(key) || "",
+            favoriteGroupOrder: this.getFavGroupRegistry(),
+            notebookIdOf: (tab) => (0, search_model_1.resolveSearchNotebookId)(tab) || "",
+            notebookNameOf: (id) => notebookMap.get(id) || "",
+            notebookOrder: (this.notebookListCache || []).map((nb) => nb.id),
+            createdOf: (key) => this.createdByIdCache[key] || "",
+            labels: {
+                unknownNotebook: this.i18n.groupUnknownNotebook,
+                ungroupedFavorite: this.i18n.groupUngroupedFavorite,
+                unfavorited: this.i18n.groupUnfavorited,
+                unknownMonth: this.i18n.groupUnknownMonth,
+            },
+        });
+        defs.forEach((def) => {
+            const ordered = this.sortGroupItems(def.items.map((tab) => ({ tab })), sortBy, mru, pinned, updatedMap);
+            renderMobileNamedGroup(def.label, def.icon, def.key, ordered.length, ordered);
+        });
+        if (groupMode === "createdMonth" && tabs.some((tab) => {
+            const rootId = this.rootIdOf(tab);
+            return !!rootId && !(rootId in this.createdByIdCache);
+        })) {
+            void this.loadUpdatedMap(tabs).then(() => {
+                tabs.forEach((tab) => {
+                    const rootId = this.rootIdOf(tab);
+                    if (rootId && !(rootId in this.createdByIdCache))
+                        this.createdByIdCache[rootId] = "";
+                });
+                if (scrollElement.isConnected)
+                    renderMobileList.call(this, scrollElement, tabs, activeTab, opts, sortBy, updatedMap);
+            });
+        }
+        else if (groupMode === "notebook" && this.notebookListCache === null) {
+            void this.loadNotebooks().then((notebooks) => {
+                this.notebookListCache = notebooks;
+                if (!scrollElement.isConnected || notebooks.length === 0)
+                    return;
+                renderMobileList.call(this, scrollElement, tabs, activeTab, opts, sortBy, updatedMap);
+            });
+        }
+    }
+    // T-7039：恢复现场——滚动按内容高度钳制复位（首帧 scrollTop 为 0 属无操作）；
+    // 焦点卡片按 tabId 找回（DOM 复用移动的是同一元素），找不到诚实放弃不猜焦点。
+    scrollElement.scrollTop = Math.min(scrollTopBefore, Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight));
+    if (focusCardId) {
+        const sceneCards = scrollElement.querySelectorAll(".sw__card[data-tab-id]");
+        for (const card of sceneCards) {
+            if (card.dataset.tabId === focusCardId) {
+                card.focus({ preventScroll: true });
+                break;
+            }
+        }
+    }
+    if (all.length === 0) {
+        scrollElement.appendChild(this.buildEmptyState());
+        return;
+    }
+    // 手机端缩略图：视口懒渲染 + 更保守的回源并发
+    this.renderThumbnails(all, scrollElement, constants_2.THUMB_BATCH_MOBILE);
+}
+// 构造手机端分组卡片网格：根据 settings.mobileColumns 决定单列/双列/自适应
+function openMobileGroupActions(groupName, items, onChanged, returnFocus) {
+    var _a, _b;
+    const overlay = document.createElement("div");
+    overlay.className = "sw__mobile-sheet-overlay sw__mobile-sheet-overlay--nested";
+    overlay.innerHTML = `<div class="sw__mobile-sheet" role="dialog" aria-modal="true" aria-label="${this.escapeAttr(groupName)}">
+    <div class="sw__mobile-sheet-handle"></div>
+    <div class="sw__mobile-sheet-title">
+        <span>${this.escapeAttr(groupName)}</span>
+        <span class="sw__mobile-sheet-close-hint" aria-label="Esc ${this.escapeAttr(this.i18n.platformCloseHint || "退出")}"><kbd>Esc</kbd><span>${this.escapeAttr(this.i18n.platformCloseHint || "退出")}</span></span>
+        <button type="button" class="b3-button b3-button--text sw__mobile-sheet-close" aria-label="${this.escapeAttr(this.i18n.close)}" title="${this.escapeAttr(this.i18n.close)}">
+            <svg><use xlink:href="#iconClose"></use></svg>
+        </button>
+    </div>
+    <div class="sw__mobile-sheet-body"></div>
+</div>`;
+    document.body.appendChild(overlay);
+    const sheet = overlay.querySelector(".sw__mobile-sheet");
+    const body = overlay.querySelector(".sw__mobile-sheet-body");
+    if (!sheet || !body) {
+        overlay.remove();
+        return;
+    }
+    overlay.tabIndex = -1;
+    // 与收藏弹窗一致的下滑收起动画
+    const closeSelf = () => {
+        if (!overlay.isConnected || overlay.dataset.closing === "true")
+            return;
+        overlay.dataset.closing = "true";
+        sheet.classList.remove("sw__mobile-sheet--open");
+        overlay.style.opacity = "0";
+        setTimeout(() => {
+            overlay.remove();
+            if (returnFocus === null || returnFocus === void 0 ? void 0 : returnFocus.isConnected)
+                returnFocus.focus({ preventScroll: true });
+        }, constants_2.FAB_HIDE_DELAY_MS);
+    };
+    const appendAction = (label, action) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "sw__mobile-sheet-item";
+        item.textContent = label;
+        item.addEventListener("click", async () => {
+            if (overlay.dataset.busy === "true") {
+                return;
+            }
+            overlay.dataset.busy = "true";
+            body.querySelectorAll("button").forEach((button) => {
+                button.disabled = true;
+            });
+            try {
+                const count = await action();
+                closeSelf();
+                // 仅在确实发生变更时刷新背后的切换器列表
+                if (count > 0) {
+                    onChanged();
+                }
+            }
+            catch (error) {
+                // A host operation can reject even when its normal path
+                // returns a bounded count. Keep the sheet usable and make
+                // the failure visible instead of creating an unhandled
+                // promise rejection with no feedback.
+                logger_1.logger.warn("mobile group action failed", error);
+                (0, siyuan_1.showMessage)(this.i18n.quickActionFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+            }
+            finally {
+                delete overlay.dataset.busy;
+                if (overlay.isConnected) {
+                    body.querySelectorAll("button").forEach((button) => {
+                        button.disabled = false;
+                    });
+                }
+            }
+        });
+        body.appendChild(item);
+    };
+    appendAction(this.i18n.openGroupTabs, () => this.openGroupTabs(items));
+    appendAction(this.i18n.closeGroupTabs, () => this.closeGroupTabs(items));
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "sw__mobile-sheet-item sw__mobile-sheet-item--cancel";
+    cancel.textContent = this.i18n.cancel;
+    cancel.addEventListener("click", closeSelf);
+    body.appendChild(cancel);
+    (_a = overlay.querySelector(".sw__mobile-sheet-close")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", closeSelf);
+    overlay.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape")
+            return;
+        event.preventDefault();
+        event.stopPropagation();
+        closeSelf();
+    });
+    // 动画：下一帧滑入
+    this.scheduleAnimationFrame(() => {
+        if (sheet.isConnected)
+            sheet.classList.add("sw__mobile-sheet--open");
+    });
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+            closeSelf();
+        }
+    });
+    (_b = overlay.querySelector(".sw__mobile-sheet-close")) === null || _b === void 0 ? void 0 : _b.focus({ preventScroll: true });
+}
+// ==================== 手机端悬浮按钮（FAB）与顶栏入口 ====================

@@ -8,7 +8,8 @@ const assert = require("node:assert/strict");
 const ts = require("typescript");
 const {readSourceFile} = require("./source-scan.cjs");
 const {createSearchSession, beginSearch, cacheSearchResult} = require("../src/search-session.js");
-const {normalizeTitleSearchDocuments} = require("../src/search-model.js");
+// T-7334：runDocSearchFetch 依赖首字母缩写重排，AST 抽取后必须一并注入。
+const {normalizeTitleSearchDocuments, rankDocumentsByPathAcronym} = require("../src/search-model.js");
 
 const uiSource = readSourceFile("src/doc-search-ui.ts");
 const sourceFile = ts.createSourceFile("doc-search-ui.ts", uiSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -32,7 +33,7 @@ function makeRunner(overrides = {}) {
         "getDocSearchSession", "renderDocResults", "updateDocSearchHealth", "disposeDocSearchSession",
         "runOpenedDocumentContentSearch", "runFullTextSearchFallback", "filterDocSearchResults", "canUseTitleSearch",
         "buildSearchCacheKey", "cacheSearchResult", "DOC_SEARCH_FETCH_LIMIT", "logger", "fetch",
-        "normalizeTitleSearchDocuments",
+        "normalizeTitleSearchDocuments", "rankDocumentsByPathAcronym",
         `${compiled}\nreturn runDocSearchFetch;`,
     )(
         new WeakMap(), 0,
@@ -73,6 +74,7 @@ function makeRunner(overrides = {}) {
         overrides.logger || {warn() {}},
         fetchImpl,
         overrides.normalizeTitleSearchDocuments || normalizeTitleSearchDocuments,
+        overrides.rankDocumentsByPathAcronym || rankDocumentsByPathAcronym,
     );
     runner.requestKernelJsonOutcome = async (url, body, options = {}) => {
         try {

@@ -30,3 +30,6 @@ acceptance-screenshots/
 joblog.txt
 jobs.json
 runs.json
+
+# IDE 与本地环境临时状态
+.zcode/

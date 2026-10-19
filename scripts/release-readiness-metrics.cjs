@@ -35,7 +35,34 @@ const RAW_BUNDLE_BUDGET_ADR = "0125";
 // dynamic chunk. Per-entry compressed line (320 KiB, ADR 0089) unchanged.
 // ADR 0180 (2026-10-13): recalibrated 576 -> 578 KiB after measured T-7251/7252
 // UI additions; the v0.47.1 package was 589640 B and left only 184 B of headroom.
-const ARCHIVE_BUDGET_BYTES = 578 * 1024;
+// ADR 0227 (2026-10-19): recalibrated 578 -> 580 KiB after T-7334 path-acronym-model
+// (VS Code 式路径首字母缩写打分) and T-7335 action-palette-model (Raycast 式
+// 次级动作画板) production lines; the local v0.47.6 working tree was 591902 B
+// and left only -30 B of headroom against 578 KiB. Reduction audit: both
+// modules are pure-domain (no DOM, no network), depend only on the existing
+// vendor tiny-pinyin, and expose a single re-export through search-model.
+// ADR 0229 (2026-10-19): recalibrated 580 -> 582 KiB after T-7336 av-board-model
+// (思源原生属性视图轻量只读看板) and T-7337 flashcard-review-model (闪卡间隔重复
+// 复习模型：SM-2 调度推演/每日队列/掌握度统计) production lines; the working tree
+// package.zip was 594381 B (+461 B over 580 KiB). Reduction audit: both modules
+// are pure domain models with zero DOM or network dependencies, and av cell text
+// extraction was unified into a single point of truth (saving 336 B).
+// ADR 0232 (2026-10-19): recalibrated 582 -> 584 KiB after T-7338 penetration-search-
+// model (Obsidian 式深入穿透检索语法), T-7339 action-palette-navigation (次级动作
+// 画板键盘导航状态机) and T-7340 action-palette-panel (面板 DOM 模型层与 a11y 契
+// 约) production lines; the working tree package.zip was 596819 B (+851 B over
+// 582 KiB). Reduction audit: all three modules are pure domain models (zero DOM
+// listeners, zero network); action-palette-navigation reuses action-palette-
+// model's filterPaletteActions; action-palette-panel reuses the navigation
+// state. A bounded-text shared helper module was attempted but produced net
+// +43 B after webpack minification and was reverted.
+// ADR 0234 (2026-10-19): recalibrated 584 -> 586 KiB after T-7341 action-palette-ui
+// (DOM 装配层) and T-7342 penetration-search-orchestration (运行时编排与防注入 SQL 生成)
+// production lines; the working tree package.zip was 598398 B (+382 B over 584 KiB).
+// Reduction audit: T-7342 is pure domain model, reuses penetration-search-model,
+// with safe SQL generation and bounded LIMIT.
+// Per-entry compressed line (320 KiB, ADR 0089) unchanged.
+const ARCHIVE_BUDGET_BYTES = 586 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
 // writing-streak second wave (T-6681) shrank headroom to 11780 bytes. Same

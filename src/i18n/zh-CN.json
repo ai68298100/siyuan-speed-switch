@@ -316,7 +316,6 @@
   "homeStoreTabAdded": "已添加",
   "homeStoreSearch": "搜索组件…",
   "homeStoreSortLabel": "组件排序",
-
   "homeStoreMetaSource": "数据来源",
   "homeStoreMetaRefresh": "刷新",
   "homeStoreMetaPrivacy": "隐私",
@@ -326,7 +325,8 @@
   "homeStoreCacheBounded": "失败时保留上次成功数据（有界缓存）",
   "homeStoreCacheNone": "本地计算，不使用网络缓存",
   "homeStoreCatalogFailTitle": "组件目录暂时不可用",
-  "homeStoreCatalogFailHint": "内置组件尚未加载或来源插件未就绪；已添加到面板的组件不受影响。",  "homeStoreSortRelevance": "相关性",
+  "homeStoreCatalogFailHint": "内置组件尚未加载或来源插件未就绪；已添加到面板的组件不受影响。",
+  "homeStoreSortRelevance": "相关性",
   "homeStoreSortTitle": "名称",
   "homeStoreSortStatus": "状态",
   "homeStoreSortCategory": "分类",
@@ -371,11 +371,8 @@
   "homeWorldClockLocal": "本地",
   "homeWorldClockTwoDaysAgo": "前天",
   "homeWorldClockYesterday": "昨天",
-
   "homeWorldClockToday": "今天",
-
   "homeWorldClockTomorrow": "明天",
-
   "homeWorldClockInTwoDays": "后天",
   "homeConfigWorldClockCitiesPlaceholder": "Asia/Shanghai, America/New_York",
   "homeConfigDailyQuotesPlaceholder": "学而时习之，不亦说乎 —— 《论语·学而》\n千里之行，始于足下",
@@ -483,14 +480,14 @@
   "homeIcalConfigHint": "请先填写 iCal 订阅地址（.ics 链接或 webcal:// 分享链接均可）；支持 HTTPS 公网或本机地址，无需 API Key",
   "homeIcalEmpty": "窗口内暂无日程",
   "homeIcalAllDay": "全天",
-
   "homeIcalOngoing": "进行中",
   "homeRss": "RSS 订阅",
   "homeDescRss": "读取用户提供的 RSS/Atom 订阅地址，渲染最新文章列表；零凭据零实例，订阅地址仅用于拉取文章标题与链接，30 分钟缓存",
   "homeRssConfigHint": "请先填写 RSS / Atom 订阅地址；支持 HTTPS 公网或本机地址，无需实例与 API Key",
   "homeRssEmpty": "未取到文章",
   "homeRssRead": "已读",
-  "homeRssUnread": "未读",  "homeAir": "空气质量",
+  "homeRssUnread": "未读",
+  "homeAir": "空气质量",
   "homeDescAir": "读取所选城市的欧洲 AQI 与 PM2.5/PM10 浓度；地理编码与天气共用且仅发送城市/坐标，30 分钟缓存",
   "homeAirConfigHint": "请先填写城市名称；支持公网城市查询，无需 API Key",
   "homeAirEmpty": "未取到空气质量数据",
@@ -738,7 +735,6 @@
   "setHomeSizeModeAdaptive": "自适应屏幕（90%）",
   "setHomeSizeModeCustom": "固定尺寸",
   "setHomeSizeModeFullscreen": "全屏铺满",
-
   "setStudioSizeMode": "尺寸模式",
   "setStudioSizeModeTip": "片段实验室（桌面端）打开时的窗口尺寸；设置页自身始终保持独立自适应",
   "setStudioWidth": "实验室宽度",
@@ -748,7 +744,8 @@
   "settingsGroupPanelWindows": "面板窗口",
   "panelSizeDefaultHint": "默认：全屏（内容优先，可改自适应或固定尺寸）。设置页自身不受面板尺寸影响。",
   "panelSizePreview": "预览面板",
-  "panelSizePreviewTip": "打开该面板查看当前尺寸效果，关闭后回到设置",  "setHomePalette": "卡片配色",
+  "panelSizePreviewTip": "打开该面板查看当前尺寸效果，关闭后回到设置",
+  "setHomePalette": "卡片配色",
   "setHomePaletteTip": "自动使用多彩强调色；柔和降低饱和度；单色统一使用当前主题色",
   "setHomePaletteAuto": "自动多彩",
   "setHomePaletteSoft": "柔和",
@@ -1803,8 +1800,26 @@
   "snippetBuiltinCodeName": "舒适代码块",
   "snippetBuiltinCodeDescription": "边框、内边距和易读的代码行高。",
   "snippetBuiltinFontName": "衬线阅读组合",
-  "snippetBuiltinFontDescription": "正文使用保守的衬线栈，代码使用系统等宽栈。"
-,"docSearchPreviewFailed": "预览未完整加载，请重新聚焦重试"
-,"docSearchPreviewNoContent": "暂无大纲或摘要"
-,"docSearchPreviewUnavailable": "仅文档支持大纲预览"
+  "snippetBuiltinFontDescription": "正文使用保守的衬线栈，代码使用系统等宽栈。",
+  "docSearchPreviewFailed": "预览未完整加载，请重新聚焦重试",
+  "docSearchPreviewNoContent": "暂无大纲或摘要",
+  "docSearchPreviewUnavailable": "仅文档支持大纲预览",
+  "actionPaletteTitle": "动作画板",
+  "actionPaletteSearch": "搜索动作",
+  "actionPaletteEmpty": "无可用动作",
+  "actionPaletteHint": "↑↓ 选择 · Enter 执行 · Esc 关闭",
+  "actionPaletteOpenInActive": "在当前页签打开",
+  "actionPaletteOpenInRight": "在右侧分栏打开",
+  "actionPaletteOpenInBottom": "在下方分栏打开",
+  "actionPaletteOpenInPreview": "以预览模式打开",
+  "actionPaletteRestoreDocSet": "恢复文档集",
+  "actionPaletteCopyBlockLink": "复制块超链接",
+  "actionPaletteCopyMarkdownLink": "复制为 Markdown 双链",
+  "actionPaletteCopyId": "复制 ID",
+  "actionPaletteCopyPath": "复制文档路径",
+  "actionPalettePinTab": "置顶",
+  "actionPaletteUnpinTab": "取消置顶",
+  "actionPaletteFavoriteTab": "加入收藏",
+  "actionPaletteUnfavoriteTab": "移出收藏",
+  "actionPaletteCloseTab": "关闭页签"
 }

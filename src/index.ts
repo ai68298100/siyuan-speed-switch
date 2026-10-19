@@ -28,6 +28,7 @@ import {
     resolveQuickActionLabel,
 } from "./quick-actions";
 import {mountQuickActionPicker} from "./quick-actions-ui";
+import {mountActionPalette} from "./action-palette-ui";
 import {createHomeRuntime} from "./home-runtime";
 import {buildHomeModuleView, renderHomeModuleView} from "./home-view";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries} from "./home-controller";
@@ -593,6 +594,9 @@ declare module "./search-model" {
         scope: {rootId: string; notebook: string; path: string};
     }>;
     export function isSemanticEmbeddingConfigured(config: unknown): boolean;
+    // T-7334 路径首字母缩写：只重排既有结果，不改变集合内容与长度。
+    export function scorePathAcronym(path: unknown, query: string): number;
+    export function rankDocumentsByPathAcronym<T>(documents: T[], query: string, options?: Record<string, unknown>): T[];
 }
 
 // T-6867/T-6868: keep the shared surface chrome in the main entry. The lazy

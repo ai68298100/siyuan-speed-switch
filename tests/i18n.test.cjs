@@ -171,6 +171,25 @@ const ALLOWED_UNUSED = [
   "snippetImportMerge",
   "snippetImportFork",
   "snippetImportOverwrite",
+  // T-7341：次级动作画板（Action Palette）i18n 资源键，由 getBuiltinActionDefinitions 动态映射
+  "actionPaletteTitle",
+  "actionPaletteSearch",
+  "actionPaletteEmpty",
+  "actionPaletteHint",
+  "actionPaletteOpenInActive",
+  "actionPaletteOpenInRight",
+  "actionPaletteOpenInBottom",
+  "actionPaletteOpenInPreview",
+  "actionPaletteRestoreDocSet",
+  "actionPaletteCopyBlockLink",
+  "actionPaletteCopyMarkdownLink",
+  "actionPaletteCopyId",
+  "actionPaletteCopyPath",
+  "actionPalettePinTab",
+  "actionPaletteUnpinTab",
+  "actionPaletteFavoriteTab",
+  "actionPaletteUnfavoriteTab",
+  "actionPaletteCloseTab",
 ];
 
 test("i18n: 语言文件中不允许存在源码未引用的死 key", (t) => {

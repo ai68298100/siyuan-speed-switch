@@ -1,0 +1,3042 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.buildSettingsAppearance = buildSettingsAppearance;
+exports.buildSettingsBehavior = buildSettingsBehavior;
+exports.buildSettingsPanels = buildSettingsPanels;
+exports.buildSettingsDockToggles = buildSettingsDockToggles;
+exports.buildSettingsHomePanel = buildSettingsHomePanel;
+exports.buildSettingsMobile = buildSettingsMobile;
+exports.buildSettingsJournal = buildSettingsJournal;
+exports.buildSettingsFavorites = buildSettingsFavorites;
+exports.buildSettingsFavSmartGroups = buildSettingsFavSmartGroups;
+exports.buildSettingsFavCreateRow = buildSettingsFavCreateRow;
+exports.buildSettingsFavGroupList = buildSettingsFavGroupList;
+exports.buildSettingsFavSection = buildSettingsFavSection;
+exports.buildFavGroupRowActions = buildFavGroupRowActions;
+exports.buildSettingsFavItemRow = buildSettingsFavItemRow;
+exports.buildSettingsQuickActions = buildSettingsQuickActions;
+exports.buildQuickActionsTransferControls = buildQuickActionsTransferControls;
+exports.buildSettingsDocumentSets = buildSettingsDocumentSets;
+exports.buildSettingsStorage = buildSettingsStorage;
+exports.buildSettingsFloatingBall = buildSettingsFloatingBall;
+// 设置页各分节的 UI 构建函数（R4 重构 D-376：自 index.ts 外迁）。
+// 16 个 buildSettings*/buildFavGroupRowActions/buildQuickActionsTransferControls
+// 构建函数按字节原样搬移（缩进保持类内原样）：宿主通过 this 绑定提供 i18n、
+// DOM 构建器（settingItem/select/num 等）与数据访问方法，签名见 SettingsSectionsHost。
+// 分节内的相互调用改为同模块直接调用（.call(this)），不再绕道宿主。
+// ISwSettings/IFavoriteItem 等类型经 import type 引用（编译期擦除，无运行时循环依赖）。
+const siyuan_1 = require("siyuan");
+const platform_dom_1 = require("./platform-dom");
+const logger_1 = require("./logger");
+const constants_1 = require("./constants");
+const settings_model_1 = require("./settings-model");
+const config_pack_model_1 = require("./config-pack-model");
+const document_sets_1 = require("./document-sets");
+const quick_actions_ui_1 = require("./quick-actions-ui");
+const quick_actions_1 = require("./quick-actions");
+const floating_ball_model_1 = require("./floating-ball-model");
+const floating_ball_panel_1 = require("./floating-ball-panel");
+const floating_ball_settings_model_1 = require("./floating-ball-settings-model");
+// ===== 设置页 · 外观：皮肤、缩略图列数与高度 =====
+// T-7003：分组恢复默认注册表——groupTitleKey → 该组可控的设置 key（必须全部是
+// DEFAULT_SETTINGS 已知字段）。未登记的组不渲染重置按钮（宁缺勿滥，不猜组语义）。
+const SETTING_GROUP_DEFAULT_KEYS = {
+    settingsGroupTheme: ["skin"],
+    settingsGroupThumbnails: ["columns", "thumbHeight", "showCardUpdatedBadge"],
+    settingsGroupSortDensity: ["sortBy", "density"],
+    settingsGroupSearchOpen: ["pinyinMatch", "reuseOpenTabs", "rememberScrollPosition"],
+    settingsGroupPanelWindows: ["panelSizeMode", "panelScale", "dialogWidth", "dialogHeight", "studioSizeMode", "studioWidth", "studioHeight"],
+    settingsGroupMobileLayout: ["mobileColumns", "mobileThumbHeight"],
+    settingsGroupCompatibility: ["fabEnabled", "floatingBall"],
+    settingsGroupWorkbenchWindow: ["homeSizeMode", "homeWidth", "homeHeight", "homePalette"],
+    settingsGroupWorkbenchBehavior: ["homeStore"],
+    settingsGroupJournal: ["journalNotebook", "journalAutoCreate"],
+};
+// T-7003：组标题行尾追加「恢复默认」小按钮（仅注册过的组）。恢复经宿主
+// resetSettingsToDefaults → updateSettings（自动入撤销栈 + 触发现场重渲染），
+// 所以不设二次确认——撤销即可回退。组标题经静态映射引用 i18n（动态方括号
+// 访问被门禁禁止）；本地对象上的动态索引不受限（storageLabels 同例）。
+function appendGroupResetButton(title, groupTitleKey) {
+    const keys = SETTING_GROUP_DEFAULT_KEYS[groupTitleKey];
+    if (!keys || keys.length === 0)
+        return title;
+    const labels = {
+        settingsGroupTheme: this.i18n.settingsGroupTheme,
+        settingsGroupThumbnails: this.i18n.settingsGroupThumbnails,
+        settingsGroupSortDensity: this.i18n.settingsGroupSortDensity,
+        settingsGroupSearchOpen: this.i18n.settingsGroupSearchOpen,
+        settingsGroupPanelWindows: this.i18n.settingsGroupPanelWindows,
+        settingsGroupWorkbenchWindow: this.i18n.settingsGroupWorkbenchWindow,
+        settingsGroupMobileLayout: this.i18n.settingsGroupMobileLayout,
+        settingsGroupCompatibility: this.i18n.settingsGroupCompatibility,
+        settingsGroupWorkbenchBehavior: this.i18n.settingsGroupWorkbenchBehavior,
+        settingsGroupJournal: this.i18n.settingsGroupJournal,
+    };
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sw-settings__group-reset";
+    button.textContent = this.i18n.settingGroupReset;
+    button.setAttribute("aria-label", `${this.i18n.settingGroupReset} · ${labels[groupTitleKey] || groupTitleKey}`);
+    button.title = button.getAttribute("aria-label") || "";
+    button.addEventListener("click", () => {
+        if (this.resetSettingsToDefaults([...keys])) {
+            (0, siyuan_1.showMessage)(this.i18n.settingGroupResetDone, 3000, "info");
+        }
+    });
+    title.appendChild(button);
+    return title;
+}
+function buildSettingsAppearance(s) {
+    const wrapper = document.createElement("div");
+    // T-6872（RZ-2）：标签页内按语义分组为多张卡片；2~4 个互斥取值改分段控件
+    wrapper.append(
+    // T-6796 皮肤：fusion=融合思源主题（默认），其余为独立皮肤
+    appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupTheme), "settingsGroupTheme"), this.settingGroupCard(this.settingSegmented(this.i18n.skinLabel, this.i18n.skinTip, [
+        { value: "fusion", label: this.i18n.skinFusion },
+        { value: "apple", label: this.i18n.skinApple },
+        { value: "midnight", label: this.i18n.skinMidnight },
+        { value: "paper", label: this.i18n.skinPaper },
+    ], s.skin || "fusion", (v) => this.updateSettings({ skin: v }))), 
+    // T-6999：切换器窗口尺寸已统一移入「面板」标签的“面板窗口”分组——
+    // 外观页保留 皮肤 + 缩略图 两组，避免同一组尺寸字段在两个标签重复出现。
+    appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupThumbnails), "settingsGroupThumbnails"), this.settingGroupCard(this.settingItem(this.i18n.setColumns, this.i18n.setColumnsTip, this.select([{ value: "0", label: this.i18n.columnsAuto }].concat([2, 3, 4, 5, 6, 7, 8].map((n) => ({ value: String(n), label: String(n) }))), String(s.columns), (v) => this.updateSettings({ columns: this.clampNum(v, 0, 8, s.columns) }))), this.settingItem(this.i18n.setThumbHeight, this.i18n.setThumbHeightTip, this.num(s.thumbHeight, constants_1.THUMB_HEIGHT_MIN_PX, constants_1.THUMB_HEIGHT_MAX_PX, 8, this.i18n.unitPx, (v) => this.updateSettings({ thumbHeight: v }), this.i18n.setThumbHeight)), 
+    // T-6848：页签卡更新时间与近 7 天改动标记共用显示开关
+    this.settingItem(this.i18n.cardUpdatedBadgeLabel, this.i18n.cardUpdatedBadgeTip, this.switcher(s.showCardUpdatedBadge === true, (v) => {
+        this.updateSettings({ showCardUpdatedBadge: v });
+    }))));
+    return wrapper;
+}
+// ===== 设置页 · 行为：默认排序、全屏模式 =====
+function buildSettingsBehavior(s) {
+    const wrapper = document.createElement("div");
+    const sortOptions = [
+        { value: "mru", label: this.i18n.sortMru },
+        { value: "layout", label: this.i18n.sortLayout },
+        { value: "layoutDesc", label: this.i18n.sortLayoutDesc },
+        { value: "updatedDesc", label: this.i18n.sortUpdatedDesc },
+        { value: "titleAsc", label: this.i18n.sortTitleAsc },
+        { value: "titleDesc", label: this.i18n.sortTitleDesc },
+    ];
+    // T-6872（RZ-2）：分组卡片；密度开关升级为 舒适/紧凑 分段（语义不变）
+    wrapper.append(appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupSortDensity), "settingsGroupSortDensity"), this.settingGroupCard(this.settingItem(this.i18n.setSortBy, this.i18n.setSortByTip, this.select(sortOptions, s.sortBy, (v) => this.updateSettings({ sortBy: v }))), this.settingSegmented(this.i18n.densityLabel, this.i18n.densityCompactTip, [
+        { value: "comfortable", label: this.i18n.densityComfortable },
+        { value: "compact", label: this.i18n.densityCompact },
+    ], s.density === "compact" ? "compact" : "comfortable", (v) => {
+        this.updateSettings({ density: v === "compact" ? "compact" : "comfortable" });
+    })), appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupSearchOpen), "settingsGroupSearchOpen"), this.settingGroupCard(
+    // T-6805 拼音辅助匹配：全拼/首字母匹配文档标题
+    this.settingItem(this.i18n.pinyinMatchLabel, this.i18n.pinyinMatchTip, this.switcher(s.pinyinMatch, (v) => {
+        this.updateSettings({ pinyinMatch: v });
+    })), 
+    // T-6830 打开策略：搜索结果命中已开页签时聚焦复用
+    this.settingItem(this.i18n.reuseTabsLabel, this.i18n.reuseTabsTip, this.switcher(s.reuseOpenTabs, (v) => {
+        this.updateSettings({ reuseOpenTabs: v });
+    })), this.settingItem(this.i18n.rememberScrollPositionLabel, this.i18n.rememberScrollPositionTip, this.switcher(s.rememberScrollPosition !== false, (v) => {
+        this.updateSettings({ rememberScrollPosition: v });
+    }))), this.settingGroupTitle(this.i18n.settingsGroupShortcuts), this.settingGroupCard(this.settingItem(this.i18n.shortcutBindingsLabel, this.i18n.shortcutBindingsTip, (() => {
+        var _a;
+        const list = document.createElement("dl");
+        list.className = "sw-settings__shortcut-list";
+        const current = ((_a = this.getPlatformShortcutBindings) === null || _a === void 0 ? void 0 : _a.call(this)) || {};
+        [[this.i18n.shortcutSwitcher, current.switcher || constants_1.DEFAULT_HOTKEY, constants_1.DEFAULT_HOTKEY], [this.i18n.shortcutWorkbench, current.workbench || constants_1.SECOND_PANEL_HOTKEY, constants_1.SECOND_PANEL_HOTKEY]].forEach(([label, hotkey, fallback]) => {
+            const term = document.createElement("dt");
+            term.textContent = label;
+            const value = document.createElement("dd");
+            const kbd = document.createElement("kbd");
+            kbd.textContent = hotkey;
+            value.appendChild(kbd);
+            if (hotkey !== fallback) {
+                const defaultHint = document.createElement("span");
+                defaultHint.className = "sw-settings__shortcut-default";
+                defaultHint.textContent = `${this.i18n.shortcutDefaultPrefix || "默认"} ${fallback}`;
+                value.appendChild(defaultHint);
+            }
+            list.append(term, value);
+        });
+        return list;
+    })(), true)), this.settingGroupTitle(this.i18n.settingsGroupAgent), this.settingGroupCard(
+    // T-6692b Agent 受控动作灰度开关：关闭后受控写入/批量动作与执行链一并停用
+    this.settingItem(this.i18n.agentActionsEnabled, this.i18n.agentActionsEnabledTip, this.switcher(s.agentActionsEnabled, (v) => {
+        this.updateSettings({ agentActionsEnabled: v });
+    }))));
+    return wrapper;
+}
+// T-6999：面板窗口预览按钮——点击经宿主 openPanelPreview 打开对应面板
+// 查看当前尺寸效果（单例守卫与 FAB 串行释放由宿主 openPlatformSurface 负责）。
+function buildPanelPreviewButton(surface, surfaceLabel) {
+    var _a;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "b3-button b3-button--text sw-settings__panel-preview";
+    const available = ((_a = this.getAvailablePlatformSurfaces) === null || _a === void 0 ? void 0 : _a.call(this)) || ["switcher", "workbench", "studio"];
+    const enabled = available.includes(surface);
+    button.textContent = enabled ? this.i18n.panelSizePreview : `${this.i18n.panelSizePreview} · ${this.i18n.moduleDisabled || "已停用"}`;
+    button.setAttribute("aria-label", `${this.i18n.panelSizePreview} · ${surfaceLabel}`);
+    button.title = enabled ? this.i18n.panelSizePreviewTip : (this.i18n.moduleVisibilityHint || "模块已停用");
+    button.disabled = !enabled;
+    button.setAttribute("aria-disabled", String(!enabled));
+    if (enabled)
+        button.addEventListener("click", () => this.openPanelPreview(surface));
+    return button;
+}
+// ===== 设置页 · 面板：面板窗口、显示方式、侧边栏布局、各 dock 面板开关 =====
+function buildSettingsPanels(s) {
+    const wrapper = document.createElement("div");
+    const dockOptions = [
+        { value: "hidden", label: this.i18n.dockDisplayHidden },
+        { value: "collapsed", label: this.i18n.dockDisplayCollapsed },
+        { value: "full", label: this.i18n.dockDisplayFull },
+    ];
+    const sidebarOptions = [
+        { value: "enlarge", label: this.i18n.sidebarEnlarge },
+        { value: "columns", label: this.i18n.sidebarColumnsAuto },
+    ];
+    // T-6872（RZ-2）：分组卡片；枚举改分段控件
+    // T-6999：三面板窗口尺寸统一到本标签——切换器（第一面板）与片段实验室
+    // （第三面板，桌面端）的窗口组在此渲染；工作台（第二面板）窗口组在下方
+    // buildSettingsHomePanel 的组件面板分组内。三组都带默认值提示与预览入口，
+    // 提示明确「设置页自身保持独立自适应」，避免误解面板尺寸会联动设置窗口。
+    const panelWindows = document.createElement("div");
+    panelWindows.append(appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupPanelWindows), "settingsGroupPanelWindows"));
+    const defaultHint = document.createElement("p");
+    defaultHint.className = "sw-settings__tip sw-settings__panel-size-hint";
+    defaultHint.textContent = this.i18n.panelSizeDefaultHint;
+    defaultHint.setAttribute("role", "note");
+    // 切换器（第一面板）：沿用既有 panelSizeMode/panelScale/固定宽高 字段与文案
+    const switcherWindowCard = this.settingGroupCard(this.settingSegmented(this.i18n.panelSizeMode, this.i18n.panelSizeModeTip, [
+        { value: "adaptive", label: this.i18n.panelSizeModeAdaptive },
+        { value: "custom", label: this.i18n.panelSizeModeCustom },
+        { value: "fullscreen", label: this.i18n.panelSizeModeFullscreen },
+    ], s.panelSizeMode, (v) => this.updateSettings({ panelSizeMode: v })));
+    if (s.panelSizeMode === "adaptive") {
+        switcherWindowCard.appendChild(this.settingItem(this.i18n.panelScale, this.i18n.panelScaleTip, this.num(s.panelScale, constants_1.PANEL_SCALE_MIN, constants_1.PANEL_SCALE_MAX, 5, "%", (v) => this.updateSettings({ panelScale: v }), this.i18n.panelScale)));
+    }
+    if (s.panelSizeMode === "custom") {
+        switcherWindowCard.appendChild(this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip, this.num(s.dialogWidth, constants_1.DIALOG_WIDTH_MIN_PX, constants_1.DIALOG_WIDTH_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({ dialogWidth: v }), this.i18n.setWidth)));
+        switcherWindowCard.appendChild(this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip, this.num(s.dialogHeight, constants_1.DIALOG_HEIGHT_MIN_PX, constants_1.DIALOG_HEIGHT_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({ dialogHeight: v }), this.i18n.setHeight)));
+    }
+    switcherWindowCard.appendChild(defaultHint);
+    switcherWindowCard.appendChild(this.settingItem(this.i18n.panelSizePreview, this.i18n.panelSizePreviewTip, buildPanelPreviewButton.call(this, "switcher", this.i18n.platformSwitcher)));
+    // T-6999：组标题沿用既有「切换器窗口」键（原外观页窗口组整组迁入，文案不变）
+    panelWindows.appendChild(this.settingGroupTitle(this.i18n.settingsGroupWindow));
+    panelWindows.appendChild(switcherWindowCard);
+    // 片段实验室（第三面板）：T-6986 尺寸模式；桌面专属表面，移动端设置不渲染本组
+    if (!this.isMobile) {
+        const studioWindowCard = this.settingGroupCard(this.settingSegmented(this.i18n.setStudioSizeMode, this.i18n.setStudioSizeModeTip, [
+            { value: "adaptive", label: this.i18n.panelSizeModeAdaptive },
+            { value: "custom", label: this.i18n.panelSizeModeCustom },
+            { value: "fullscreen", label: this.i18n.panelSizeModeFullscreen },
+        ], s.studioSizeMode, (v) => this.updateSettings({ studioSizeMode: v })));
+        if (s.studioSizeMode === "custom") {
+            studioWindowCard.appendChild(this.settingItem(this.i18n.setStudioWidth, this.i18n.setStudioWidthTip, this.num(s.studioWidth, constants_1.DIALOG_WIDTH_MIN_PX, constants_1.DIALOG_WIDTH_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({ studioWidth: v }), this.i18n.setStudioWidth)));
+            studioWindowCard.appendChild(this.settingItem(this.i18n.setStudioHeight, this.i18n.setStudioHeightTip, this.num(s.studioHeight, constants_1.DIALOG_HEIGHT_MIN_PX, constants_1.DIALOG_HEIGHT_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({ studioHeight: v }), this.i18n.setStudioHeight)));
+        }
+        studioWindowCard.appendChild(this.settingItem(this.i18n.panelSizePreview, this.i18n.panelSizePreviewTip, buildPanelPreviewButton.call(this, "studio", this.i18n.platformStudio)));
+        panelWindows.appendChild(this.settingGroupTitle(this.i18n.platformStudio));
+        panelWindows.appendChild(studioWindowCard);
+    }
+    wrapper.append(panelWindows);
+    wrapper.append(this.settingGroupTitle(this.i18n.settingsGroupListSidebar), this.settingGroupCard(this.settingSegmented(this.i18n.setDockDisplay, this.i18n.setDockDisplayTip, dockOptions, s.dockDisplay, (v) => this.updateSettings({ dockDisplay: v })), 
+    // 侧边栏缩略图布局：拉伸放大填满栏宽，或按宽度自动增加列数
+    this.settingSegmented(this.i18n.sidebarLayout, this.i18n.sidebarLayoutTip, sidebarOptions, s.sidebarLayout, (v) => {
+        this.updateSettings({ sidebarLayout: v });
+    })), this.settingGroupTitle(this.i18n.settingsGroupDocks), this.settingGroupCard(this.settingItem(this.i18n.setDocks, this.i18n.setDocksTip, buildSettingsDockToggles.call(this, s), true)));
+    // T-6998（ADR 0097）：遗留 homePanel 构建内容并入“面板”标签——保留 10 标签 IA，
+    // 组件面板调色与工作台窗口尺寸不再挂在不可达的 homePanel 死键上。
+    // 分组标题与分段控件复用既有双语键；设置搜索索引按生产 DOM 扫描，自动覆盖。
+    wrapper.appendChild(buildSettingsHomePanel.call(this, s));
+    // T-7026（ADR 0099）：模块管理——「启用=可见且可进入」单一语义；切换器为平台根
+    // 不设开关（防锁死保底）。悬浮球关闭后任何端不再挂载，已开面板保留至用户关闭。
+    const moduleVisibility = s.moduleVisibility || { workbench: true, studio: true, floatingBall: true };
+    const moduleToggles = document.createElement("div");
+    moduleToggles.className = "sw-setting__docks b3-label__text";
+    const moduleRows = [
+        { key: "workbench", label: this.i18n.moduleWorkbench },
+        { key: "studio", label: this.i18n.moduleStudio },
+        { key: "floatingBall", label: this.i18n.moduleFloatingBall },
+    ];
+    moduleRows.forEach(({ key, label }) => {
+        const row = document.createElement("div");
+        row.className = "sw-setting__dock-item";
+        const toggle = document.createElement("label");
+        toggle.className = "b3-switch sw-switch";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = moduleVisibility[key] !== false;
+        checkbox.dataset.moduleKey = key;
+        // The visible label is a sibling of the switch (the row cannot
+        // contain a nested <label>), so expose an explicit accessible name
+        // and make the whole row behave like the visual target.
+        checkbox.setAttribute("aria-label", label);
+        checkbox.addEventListener("change", () => {
+            var _a, _b;
+            const current = this.getSettings().moduleVisibility || { workbench: true, studio: true, floatingBall: true };
+            const next = Object.assign(Object.assign({}, current), { [key]: checkbox.checked });
+            this.updateSettings({ moduleVisibility: next });
+            (_a = this.settingsSceneReloader) === null || _a === void 0 ? void 0 : _a.call(this);
+            if (key === "floatingBall")
+                (_b = this.updateFloatingBallVisibility) === null || _b === void 0 ? void 0 : _b.call(this);
+        });
+        const knob = document.createElement("span");
+        toggle.appendChild(checkbox);
+        toggle.appendChild(knob);
+        const title = document.createElement("span");
+        title.textContent = label;
+        row.appendChild(toggle);
+        row.appendChild(title);
+        row.addEventListener("click", (event) => {
+            const target = event.target;
+            // Let the native label/input path handle clicks on the switch;
+            // clicks elsewhere in the row should activate the same control.
+            if (target === null || target === void 0 ? void 0 : target.closest(".sw-switch"))
+                return;
+            checkbox.click();
+        });
+        moduleToggles.appendChild(row);
+    });
+    wrapper.append(this.settingGroupTitle(this.i18n.settingsGroupModules), this.settingGroupCard(this.settingItem(this.i18n.moduleVisibilityLabel || this.i18n.settingsGroupModules, this.i18n.moduleVisibilityHint, moduleToggles, true)));
+    return wrapper;
+}
+// dock 面板开关列表：勾选的面板出现在切换器左侧，取消的隐藏
+function buildSettingsDockToggles(s) {
+    const box = document.createElement("div");
+    box.className = "sw-setting__docks b3-label__text";
+    const dockPanels = this.getDockPanels();
+    const excluded = new Set(s.excludedDocks);
+    dockPanels.forEach((panel) => {
+        // 行容器用 div：开关本身是 label（b3-switch 标准结构 input+span），label 不可嵌套
+        const row = document.createElement("div");
+        row.className = "sw-setting__dock-item";
+        const toggle = document.createElement("label");
+        toggle.className = "b3-switch sw-switch";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = !excluded.has(panel.type);
+        checkbox.dataset.dockType = panel.type;
+        // The title is rendered beside the switch, so the input needs an
+        // explicit name for keyboard and screen-reader users.
+        checkbox.setAttribute("aria-label", panel.title);
+        checkbox.addEventListener("change", () => {
+            const next = new Set(this.getSettings().excludedDocks);
+            if (checkbox.checked) {
+                next.delete(panel.type);
+            }
+            else {
+                next.add(panel.type);
+            }
+            this.updateSettings({ excludedDocks: Array.from(next) });
+        });
+        const knob = document.createElement("span");
+        toggle.appendChild(checkbox);
+        toggle.appendChild(knob);
+        const title = document.createElement("span");
+        title.textContent = panel.title;
+        row.appendChild(toggle);
+        row.appendChild(title);
+        row.addEventListener("click", (event) => {
+            const target = event.target;
+            if (target === null || target === void 0 ? void 0 : target.closest(".sw-switch"))
+                return;
+            checkbox.click();
+        });
+        box.appendChild(row);
+    });
+    if (dockPanels.length === 0) {
+        box.textContent = this.i18n.noDockPanels;
+    }
+    return box;
+}
+// ===== 设置页 · 手机端：悬浮按钮开关、卡片布局 =====
+function buildSettingsHomePanel(s) {
+    const wrapper = document.createElement("div");
+    const paletteOptions = [
+        { value: "auto", label: this.i18n.setHomePaletteAuto },
+        { value: "soft", label: this.i18n.setHomePaletteSoft },
+        { value: "mono", label: this.i18n.setHomePaletteMono },
+    ];
+    const modeOptions = [
+        { value: "follow", label: this.i18n.setHomeSizeModeFollow },
+        { value: "adaptive", label: this.i18n.setHomeSizeModeAdaptive },
+        { value: "custom", label: this.i18n.setHomeSizeModeCustom },
+        { value: "fullscreen", label: this.i18n.setHomeSizeModeFullscreen },
+    ];
+    // T-6872（RZ-2）：分组卡片；枚举改分段控件
+    const workbenchHint = document.createElement("p");
+    workbenchHint.className = "sw-settings__tip sw-settings__panel-size-hint";
+    workbenchHint.textContent = this.i18n.panelSizeDefaultHint;
+    workbenchHint.setAttribute("role", "note");
+    const homeStore = s.homeStore || {};
+    const updateHomeStoreSettings = (patch) => {
+        const current = this.getSettings().homeStore || {};
+        if (patch.rememberState === false) {
+            this.updateSettings({ homeStore: {
+                    rememberState: false,
+                    defaultViewMode: patch.defaultViewMode === "list" ? "list" : (current.defaultViewMode === "list" ? "list" : "grid"),
+                    retryFailed: typeof patch.retryFailed === "boolean" ? patch.retryFailed : current.retryFailed !== false,
+                } });
+            return;
+        }
+        this.updateSettings({ homeStore: Object.assign(Object.assign({}, current), patch) });
+    };
+    wrapper.append(this.settingGroupTitle(this.i18n.settingsGroupComponents), this.settingGroupCard(this.settingSegmented(this.i18n.setHomePalette, this.i18n.setHomePaletteTip, paletteOptions, s.homePalette, (v) => this.updateSettings({ homePalette: v }))), appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupWorkbenchBehavior), "settingsGroupWorkbenchBehavior"), this.settingGroupCard(this.settingItem(this.i18n.homeStoreRememberStateLabel, this.i18n.homeStoreRememberStateTip, this.switcher(homeStore.rememberState !== false, (value) => updateHomeStoreSettings({ rememberState: value }))), this.settingSegmented(this.i18n.homeStoreDefaultViewModeLabel, this.i18n.homeStoreDefaultViewModeTip, [
+        { value: "grid", label: this.i18n.homeStoreViewGrid },
+        { value: "list", label: this.i18n.homeStoreViewList },
+    ], homeStore.defaultViewMode === "list" ? "list" : "grid", (value) => updateHomeStoreSettings({ defaultViewMode: value })), this.settingItem(this.i18n.homeStoreRetryFailedLabel, this.i18n.homeStoreRetryFailedTip, this.switcher(homeStore.retryFailed !== false, (value) => updateHomeStoreSettings({ retryFailed: value })))), appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupWorkbenchWindow), "settingsGroupWorkbenchWindow"), this.settingGroupCard(this.settingSegmented(this.i18n.setHomeSizeMode, this.i18n.setHomeSizeModeTip, modeOptions, s.homeSizeMode, (v) => this.updateSettings({ homeSizeMode: v })), 
+    // T-6999：默认值提示 + 预览入口（与切换器/实验室窗口组同构）
+    workbenchHint, this.settingItem(this.i18n.panelSizePreview, this.i18n.panelSizePreviewTip, buildPanelPreviewButton.call(this, "workbench", this.i18n.platformWorkbench))));
+    if (s.homeSizeMode === "custom") {
+        wrapper.append(this.settingGroupCard(this.settingItem(this.i18n.setHomeWidth, this.i18n.setHomeWidthTip, this.num(s.homeWidth, 480, 1920, 20, this.i18n.unitPx, (v) => this.updateSettings({ homeWidth: v }), this.i18n.setHomeWidth)), this.settingItem(this.i18n.setHomeHeight, this.i18n.setHomeHeightTip, this.num(s.homeHeight, 360, 1280, 20, this.i18n.unitPx, (v) => this.updateSettings({ homeHeight: v }), this.i18n.setHomeHeight))));
+    }
+    return wrapper;
+}
+function buildSettingsMobile(s) {
+    var _a, _b, _c;
+    const wrapper = document.createElement("div");
+    const panelNote = document.createElement("p");
+    panelNote.className = "sw-settings__tip sw-settings__mobile-home-note";
+    panelNote.textContent = this.i18n.mobileHomePanelFixed;
+    panelNote.setAttribute("role", "note");
+    // T-6872（RZ-2）：分组卡片；列数枚举改分段（自动=竖屏单列、横屏双列）
+    wrapper.append(panelNote, appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupMobileLayout), "settingsGroupMobileLayout"), this.settingGroupCard(this.settingSegmented(this.i18n.mobileLayout, this.i18n.mobileLayoutTip, [
+        { value: String(constants_1.MOBILE_COLUMNS_AUTO), label: this.i18n.mobileAuto },
+        { value: String(constants_1.MOBILE_COLUMNS_SINGLE), label: this.i18n.mobileSingle },
+        { value: String(constants_1.MOBILE_COLUMNS_DOUBLE), label: this.i18n.mobileDouble },
+    ], String(s.mobileColumns), (v) => this.updateSettings({ mobileColumns: parseInt(v, 10) })), this.settingItem(this.i18n.mobileThumbHeight, this.i18n.mobileThumbHeightTip, this.rangeNumber(s.mobileThumbHeight, constants_1.MOBILE_THUMB_HEIGHT_MIN_PX, constants_1.MOBILE_THUMB_HEIGHT_MAX_PX, 4, this.i18n.unitPx, (v) => this.updateSettings({ mobileThumbHeight: v }), this.i18n.mobileThumbHeight))), this.settingGroupTitle(this.i18n.settingsGroupCompatibility), this.settingGroupCard(this.settingItem(this.i18n.fabEnabled, this.i18n.fabEnabledTip, this.switcher((_c = (_b = (_a = s.floatingBall) === null || _a === void 0 ? void 0 : _a.enabled) === null || _b === void 0 ? void 0 : _b.mobile) !== null && _c !== void 0 ? _c : s.fabEnabled, (v) => {
+        const floatingBall = this.getSettings().floatingBall || {};
+        this.updateSettings({
+            fabEnabled: v,
+            floatingBall: Object.assign(Object.assign({}, floatingBall), { enabled: Object.assign(Object.assign({}, (floatingBall.enabled || {})), { mobile: v }) }),
+        });
+        this.updateFABVisibility();
+    })), (() => {
+        const hint = document.createElement("p");
+        hint.className = "sw-settings__tip sw-settings__mobile-fab-migration";
+        hint.textContent = this.i18n.mobileFabMigrationHint;
+        hint.setAttribute("role", "note");
+        return hint;
+    })()));
+    return wrapper;
+}
+// ===== 设置页 · 日记：默认日记笔记本 =====
+function buildSettingsJournal(s) {
+    const wrapper = document.createElement("div");
+    wrapper.append(appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupJournal), "settingsGroupJournal"), this.settingGroupCard(this.settingItem(this.i18n.journalNotebook, this.i18n.journalNotebookTip, this.notebookSelect(s.journalNotebook, (id) => this.updateSettings({ journalNotebook: id }))), this.settingItem(this.i18n.journalAutoCreate, this.i18n.journalAutoCreateTip, this.switcher(s.journalAutoCreate !== false, (value) => this.updateSettings({ journalAutoCreate: value })))));
+    return wrapper;
+}
+// ===== 设置页 · 收藏：新建分组、分组重命名/删除、调整收藏项所属分组 =====
+// 内容随增删实时重建，故 render 回调在内部定义后传给各渲染 helper
+function buildSettingsFavorites() {
+    const box = document.createElement("div");
+    box.className = "sw-setting__favs";
+    const render = () => {
+        const favorites = this.getFavorites();
+        const groupNames = this.getFavoriteGroupNames();
+        box.innerHTML = "";
+        box.appendChild(buildSettingsFavCreateRow.call(this, render));
+        if (groupNames.length > 0) {
+            box.appendChild(buildSettingsFavGroupList.call(this, groupNames, favorites, render));
+        }
+        const ungrouped = favorites.filter((favorite) => !favorite.group);
+        if (ungrouped.length > 0) {
+            box.appendChild(buildSettingsFavSection.call(this, this.i18n.ungrouped, ungrouped, groupNames, render, false));
+        }
+        buildSettingsFavSmartGroups.call(this, box, render);
+    };
+    render();
+    return this.settingItem(this.i18n.manageFavorites, this.i18n.manageFavoritesTip, box, true);
+}
+// 新建分组行：输入名称即创建（空分组保留，收藏时可选用）
+// T-6804 智能分组配置：名称 + 标签选择（标签清单来自内核 getTag），最多 4 组。
+function buildSettingsFavSmartGroups(box, render) {
+    const section = document.createElement("div");
+    section.className = "sw-setting__fav-smart";
+    const title = document.createElement("div");
+    title.className = "sw-settings__item-title";
+    title.textContent = this.i18n.favSmartGroups;
+    const tip = document.createElement("p");
+    tip.className = "sw-settings__hint";
+    tip.textContent = this.i18n.favSmartGroupsTip;
+    section.append(title, tip);
+    const list = document.createElement("div");
+    list.className = "sw-setting__fav-smart-list";
+    const renderList = () => {
+        list.textContent = "";
+        const groups = this.getFavoriteSmartGroups();
+        if (!groups.length) {
+            const empty = document.createElement("p");
+            empty.className = "sw-settings__hint";
+            empty.textContent = this.i18n.favSmartGroupEmpty;
+            list.appendChild(empty);
+            return;
+        }
+        groups.forEach((group) => {
+            const row = document.createElement("div");
+            row.className = "sw-setting__fav-smart-item";
+            const name = document.createElement("span");
+            // T-6817：行内展示组合条件（笔记本范围 + 更新时间窗）
+            const scopeParts = [
+                `#${group.tag}`,
+                group.notebook ? `@${group.notebook}` : "",
+                group.updatedWithinDays ? `≤${group.updatedWithinDays}d` : "",
+            ].filter(Boolean);
+            name.textContent = `${group.name} · ${scopeParts.join(" ")}`;
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "b3-button b3-button--text";
+            remove.textContent = this.i18n.favSmartGroupRemove;
+            remove.addEventListener("click", () => {
+                this.removeFavoriteSmartGroup(group.name);
+                render();
+            });
+            row.append(name, remove);
+            list.appendChild(row);
+        });
+    };
+    renderList();
+    const addName = document.createElement("input");
+    addName.className = "b3-text-field";
+    addName.placeholder = this.i18n.favSmartGroupName;
+    addName.maxLength = 24;
+    addName.setAttribute("aria-label", this.i18n.favSmartGroupName);
+    const addTag = document.createElement("select");
+    addTag.className = "b3-select";
+    addTag.appendChild(new Option(this.i18n.favSmartGroupTagPick, ""));
+    void this.getFavoriteTagOptions().then((options) => {
+        if (!addTag.isConnected)
+            return;
+        options.forEach((option) => addTag.appendChild(new Option(`#${option.name} (${option.count})`, option.name)));
+    });
+    // T-6817 动态组：可选笔记本范围与更新时间窗
+    const addNotebook = document.createElement("select");
+    addNotebook.className = "b3-select";
+    addNotebook.appendChild(new Option(this.i18n.favSmartGroupNotebookAny, ""));
+    void this.getFavoriteNotebookOptions().then((options) => {
+        if (!addNotebook.isConnected)
+            return;
+        options.forEach((option) => addNotebook.appendChild(new Option(option.name, option.id)));
+    });
+    const addUpdated = document.createElement("select");
+    addUpdated.className = "b3-select";
+    addUpdated.appendChild(new Option(this.i18n.favSmartGroupUpdatedAny, ""));
+    // i18n 卫生门禁要求字面量访问：档位 → key 显式映射
+    const updatedLabels = {
+        7: this.i18n.favSmartGroupUpdated7,
+        30: this.i18n.favSmartGroupUpdated30,
+        90: this.i18n.favSmartGroupUpdated90,
+    };
+    for (const days of [7, 30, 90]) {
+        addUpdated.appendChild(new Option(updatedLabels[days], String(days)));
+    }
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "b3-button b3-button--outline";
+    addBtn.textContent = this.i18n.favSmartGroupAdd;
+    addBtn.addEventListener("click", () => {
+        if (!addName.value.trim() || !addTag.value)
+            return;
+        if (this.addFavoriteSmartGroup(addName.value, addTag.value, addNotebook.value, Number(addUpdated.value) || 0))
+            render();
+    });
+    const addRow = document.createElement("div");
+    addRow.className = "sw-setting__fav-smart-add";
+    addRow.append(addName, addTag, addNotebook, addUpdated, addBtn);
+    section.append(list, addRow);
+    box.appendChild(section);
+}
+function buildSettingsFavCreateRow(render) {
+    const createRow = document.createElement("div");
+    createRow.className = "sw-setting__fav-create";
+    const nameInput = document.createElement("input");
+    nameInput.className = "b3-text-field";
+    nameInput.placeholder = this.i18n.groupName;
+    const createBtn = document.createElement("button");
+    createBtn.className = "b3-button b3-button--outline";
+    createBtn.textContent = this.i18n.createGroup;
+    const doCreate = () => {
+        if (this.createFavoriteGroup(nameInput.value)) {
+            nameInput.value = "";
+            render();
+        }
+    };
+    createBtn.addEventListener("click", doCreate);
+    nameInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            doCreate();
+        }
+    });
+    createRow.appendChild(nameInput);
+    createRow.appendChild(createBtn);
+    return createRow;
+}
+// 分组列表：每行 名称 + 收藏数 + 行内重命名 + 删除（组内收藏项移出到未分组）
+function buildSettingsFavGroupList(groupNames, favorites, render) {
+    const groupList = document.createElement("div");
+    groupList.className = "sw-setting__group-list";
+    groupNames.forEach((name, index) => {
+        groupList.appendChild(buildSettingsFavSection.call(this, name, favorites.filter((fav) => fav.group === name), groupNames, render, true, index));
+    });
+    return groupList;
+}
+function buildSettingsFavSection(name, items, groupNames, render, canManage, groupIndex = -1) {
+    const section = document.createElement("section");
+    section.className = "sw-setting__fav-section";
+    const collapseKey = name || this.i18n.ungrouped;
+    const collapsed = this.favCollapsed.has(collapseKey);
+    const header = document.createElement("div");
+    header.className = "sw-setting__fav-section-head";
+    if (canManage) {
+        header.draggable = !this.isMobile;
+        if (!this.isMobile) {
+            header.addEventListener("dragstart", (event) => { var _a; return (_a = event.dataTransfer) === null || _a === void 0 ? void 0 : _a.setData("text/plain", name); });
+            header.addEventListener("dragover", (event) => event.preventDefault());
+            header.addEventListener("drop", (event) => {
+                var _a;
+                event.preventDefault();
+                const source = (_a = event.dataTransfer) === null || _a === void 0 ? void 0 : _a.getData("text/plain");
+                if (source && source !== name) {
+                    this.reorderFavoriteGroups(source, name);
+                    render();
+                }
+            });
+        }
+    }
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "b3-button b3-button--text sw-setting__fav-collapse";
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+    toggle.title = this.i18n.favCollapseTip;
+    toggle.innerHTML = `<svg><use xlink:href="#iconRight"></use></svg>`;
+    toggle.addEventListener("click", () => {
+        if (this.favCollapsed.has(collapseKey))
+            this.favCollapsed.delete(collapseKey);
+        else
+            this.favCollapsed.add(collapseKey);
+        this.saveFavCollapsed();
+        render();
+    });
+    const number = document.createElement("span");
+    number.className = "sw-setting__fav-order";
+    number.textContent = canManage ? String(groupIndex + 1) : "-";
+    const title = document.createElement("span");
+    title.className = "sw-setting__group-name";
+    title.textContent = name;
+    title.title = name;
+    const count = document.createElement("span");
+    count.className = "sw-setting__group-count";
+    count.textContent = String(items.length);
+    header.append(toggle, number, title, count);
+    if (canManage) {
+        header.append(buildFavGroupRowActions.call(this, name, render, groupNames, groupIndex));
+    }
+    section.appendChild(header);
+    if (!collapsed) {
+        const list = document.createElement("div");
+        list.className = "sw-setting__fav-section-items";
+        items.forEach((favorite, index) => list.appendChild(buildSettingsFavItemRow.call(this, favorite, index, items.length, groupNames, render)));
+        if (items.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw-setting__fav-empty";
+            empty.setAttribute("role", "status");
+            empty.textContent = this.i18n.noFavorites;
+            list.appendChild(empty);
+        }
+        section.appendChild(list);
+    }
+    return section;
+}
+function buildFavGroupRowActions(name, render, groupNames = [], groupIndex = -1) {
+    const actions = document.createElement("span");
+    actions.className = "sw-setting__group-actions";
+    const button = (label, callback, danger = false) => {
+        const el = document.createElement("button");
+        el.type = "button";
+        el.className = `b3-button b3-button--small sw-setting__group-btn${danger ? " sw-setting__group-del" : ""}`;
+        el.textContent = label;
+        el.addEventListener("click", callback);
+        return el;
+    };
+    if (groupIndex > 0) {
+        actions.append(iconButton("iconUp", this.i18n.favMoveUp, () => {
+            this.reorderFavoriteGroups(name, groupNames[groupIndex - 1]);
+            render();
+        }));
+    }
+    if (groupIndex >= 0 && groupIndex < groupNames.length - 1) {
+        actions.append(iconButton("iconDown", this.i18n.favMoveDown, () => {
+            this.reorderFavoriteGroups(name, groupNames[groupIndex + 1]);
+            render();
+        }));
+    }
+    actions.append(button(this.i18n.rename, () => {
+        const next = window.prompt(this.i18n.rename, name);
+        if (next !== null && next.trim() && next.trim() !== name) {
+            this.renameFavoriteGroup(name, next.trim());
+            render();
+        }
+    }), button(this.i18n.deleteGroup, () => {
+        if (confirm(this.i18n.deleteGroupConfirm)) {
+            this.deleteFavoriteGroup(name);
+            render();
+        }
+    }, true));
+    return actions;
+    function iconButton(icon, label, callback) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "b3-button b3-button--text sw-setting__group-icon";
+        button.title = label;
+        button.setAttribute("aria-label", label);
+        button.innerHTML = `<svg><use xlink:href="#${icon}"></use></svg>`;
+        button.addEventListener("click", callback);
+        return button;
+    }
+}
+function buildSettingsFavItemRow(favorite, index, count, groupNames, render) {
+    const row = document.createElement("div");
+    row.className = "sw-setting__fav-row";
+    row.draggable = !this.isMobile;
+    row.dataset.favoriteKey = favorite.key;
+    if (!this.isMobile) {
+        row.addEventListener("dragstart", (event) => { var _a; return (_a = event.dataTransfer) === null || _a === void 0 ? void 0 : _a.setData("text/plain", favorite.key); });
+        row.addEventListener("dragover", (event) => event.preventDefault());
+        row.addEventListener("drop", (event) => {
+            var _a;
+            event.preventDefault();
+            const source = (_a = event.dataTransfer) === null || _a === void 0 ? void 0 : _a.getData("text/plain");
+            if (source && source !== favorite.key) {
+                this.reorderFavoritesInGroup(favorite.group || "", source, favorite.key);
+                render();
+            }
+        });
+    }
+    const order = document.createElement("span");
+    order.className = "sw-setting__fav-item-order";
+    order.textContent = String(index + 1);
+    const title = document.createElement("span");
+    title.className = "sw-setting__fav-name";
+    title.textContent = favorite.title;
+    title.title = favorite.title;
+    const select = document.createElement("select");
+    select.className = "b3-select";
+    select.appendChild(new Option(this.i18n.ungrouped, ""));
+    groupNames.forEach((group) => select.appendChild(new Option(group, group)));
+    select.value = favorite.group || "";
+    select.addEventListener("change", () => { this.setFavoriteGroup(favorite.key, select.value); render(); });
+    const controls = document.createElement("span");
+    controls.className = "sw-setting__fav-controls";
+    const move = (delta) => {
+        if (index + delta < 0 || index + delta >= count)
+            return;
+        const target = this.getFavorites().filter((item) => (item.group || "") === (favorite.group || ""))[index + delta];
+        if (target) {
+            this.reorderFavoritesInGroup(favorite.group || "", favorite.key, target.key);
+            render();
+        }
+    };
+    const iconButton = (icon, label, callback) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "b3-button b3-button--text sw-setting__fav-control";
+        button.title = label;
+        button.setAttribute("aria-label", label);
+        button.innerHTML = `<svg><use xlink:href="#${icon}"></use></svg>`;
+        button.addEventListener("click", callback);
+        return button;
+    };
+    controls.append(iconButton("iconUp", this.i18n.favMoveUp, () => move(-1)), iconButton("iconDown", this.i18n.favMoveDown, () => move(1)));
+    row.append(order, title, select, controls);
+    return row;
+}
+function buildSettingsQuickActions() {
+    const box = document.createElement("div");
+    box.className = "sw-setting__quick-actions";
+    const render = () => {
+        box.innerHTML = "";
+        const actions = this.getQuickActions();
+        if (actions.length > 0) {
+            const header = document.createElement("div");
+            header.className = "sw-setting__quick-header";
+            [this.i18n.quickColumnLabel, this.i18n.quickColumnIcon, this.i18n.quickColumnTargets,
+                this.i18n.quickColumnActions, this.i18n.quickColumnEnabled].forEach((label) => {
+                const cell = document.createElement("span");
+                cell.textContent = label;
+                header.appendChild(cell);
+            });
+            box.appendChild(header);
+        }
+        actions.forEach((action) => {
+            const row = document.createElement("div");
+            row.className = "sw-setting__quick-action";
+            row.draggable = !this.isMobile;
+            row.dataset.quickActionId = action.id;
+            // 手机端禁用整行拖拽，避免手势排序与页面上下滑动争抢；保留行内上下移动按钮。
+            if (!this.isMobile) {
+                row.addEventListener("dragstart", (event) => {
+                    var _a;
+                    (_a = event.dataTransfer) === null || _a === void 0 ? void 0 : _a.setData("text/plain", action.id);
+                    row.classList.add("is-dragging");
+                });
+                row.addEventListener("dragend", () => row.classList.remove("is-dragging"));
+                row.addEventListener("dragover", (event) => {
+                    event.preventDefault();
+                    row.classList.add("is-drag-over");
+                });
+                row.addEventListener("dragleave", () => row.classList.remove("is-drag-over"));
+                row.addEventListener("drop", (event) => {
+                    var _a;
+                    event.preventDefault();
+                    row.classList.remove("is-drag-over");
+                    const sourceId = (_a = event.dataTransfer) === null || _a === void 0 ? void 0 : _a.getData("text/plain");
+                    if (!sourceId || sourceId === action.id)
+                        return;
+                    const next = this.getQuickActions();
+                    const from = next.findIndex((item) => item.id === sourceId);
+                    const to = next.findIndex((item) => item.id === action.id);
+                    if (from < 0 || to < 0)
+                        return;
+                    const [moved] = next.splice(from, 1);
+                    next.splice(to, 0, moved);
+                    next.forEach((item, itemIndex) => item.order = (itemIndex + 1) * 10);
+                    this.saveQuickActions(next);
+                    render();
+                });
+            }
+            const text = document.createElement("input");
+            text.className = "b3-text-field";
+            text.value = action.label || action.value;
+            text.setAttribute("aria-label", action.label || action.value);
+            text.addEventListener("change", () => {
+                var _a;
+                const label = text.value.trim();
+                if (!label) {
+                    text.value = action.label || action.value;
+                    return;
+                }
+                const next = this.getQuickActions().map((item) => item.id === action.id
+                    ? Object.assign(Object.assign({}, item), { label }) : item);
+                this.saveQuickActions(next);
+                text.value = ((_a = this.getQuickActions().find((item) => item.id === action.id)) === null || _a === void 0 ? void 0 : _a.label) || action.label || action.value;
+            });
+            const iconButton = document.createElement("button");
+            iconButton.type = "button";
+            iconButton.className = "b3-button b3-button--text sw-setting__quick-icon";
+            iconButton.setAttribute("aria-label", this.i18n.quickChooseIcon);
+            iconButton.title = this.i18n.quickChooseIcon;
+            this.renderQuickActionIconButton(iconButton, action.icon);
+            iconButton.addEventListener("click", () => {
+                this.openQuickActionIconPicker(action, (icon) => {
+                    const next = this.getQuickActions().map((item) => item.id === action.id ? Object.assign(Object.assign({}, item), { icon }) : item);
+                    this.saveQuickActions(next);
+                    render();
+                });
+            });
+            const toggle = document.createElement("label");
+            toggle.className = "sw-switch";
+            const input = document.createElement("input");
+            input.type = "checkbox";
+            input.checked = action.enabled;
+            input.addEventListener("change", () => {
+                const next = this.getQuickActions().map((item) => item.id === action.id
+                    ? Object.assign(Object.assign({}, item), { enabled: input.checked }) : item);
+                this.saveQuickActions(next);
+                render();
+            });
+            toggle.append(input, document.createElement("span"));
+            const targets = document.createElement("div");
+            targets.className = "sw-setting__quick-targets";
+            [
+                ["desktop", this.i18n.quickDesktop],
+                ["sidebar", this.i18n.quickSidebar],
+                ["mobile", this.i18n.quickMobile],
+            ].forEach(([target, label]) => {
+                const typedTarget = target;
+                const support = this.getQuickActionSupport(action, typedTarget);
+                const targetLabel = document.createElement("label");
+                targetLabel.className = "sw-setting__quick-target";
+                targetLabel.classList.toggle("is-unsupported", support === "unsupported");
+                targetLabel.classList.toggle("is-unknown", support === "unknown");
+                if (support === "unsupported")
+                    targetLabel.title = this.i18n.quickSupportUnsupported;
+                else if (support === "unknown")
+                    targetLabel.title = this.i18n.quickSupportUnknown;
+                const targetInput = document.createElement("input");
+                targetInput.type = "checkbox";
+                targetInput.checked = support !== "unsupported" && action.targets.includes(typedTarget);
+                targetInput.disabled = support === "unsupported";
+                targetInput.addEventListener("change", () => {
+                    const next = this.getQuickActions().map((item) => {
+                        if (item.id !== action.id)
+                            return item;
+                        const nextTargets = targetInput.checked
+                            ? Array.from(new Set([...item.targets, typedTarget]))
+                            : item.targets.filter((itemTarget) => itemTarget !== target);
+                        return Object.assign(Object.assign({}, item), { targets: nextTargets });
+                    });
+                    this.saveQuickActions(next);
+                });
+                targetLabel.append(targetInput, document.createTextNode(String(label)));
+                if (support === "unknown") {
+                    const marker = document.createElement("span");
+                    marker.className = "sw-setting__quick-support-marker";
+                    marker.textContent = "?";
+                    marker.setAttribute("aria-label", this.i18n.quickSupportUnknown);
+                    targetLabel.appendChild(marker);
+                }
+                targets.appendChild(targetLabel);
+            });
+            const controls = document.createElement("div");
+            controls.className = "sw-setting__quick-controls";
+            const move = (delta) => {
+                const next = this.getQuickActions();
+                const index = next.findIndex((item) => item.id === action.id);
+                const targetIndex = index + delta;
+                if (index < 0 || targetIndex < 0 || targetIndex >= next.length)
+                    return;
+                [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+                next.forEach((item, itemIndex) => item.order = (itemIndex + 1) * 10);
+                this.saveQuickActions(next);
+                render();
+            };
+            const button = (iconName, label, onClick) => {
+                const actionButton = document.createElement("button");
+                actionButton.type = "button";
+                actionButton.className = "b3-button b3-button--text sw-setting__quick-control";
+                actionButton.setAttribute("aria-label", label);
+                actionButton.title = label;
+                actionButton.innerHTML = `<svg><use xlink:href="#${iconName}"></use></svg>`;
+                actionButton.addEventListener("click", onClick);
+                return actionButton;
+            };
+            controls.append(button("iconUp", this.i18n.quickMoveUp, () => move(-1)), button("iconDown", this.i18n.quickMoveDown, () => move(1)), button("iconClose", this.i18n.quickRemove, () => {
+                this.saveQuickActions(this.getQuickActions().filter((item) => item.id !== action.id));
+                render();
+            }));
+            row.append(text, iconButton, targets, controls, toggle);
+            box.appendChild(row);
+        });
+        const candidates = this.getQuickActionPickerCandidates(actions);
+        if (candidates.length > 0 && actions.length < constants_1.QUICK_ACTIONS_MAX) {
+            const addRow = document.createElement("div");
+            addRow.className = "sw-setting__quick-action sw-setting__quick-action--add";
+            const tip = document.createElement("span");
+            tip.className = "sw-setting__quick-add-tip";
+            tip.textContent = this.i18n.quickAddTip;
+            const add = document.createElement("button");
+            add.type = "button";
+            add.className = "b3-button b3-button--text";
+            add.setAttribute("aria-expanded", "false");
+            add.innerHTML = `<svg><use xlink:href="#iconAdd"></use></svg><span>${this.i18n.addQuickAction}</span>`;
+            add.addEventListener("click", () => {
+                (0, quick_actions_ui_1.mountQuickActionPicker)({
+                    trigger: add,
+                    host: addRow,
+                    candidates,
+                    searchPlaceholder: this.i18n.quickPickerSearch,
+                    emptyText: this.i18n.quickPickerEmpty,
+                    onSelect: (candidate) => {
+                        const result = (0, quick_actions_1.appendQuickAction)(this.getQuickActions(), candidate.action, constants_1.QUICK_ACTIONS_MAX);
+                        if (!result.added) {
+                            (0, siyuan_1.showMessage)(result.reason === "full" ? this.i18n.quickActionLimit : this.i18n.quickActionDuplicate);
+                            return;
+                        }
+                        this.saveQuickActions(result.items);
+                        render();
+                    },
+                });
+            });
+            addRow.append(add, tip);
+            box.appendChild(addRow);
+        }
+        if (actions.length === 0 && candidates.length === 0)
+            box.textContent = this.i18n.noQuickActions;
+    };
+    render();
+    const wrapper = document.createElement("div");
+    const displayOptions = [
+        { value: "full", label: this.i18n.quickDisplayFull },
+        { value: "icons", label: this.i18n.quickDisplayIcons },
+        { value: "hidden", label: this.i18n.quickDisplayHidden },
+    ];
+    const settings = this.getSettings();
+    wrapper.append(this.settingItem(this.i18n.quickActions, this.i18n.quickActionsTip, box, true), this.settingItem(this.i18n.quickPosition, this.i18n.quickPositionTip, this.select([{ value: "bottom", label: this.i18n.quickPositionBottom }, { value: "right", label: this.i18n.quickPositionRight }], settings.quickActionsRightRail ? "right" : "bottom", (value) => this.updateSettings({ quickActionsRightRail: value === "right" }))), this.settingItem(this.i18n.quickDisplayDesktop, this.i18n.quickDisplayTip, this.select(displayOptions, settings.quickActionsDisplayDesktop, (value) => this.updateSettings({ quickActionsDisplayDesktop: value }))), this.settingItem(this.i18n.quickDisplaySidebar, this.i18n.quickDisplayTip, this.select(displayOptions, settings.quickActionsDisplaySidebar, (value) => this.updateSettings({ quickActionsDisplaySidebar: value }))), this.settingItem(this.i18n.quickDisplayMobile, this.i18n.quickDisplayTip, this.select(displayOptions, settings.quickActionsDisplayMobile, (value) => this.updateSettings({ quickActionsDisplayMobile: value }))), this.settingItem(this.i18n.quickTransfer, this.i18n.quickTransferTip, buildQuickActionsTransferControls.call(this, render), true));
+    return wrapper;
+}
+function buildQuickActionsTransferControls(onImported, floatingBall = false) {
+    const box = document.createElement("div");
+    box.className = "sw-setting__quick-transfer";
+    const exportButton = document.createElement("button");
+    exportButton.type = "button";
+    exportButton.className = "b3-button b3-button--text";
+    exportButton.textContent = floatingBall ? this.i18n.floatingBallExport : this.i18n.quickExport;
+    exportButton.addEventListener("click", () => {
+        const payload = floatingBall
+            ? (0, floating_ball_settings_model_1.serializeFloatingBallSettings)(this.getSettings().floatingBall, this.getQuickActions())
+            : JSON.stringify(this.getQuickActions(), null, 2);
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = floatingBall ? "siyuan-speed-switch-floating-ball.json" : "siyuan-speed-switch-quick-actions.json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    });
+    const importButton = document.createElement("button");
+    importButton.type = "button";
+    importButton.className = "b3-button b3-button--text";
+    importButton.textContent = floatingBall ? this.i18n.floatingBallImport : this.i18n.quickImport;
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "application/json,.json";
+    fileInput.className = "fn__none";
+    let importing = false;
+    importButton.addEventListener("click", () => { if (!importing)
+        fileInput.click(); });
+    fileInput.addEventListener("change", async () => {
+        var _a;
+        const file = (_a = fileInput.files) === null || _a === void 0 ? void 0 : _a[0];
+        if (!file || importing || this.isUnloading || !box.isConnected)
+            return;
+        importing = true;
+        importButton.disabled = true;
+        importButton.setAttribute("aria-busy", "true");
+        try {
+            if (floatingBall && Number.isFinite(file.size) && file.size > floating_ball_settings_model_1.FLOATING_BALL_SETTINGS_MAX_BYTES) {
+                (0, siyuan_1.showMessage)(this.i18n.floatingBallImportFailed);
+                return;
+            }
+            const text = await file.text();
+            if (this.isUnloading || !box.isConnected)
+                return;
+            const parsed = JSON.parse(text);
+            const result = (0, floating_ball_settings_model_1.importFloatingBallSettings)(parsed, this.getSettings().floatingBall, this.getQuickActions());
+            if (!result.ok) {
+                (0, siyuan_1.showMessage)(floatingBall ? this.i18n.floatingBallImportFailed : this.i18n.quickImportFailed);
+                return;
+            }
+            const hasFloatingBall = Boolean(parsed && typeof parsed === "object" && !Array.isArray(parsed)
+                && Object.prototype.hasOwnProperty.call(parsed, "floatingBall"));
+            if (result.reason === "legacy-quick-actions") {
+                this.saveQuickActions(result.quickActions);
+                onImported();
+                (0, siyuan_1.showMessage)(this.i18n.quickImportDone);
+                return;
+            }
+            if (hasFloatingBall) {
+                if (!confirm(this.i18n.floatingBallImportConfirm))
+                    return;
+                this.updateSettings({ floatingBall: result.config, fabEnabled: result.config.enabled.mobile });
+            }
+            this.saveQuickActions(result.quickActions);
+            onImported();
+            (0, siyuan_1.showMessage)(hasFloatingBall ? this.i18n.floatingBallImportDone : this.i18n.quickImportDone);
+        }
+        catch (error) {
+            logger_1.logger.warn("import action settings fail", error);
+            if (box.isConnected && !this.isUnloading)
+                (0, siyuan_1.showMessage)(floatingBall ? this.i18n.floatingBallImportFailed : this.i18n.quickImportFailed);
+        }
+        finally {
+            importing = false;
+            fileInput.value = "";
+            importButton.disabled = false;
+            importButton.removeAttribute("aria-busy");
+        }
+    });
+    box.append(exportButton, importButton, fileInput);
+    return box;
+}
+function buildSettingsDocumentSets() {
+    const wrapper = document.createElement("div");
+    const guide = document.createElement("section");
+    guide.className = "sw-document-set-guide";
+    const guideTitle = document.createElement("strong");
+    guideTitle.textContent = this.i18n.documentSetsGuideTitle;
+    const guidePurpose = document.createElement("p");
+    guidePurpose.textContent = this.i18n.documentSetsGuidePurpose;
+    const guideSteps = document.createElement("ol");
+    [
+        this.i18n.documentSetsGuideStep1,
+        this.i18n.documentSetsGuideStep2,
+        this.i18n.documentSetsGuideStep3,
+    ].forEach((text) => {
+        const item = document.createElement("li");
+        item.textContent = text;
+        guideSteps.appendChild(item);
+    });
+    const guideNote = document.createElement("p");
+    guideNote.className = "sw-document-set-guide__note";
+    guideNote.textContent = this.i18n.documentSetsGuideNote;
+    guide.append(guideTitle, guidePurpose, guideSteps, guideNote);
+    // T-6810 Essentials 常驻层：跨文档集自动打开的必需文档管理
+    guide.appendChild(this.buildDocumentSetEssentialsManager.call(this));
+    const hint = document.createElement("p");
+    hint.className = "sw-settings__hint";
+    hint.textContent = this.i18n.documentSetsTip;
+    const form = document.createElement("div");
+    form.className = "sw-setting__document-set-form";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "b3-text-field fn__block";
+    input.placeholder = this.i18n.documentSetNamePlaceholder;
+    input.maxLength = 80;
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "b3-button b3-button--text";
+    save.textContent = this.i18n.documentSetSave;
+    const exportButton = document.createElement("button");
+    exportButton.type = "button";
+    exportButton.className = "b3-button b3-button--text";
+    exportButton.textContent = this.i18n.documentSetExport;
+    exportButton.addEventListener("click", () => {
+        const blob = new Blob([JSON.stringify({ schemaVersion: 1, sets: this.getDocumentSets() }, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "siyuan-speed-switch-document-sets.json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    });
+    const importButton = document.createElement("button");
+    importButton.type = "button";
+    importButton.className = "b3-button b3-button--text";
+    importButton.textContent = this.i18n.documentSetImport;
+    const importInput = document.createElement("input");
+    importInput.type = "file";
+    importInput.accept = "application/json,.json";
+    importInput.className = "fn__none";
+    importButton.addEventListener("click", () => importInput.click());
+    importInput.addEventListener("change", async () => {
+        var _a;
+        const file = (_a = importInput.files) === null || _a === void 0 ? void 0 : _a[0];
+        if (!file)
+            return;
+        importButton.disabled = true;
+        importButton.setAttribute("aria-busy", "true");
+        try {
+            if (Number.isFinite(file.size) && file.size > constants_1.DOCUMENT_SET_IMPORT_MAX_BYTES) {
+                (0, siyuan_1.showMessage)(this.i18n.documentSetImportFailed);
+                return;
+            }
+            const parsed = JSON.parse(await file.text());
+            const normalized = (0, document_sets_1.normalizeDocumentSets)(parsed);
+            if (!normalized.sets.length) {
+                (0, siyuan_1.showMessage)(this.i18n.documentSetImportFailed);
+                return;
+            }
+            const importConfirm = this.i18n.documentSetImportConfirm.replace("{x}", String(normalized.sets.length));
+            if (!confirm(importConfirm))
+                return;
+            const merged = (0, document_sets_1.mergeDocumentSets)(this.data[constants_1.DOCUMENT_SETS_KEY], normalized, { now: Date.now() });
+            this.data[constants_1.DOCUMENT_SETS_KEY] = merged.state;
+            if (merged.changed)
+                this.saveDataDebounced(constants_1.DOCUMENT_SETS_KEY);
+            render();
+            (0, siyuan_1.showMessage)(this.i18n.documentSetImportDone);
+        }
+        catch (error) {
+            logger_1.logger.warn("import document sets fail", error);
+            (0, siyuan_1.showMessage)(this.i18n.documentSetImportFailed);
+        }
+        finally {
+            importInput.value = "";
+            importButton.disabled = false;
+            importButton.removeAttribute("aria-busy");
+        }
+    });
+    const list = document.createElement("div");
+    list.className = "sw-setting__document-sets";
+    let editingSetId = null;
+    const focusRenameAction = (setId) => {
+        window.setTimeout(() => {
+            const button = Array.from(list.querySelectorAll("[data-document-set-rename]"))
+                .find((candidate) => candidate.dataset.documentSetRename === setId);
+            if (!button || button.disabled)
+                return;
+            try {
+                button.focus({ preventScroll: true });
+            }
+            catch (_) {
+                button.focus();
+            }
+        }, 0);
+    };
+    const render = () => {
+        list.innerHTML = "";
+        const items = this.getDocumentSets();
+        if (items.length === 0) {
+            list.textContent = this.i18n.documentSetEmpty;
+            return;
+        }
+        items.forEach((item) => {
+            const row = document.createElement("div");
+            row.className = "sw-setting__document-set";
+            const copy = document.createElement("div");
+            copy.className = "sw-setting__document-set-copy";
+            const title = document.createElement("strong");
+            title.textContent = item.name;
+            const meta = document.createElement("span");
+            meta.textContent = `${item.entries.length} ${this.i18n.documentSetItems}`;
+            if (editingSetId === item.setId) {
+                const edit = document.createElement("input");
+                edit.type = "text";
+                edit.className = "b3-text-field fn__block";
+                edit.value = item.name;
+                edit.maxLength = 80;
+                edit.setAttribute("aria-label", this.i18n.documentSetRename);
+                copy.append(edit, meta);
+                window.setTimeout(() => edit.focus(), 0);
+                const editActions = document.createElement("div");
+                editActions.className = "sw-setting__document-set-actions";
+                const finishRename = (saveChanges) => {
+                    if (saveChanges) {
+                        const name = edit.value.trim();
+                        if (!name) {
+                            edit.focus();
+                            return;
+                        }
+                        this.saveDocumentSet(Object.assign(Object.assign({}, item), { name }));
+                    }
+                    editingSetId = null;
+                    render();
+                    focusRenameAction(item.setId);
+                };
+                const apply = document.createElement("button");
+                apply.type = "button";
+                apply.className = "b3-button b3-button--text";
+                apply.textContent = this.i18n.confirm;
+                apply.addEventListener("click", () => finishRename(true));
+                const cancel = document.createElement("button");
+                cancel.type = "button";
+                cancel.className = "b3-button b3-button--text";
+                cancel.textContent = this.i18n.cancel;
+                cancel.addEventListener("click", () => finishRename(false));
+                edit.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        finishRename(true);
+                    }
+                    else if (event.key === "Escape") {
+                        event.preventDefault();
+                        finishRename(false);
+                    }
+                });
+                editActions.append(apply, cancel);
+                row.append(copy, editActions);
+                list.appendChild(row);
+                return;
+            }
+            copy.append(title, meta);
+            const actions = document.createElement("div");
+            actions.className = "sw-setting__document-set-actions";
+            const rename = document.createElement("button");
+            rename.type = "button";
+            rename.className = "b3-button b3-button--text";
+            rename.textContent = this.i18n.documentSetRename;
+            rename.dataset.documentSetRename = item.setId;
+            rename.setAttribute("aria-label", `${this.i18n.documentSetRename}: ${item.name}`);
+            rename.addEventListener("click", () => { editingSetId = item.setId; render(); });
+            // 恢复报告只在"确实执行过一次恢复"之后才可导出：按钮默认禁用，
+            // 免得用户对着空报告点导出。报告只活在本次设置页渲染的闭包里，
+            // 关闭设置页即丢弃——不落盘、不进插件数据，避免扩大持久化数据面。
+            let lastRestoreReport = null;
+            const exportReport = document.createElement("button");
+            exportReport.type = "button";
+            exportReport.className = "b3-button b3-button--text";
+            exportReport.textContent = this.i18n.documentSetRestoreReport;
+            exportReport.disabled = true;
+            exportReport.addEventListener("click", () => {
+                if (!lastRestoreReport) {
+                    (0, siyuan_1.showMessage)(this.i18n.documentSetRestoreReportNone);
+                    return;
+                }
+                const blob = new Blob([JSON.stringify(lastRestoreReport, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `siyuan-speed-switch-restore-report-${lastRestoreReport.setId || "set"}.json`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.setTimeout(() => URL.revokeObjectURL(url), 0);
+                (0, siyuan_1.showMessage)(this.i18n.documentSetRestoreReportExported);
+            });
+            // T-6841：Markdown 导出——人类可读格式，失败项附原因码，便于粘贴到
+            // issue/笔记；与 JSON 导出同源（同一份 lastRestoreReport 渲染）。
+            const exportReportMd = document.createElement("button");
+            exportReportMd.type = "button";
+            exportReportMd.className = "b3-button b3-button--text";
+            exportReportMd.textContent = this.i18n.documentSetRestoreReportMd;
+            exportReportMd.disabled = true;
+            exportReportMd.addEventListener("click", () => {
+                if (!lastRestoreReport) {
+                    (0, siyuan_1.showMessage)(this.i18n.documentSetRestoreReportNone);
+                    return;
+                }
+                const blob = new Blob([(0, document_sets_1.documentSetRestoreReportToMarkdown)(lastRestoreReport)], { type: "text/markdown" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `siyuan-speed-switch-restore-report-${lastRestoreReport.setId || "set"}.md`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.setTimeout(() => URL.revokeObjectURL(url), 0);
+                (0, siyuan_1.showMessage)(this.i18n.documentSetRestoreReportExported);
+            });
+            const restore = document.createElement("button");
+            restore.type = "button";
+            restore.className = "b3-button b3-button--text";
+            restore.textContent = this.i18n.documentSetRestore;
+            let restoreController = null;
+            restore.addEventListener("click", async () => {
+                if (restoreController) {
+                    restoreController.abort();
+                    return;
+                }
+                const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+                const plan = (0, document_sets_1.planDocumentSetRestore)(item, opened, null);
+                if (!plan.pending.length) {
+                    (0, siyuan_1.showMessage)(this.i18n.documentSetRestoreNone);
+                    return;
+                }
+                restore.setAttribute("aria-busy", "true");
+                restoreController = typeof AbortController === "function" ? new AbortController() : null;
+                if (restoreController)
+                    this.activeDocumentSetRestoreControllers.add(restoreController);
+                if (restoreController)
+                    restore.textContent = this.i18n.documentSetCancel;
+                else
+                    restore.disabled = true;
+                const signal = restoreController === null || restoreController === void 0 ? void 0 : restoreController.signal;
+                const probe = await this.probeDocumentSetEntries(plan.pending, signal);
+                if (this.isUnloading || !restore.isConnected) {
+                    if (restoreController)
+                        this.activeDocumentSetRestoreControllers.delete(restoreController);
+                    restoreController = null;
+                    return;
+                }
+                const candidates = [...probe.available, ...probe.unknown];
+                if (!candidates.length) {
+                    if (restoreController)
+                        this.activeDocumentSetRestoreControllers.delete(restoreController);
+                    restoreController = null;
+                    restore.textContent = this.i18n.documentSetRestore;
+                    restore.disabled = false;
+                    restore.removeAttribute("aria-busy");
+                    (0, siyuan_1.showMessage)((signal === null || signal === void 0 ? void 0 : signal.aborted) ? this.i18n.documentSetRestoreCancelled : this.i18n.documentSetNoAvailable);
+                    return;
+                }
+                const confirmations = [];
+                if (probe.missing.length > 0) {
+                    confirmations.push(`${this.i18n.documentSetMissingConfirm} (${probe.missing.length})`);
+                }
+                if (probe.unknown.length > 0) {
+                    confirmations.push(`${this.i18n.documentSetUnknownConfirm} (${probe.unknown.length})`);
+                }
+                const confirmation = confirmations.length > 0 ? confirmations.join("\n") : this.i18n.documentSetRestoreConfirm;
+                if (!confirm(confirmation)) {
+                    if (restoreController)
+                        this.activeDocumentSetRestoreControllers.delete(restoreController);
+                    restoreController = null;
+                    restore.textContent = this.i18n.documentSetRestore;
+                    restore.disabled = false;
+                    restore.removeAttribute("aria-busy");
+                    return;
+                }
+                const execution = await (0, document_sets_1.runDocumentSetRestore)((0, document_sets_1.orderDocumentSetRestoreEntries)(candidates), async (rootId, entry) => {
+                    if (this.isUnloading || !restore.isConnected)
+                        return false;
+                    return this.isMobile
+                        ? await this.mobileOpenDoc(rootId)
+                        : (await (0, siyuan_1.openTab)({ app: this.app, doc: { id: rootId } }), true);
+                }, { signal, shouldContinue: () => !this.isUnloading && restore.isConnected });
+                execution.results.filter((item) => !item.ok && item.error).forEach((item) => logger_1.logger.warn("restore document set entry fail", item.error));
+                const cancelled = execution.cancelled || this.isUnloading || !restore.isConnected;
+                if (this.isUnloading || !restore.isConnected) {
+                    if (restoreController)
+                        this.activeDocumentSetRestoreControllers.delete(restoreController);
+                    restoreController = null;
+                    return;
+                }
+                if (restoreController)
+                    this.activeDocumentSetRestoreControllers.delete(restoreController);
+                restoreController = null;
+                restore.textContent = this.i18n.documentSetRestore;
+                restore.disabled = false;
+                restore.removeAttribute("aria-busy");
+                const counts = (0, document_sets_1.summarizeDocumentSetRestore)(plan, probe, { succeeded: execution.succeeded, failed: execution.failed, cancelled });
+                // T-6841：设置页恢复同样执行 Essentials 常驻层（对齐 T-6810
+                // "每次恢复"语义与切换器路径），回执逐项并入报告。
+                let essentialsOutcome = null;
+                if (!cancelled && execution.attempted > 0) {
+                    try {
+                        essentialsOutcome = await this.openDocumentSetEssentials();
+                    }
+                    catch (error) {
+                        logger_1.logger.warn("restore essentials fail", error);
+                    }
+                }
+                // 与 showMessage 同源：计数与逐项明细取自同一次执行结果，不会互相矛盾。
+                // 取消/中断同样产出报告——那正是最需要复核"哪些没走完"的场景。
+                lastRestoreReport = (0, document_sets_1.buildDocumentSetRestoreReport)(plan, probe, Object.assign(Object.assign({}, execution), { cancelled }), { now: Date.now(), essentials: essentialsOutcome !== null && essentialsOutcome !== void 0 ? essentialsOutcome : undefined });
+                exportReport.disabled = false;
+                if (exportReportMd)
+                    exportReportMd.disabled = false;
+                const summary = `${this.i18n.documentSetRestoreDone}: ${counts.succeeded}, ${this.i18n.documentSetRestoreFailed}: ${counts.failed}, `
+                    + `${this.i18n.documentSetRestoreSkipped}: ${counts.skipped}, ${this.i18n.documentSetRestoreMissing}: ${counts.missing}`
+                    + (essentialsOutcome && essentialsOutcome.opened + essentialsOutcome.failed > 0
+                        ? ` · ${this.i18n.documentSetEssentialsApplied}: +${essentialsOutcome.opened}`
+                        : "");
+                (0, siyuan_1.showMessage)(counts.cancelled ? `${this.i18n.documentSetRestoreCancelled}: ${summary}` : summary);
+            });
+            const preview = document.createElement("button");
+            preview.type = "button";
+            preview.className = "b3-button b3-button--text";
+            preview.textContent = this.i18n.documentSetPreview;
+            // T-6922（工作区恢复 2.0 第二批）：预览从 toast 升级为内联三段列表——
+            // 待恢复 / 已打开跳过 / 集合外 visitor（暗色，"保持打开"语义）。
+            const previewList = document.createElement("div");
+            previewList.className = "sw-setting__doc-set-preview";
+            previewList.hidden = true;
+            row.append(previewList);
+            preview.addEventListener("click", () => {
+                previewList.hidden = !previewList.hidden;
+                if (previewList.hidden)
+                    return;
+                const currentEntries = this.currentDocumentSetEntries();
+                const opened = new Set(currentEntries.map((entry) => entry.rootId));
+                const plan = (0, document_sets_1.planDocumentSetRestore)(item, opened, null);
+                const setRootIds = new Set((item.entries || []).map((entry) => String((entry === null || entry === void 0 ? void 0 : entry.rootId) || "")));
+                const buildRow = (title, tone) => {
+                    const entryRow = document.createElement("div");
+                    entryRow.className = `sw-setting__doc-set-preview-row${tone ? ` ${tone}` : ""}`;
+                    entryRow.textContent = title;
+                    previewList.appendChild(entryRow);
+                };
+                previewList.replaceChildren();
+                const pendingIds = new Set(plan.pending.map((entry) => entry.rootId));
+                (item.entries || []).forEach((entry) => {
+                    if (!pendingIds.has(entry.rootId))
+                        return;
+                    buildRow(entry.title || entry.rootId, "");
+                });
+                plan.opened.forEach((entry) => {
+                    buildRow(`${this.i18n.documentSetOpened} · ${entry.title || entry.rootId}`, "is-muted");
+                });
+                currentEntries.forEach((entry) => {
+                    if (setRootIds.has(entry.rootId))
+                        return;
+                    buildRow(`${this.i18n.documentSetVisitor} · ${entry.title}`, "is-visitor");
+                });
+                if (!previewList.childElementCount)
+                    buildRow(this.i18n.documentSetNoTabs, "is-muted");
+            });
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "b3-button b3-button--text";
+            remove.textContent = this.i18n.documentSetDelete;
+            remove.addEventListener("click", () => {
+                if (!confirm(this.i18n.documentSetDeleteConfirm))
+                    return;
+                const result = (0, document_sets_1.removeDocumentSet)(this.data[constants_1.DOCUMENT_SETS_KEY], item.setId);
+                this.data[constants_1.DOCUMENT_SETS_KEY] = result.state;
+                if (result.changed)
+                    this.saveDataDebounced(constants_1.DOCUMENT_SETS_KEY);
+                render();
+            });
+            // T-6829 版本历史：回滚到最近一版（覆盖保存时自动留版，回滚可逆）
+            const versionCount = Array.isArray(item.versions) ? item.versions.length : 0;
+            const rollback = document.createElement("button");
+            rollback.type = "button";
+            rollback.className = "b3-button b3-button--text";
+            rollback.textContent = `${this.i18n.documentSetRollback}${versionCount > 0 ? ` (${versionCount})` : ""}`;
+            rollback.disabled = versionCount === 0;
+            const versionList = document.createElement("div");
+            versionList.className = "sw-setting__doc-set-versions";
+            versionList.hidden = true;
+            rollback.addEventListener("click", () => {
+                if (versionCount === 0)
+                    return;
+                // T-6824 版本时间轴：展开版本列表，可任选版本回滚（默认最近一版）
+                versionList.hidden = !versionList.hidden;
+            });
+            (item.versions || []).forEach((version, vIndex) => {
+                // T-6955：查看差异——只读预览该版本与当前集合的差异，回滚仍需显式确认
+                const diffButton = document.createElement("button");
+                diffButton.type = "button";
+                diffButton.className = "b3-button b3-button--text sw-setting__doc-set-diff";
+                diffButton.textContent = this.i18n.documentSetDiff;
+                diffButton.addEventListener("click", () => {
+                    openDocumentSetDiffDialog.call(this, item, vIndex, () => render());
+                });
+                versionList.appendChild(diffButton);
+                const versionRow = document.createElement("button");
+                versionRow.type = "button";
+                versionRow.className = "b3-button b3-button--text sw-setting__doc-set-version";
+                const savedText = version.savedAt > 0 ? new Date(version.savedAt).toLocaleString() : "";
+                versionRow.textContent = `↩ ${savedText} (${Array.isArray(version.entries) ? version.entries.length : 0})`;
+                versionRow.addEventListener("click", () => {
+                    if (!confirm(this.i18n.documentSetRollbackConfirm))
+                        return;
+                    const result = (0, document_sets_1.rollbackDocumentSet)(this.data[constants_1.DOCUMENT_SETS_KEY], item.setId, { now: Date.now(), versionIndex: vIndex });
+                    if (!result.changed) {
+                        (0, siyuan_1.showMessage)(this.i18n.documentSetRollbackNone);
+                        return;
+                    }
+                    this.data[constants_1.DOCUMENT_SETS_KEY] = result.state;
+                    this.saveDataDebounced(constants_1.DOCUMENT_SETS_KEY);
+                    (0, siyuan_1.showMessage)(this.i18n.documentSetRollbackDone.replace("{x}", String(item.name || "")));
+                    render();
+                });
+                versionList.appendChild(versionRow);
+            });
+            actions.append(rename, restore, exportReport, exportReportMd, preview, rollback, remove);
+            row.append(copy, actions, versionList);
+            list.appendChild(row);
+        });
+    };
+    save.addEventListener("click", () => {
+        const name = input.value.trim();
+        const entries = this.currentDocumentSetEntries();
+        if (!entries.length) {
+            (0, siyuan_1.showMessage)(this.i18n.documentSetNoTabs);
+            return;
+        }
+        if (!name) {
+            input.focus();
+            return;
+        }
+        const existing = this.getDocumentSets().find((item) => item.name === name);
+        const candidate = (0, document_sets_1.createDocumentSet)(name, entries, { setId: existing === null || existing === void 0 ? void 0 : existing.setId });
+        if (this.saveDocumentSet(candidate)) {
+            input.value = "";
+            render();
+            (0, siyuan_1.showMessage)(this.i18n.documentSetSaved);
+        }
+    });
+    form.append(input, save, exportButton, importButton, importInput);
+    // 说明放操作按钮下方：先操作与列表，长说明作为随选随读的辅助内容收尾
+    wrapper.append(hint, form, list, guide);
+    render();
+    return wrapper;
+}
+// v0.18 路径筛选（T-103）：只读列目录，供搜索筛选选择路径前缀。
+// 内核辅助函数在守卫失败、超时、非 2xx 时统一返回 null，无法区分"端点不存在"
+// 与"网络失败"，故一律按 unavailable 降级提示，且不阻塞其他筛选维度。
+// 取消通过代际标记实现：请求发出前后各比对一次，过期结果直接丢弃。
+// 真实宿主行为见 docs/path-filter-host-evidence.md（D-365）——包括"不存在的
+// 路径返回空列表而非错误"，因此无需为已删除的路径前缀设计专门分支。
+// ===== T-6463 设置页 · 存储用量：各持久化 key 的近似占用（Tabliss 显式化思路） =====
+// T-7004：登记面扩至全部 15 个持久化 key（原表缺 schema 版本戳/RSS 已读/关联投影），
+// 按语义分五组、标签走 i18n 双语键（原先硬编码中文，英文界面显示中文是既存缺口）。
+const STORAGE_KEY_GROUPS = Object.freeze([
+    {
+        labelKey: "storageGroupWorkspace",
+        keys: [
+            { key: constants_1.MRU_KEY, labelKey: "storageKeyMru" },
+            { key: constants_1.HISTORY_KEY, labelKey: "storageKeyOpenHistory" },
+            { key: constants_1.CLOSED_HISTORY_KEY, labelKey: "storageKeyClosedHistory" },
+            { key: constants_1.PINNED_KEY, labelKey: "storageKeyPinned" },
+        ],
+    },
+    {
+        labelKey: "storageGroupFavorites",
+        keys: [
+            { key: constants_1.FAV_KEY, labelKey: "storageKeyFavorites" },
+            { key: constants_1.FAV_GROUPS_KEY, labelKey: "storageKeyFavGroups" },
+            { key: constants_1.FAV_COLLAPSED_KEY, labelKey: "storageKeyFavCollapsed" },
+        ],
+    },
+    {
+        labelKey: "storageGroupPanels",
+        keys: [
+            { key: constants_1.HOME_STATE_KEY, labelKey: "storageKeyHomeState" },
+            { key: constants_1.THUMB_CACHE_KEY, labelKey: "storageKeyThumbCache" },
+            { key: constants_1.RELATED_SWR_KEY, labelKey: "storageKeyRelatedSwr" },
+        ],
+    },
+    {
+        labelKey: "storageGroupConfig",
+        keys: [
+            { key: constants_1.SETTINGS_KEY, labelKey: "storageKeySettings" },
+            { key: constants_1.QUICK_ACTIONS_KEY, labelKey: "storageKeyQuickActions" },
+            { key: constants_1.QUICK_ACTIONS_DEFAULTS_KEY, labelKey: "storageKeyQuickActionsDefaults" },
+            { key: constants_1.DOCUMENT_SETS_KEY, labelKey: "storageKeyDocumentSets" },
+        ],
+    },
+    {
+        labelKey: "storageGroupSystem",
+        keys: [
+            { key: constants_1.RSS_READ_KEY, labelKey: "storageKeyRssRead" },
+            { key: constants_1.SNIPPET_RECYCLE_KEY, labelKey: "storageKeySnippetRecycle" },
+            { key: constants_1.SNIPPET_GROUPS_KEY, labelKey: "storageKeySnippetGroups" },
+            { key: constants_1.SCHEMA_VERSION_KEY, labelKey: "storageKeySchemaVersion" },
+        ],
+    },
+]);
+function buildSettingsStorage() {
+    const root = document.createElement("div");
+    root.className = "sw-settings__storage";
+    // T-6824 可迁移配置包：导出（版本化 JSON）/ 导入（整体校验→确认→原子应用）
+    const packRow = document.createElement("div");
+    packRow.className = "sw-settings__storage-pack";
+    const packExport = document.createElement("button");
+    packExport.type = "button";
+    packExport.className = "b3-button b3-button--text";
+    packExport.textContent = this.i18n.configPackExport;
+    packExport.addEventListener("click", () => {
+        const payload = this.exportConfigPack();
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "siyuan-speed-switch-config-pack.json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    });
+    const packImport = document.createElement("button");
+    packImport.type = "button";
+    packImport.className = "b3-button b3-button--text";
+    packImport.textContent = this.i18n.configPackImport;
+    const packInput = document.createElement("input");
+    packInput.type = "file";
+    packInput.accept = "application/json,.json";
+    packInput.className = "fn__none";
+    packImport.addEventListener("click", () => packInput.click());
+    packInput.addEventListener("change", async () => {
+        var _a;
+        const file = (_a = packInput.files) === null || _a === void 0 ? void 0 : _a[0];
+        if (!file)
+            return;
+        try {
+            if (Number.isFinite(file.size) && file.size > 512 * 1024) {
+                (0, siyuan_1.showMessage)(this.i18n.configPackImportFailed, 7000, "error");
+                return;
+            }
+            const parsed = JSON.parse(await file.text());
+            if (this.isUnloading)
+                return;
+            // T-6961：先归一校验，再进入差异预览与分组勾选；取消零写入
+            const normalized = (0, config_pack_model_1.normalizeConfigPackImport)(parsed);
+            if (!normalized.ok) {
+                (0, siyuan_1.showMessage)(this.i18n.configPackImportFailed, 7000, "error");
+                return;
+            }
+            const current = { settings: this.getSettings(), documentSets: this.data[constants_1.DOCUMENT_SETS_KEY] || null };
+            const groups = (0, config_pack_model_1.diffConfigPackGroups)(normalized, current);
+            const signature = (0, config_pack_model_1.configPackBaselineSignature)(current);
+            if (groups.length === 0) {
+                (0, siyuan_1.showMessage)(this.i18n.configPackImportFailed, 7000, "error");
+                return;
+            }
+            openConfigPackDiffDialog.call(this, parsed, groups, signature, () => undefined);
+        }
+        catch (_b) {
+            (0, siyuan_1.showMessage)(this.i18n.configPackImportFailed, 7000, "error");
+        }
+        finally {
+            packInput.value = "";
+        }
+    });
+    packRow.append(packExport, packImport, packInput);
+    root.append(packRow);
+    const rows = document.createElement("div");
+    rows.className = "sw-settings__storage-rows";
+    const note = document.createElement("p");
+    note.className = "sw-settings__storage-note";
+    note.textContent = this.i18n.setStorageMeasuring || "统计中…";
+    root.append(rows, note);
+    void this.measureStorageUsage().then((entries) => {
+        var _a, _b, _c;
+        const summary = (0, settings_model_1.buildStorageUsageSummary)(entries);
+        rows.textContent = "";
+        const totalValue = document.createElement("strong");
+        totalValue.textContent = (0, settings_model_1.formatStorageBytes)(summary.total);
+        rows.appendChild(this.settingItem(this.i18n.setStorageTotal || "合计", this.i18n.setStorageApprox || "近似 UTF-8 字节数", totalValue));
+        // T-7004：分组渲染 + 用量进度条——条宽 = 占合计的百分比（合计为 0 时不画），
+        // aria-label 同时给出字节与占比（颜色之外必有文字）。
+        // T-7004：分组渲染 + 用量进度条——条宽 = 占合计的百分比（合计为 0 时不画），
+        // aria-label 同时给出字节与占比（颜色之外必有文字）。
+        const bytesByKey = new Map(summary.rows.map((row) => [row.key, row.bytes]));
+        const knownKeys = new Set();
+        STORAGE_KEY_GROUPS.forEach((group) => group.keys.forEach((item) => knownKeys.add(item.key)));
+        // T-7004：标签静态映射——i18n key 必须静态字面量引用（动态方括号访问被
+        // 门禁禁止，且静态写法让死键扫描可见）；key→label 经映射表转换。
+        const storageLabels = {
+            storageGroupWorkspace: this.i18n.storageGroupWorkspace,
+            storageGroupFavorites: this.i18n.storageGroupFavorites,
+            storageGroupPanels: this.i18n.storageGroupPanels,
+            storageGroupConfig: this.i18n.storageGroupConfig,
+            storageGroupSystem: this.i18n.storageGroupSystem,
+            storageGroupOther: this.i18n.storageGroupOther,
+            storageKeyMru: this.i18n.storageKeyMru,
+            storageKeyOpenHistory: this.i18n.storageKeyOpenHistory,
+            storageKeyClosedHistory: this.i18n.storageKeyClosedHistory,
+            storageKeyPinned: this.i18n.storageKeyPinned,
+            storageKeyFavorites: this.i18n.storageKeyFavorites,
+            storageKeyFavGroups: this.i18n.storageKeyFavGroups,
+            storageKeyFavCollapsed: this.i18n.storageKeyFavCollapsed,
+            storageKeyHomeState: this.i18n.storageKeyHomeState,
+            storageKeyThumbCache: this.i18n.storageKeyThumbCache,
+            storageKeyRelatedSwr: this.i18n.storageKeyRelatedSwr,
+            storageKeySettings: this.i18n.storageKeySettings,
+            storageKeyQuickActions: this.i18n.storageKeyQuickActions,
+            storageKeyQuickActionsDefaults: this.i18n.storageKeyQuickActionsDefaults,
+            storageKeyDocumentSets: this.i18n.storageKeyDocumentSets,
+            storageKeyRssRead: this.i18n.storageKeyRssRead,
+            storageKeySnippetRecycle: this.i18n.storageKeySnippetRecycle,
+            storageKeySnippetGroups: this.i18n.storageKeySnippetGroups,
+            storageKeySchemaVersion: this.i18n.storageKeySchemaVersion,
+        };
+        for (const group of STORAGE_KEY_GROUPS) {
+            const heading = document.createElement("p");
+            heading.className = "sw-settings__storage-group";
+            heading.textContent = storageLabels[group.labelKey] || group.labelKey;
+            rows.appendChild(heading);
+            for (const item of group.keys) {
+                const bytes = bytesByKey.get(item.key) || 0;
+                const cell = document.createElement("span");
+                cell.className = "sw-settings__storage-cell";
+                const value = document.createElement("span");
+                value.className = "sw-settings__storage-bytes";
+                value.textContent = (0, settings_model_1.formatStorageBytes)(bytes);
+                const bar = document.createElement("span");
+                bar.className = "sw-settings__usage-bar";
+                bar.setAttribute("aria-hidden", "true");
+                const fill = document.createElement("i");
+                if (summary.total > 0 && bytes > 0) {
+                    fill.style.width = `${Math.max(2, Math.min(100, Math.round(bytes / summary.total * 100)))}%`;
+                }
+                bar.appendChild(fill);
+                const percent = summary.total > 0 ? Math.round(bytes / summary.total * 100) : 0;
+                cell.setAttribute("aria-label", `${(0, settings_model_1.formatStorageBytes)(bytes)}（${this.i18n.setStorageApprox}，${this.i18n.storageUsageShare.replace("{x}", String(percent))}）`);
+                cell.append(value, bar);
+                rows.appendChild(this.settingItem(storageLabels[item.labelKey] || item.labelKey, item.key, cell));
+            }
+        }
+        // 未登记的 key（未来新增漏登记时诚实兜底，不静默丢弃）
+        const unknown = summary.rows.filter((row) => !knownKeys.has(row.key));
+        if (unknown.length > 0) {
+            const heading = document.createElement("p");
+            heading.className = "sw-settings__storage-group";
+            heading.textContent = this.i18n.storageGroupOther;
+            rows.appendChild(heading);
+            for (const row of unknown) {
+                const value = document.createElement("span");
+                value.textContent = (0, settings_model_1.formatStorageBytes)(row.bytes);
+                rows.appendChild(this.settingItem(row.key, row.key, value));
+            }
+        }
+        // T-7004：存储结构健康——schema 版本戳（D-401）三态 + 降级证据，纯只读。
+        const health = this.getStorageSchemaHealth();
+        const schemaValue = document.createElement("span");
+        schemaValue.className = "sw-settings__storage-schema";
+        schemaValue.dataset.state = health.downgradeFrom || (health.stored !== null && health.stored > health.current)
+            ? "newer"
+            : health.stored === null ? "missing" : "ok";
+        schemaValue.textContent = schemaValue.dataset.state === "newer"
+            ? this.i18n.storageSchemaNewer
+                .replace("{stored}", String((_b = (_a = health.downgradeFrom) !== null && _a !== void 0 ? _a : health.stored) !== null && _b !== void 0 ? _b : "?"))
+                .replace("{current}", String(health.current))
+            : schemaValue.dataset.state === "missing"
+                ? this.i18n.storageSchemaMissing.replace("{current}", String(health.current))
+                : this.i18n.storageSchemaOk
+                    .replace("{stored}", String((_c = health.stored) !== null && _c !== void 0 ? _c : health.current))
+                    .replace("{current}", String(health.current));
+        rows.appendChild(this.settingItem(this.i18n.storageSchemaTitle, this.i18n.storageSchemaTip, schemaValue));
+        // T-7004：缓存管理说明 + 缩略图缓存清空（可由回源重建；RSS 已读等用户数据不在范围）。
+        const cacheSection = document.createElement("div");
+        cacheSection.className = "sw-settings__storage-cache";
+        const cacheNote = document.createElement("p");
+        cacheNote.className = "sw-settings__storage-note";
+        cacheNote.textContent = this.i18n.storageCacheNote;
+        const cacheClear = document.createElement("button");
+        cacheClear.type = "button";
+        cacheClear.className = "b3-button b3-button--text";
+        cacheClear.textContent = this.i18n.storageCacheClear;
+        cacheClear.addEventListener("click", () => {
+            if (!confirm(this.i18n.storageCacheClearConfirm))
+                return;
+            this.clearThumbCache();
+            (0, siyuan_1.showMessage)(this.i18n.storageCacheCleared);
+            void this.measureStorageUsage().then((nextEntries) => {
+                const nextTotal = nextEntries.reduce((sum, row) => sum + row.bytes, 0);
+                const totalEl = rows.querySelector("strong");
+                if (totalEl)
+                    totalEl.textContent = (0, settings_model_1.formatStorageBytes)(nextTotal);
+            });
+        });
+        cacheSection.append(cacheNote, cacheClear);
+        root.appendChild(cacheSection);
+        note.textContent = "";
+    }).catch(() => {
+        note.textContent = this.i18n.homeModuleError || "统计失败";
+    });
+    return root;
+}
+/**
+ * Floating-ball settings are intentionally kept beside the shared quick-action
+ * editor, but use their own surface/action projection.  The persisted value is
+ * always replaced with the model's normalized config so partially written
+ * settings cannot leak into the runtime controllers.
+ */
+function buildSettingsFloatingBall(s) {
+    var _a, _b, _c;
+    const wrapper = document.createElement("div");
+    wrapper.className = "sw-floating-ball-settings";
+    const note = document.createElement("p");
+    note.className = "sw-settings__hint sw-floating-ball-settings__note";
+    note.textContent = this.i18n.floatingBallSettingsTip;
+    wrapper.appendChild(note);
+    const compatibilityNote = document.createElement("p");
+    compatibilityNote.className = "sw-settings__hint sw-floating-ball-settings__compatibility";
+    compatibilityNote.textContent = this.i18n.floatingBallLegacySidebarHint;
+    compatibilityNote.setAttribute("role", "note");
+    wrapper.appendChild(compatibilityNote);
+    const persist = (next) => {
+        const config = (0, floating_ball_model_1.normalizeFloatingBallConfig)(next);
+        if (!(0, floating_ball_settings_model_1.checkFloatingBallSettingsBudget)(config, this.getQuickActions()).ok) {
+            (0, siyuan_1.showMessage)(this.i18n.floatingBallImportFailed);
+            return false;
+        }
+        this.updateSettings({
+            floatingBall: config,
+            // Keep the old mobile flag in sync for installations upgraded from
+            // the pre-B0 mobile-only FAB setting.
+            fabEnabled: config.enabled.mobile,
+        });
+        return true;
+    };
+    const initial = (0, floating_ball_model_1.normalizeFloatingBallConfig)(s.floatingBall);
+    const surfaceLabels = {
+        desktop: this.i18n.floatingBallDesktop,
+        sidebar: this.i18n.floatingBallSidebar,
+        mobile: this.i18n.floatingBallMobile,
+    };
+    // T-7238：新用户默认关闭全部端侧开关时，设置页必须给出可执行的
+    // 下一步。说明保持轻量且可重复出现，不弹窗、不写入配置，点击端侧按钮
+    // 后由现有 persist/刷新链路完成启用和运行时挂载。
+    const firstUse = document.createElement("section");
+    firstUse.className = "sw-floating-ball-settings__first-use";
+    firstUse.setAttribute("aria-label", this.i18n.floatingBallFirstUseTitle);
+    const firstUseTitle = document.createElement("strong");
+    firstUseTitle.textContent = this.i18n.floatingBallFirstUseTitle;
+    const firstUseHint = document.createElement("p");
+    firstUseHint.className = "sw-settings__hint";
+    firstUseHint.textContent = this.i18n.floatingBallFirstUseTip;
+    const firstUseActions = document.createElement("div");
+    firstUseActions.className = "sw-floating-ball-settings__first-use-actions";
+    const enableFirstUseSurface = (surface, label) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "b3-button b3-button--outline";
+        button.dataset.surface = surface;
+        button.textContent = label;
+        button.addEventListener("click", () => {
+            var _a;
+            const next = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+            next.enabled[surface] = true;
+            if (!persist(next))
+                return;
+            renderFirstUse();
+            (_a = toggles.get(surface)) === null || _a === void 0 ? void 0 : _a.focus();
+            renderControls();
+            renderActions();
+        });
+        return button;
+    };
+    firstUseActions.append(enableFirstUseSurface("desktop", this.i18n.floatingBallEnableDesktop), enableFirstUseSurface("mobile", this.i18n.floatingBallEnableMobile));
+    firstUse.append(firstUseTitle, firstUseHint, firstUseActions);
+    wrapper.appendChild(firstUse);
+    const renderFirstUse = () => {
+        const latest = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+        firstUse.hidden = Boolean(latest.enabled.desktop || latest.enabled.mobile);
+    };
+    renderFirstUse();
+    const toggleBox = document.createElement("div");
+    toggleBox.className = "sw-floating-ball-settings__toggles";
+    const toggles = new Map();
+    // ADR 0072: the sidebar portal is withdrawn — settings expose desktop and
+    // mobile only; legacy sidebar fields stay tolerated in the stored config.
+    floating_ball_model_1.FLOATING_BALL_UI_SURFACES.forEach((surface) => {
+        var _a;
+        const label = surfaceLabels[surface] || surface;
+        const toggle = this.switcher(Boolean(initial.enabled[surface]), (checked) => {
+            const next = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+            next.enabled[surface] = checked;
+            persist(next);
+            renderFirstUse();
+            renderActions();
+        });
+        const input = ((_a = toggle.matches) === null || _a === void 0 ? void 0 : _a.call(toggle, "input"))
+            ? toggle
+            : toggle.querySelector("input");
+        if (input) {
+            input.setAttribute("aria-label", label);
+            input.dataset.surface = surface;
+            toggles.set(surface, input);
+        }
+        toggleBox.appendChild(this.settingItem(label, this.i18n.floatingBallSurfaceTip, toggle));
+    });
+    wrapper.appendChild(toggleBox);
+    const surfaceSelectRow = document.createElement("div");
+    surfaceSelectRow.className = "sw-floating-ball-settings__surface";
+    const surfaceLabel = document.createElement("span");
+    surfaceLabel.className = "sw-settings__item-title";
+    surfaceLabel.textContent = this.i18n.floatingBallEditSurface;
+    const surfaceSelect = document.createElement("select");
+    surfaceSelect.className = "b3-select fn__flex-center";
+    floating_ball_model_1.FLOATING_BALL_UI_SURFACES.forEach((surface) => surfaceSelect.appendChild(new Option(surfaceLabels[surface] || surface, surface)));
+    surfaceSelect.value = this.isMobile ? "mobile" : "desktop";
+    surfaceSelect.setAttribute("aria-label", this.i18n.floatingBallEditSurface);
+    surfaceSelectRow.append(surfaceLabel, surfaceSelect);
+    wrapper.appendChild(surfaceSelectRow);
+    const clickActionRow = document.createElement("div");
+    clickActionRow.className = "sw-floating-ball-settings__click-action";
+    const clickActionTitle = document.createElement("span");
+    clickActionTitle.className = "sw-settings__item-title";
+    clickActionTitle.textContent = this.i18n.floatingBallClickAction;
+    const clickActionSelect = document.createElement("select");
+    clickActionSelect.className = "b3-select";
+    clickActionSelect.dataset.control = "clickAction";
+    clickActionSelect.setAttribute("aria-label", this.i18n.floatingBallClickAction);
+    const clickActionHint = document.createElement("span");
+    clickActionHint.className = "sw-settings__hint";
+    clickActionHint.textContent = this.i18n.floatingBallClickActionTip;
+    clickActionRow.append(clickActionTitle, clickActionSelect, clickActionHint);
+    wrapper.appendChild(clickActionRow);
+    // T-6887（T-6858 第二批）：四向快滑动作可视化绑定——手机端快滑上/下/左/右
+    // 分别执行绑定的动作（上=更多面板为默认）；目录复用轻触动作清单。
+    const flickSection = document.createElement("section");
+    flickSection.className = "sw-floating-ball-settings__flick-panel";
+    const flickHeading = document.createElement("strong");
+    flickHeading.textContent = this.i18n.floatingBallFlickTitle;
+    flickSection.appendChild(flickHeading);
+    const flickHint = document.createElement("p");
+    flickHint.className = "sw-settings__hint";
+    flickHint.textContent = this.i18n.floatingBallFlickTip;
+    flickSection.appendChild(flickHint);
+    const flickGrid = document.createElement("div");
+    flickGrid.className = "sw-floating-ball-settings__flick-grid";
+    flickSection.appendChild(flickGrid);
+    const flickDirections = ["up", "down", "left", "right"];
+    const flickLabels = {
+        up: this.i18n.floatingBallFlickUp,
+        down: this.i18n.floatingBallFlickDown,
+        left: this.i18n.floatingBallFlickLeft,
+        right: this.i18n.floatingBallFlickRight,
+    };
+    const flickSelects = [];
+    flickDirections.forEach((direction) => {
+        const row = document.createElement("div");
+        row.className = "sw-floating-ball-settings__flick-row";
+        const label = document.createElement("span");
+        label.className = "sw-settings__item-title";
+        label.textContent = flickLabels[direction];
+        const select = document.createElement("select");
+        select.className = "b3-select";
+        select.dataset.flickDirection = direction;
+        select.setAttribute("aria-label", `${this.i18n.floatingBallFlickTitle} · ${flickLabels[direction]}`);
+        select.addEventListener("change", () => {
+            const next = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+            next.behavior.flickActions[direction] = select.value;
+            persist(next);
+        });
+        flickGrid.append(row);
+        row.append(label, select);
+        flickSelects.push({ direction, select });
+    });
+    const renderFlickOptions = () => {
+        const config = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+        const catalog = this.getFloatingBallActions();
+        const surface = surfaceSelect.value;
+        flickSelects.forEach(({ direction, select }) => {
+            var _a, _b;
+            const current = ((_b = (_a = config.behavior) === null || _a === void 0 ? void 0 : _a.flickActions) === null || _b === void 0 ? void 0 : _b[direction]) || "";
+            const fixedMore = direction === "up";
+            const options = [
+                { value: "more", label: this.i18n.floatingBallFlickMore },
+            ];
+            if (!fixedMore)
+                options.unshift({ value: "", label: this.i18n.floatingBallFlickNone });
+            const seen = new Set(options.map((option) => option.value));
+            if (!fixedMore)
+                catalog.forEach((action) => {
+                    if (!(action === null || action === void 0 ? void 0 : action.id) || seen.has(action.id))
+                        return;
+                    if (this.getQuickActionSupport(action, surface) === "unsupported")
+                        return;
+                    seen.add(action.id);
+                    options.push({ value: action.id, label: clickActionLabel(action, config, surface) });
+                });
+            if (!fixedMore && current && !seen.has(current)) {
+                options.push({ value: current, label: current });
+            }
+            select.innerHTML = "";
+            options.forEach((option) => select.appendChild(new Option(option.label, option.value)));
+            select.disabled = fixedMore;
+            select.setAttribute("aria-disabled", String(fixedMore));
+            select.value = fixedMore ? "more" : current;
+        });
+    };
+    wrapper.appendChild(flickSection);
+    wrapper.addEventListener("sw-floating-ball-refresh", () => renderFlickOptions());
+    // T-6920（悬浮球手势纵深第二批）：双击/长按动作可视化绑定——与快滑面板同款
+    // 选项词汇（无操作/更多面板/动作目录）；双击绑定后单击进入 300ms 判别窗
+    //（提示文案说明），未绑定时单击保持零延迟直发。
+    const gestureSection = document.createElement("section");
+    gestureSection.className = "sw-floating-ball-settings__gesture-panel";
+    const gestureHeading = document.createElement("strong");
+    gestureHeading.textContent = this.i18n.floatingBallGestureTitle;
+    gestureSection.appendChild(gestureHeading);
+    const gestureHint = document.createElement("p");
+    gestureHint.className = "sw-settings__hint";
+    gestureHint.textContent = this.i18n.floatingBallGestureTip;
+    gestureSection.appendChild(gestureHint);
+    const gestureGrid = document.createElement("div");
+    gestureGrid.className = "sw-floating-ball-settings__gesture-grid";
+    gestureSection.appendChild(gestureGrid);
+    const gestureRows = [];
+    [["doubleTapAction", this.i18n.floatingBallGestureDouble], ["longPressAction", this.i18n.floatingBallGestureLong]].forEach(([key, label]) => {
+        const row = document.createElement("div");
+        row.className = "sw-floating-ball-settings__gesture-row";
+        const rowLabel = document.createElement("span");
+        rowLabel.className = "sw-settings__item-title";
+        rowLabel.textContent = label;
+        const select = document.createElement("select");
+        select.className = "b3-select";
+        select.dataset.gestureBinding = key;
+        select.setAttribute("aria-label", `${this.i18n.floatingBallGestureTitle} · ${label}`);
+        select.addEventListener("change", () => {
+            const next = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+            next.behavior[key] = select.value;
+            persist(next);
+        });
+        gestureGrid.append(row);
+        row.append(rowLabel, select);
+        gestureRows.push({ key, select });
+    });
+    const renderGestureOptions = () => {
+        const config = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+        const catalog = this.getFloatingBallActions();
+        gestureRows.forEach(({ key, select }) => {
+            var _a;
+            const current = ((_a = config.behavior) === null || _a === void 0 ? void 0 : _a[key]) || "";
+            const options = [
+                { value: "", label: this.i18n.floatingBallFlickNone },
+                { value: "more", label: this.i18n.floatingBallFlickMore },
+            ];
+            const seen = new Set(options.map((option) => option.value));
+            const surface = surfaceSelect.value;
+            catalog.forEach((action) => {
+                if (!(action === null || action === void 0 ? void 0 : action.id) || seen.has(action.id))
+                    return;
+                if (this.getQuickActionSupport(action, surface) === "unsupported")
+                    return;
+                seen.add(action.id);
+                options.push({ value: action.id, label: clickActionLabel(action, config, surface) });
+            });
+            if (current && !seen.has(current))
+                options.push({ value: current, label: current });
+            select.innerHTML = "";
+            options.forEach((option) => select.appendChild(new Option(option.label, option.value)));
+            select.value = current;
+        });
+    };
+    wrapper.appendChild(gestureSection);
+    wrapper.addEventListener("sw-floating-ball-refresh", () => renderGestureOptions());
+    // T-6891（T-6857 余项）：数字 1–9 固定槽位。槽位只保存动作 ID 或
+    // 保存搜索 ID；保存搜索仍是独立对象，不写入快捷动作目录。空槽由悬浮球
+    // 面板按当前可见行继续使用动态回退，因此设置不会改变旧配置的默认行为。
+    const digitSlotSection = document.createElement("section");
+    digitSlotSection.className = "sw-floating-ball-settings__digit-slots";
+    const digitSlotHeading = document.createElement("strong");
+    digitSlotHeading.textContent = this.i18n.floatingBallDigitSlots;
+    digitSlotSection.appendChild(digitSlotHeading);
+    const digitSlotHint = document.createElement("p");
+    digitSlotHint.className = "sw-settings__hint";
+    digitSlotHint.textContent = this.i18n.floatingBallDigitSlotsTip;
+    digitSlotSection.appendChild(digitSlotHint);
+    const digitSlotGrid = document.createElement("div");
+    digitSlotGrid.className = "sw-floating-ball-settings__digit-slot-grid";
+    digitSlotSection.appendChild(digitSlotGrid);
+    const savedSearchesOf = () => {
+        var _a;
+        const provided = (_a = this.getSavedSearches) === null || _a === void 0 ? void 0 : _a.call(this);
+        if (Array.isArray(provided))
+            return provided;
+        const fallback = this.getSettings().savedSearches;
+        return Array.isArray(fallback) ? fallback : [];
+    };
+    const actionIdOf = (action) => typeof (action === null || action === void 0 ? void 0 : action.id) === "string" && action.id.trim()
+        ? action.id.trim()
+        : typeof (action === null || action === void 0 ? void 0 : action.actionId) === "string" && action.actionId.trim()
+            ? action.actionId.trim() : typeof (action === null || action === void 0 ? void 0 : action.value) === "string" ? action.value.trim() : "";
+    const renderDigitSlots = () => {
+        var _a, _b;
+        const config = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+        const surface = surfaceSelect.value;
+        const catalog = this.getFloatingBallActions();
+        const savedSearches = savedSearchesOf();
+        const actionOptions = catalog
+            .map((action) => ({ action, id: actionIdOf(action) }))
+            .filter(({ action, id }) => id && this.getQuickActionSupport(action, surface) !== "unsupported");
+        digitSlotGrid.innerHTML = "";
+        for (let index = 0; index < floating_ball_model_1.FLOATING_BALL_DIGIT_SLOT_COUNT; index += 1) {
+            const row = document.createElement("label");
+            row.className = "sw-floating-ball-settings__digit-slot";
+            const title = document.createElement("span");
+            title.className = "sw-settings__item-title";
+            title.textContent = `${this.i18n.floatingBallDigitSlot} ${index + 1}`;
+            const select = document.createElement("select");
+            select.className = "b3-select";
+            select.dataset.digitSlot = String(index);
+            select.setAttribute("aria-label", title.textContent);
+            select.appendChild(new Option(this.i18n.floatingBallDigitSlotNone, ""));
+            const actionGroup = document.createElement("optgroup");
+            actionGroup.label = this.i18n.floatingBallDigitSlotAction;
+            actionOptions.forEach(({ action, id }) => {
+                actionGroup.appendChild(new Option(clickActionLabel(action, config, surface), `action:${id}`));
+            });
+            select.appendChild(actionGroup);
+            const searchGroup = document.createElement("optgroup");
+            searchGroup.label = this.i18n.floatingBallDigitSlotSearch;
+            savedSearches.forEach((saved) => {
+                const id = typeof (saved === null || saved === void 0 ? void 0 : saved.id) === "string" ? saved.id.trim() : "";
+                if (!id)
+                    return;
+                const name = typeof (saved === null || saved === void 0 ? void 0 : saved.name) === "string" && saved.name.trim() ? saved.name.trim() : saved.query;
+                const query = typeof (saved === null || saved === void 0 ? void 0 : saved.query) === "string" ? saved.query.trim() : "";
+                searchGroup.appendChild(new Option(query ? `${name} · ${query}` : name, `saved-search:${id}`));
+            });
+            select.appendChild(searchGroup);
+            const current = ((_b = (_a = config.digitSlots) === null || _a === void 0 ? void 0 : _a[surface]) === null || _b === void 0 ? void 0 : _b[index]) || null;
+            let value = "";
+            if ((current === null || current === void 0 ? void 0 : current.kind) === "action" && current.actionId)
+                value = `action:${current.actionId}`;
+            if ((current === null || current === void 0 ? void 0 : current.kind) === "saved-search" && current.searchId)
+                value = `saved-search:${current.searchId}`;
+            if (value && !Array.from(select.options).some((option) => option.value === value)) {
+                const unavailable = current.kind === "saved-search"
+                    ? this.i18n.floatingBallDigitSlotUnavailable
+                    : this.i18n.floatingBallDigitSlotUnavailable;
+                select.appendChild(new Option(`${unavailable}: ${current.kind === "saved-search" ? current.searchId : current.actionId}`, value));
+            }
+            select.value = value;
+            select.addEventListener("change", () => {
+                const next = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+                const raw = select.value;
+                next.digitSlots[surface][index] = raw.startsWith("action:")
+                    ? { kind: "action", actionId: raw.slice("action:".length) }
+                    : raw.startsWith("saved-search:")
+                        ? { kind: "saved-search", searchId: raw.slice("saved-search:".length) } : null;
+                persist(next);
+                renderDigitSlots();
+            });
+            row.append(title, select);
+            digitSlotGrid.appendChild(row);
+        }
+    };
+    wrapper.appendChild(digitSlotSection);
+    wrapper.addEventListener("sw-floating-ball-refresh", () => renderDigitSlots());
+    const controlsSection = document.createElement("section");
+    controlsSection.className = "sw-floating-ball-settings__controls-panel";
+    const controlsHeading = document.createElement("strong");
+    controlsHeading.textContent = this.i18n.floatingBallAppearance;
+    controlsSection.appendChild(controlsHeading);
+    const controlsHint = document.createElement("p");
+    controlsHint.className = "sw-settings__hint";
+    controlsHint.textContent = this.i18n.floatingBallAppearanceTip;
+    controlsSection.appendChild(controlsHint);
+    const controlsGrid = document.createElement("div");
+    controlsGrid.className = "sw-floating-ball-settings__controls-grid";
+    controlsSection.appendChild(controlsGrid);
+    wrapper.appendChild(controlsSection);
+    const controlValues = new Map();
+    const controlLabel = (text, control, hint, format, host = controlsGrid) => {
+        const label = document.createElement("label");
+        label.className = "sw-floating-ball-settings__control";
+        label.classList.toggle("is-toggle", control.getAttribute("type") === "checkbox");
+        const title = document.createElement("span");
+        title.className = "sw-settings__item-title";
+        title.textContent = text;
+        label.appendChild(title);
+        control.setAttribute("aria-label", text);
+        if (hint) {
+            const small = document.createElement("span");
+            small.className = "sw-settings__hint";
+            small.textContent = hint;
+            label.appendChild(small);
+        }
+        label.appendChild(control);
+        if (format) {
+            const output = document.createElement("output");
+            output.className = "sw-floating-ball-settings__value";
+            output.setAttribute("aria-hidden", "true");
+            label.appendChild(output);
+            controlValues.set(control, { output, format });
+        }
+        host.appendChild(label);
+    };
+    const edgeSelect = document.createElement("select");
+    edgeSelect.className = "b3-select";
+    edgeSelect.dataset.control = "edge";
+    edgeSelect.append(new Option(this.i18n.floatingBallEdgeLeft, "left"), new Option(this.i18n.floatingBallEdgeRight, "right"));
+    const vertical = document.createElement("input");
+    vertical.type = "range";
+    vertical.min = "0";
+    vertical.max = "100";
+    vertical.step = "1";
+    vertical.dataset.control = "yRatio";
+    const size = document.createElement("input");
+    size.type = "range";
+    size.min = "44";
+    size.max = "64";
+    size.step = "1";
+    size.dataset.control = "size";
+    const margin = document.createElement("input");
+    margin.type = "range";
+    margin.min = "0";
+    margin.max = "32";
+    margin.step = "1";
+    margin.dataset.control = "marginPx";
+    const opacity = document.createElement("input");
+    opacity.type = "range";
+    opacity.min = "0.4";
+    opacity.max = "1";
+    opacity.step = "0.05";
+    opacity.dataset.control = "idleOpacity";
+    const delay = document.createElement("input");
+    delay.type = "range";
+    delay.min = "3000";
+    delay.max = "8000";
+    delay.step = "500";
+    delay.dataset.control = "idleDelayMs";
+    const checkbox = (key) => {
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.dataset.control = key;
+        return input;
+    };
+    const halfHide = checkbox("halfHide");
+    const snap = checkbox("snap");
+    const hideOnScroll = checkbox("hideOnScroll");
+    const hideOnFullscreen = checkbox("hideOnFullscreen");
+    const yieldToModals = checkbox("yieldToModals");
+    const touchSlop = document.createElement("input");
+    touchSlop.type = "range";
+    touchSlop.min = "8";
+    touchSlop.max = "12";
+    touchSlop.step = "1";
+    touchSlop.dataset.control = "touchSlopPx";
+    const pixels = (value) => `${value} ${this.i18n.unitPx}`;
+    controlLabel(this.i18n.floatingBallEdge, edgeSelect);
+    controlLabel(this.i18n.floatingBallVertical, vertical, undefined, (value) => `${value}%`);
+    controlLabel(this.i18n.floatingBallSize, size, this.i18n.floatingBallSizeTip, pixels);
+    controlLabel(this.i18n.floatingBallMargin, margin, this.i18n.floatingBallMarginTip, pixels);
+    controlLabel(this.i18n.floatingBallIdleOpacity, opacity, undefined, (value) => `${Math.round(value * 100)}%`);
+    controlLabel(this.i18n.floatingBallIdleDelay, delay, undefined, (value) => `${value / 1000} ${this.i18n.floatingBallSeconds}`);
+    controlLabel(this.i18n.floatingBallHalfHide, halfHide);
+    controlLabel(this.i18n.floatingBallSnap, snap, this.i18n.floatingBallSnapTip);
+    // T-6784/P6 手机端离边停靠（防侧滑误触）：仅手机端生效
+    const edgeAvoidSwitch = this.switcher(Boolean((_b = (_a = s.floatingBall) === null || _a === void 0 ? void 0 : _a.behavior) === null || _b === void 0 ? void 0 : _b.edgeAvoidMobile), (v) => {
+        const current = this.getSettings().floatingBall;
+        this.updateSettings({ floatingBall: Object.assign(Object.assign({}, current), { behavior: Object.assign(Object.assign({}, (current.behavior || {})), { edgeAvoidMobile: v }) }) });
+    });
+    // 离边停靠只由手机端宿主侧滑手势使用。桌面端仍保留共享配置值，
+    // 但不能让用户在编辑桌面布局时误改一个不会生效的控制项。
+    const edgeAvoidInput = ((_c = edgeAvoidSwitch.matches) === null || _c === void 0 ? void 0 : _c.call(edgeAvoidSwitch, "input"))
+        ? edgeAvoidSwitch
+        : edgeAvoidSwitch.querySelector("input");
+    if (edgeAvoidInput) {
+        edgeAvoidInput.dataset.control = "edgeAvoidMobile";
+    }
+    controlLabel(this.i18n.floatingBallEdgeAvoid, edgeAvoidSwitch, this.i18n.floatingBallEdgeAvoidTip);
+    controlLabel(this.i18n.floatingBallHideOnScroll, hideOnScroll);
+    controlLabel(this.i18n.floatingBallHideOnFullscreen, hideOnFullscreen);
+    controlLabel(this.i18n.floatingBallYieldToModals, yieldToModals);
+    const advanced = document.createElement("details");
+    advanced.className = "sw-floating-ball-settings__advanced";
+    const advancedSummary = document.createElement("summary");
+    advancedSummary.textContent = this.i18n.floatingBallAdvanced;
+    advanced.appendChild(advancedSummary);
+    controlLabel(this.i18n.floatingBallTouchSlop, touchSlop, undefined, pixels, advanced);
+    controlsSection.appendChild(advanced);
+    let renderControls = () => undefined;
+    let renderPreview = () => undefined;
+    const clickActionLabel = (action, config, surface) => {
+        var _a, _b;
+        const descriptor = (_b = (_a = config.actions) === null || _a === void 0 ? void 0 : _a[surface]) === null || _b === void 0 ? void 0 : _b.find((entry) => entry.actionId === action.id);
+        if (descriptor === null || descriptor === void 0 ? void 0 : descriptor.label)
+            return descriptor.label;
+        const builtinLabels = {
+            switcher: this.i18n.quickBuiltinSwitcher,
+            search: this.i18n.quickBuiltinSearch,
+            journal: this.i18n.quickBuiltinJournal,
+            settings: this.i18n.quickBuiltinSettings,
+            home: this.i18n.secondPanel,
+            "quick-capture": this.i18n.quickBuiltinQuickCapture,
+            "previous-tab": this.i18n.quickBuiltinPreviousTab,
+            "next-tab": this.i18n.quickBuiltinNextTab,
+            "scroll-top": this.i18n.quickBuiltinScrollTop,
+            "scroll-bottom": this.i18n.quickBuiltinScrollBottom,
+            outline: this.i18n.quickGlobalOutline,
+            bookmark: this.i18n.quickGlobalBookmark,
+            tag: this.i18n.quickGlobalTag,
+            inbox: this.i18n.quickGlobalInbox,
+            backlinks: this.i18n.quickGlobalBacklinks,
+            recentDocs: this.i18n.quickGlobalRecentDocs,
+            recentClosed: this.i18n.quickGlobalRecentClosed,
+            riffCard: this.i18n.quickGlobalRiffCard,
+            editReadonly: this.i18n.quickGlobalEditReadonly,
+            "sync-now": this.i18n.quickBuiltinSyncNow,
+            "insert-template": this.i18n.quickBuiltinInsertTemplate,
+            "cycle-doc-set": this.i18n.quickBuiltinCycleDocSet,
+            "cycle-ball-preset": this.i18n.quickBuiltinCycleBallPreset,
+            "throw-window": this.i18n.quickBuiltinThrowWindow,
+            "hide-keyboard": this.i18n.quickBuiltinHideKeyboard,
+            "jump-back": this.i18n.quickBuiltinJumpBack,
+            "jump-forward": this.i18n.quickBuiltinJumpForward,
+        };
+        return builtinLabels[action.value] || action.label || action.id;
+    };
+    const renderClickActionOptions = (config, surface) => {
+        var _a, _b, _c;
+        const current = ((_a = config.clickAction) === null || _a === void 0 ? void 0 : _a[surface]) || "switcher";
+        const catalog = this.getFloatingBallActions();
+        const options = [
+            { value: "switcher", label: this.i18n.floatingBallClickSwitcher },
+            { value: "__floating-ball-more__", label: this.i18n.floatingBallClickMore },
+        ];
+        const seen = new Set(options.map((option) => option.value));
+        catalog.forEach((action) => {
+            if (!(action === null || action === void 0 ? void 0 : action.id) || seen.has(action.id))
+                return;
+            if (this.getQuickActionSupport(action, surface) === "unsupported")
+                return;
+            seen.add(action.id);
+            options.push({ value: action.id, label: clickActionLabel(action, config, surface) });
+        });
+        if (!seen.has(current)) {
+            const descriptor = (_c = (_b = config.actions) === null || _b === void 0 ? void 0 : _b[surface]) === null || _c === void 0 ? void 0 : _c.find((entry) => entry.actionId === current);
+            options.push({ value: current, label: (descriptor === null || descriptor === void 0 ? void 0 : descriptor.label) || current });
+        }
+        clickActionSelect.innerHTML = "";
+        options.forEach((option) => clickActionSelect.appendChild(new Option(option.label, option.value)));
+        clickActionSelect.value = current;
+    };
+    const renderControlValues = () => controlValues.forEach(({ output, format }, input) => {
+        const text = format(Number(input.value));
+        output.value = text;
+        input.setAttribute("aria-valuetext", text);
+    });
+    const updateControlConfig = (mutate) => {
+        const current = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+        mutate(current, surfaceSelect.value);
+        persist(current);
+        renderControls();
+        renderActions();
+    };
+    edgeSelect.addEventListener("change", () => updateControlConfig((next, surface) => {
+        next.position[surface].edge = edgeSelect.value;
+        delete next.position[surface].xRatio;
+    }));
+    const rangeControl = (input, mutate) => {
+        input.addEventListener("input", () => {
+            if (input.disabled)
+                return;
+            const draft = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+            mutate(draft, surfaceSelect.value);
+            renderControlValues();
+            renderPreview((0, floating_ball_model_1.normalizeFloatingBallConfig)(draft));
+        });
+        input.addEventListener("change", () => { if (!input.disabled)
+            updateControlConfig(mutate); });
+    };
+    rangeControl(vertical, (next, surface) => { next.position[surface].yRatio = Number(vertical.value) / 100; });
+    rangeControl(size, (next) => { next.appearance.size = Number(size.value); });
+    rangeControl(margin, (next) => { next.appearance.marginPx = Number(margin.value); });
+    rangeControl(opacity, (next) => { next.appearance.idleOpacity = Number(opacity.value); });
+    rangeControl(delay, (next) => { next.appearance.idleDelayMs = Number(delay.value); });
+    rangeControl(touchSlop, (next) => { next.behavior.touchSlopPx = Number(touchSlop.value); });
+    halfHide.addEventListener("change", () => updateControlConfig((next) => { next.appearance.halfHide = halfHide.checked; }));
+    snap.addEventListener("change", () => updateControlConfig((next) => { next.behavior.snap = snap.checked; }));
+    hideOnScroll.addEventListener("change", () => updateControlConfig((next) => { next.behavior.hideOnScroll = hideOnScroll.checked; }));
+    hideOnFullscreen.addEventListener("change", () => updateControlConfig((next) => { next.behavior.hideOnFullscreen = hideOnFullscreen.checked; }));
+    yieldToModals.addEventListener("change", () => updateControlConfig((next) => { next.behavior.yieldToModals = yieldToModals.checked; }));
+    clickActionSelect.addEventListener("change", () => updateControlConfig((next, surface) => {
+        next.clickAction[surface] = clickActionSelect.value;
+    }));
+    const restoreAppearance = document.createElement("button");
+    restoreAppearance.type = "button";
+    restoreAppearance.className = "b3-button b3-button--text sw-floating-ball-settings__restore-appearance";
+    restoreAppearance.textContent = this.i18n.floatingBallRestoreAppearance;
+    restoreAppearance.addEventListener("click", () => {
+        if (!confirm(this.i18n.floatingBallRestoreAppearanceConfirm))
+            return;
+        const defaults = (0, floating_ball_model_1.createDefaultFloatingBallConfig)();
+        updateControlConfig((next) => {
+            next.appearance = defaults.appearance;
+            next.behavior = defaults.behavior;
+        });
+        restoreAppearance.focus();
+    });
+    controlsSection.appendChild(restoreAppearance);
+    const preview = document.createElement("section");
+    preview.className = "sw-floating-ball-settings__preview";
+    preview.setAttribute("aria-label", this.i18n.floatingBallPreview);
+    const previewTitle = document.createElement("strong");
+    previewTitle.textContent = this.i18n.floatingBallPreview;
+    const previewSurfaceChip = document.createElement("span");
+    previewSurfaceChip.className = "sw-floating-ball-settings__surface-chip";
+    previewSurfaceChip.setAttribute("aria-hidden", "true");
+    const previewStage = document.createElement("div");
+    previewStage.className = "sw-floating-ball-settings__preview-stage";
+    const previewStatus = document.createElement("p");
+    previewStatus.className = "sw-settings__hint";
+    previewStatus.setAttribute("role", "status");
+    previewStatus.setAttribute("aria-live", "polite");
+    previewStatus.textContent = this.i18n.floatingBallPreviewTip;
+    const previewMoreSummary = document.createElement("span");
+    previewMoreSummary.className = "sw-settings__hint";
+    preview.append(previewTitle, previewSurfaceChip, previewStage, previewMoreSummary, previewStatus);
+    wrapper.insertBefore(preview, controlsSection);
+    const actionSection = document.createElement("section");
+    actionSection.className = "sw-floating-ball-settings__actions";
+    const actionHeading = document.createElement("div");
+    actionHeading.className = "sw-floating-ball-settings__actions-heading";
+    const heading = document.createElement("strong");
+    heading.textContent = this.i18n.floatingBallActions;
+    actionHeading.appendChild(heading);
+    const actionHint = document.createElement("span");
+    actionHint.className = "sw-settings__hint";
+    actionHint.textContent = this.i18n.floatingBallActionsTip;
+    actionHeading.appendChild(actionHint);
+    actionSection.appendChild(actionHeading);
+    const actionList = document.createElement("div");
+    actionList.className = "sw-floating-ball-settings__list";
+    actionSection.appendChild(actionList);
+    wrapper.appendChild(actionSection);
+    // T-6803 场景预设：命名保存当前动作布局与主点击，一键应用/删除/循环
+    const presetSection = document.createElement("section");
+    presetSection.className = "sw-floating-ball-settings__presets";
+    const presetHeading = document.createElement("strong");
+    presetHeading.textContent = this.i18n.floatingBallPresets;
+    const presetHint = document.createElement("p");
+    presetHint.className = "sw-settings__hint";
+    presetHint.textContent = this.i18n.floatingBallPresetsTip;
+    const presetRow = document.createElement("div");
+    presetRow.className = "sw-floating-ball-settings__preset-row";
+    const presetName = document.createElement("input");
+    presetName.type = "text";
+    presetName.className = "b3-text-field";
+    presetName.maxLength = 24;
+    presetName.placeholder = this.i18n.floatingBallPresetName;
+    presetName.setAttribute("aria-label", this.i18n.floatingBallPresetName);
+    const presetSave = document.createElement("button");
+    presetSave.type = "button";
+    presetSave.className = "b3-button b3-button--text";
+    presetSave.textContent = this.i18n.floatingBallPresetSave;
+    presetRow.append(presetName, presetSave);
+    const presetList = document.createElement("div");
+    presetList.className = "sw-floating-ball-settings__preset-list";
+    presetSection.append(presetHeading, presetHint, presetRow, presetList);
+    wrapper.appendChild(presetSection);
+    const renderPresets = () => {
+        const config = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+        presetList.textContent = "";
+        const presets = Array.isArray(config.presets) ? config.presets : [];
+        if (!presets.length) {
+            const empty = document.createElement("p");
+            empty.className = "sw-settings__hint";
+            empty.textContent = this.i18n.floatingBallPresetEmpty;
+            presetList.appendChild(empty);
+            return;
+        }
+        presets.forEach((preset) => {
+            // T-7015（设计审查 F3 收口）：当前场景行不再提供「应用」——对已生效
+            // 配置重复应用是无效动作；以「当前」徽标表达状态，删除出口保留。
+            const isCurrent = preset.id === config.currentPresetId;
+            const row = document.createElement("div");
+            row.className = "sw-floating-ball-settings__preset-item" + (isCurrent ? " is-current" : "");
+            const name = document.createElement("span");
+            name.className = "sw-floating-ball-settings__preset-name";
+            name.textContent = preset.name;
+            if (isCurrent) {
+                const badge = document.createElement("span");
+                badge.className = "sw-floating-ball-settings__preset-current";
+                badge.textContent = this.i18n.floatingBallPresetCurrent;
+                row.append(name, badge);
+            }
+            else {
+                const apply = document.createElement("button");
+                apply.type = "button";
+                apply.className = "b3-button b3-button--text";
+                apply.textContent = this.i18n.floatingBallPresetApply;
+                apply.addEventListener("click", () => {
+                    const result = (0, floating_ball_model_1.applyFloatingBallPreset)(this.getSettings().floatingBall, preset.id);
+                    if (!result.preset)
+                        return;
+                    if (persist(result.config)) {
+                        renderActions();
+                        renderPresets();
+                    }
+                });
+                row.append(name, apply);
+            }
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "b3-button b3-button--text";
+            remove.textContent = this.i18n.floatingBallPresetDelete;
+            remove.addEventListener("click", () => {
+                const result = (0, floating_ball_model_1.removeFloatingBallPreset)(this.getSettings().floatingBall, preset.id);
+                if (persist(result.config)) {
+                    renderActions();
+                    renderPresets();
+                }
+            });
+            row.append(remove);
+            presetList.appendChild(row);
+        });
+    };
+    presetSave.addEventListener("click", () => {
+        const result = (0, floating_ball_model_1.saveFloatingBallPreset)(this.getSettings().floatingBall, presetName.value);
+        if (!result.preset)
+            return;
+        if (persist(result.config)) {
+            presetName.value = "";
+            renderActions();
+            renderPresets();
+        }
+    });
+    renderPreview = (draft) => {
+        var _a;
+        const surface = surfaceSelect.value;
+        const config = draft || (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+        const catalog = this.getFloatingBallActions();
+        const support = { resolveSupport: (action, target) => this.getQuickActionSupport(action, target) };
+        const position = config.position[surface];
+        const sizePx = surface === "sidebar" ? 44 : config.appearance.size;
+        const marginPx = (_a = config.appearance.marginPx) !== null && _a !== void 0 ? _a : 8;
+        const xRatio = !config.behavior.snap && typeof position.xRatio === "number" ? position.xRatio : position.edge === "left" ? 0 : 1;
+        const direction = xRatio <= 0.5 ? "right" : "left";
+        // Resolve proportional coordinates without measuring layout on each input.
+        const coordinate = (ratio, extra = 0) => `calc(${ratio * 100}% + ${(1 - 2 * ratio) * (marginPx + sizePx / 2) + extra}px)`;
+        previewStage.innerHTML = "";
+        previewSurfaceChip.textContent = surfaceLabels[surface] || surface;
+        previewStage.dataset.surface = surface;
+        previewStage.dataset.edge = position.edge;
+        previewStage.dataset.direction = direction;
+        previewStage.dataset.snap = String(config.behavior.snap);
+        previewStage.dataset.halfHide = String(config.appearance.halfHide && (config.behavior.snap || position.xRatio === undefined));
+        previewStage.classList.toggle("is-disabled", !config.enabled[surface]);
+        const makePreviewButton = (action, ball = false) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = ball ? "sw-floating-ball-settings__preview-ball" : "b3-button b3-button--outline";
+            button.dataset.actionId = action.actionId || action.id;
+            button.textContent = action.label;
+            button.setAttribute("aria-label", action.label);
+            button.title = action.label;
+            button.addEventListener("click", () => {
+                previewStatus.textContent = this.i18n.floatingBallPreviewResult.replace("{x}", action.label);
+            });
+            return button;
+        };
+        const previewActions = document.createElement("div");
+        previewActions.className = "sw-floating-ball-settings__preview-actions";
+        const ball = makePreviewButton({ id: "switcher", label: this.i18n.quickBuiltinSwitcher }, true);
+        ball.innerHTML = '<svg width="20" height="20" aria-hidden="true"><use href="#iconLayout"></use></svg>';
+        ball.style.width = `${sizePx}px`;
+        ball.style.height = `${sizePx}px`;
+        ball.style.left = coordinate(xRatio);
+        ball.style.top = coordinate(position.yRatio);
+        ball.style.opacity = String(config.appearance.idleOpacity);
+        const firstLayer = (0, floating_ball_model_1.selectFloatingBallFirstLayer)(config, surface, catalog, support);
+        // The simulated ball already supplies the switcher path, including the
+        // empty-config fallback. Do not display a second switcher in its targets.
+        const targets = firstLayer.filter((action) => action.id !== "switcher");
+        targets.forEach((action) => previewActions.appendChild(makePreviewButton(Object.assign(Object.assign({}, action), { label: action.kind === "more" ? this.i18n.floatingBallMore : action.label }))));
+        previewActions.style.left = coordinate(xRatio, (sizePx / 2 + 8) * (direction === "right" ? 1 : -1));
+        const targetsHeight = targets.length * 44 + Math.max(0, targets.length - 1) * 6;
+        previewActions.style.top = `clamp(8px, ${coordinate(position.yRatio, -targetsHeight / 2)}, calc(100% - ${targetsHeight + 8}px))`;
+        const more = (0, floating_ball_panel_1.selectFloatingBallMoreActions)(config, surface, catalog, support);
+        previewMoreSummary.textContent = this.i18n.floatingBallMoreCount.replace("{x}", String(more.length));
+        previewStage.append(ball, previewActions);
+    };
+    const renderActions = (focusId, focusKind) => {
+        var _a;
+        const surface = surfaceSelect.value;
+        const config = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+        const catalog = this.getFloatingBallActions();
+        toggles.forEach((input, target) => { input.checked = config.enabled[target]; });
+        const support = { resolveSupport: (action, target) => this.getQuickActionSupport(action, target) };
+        const rows = (0, floating_ball_settings_model_1.buildFloatingBallSettingsRows)(config, surface, catalog, support);
+        renderPreview(config);
+        actionList.innerHTML = "";
+        if (rows.length === 0) {
+            const empty = document.createElement("p");
+            empty.className = "sw-settings__hint";
+            empty.textContent = this.i18n.floatingBallNoActions;
+            actionList.appendChild(empty);
+        }
+        const firstLayerCount = rows.filter((row) => row.firstLayer).length;
+        rows.forEach((row, index) => {
+            const item = document.createElement("div");
+            item.className = "sw-floating-ball-settings__row";
+            item.dataset.actionId = row.actionId;
+            const order = document.createElement("span");
+            order.className = "sw-floating-ball-settings__order";
+            order.textContent = String(index + 1);
+            const title = document.createElement("input");
+            title.type = "text";
+            title.className = "b3-text-field sw-floating-ball-settings__label";
+            title.value = row.label;
+            title.maxLength = 80;
+            title.dataset.control = "label";
+            title.setAttribute("aria-label", `${this.i18n.floatingBallCustomLabel}: ${row.actionId}`);
+            title.title = row.actionId;
+            title.addEventListener("change", () => {
+                persist((0, floating_ball_settings_model_1.updateFloatingBallAction)(this.getSettings().floatingBall, surface, row.actionId, { label: title.value }));
+                renderActions(row.actionId, "label");
+            });
+            const iconButton = document.createElement("button");
+            iconButton.type = "button";
+            iconButton.className = "b3-button b3-button--text sw-floating-ball-settings__icon";
+            iconButton.setAttribute("aria-label", `${this.i18n.floatingBallCustomIcon}: ${row.label}`);
+            iconButton.title = this.i18n.floatingBallCustomIcon;
+            iconButton.dataset.control = "icon";
+            if (typeof this.renderQuickActionIconButton === "function") {
+                this.renderQuickActionIconButton(iconButton, row.icon);
+            }
+            else {
+                iconButton.textContent = row.icon;
+            }
+            iconButton.addEventListener("click", () => {
+                const action = row.action ? Object.assign(Object.assign({}, row.action), { label: row.label, icon: row.icon }) : {
+                    id: row.actionId,
+                    label: row.label,
+                    icon: row.icon,
+                    kind: row.kind === "unknown" ? "adapter" : row.kind,
+                    value: row.actionId,
+                    targets: [surface],
+                    enabled: row.enabled,
+                    order: row.order,
+                };
+                this.openQuickActionIconPicker(action, (icon) => {
+                    persist((0, floating_ball_settings_model_1.updateFloatingBallAction)(this.getSettings().floatingBall, surface, row.actionId, { icon }));
+                    renderActions(row.actionId, "icon");
+                });
+            });
+            const status = document.createElement("span");
+            status.className = `sw-floating-ball-settings__status is-${row.status}`;
+            status.textContent = row.status === "supported"
+                ? this.i18n.floatingBallStatusReady
+                : row.status === "unknown" ? this.i18n.floatingBallStatusUnknown
+                    : row.status === "unsupported" ? this.i18n.floatingBallStatusUnsupported
+                        : this.i18n.floatingBallStatusUnavailable;
+            status.title = row.status === "supported" ? this.i18n.floatingBallStatusReady
+                : row.status === "unsupported" ? this.i18n.quickSupportUnsupported
+                    : row.status === "unknown" ? this.i18n.quickSupportUnknown
+                        : this.i18n.quickActionUnavailable;
+            const enabledLabel = document.createElement("label");
+            enabledLabel.className = "sw-floating-ball-settings__check";
+            const enabled = document.createElement("input");
+            enabled.type = "checkbox";
+            enabled.checked = row.enabled;
+            // Configuration remains editable while a provider is absent.
+            enabled.dataset.control = "enabled";
+            enabled.setAttribute("aria-label", `${this.i18n.floatingBallEnableAction}: ${row.label}`);
+            enabled.addEventListener("change", () => {
+                persist((0, floating_ball_settings_model_1.updateFloatingBallAction)(this.getSettings().floatingBall, surface, row.actionId, { enabled: enabled.checked }));
+                renderActions(row.actionId, "enabled");
+            });
+            enabledLabel.append(enabled, document.createTextNode(this.i18n.floatingBallEnabled));
+            const firstLabel = document.createElement("label");
+            firstLabel.className = "sw-floating-ball-settings__check";
+            const first = document.createElement("input");
+            first.type = "checkbox";
+            first.checked = row.firstLayer;
+            // The sixth first-layer slot is reserved for the synthetic More
+            // entry, so at most five configured actions can be promoted.
+            first.disabled = !row.firstLayer && firstLayerCount >= floating_ball_model_1.FLOATING_BALL_FIRST_LAYER_LIMIT - 1;
+            first.dataset.control = "first";
+            first.setAttribute("aria-label", `${this.i18n.floatingBallFirstLayer}: ${row.label}`);
+            first.addEventListener("change", () => {
+                persist((0, floating_ball_settings_model_1.updateFloatingBallAction)(this.getSettings().floatingBall, surface, row.actionId, { firstLayer: first.checked }));
+                renderActions(row.actionId, "first");
+            });
+            firstLabel.append(first, document.createTextNode(this.i18n.floatingBallFirstLayer));
+            let mobileTryLabel = null;
+            if (surface === "mobile" && row.status === "unknown") {
+                mobileTryLabel = document.createElement("label");
+                mobileTryLabel.className = "sw-floating-ball-settings__check is-warning";
+                const mobileTry = document.createElement("input");
+                mobileTry.type = "checkbox";
+                mobileTry.checked = row.mobileOverride;
+                mobileTry.dataset.control = "mobileOverride";
+                mobileTry.setAttribute("aria-label", `${this.i18n.floatingBallMobileTry}: ${row.label}`);
+                mobileTry.addEventListener("change", () => {
+                    persist((0, floating_ball_settings_model_1.updateFloatingBallAction)(this.getSettings().floatingBall, surface, row.actionId, { mobileOverride: mobileTry.checked }));
+                    renderActions(row.actionId, "mobileOverride");
+                });
+                mobileTryLabel.append(mobileTry, document.createTextNode(this.i18n.floatingBallMobileTry));
+            }
+            const controls = document.createElement("span");
+            controls.className = "sw-floating-ball-settings__controls";
+            const moveButton = (icon, label, delta) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "b3-button b3-button--text";
+                button.title = label;
+                button.setAttribute("aria-label", label);
+                button.dataset.control = delta < 0 ? "up" : "down";
+                button.innerHTML = `<svg><use xlink:href="#${icon}"></use></svg>`;
+                button.disabled = (delta < 0 && index === 0) || (delta > 0 && index === rows.length - 1);
+                button.addEventListener("click", () => {
+                    persist((0, floating_ball_settings_model_1.moveFloatingBallAction)(this.getSettings().floatingBall, surface, row.actionId, delta));
+                    renderActions(row.actionId, delta < 0 ? "up" : "down");
+                });
+                return button;
+            };
+            controls.append(moveButton("iconUp", this.i18n.floatingBallMoveUp, -1), moveButton("iconDown", this.i18n.floatingBallMoveDown, 1));
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "b3-button b3-button--text";
+            remove.textContent = this.i18n.quickRemove;
+            remove.setAttribute("aria-label", `${this.i18n.quickRemove}: ${row.label}`);
+            remove.addEventListener("click", () => {
+                var _a, _b;
+                persist((0, floating_ball_settings_model_1.removeFloatingBallAction)(this.getSettings().floatingBall, surface, row.actionId));
+                renderActions(((_a = rows[index + 1]) === null || _a === void 0 ? void 0 : _a.actionId) || ((_b = rows[index - 1]) === null || _b === void 0 ? void 0 : _b.actionId), "enabled");
+            });
+            controls.appendChild(remove);
+            item.draggable = !this.isMobile;
+            if (!this.isMobile) {
+                item.addEventListener("dragstart", (event) => { var _a; return (_a = event.dataTransfer) === null || _a === void 0 ? void 0 : _a.setData("application/x-sw-floating-action", row.actionId); });
+                item.addEventListener("dragover", (event) => event.preventDefault());
+                item.addEventListener("drop", (event) => {
+                    var _a;
+                    event.preventDefault();
+                    const id = (_a = event.dataTransfer) === null || _a === void 0 ? void 0 : _a.getData("application/x-sw-floating-action");
+                    const from = rows.findIndex((candidate) => candidate.actionId === id);
+                    if (from < 0 || from === index)
+                        return;
+                    persist((0, floating_ball_settings_model_1.moveFloatingBallAction)(this.getSettings().floatingBall, surface, id, index - from));
+                    renderActions(id, "enabled");
+                });
+            }
+            const metadata = document.createElement("div");
+            metadata.className = "sw-floating-ball-settings__metadata";
+            metadata.append(status, enabledLabel, firstLabel, ...(mobileTryLabel ? [mobileTryLabel] : []));
+            item.append(order, title, iconButton, metadata, controls);
+            actionList.appendChild(item);
+        });
+        const available = catalog.filter((action) => !rows.some((row) => row.actionId === action.id) && this.getQuickActionSupport(action, surface) !== "unsupported");
+        if (available.length > 0 && rows.length < floating_ball_model_1.FLOATING_BALL_ACTION_LIMIT) {
+            const add = document.createElement("button");
+            add.type = "button";
+            add.className = "b3-button b3-button--outline sw-floating-ball-settings__add";
+            add.textContent = this.i18n.floatingBallAddAction;
+            add.addEventListener("click", () => (0, quick_actions_ui_1.mountQuickActionPicker)({
+                trigger: add, host: actionList,
+                candidates: available.map((action) => (Object.assign(Object.assign({}, action), { label: action.label || action.value, group: action.kind }))),
+                searchPlaceholder: this.i18n.quickPickerSearch,
+                emptyText: this.i18n.quickPickerEmpty,
+                onSelect: (selected) => {
+                    const current = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+                    const entries = current.actions[surface];
+                    if (entries.some((entry) => entry.actionId === selected.id) || entries.length >= floating_ball_model_1.FLOATING_BALL_ACTION_LIMIT)
+                        return;
+                    entries.push({ actionId: selected.id, enabled: true, firstLayer: false, order: Math.max(0, ...entries.map((entry) => entry.order)) + 10 });
+                    persist(current);
+                    renderActions(selected.id, "enabled");
+                },
+            }));
+            actionList.appendChild(add);
+        }
+        if (focusId) {
+            const targetRow = Array.from(actionList.querySelectorAll("[data-action-id]")).find((item) => item.dataset.actionId === focusId);
+            const target = targetRow === null || targetRow === void 0 ? void 0 : targetRow.querySelector(`[data-control="${focusKind}"]`);
+            (_a = (target && !target.disabled ? target : targetRow === null || targetRow === void 0 ? void 0 : targetRow.querySelector("[data-control='enabled']"))) === null || _a === void 0 ? void 0 : _a.focus();
+        }
+    };
+    renderControls = () => {
+        var _a;
+        const config = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+        const surface = surfaceSelect.value;
+        renderClickActionOptions(config, surface);
+        edgeSelect.value = config.position[surface].edge;
+        vertical.value = String(Math.round(config.position[surface].yRatio * 100));
+        size.disabled = surface === "sidebar";
+        size.value = String(surface === "sidebar" ? 44 : config.appearance.size);
+        margin.value = String((_a = config.appearance.marginPx) !== null && _a !== void 0 ? _a : 8);
+        opacity.value = String(config.appearance.idleOpacity);
+        delay.value = String(config.appearance.idleDelayMs);
+        touchSlop.value = String(config.behavior.touchSlopPx);
+        halfHide.checked = config.appearance.halfHide;
+        snap.checked = config.behavior.snap;
+        hideOnScroll.checked = config.behavior.hideOnScroll;
+        hideOnFullscreen.checked = config.behavior.hideOnFullscreen;
+        yieldToModals.checked = config.behavior.yieldToModals;
+        if (edgeAvoidInput) {
+            edgeAvoidInput.checked = config.behavior.edgeAvoidMobile === true;
+            edgeAvoidInput.disabled = surface !== "mobile";
+            edgeAvoidInput.setAttribute("aria-disabled", String(surface !== "mobile"));
+        }
+        renderControlValues();
+    };
+    surfaceSelect.addEventListener("change", () => {
+        renderControls();
+        renderActions();
+        renderDigitSlots();
+        renderFlickOptions();
+        renderGestureOptions();
+    });
+    wrapper.addEventListener("sw-floating-ball-refresh", () => {
+        renderFirstUse();
+        renderControls();
+        renderActions();
+        renderDigitSlots();
+        renderFlickOptions();
+        renderGestureOptions();
+    });
+    renderControls();
+    renderActions();
+    renderDigitSlots();
+    renderFlickOptions();
+    renderGestureOptions();
+    renderPresets();
+    const footer = document.createElement("div");
+    footer.className = "sw-floating-ball-settings__footer";
+    const restore = document.createElement("button");
+    restore.type = "button";
+    restore.className = "b3-button b3-button--text";
+    restore.textContent = this.i18n.floatingBallRestoreDefaults;
+    restore.addEventListener("click", () => {
+        if (!confirm(this.i18n.floatingBallRestoreConfirm))
+            return;
+        persist((0, floating_ball_settings_model_1.restoreFloatingBallDefaults)(this.getSettings().floatingBall, surfaceSelect.value));
+        renderActions();
+        restore.focus();
+    });
+    footer.append(restore, buildQuickActionsTransferControls.call(this, () => { renderControls(); renderActions(); }, true));
+    wrapper.appendChild(footer);
+    return wrapper;
+}
+// T-6955：文档集历史版本差异预览——只读比较该版本与当前集合（新增/移除/顺序/
+// 标题/活动标记），缺失的历史时间标为「未记录」；确认后才调用既有回滚入口
+//（保持可逆语义），取消零写入。
+function openDocumentSetDiffDialog(item, versionIndex, onDone) {
+    const versions = Array.isArray(item === null || item === void 0 ? void 0 : item.versions) ? item.versions : [];
+    const version = versions[versionIndex];
+    if (!version)
+        return;
+    const diff = (0, document_sets_1.diffDocumentSetVersion)(item.entries || [], version.entries || []);
+    const dialog = new siyuan_1.Dialog({
+        title: `${this.i18n.documentSetDiffTitle} · ${String(item.name || "")}`,
+        content: '<div class="sw-doc-set-diff"></div>',
+        width: this.isMobile ? "min(560px, 94vw)" : "520px",
+    });
+    (0, platform_dom_1.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "to close");
+    const root = dialog.element.querySelector(".sw-doc-set-diff");
+    if (!root) {
+        dialog.destroy();
+        return;
+    }
+    const meta = document.createElement("p");
+    meta.className = "sw-doc-set-diff__meta";
+    meta.textContent = `${this.i18n.documentSetDiffTitle} · ${version.savedAt > 0 ? new Date(version.savedAt).toLocaleString() : this.i18n.documentSetDiffUnrecorded}`;
+    root.appendChild(meta);
+    const buildGroup = (label, rows, format) => {
+        if (rows.length === 0)
+            return;
+        const title = document.createElement("h4");
+        title.className = `sw-doc-set-diff__group sw-doc-set-diff__group--${label === this.i18n.documentSetDiffRestore ? "restore" : "remove"}`;
+        title.textContent = `${label} · ${rows.length}`;
+        root.appendChild(title);
+        rows.forEach((row) => {
+            const line = document.createElement("div");
+            line.className = "sw-doc-set-diff__line";
+            line.textContent = format(row);
+            root.appendChild(line);
+        });
+    };
+    buildGroup(this.i18n.documentSetDiffRestore, diff.restore, (entry) => entry.title);
+    buildGroup(this.i18n.documentSetDiffRemove, diff.remove, (entry) => entry.title);
+    if (diff.changed.length > 0) {
+        const title = document.createElement("h4");
+        title.className = "sw-doc-set-diff__group sw-doc-set-diff__group--changed";
+        title.textContent = `${this.i18n.documentSetDiffChanged} · ${diff.changed.length}`;
+        root.appendChild(title);
+        diff.changed.forEach((row) => {
+            const line = document.createElement("div");
+            line.className = "sw-doc-set-diff__line";
+            const bits = [row.rootId];
+            if (row.titleChanged)
+                bits.push(`${this.i18n.documentSetDiffTitleChange}: ${row.currentTitle} → ${row.versionTitle}`);
+            if (row.orderChanged)
+                bits.push(`${this.i18n.documentSetDiffOrder}: ${row.currentIndex + 1} → ${row.versionIndex + 1}`);
+            if (row.activeChanged)
+                bits.push(this.i18n.documentSetDiffActive);
+            line.textContent = bits.join(" · ");
+            root.appendChild(line);
+        });
+    }
+    if (diff.restore.length === 0 && diff.remove.length === 0 && diff.changed.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "sw-doc-set-diff__meta";
+        empty.textContent = this.i18n.documentSetDiffEmpty;
+        root.appendChild(empty);
+    }
+    if (diff.unchangedCount > 0) {
+        const note = document.createElement("p");
+        note.className = "sw-doc-set-diff__meta";
+        note.textContent = this.i18n.documentSetDiffUnchanged.replace("{x}", String(diff.unchangedCount));
+        root.appendChild(note);
+    }
+    const actions = document.createElement("div");
+    actions.className = "sw-doc-set-diff__actions";
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className = "b3-button b3-button--cancel";
+    cancelBtn.textContent = this.i18n.cancel;
+    cancelBtn.addEventListener("click", () => dialog.destroy());
+    const rollbackBtn = document.createElement("button");
+    rollbackBtn.type = "button";
+    rollbackBtn.className = "b3-button b3-button--text";
+    rollbackBtn.textContent = this.i18n.documentSetRollbackTo;
+    rollbackBtn.addEventListener("click", () => {
+        const result = (0, document_sets_1.rollbackDocumentSet)(this.data[constants_1.DOCUMENT_SETS_KEY], item.setId, { now: Date.now(), versionIndex });
+        if (!result.changed) {
+            (0, siyuan_1.showMessage)(this.i18n.documentSetRollbackNone);
+            dialog.destroy();
+            return;
+        }
+        this.data[constants_1.DOCUMENT_SETS_KEY] = result.state;
+        this.saveDataDebounced(constants_1.DOCUMENT_SETS_KEY);
+        (0, siyuan_1.showMessage)(this.i18n.documentSetRollbackDone.replace("{x}", String(item.name || "")));
+        dialog.destroy();
+        onDone();
+    });
+    actions.append(cancelBtn, rollbackBtn);
+    root.appendChild(actions);
+}
+// T-6961：配置包导入差异预览——版本/包含范围/组级 新增·替换·保持 明细，整组勾选；
+// 确认时重验当前态签名（已变化则刷新差异要求重新确认，不应用旧预览）；应用经
+// 宿主 importConfigPack(groups) 组粒度落盘，写入异常如实回执已应用范围。
+function openConfigPackDiffDialog(parsed, groups, signature, onDone) {
+    const actionLabels = {
+        add: this.i18n.configPackActionAdd,
+        replace: this.i18n.configPackActionReplace,
+        keep: this.i18n.configPackActionKeep,
+    };
+    const groupLabels = {
+        settings: this.i18n.configPackGroupSettings,
+        documentSets: this.i18n.configPackGroupDocumentSets,
+    };
+    const dialog = new siyuan_1.Dialog({
+        title: this.i18n.configPackDiffTitle,
+        content: '<div class="sw-config-pack-diff"></div>',
+        width: this.isMobile ? "min(560px, 94vw)" : "520px",
+    });
+    (0, platform_dom_1.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "to close");
+    const root = dialog.element.querySelector(".sw-config-pack-diff");
+    if (!root) {
+        dialog.destroy();
+        return;
+    }
+    const selected = new Set();
+    const rebuild = (currentGroups, currentSignature) => {
+        root.textContent = "";
+        selected.clear();
+        const meta = document.createElement("p");
+        meta.className = "sw-config-pack-diff__meta";
+        meta.textContent = this.i18n.configPackDiffNotice;
+        root.appendChild(meta);
+        currentGroups.forEach((group) => {
+            selected.add(group.id);
+            const card = document.createElement("div");
+            card.className = "sw-config-pack-diff__group";
+            const header = document.createElement("label");
+            header.className = "sw-config-pack-diff__group-header";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = true;
+            checkbox.addEventListener("change", () => {
+                if (checkbox.checked)
+                    selected.add(group.id);
+                else
+                    selected.delete(group.id);
+                syncApplyButton();
+            });
+            const name = document.createElement("span");
+            name.className = "sw-config-pack-diff__group-name";
+            name.textContent = groupLabels[group.id] || group.id;
+            const actionBadge = document.createElement("span");
+            actionBadge.className = `sw-config-pack-diff__action is-${group.action}`;
+            actionBadge.textContent = actionLabels[group.action] || group.action;
+            header.append(checkbox, name, actionBadge);
+            card.appendChild(header);
+            group.rows.forEach((row) => {
+                const line = document.createElement("div");
+                line.className = `sw-config-pack-diff__row is-${row.kind}`;
+                line.textContent = `${row.key} · ${actionLabels[row.kind] || row.kind}`;
+                card.appendChild(line);
+            });
+            root.appendChild(card);
+        });
+        const stale = document.createElement("p");
+        stale.className = "sw-config-pack-diff__stale";
+        stale.hidden = true;
+        stale.setAttribute("role", "alert");
+        stale.textContent = this.i18n.configPackDiffStale;
+        root.appendChild(stale);
+        const actions = document.createElement("div");
+        actions.className = "sw-config-pack-diff__actions";
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "b3-button b3-button--cancel";
+        cancelBtn.textContent = this.i18n.cancel;
+        cancelBtn.addEventListener("click", () => dialog.destroy());
+        const applyBtn = document.createElement("button");
+        applyBtn.type = "button";
+        applyBtn.className = "b3-button b3-button--text";
+        applyBtn.textContent = this.i18n.configPackApplySelected;
+        const syncApplyButton = () => {
+            applyBtn.disabled = selected.size === 0;
+        };
+        applyBtn.addEventListener("click", () => {
+            // 并发防护：确认时当前态与预览基线不一致 → 刷新差异，要求重新确认
+            const current = { settings: this.getSettings(), documentSets: this.data[constants_1.DOCUMENT_SETS_KEY] || null };
+            if ((0, config_pack_model_1.configPackBaselineSignature)(current) !== currentSignature) {
+                stale.hidden = false;
+                const refreshed = (0, config_pack_model_1.diffConfigPackGroups)((0, config_pack_model_1.normalizeConfigPackImport)(parsed), current);
+                rebuild(refreshed, currentSignature);
+                return;
+            }
+            const chosen = Array.from(selected);
+            const result = this.importConfigPack(parsed, { groups: chosen });
+            if (!result.ok) {
+                (0, siyuan_1.showMessage)(this.i18n.configPackApplyFailed, 7000, "error");
+                dialog.destroy();
+                onDone();
+                return;
+            }
+            (0, siyuan_1.showMessage)(this.i18n.configPackImportDone, 7000);
+            dialog.destroy();
+            onDone();
+        });
+        actions.append(cancelBtn, applyBtn);
+        root.appendChild(actions);
+        syncApplyButton();
+    };
+    rebuild(groups, signature);
+}

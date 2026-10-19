@@ -6,7 +6,7 @@ import {Dialog, Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
 import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, normalizeTitleSearchDocuments, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId, SAVED_SEARCH_NAME_MAX, SAVED_SEARCH_QUERY_MAX, buildSavedSearchReplayFilters} from "./search-model";
+import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, normalizeTitleSearchDocuments, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, rankDocumentsByPathAcronym, resolveDocSearchResultId, resolveSearchNotebookId, SAVED_SEARCH_NAME_MAX, SAVED_SEARCH_QUERY_MAX, buildSavedSearchReplayFilters} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {applyPreviewFind, clampScrollTop, clearPreviewFind, HIT_CLASS, nextHitIndex} from "./doc-preview-find";
@@ -864,6 +864,9 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
                 docs = fallbackDocs;
             }
             if (!current()) return;
+            // T-7334：路径首字母缩写加速——只对返回结果重排，不改变集合。
+            // 缓存写入也用重排后的顺序，保证回放与首次输入一致。
+            docs = rankDocumentsByPathAcronym(docs, keyword) as IDocSearchResult[];
             cacheSearchResult(session, cacheKey, docs);
             report({state: "ready", counts: {global: docs.length}, totalLatencyMs: elapsed(),
                 fallbackUsed, sources: {global: {status: docs.length ? "ready" : "empty", latencyMs: elapsed()}}});

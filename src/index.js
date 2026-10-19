@@ -1,0 +1,13277 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.resolvePlatformSurfaceLabels = resolvePlatformSurfaceLabels;
+exports.mountPlatformChrome = mountPlatformChrome;
+const siyuan_1 = require("siyuan");
+require("./index.scss");
+const logger_1 = require("./logger");
+const util_1 = require("./util");
+const search_session_1 = require("./search-session");
+const request_service_1 = require("./request-service");
+const recent_closed_1 = require("./recent-closed");
+const storage_migration_1 = require("./storage-migration");
+const search_model_1 = require("./search-model");
+const kernel_widget_model_1 = require("./kernel-widget-model");
+const document_widget_model_1 = require("./document-widget-model");
+const quick_actions_1 = require("./quick-actions");
+const home_runtime_1 = require("./home-runtime");
+const home_view_1 = require("./home-view");
+const home_controller_1 = require("./home-controller");
+const home_panel_1 = require("./home-panel");
+const home_model_1 = require("./home-model");
+const home_model_2 = require("./home-model");
+const home_external_adapters_1 = require("./home-external-adapters");
+const doc_search_state_1 = require("./doc-search-state");
+const doc_search_ui_1 = require("./doc-search-ui");
+const mobile_switcher_ui_1 = require("./mobile-switcher-ui");
+const second_panel_ui_1 = require("./second-panel-ui");
+const settings_sections_1 = require("./settings-sections");
+const home_store_model_1 = require("./home-store-model");
+const local_time_model_1 = require("./local-time-model");
+const life_widget_model_1 = require("./life-widget-model");
+const settings_search_model_1 = require("./settings-search-model");
+const settings_control_dom_1 = require("./settings-control-dom");
+const life_widget_network_1 = require("./life-widget-network");
+const document_sets_1 = require("./document-sets");
+const related_content_model_1 = require("./related-content-model");
+const snippet_recycle_1 = require("./snippet-recycle");
+const snippet_groups_1 = require("./snippet-groups");
+const platform_surface_model_1 = require("./platform-surface-model");
+const platform_dom_1 = require("./platform-dom");
+const platform_dom_2 = require("./platform-dom");
+const platform_dom_3 = require("./platform-dom");
+const external_bridge_1 = require("./api/external-bridge");
+const config_pack_model_1 = require("./config-pack-model");
+const document_actions_1 = require("./document-actions");
+const journal_actions_1 = require("./journal-actions");
+const favorite_actions_1 = require("./favorite-actions");
+const settings_model_1 = require("./settings-model");
+const floating_ball_model_1 = require("./floating-ball-model");
+const floating_ball_ui_1 = require("./floating-ball-ui");
+const floating_ball_actions_1 = require("./floating-ball-actions");
+const floating_ball_generic_actions_1 = require("./floating-ball-generic-actions");
+const floating_ball_settings_model_1 = require("./floating-ball-settings-model");
+const floating_ball_panel_1 = require("./floating-ball-panel");
+const agent_capabilities_1 = require("./agent-capabilities");
+const agent_workspace_diagnostics_1 = require("./agent-workspace-diagnostics");
+// T-1219 执行链（ADR 0063 宿主路线）：propose 只读 + execute 整单一次确认
+const agent_workspace_plan_1 = require("./agent-workspace-plan");
+const agent_workspace_registry_1 = require("./agent-workspace-registry");
+const agent_workspace_actions_1 = require("./agent-workspace-actions");
+const rss_model_1 = require("./rss-model");
+const life_widget_model_2 = require("./life-widget-model");
+const life_widget_network_2 = require("./life-widget-network");
+const agent_readonly_audit_1 = require("./agent-readonly-audit");
+const agent_document_context_1 = require("./agent-document-context");
+const constants_1 = require("./constants");
+const types_1 = require("./types");
+// 卡片三按钮所需图标 symbol（与官方 litheness sprite 同名同形）：
+// 手机端模板不含内联 symbol，官方 sprite 由 loadAssets 异步注入且依赖 App 版本，
+// 首帧 <use> 引用到空 symbol 时按钮渲染为空白（三按钮"隐形"根因），插件须自带兜底
+const CARD_ICON_SPRITE = '<symbol id="iconUnpin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89"/><path d="m2 2 20 20"/><path d="M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11"/></symbol>' +
+    '<symbol id="iconPin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>' +
+    '<symbol id="iconStar" viewBox="0 0 24 24" fill="var(--b3-icon-star-fill, none)" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></symbol>' +
+    '<symbol id="iconClose" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>' +
+    // 第二面板专属图标：与 iconLayout（2×2 均等网格）同族，但为 dashboard 变体
+    // （一格宽 + 三格小），暗示"聚合面板"，外框/描边风格保持一致以示同源
+    '<symbol id="iconLayoutHome" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="10" rx="1.2"/><rect x="13.5" y="3" width="7.5" height="6" rx="1.2"/><rect x="13.5" y="12" width="7.5" height="9" rx="1.2"/><rect x="3" y="16" width="7.5" height="5" rx="1.2"/></symbol>';
+const PLATFORM_SURFACES = platform_surface_model_1.PLATFORM_SURFACE_IDS;
+function normalizePlatformText(value, fallback) {
+    const normalized = typeof value === "string" ? value.trim() : "";
+    return normalized || fallback;
+}
+function resolvePlatformSurfaceLabels(i18n = {}) {
+    return {
+        platformName: normalizePlatformText(i18n.platformName, "小驴雷切"),
+        platformSubtitle: normalizePlatformText(i18n.platformSubtitle, "工作上下文平台"),
+        contextLabel: normalizePlatformText(i18n.platformContext, "工作上下文"),
+        surfaces: {
+            switcher: normalizePlatformText(i18n.platformSwitcher, normalizePlatformText(i18n.switchTabs, "切换器")),
+            workbench: normalizePlatformText(i18n.platformWorkbench, normalizePlatformText(i18n.secondPanel, "工作台")),
+            studio: normalizePlatformText(i18n.platformStudio, normalizePlatformText(i18n.snippetStudioTitle, "片段实验室")),
+        },
+        hints: {
+            switcher: normalizePlatformText(i18n.platformSwitcherHint, "查找、预览和打开内容"),
+            workbench: normalizePlatformText(i18n.platformWorkbenchHint, "编排信息组件和工作现场"),
+            studio: normalizePlatformText(i18n.platformStudioHint, "安全编辑、预览和管理代码片段"),
+        },
+    };
+}
+function removePlatformChrome(root) {
+    Array.from(root.children).forEach((child) => {
+        if (child.classList.contains("sw-platform-chrome"))
+            child.remove();
+    });
+}
+function mountPlatformChrome(root, options) {
+    var _a;
+    removePlatformChrome(root);
+    const doc = root.ownerDocument || document;
+    const available = new Set(options.available || PLATFORM_SURFACES);
+    const chrome = doc.createElement("div");
+    chrome.className = "sw-platform-chrome sw-platform-shell";
+    chrome.dataset.platformSurface = options.surface;
+    const header = doc.createElement("header");
+    header.className = "sw-platform-header";
+    header.setAttribute("aria-label", options.labels.platformName);
+    const brand = doc.createElement("div");
+    brand.className = "sw-platform-header__brand";
+    const brandMark = doc.createElement("span");
+    brandMark.className = "sw-platform-header__brand-mark";
+    brandMark.setAttribute("aria-hidden", "true");
+    brandMark.textContent = "驴";
+    const brandCopy = doc.createElement("span");
+    brandCopy.className = "sw-platform-header__brand-copy";
+    const brandName = doc.createElement("strong");
+    brandName.className = "sw-platform-header__brand-name";
+    brandName.textContent = options.labels.platformName;
+    const brandSubtitle = doc.createElement("span");
+    brandSubtitle.className = "sw-platform-header__brand-subtitle";
+    brandSubtitle.textContent = options.labels.platformSubtitle;
+    brandCopy.append(brandName, brandSubtitle);
+    brand.append(brandMark, brandCopy);
+    const nav = doc.createElement("nav");
+    nav.className = "sw-platform-surface-nav";
+    nav.setAttribute("aria-label", options.labels.contextLabel);
+    PLATFORM_SURFACES.forEach((surface) => {
+        if (!available.has(surface))
+            return;
+        // T-7015c（用户反馈）：非当前表面必须可导航——onNavigate 缺失时宁可不渲染，
+        // 绝不输出「看起来像入口的灰字 span」（用户实测被报告为「按钮点了没用」）。
+        const navigable = surface !== options.surface && typeof options.onNavigate === "function";
+        if (surface !== options.surface && !navigable)
+            return;
+        const control = doc.createElement(navigable ? "button" : "span");
+        control.className = "sw-platform-surface-nav__item";
+        control.dataset.surface = surface;
+        const surfaceIcon = doc.createElement("svg");
+        surfaceIcon.className = "sw-platform-surface-nav__icon";
+        surfaceIcon.setAttribute("aria-hidden", "true");
+        surfaceIcon.innerHTML = `<use xlink:href="#${surface === "switcher" ? "iconLayout" : surface === "workbench" ? "iconLayoutHome" : "iconCode"}"></use>`;
+        const surfaceLabel = doc.createElement("span");
+        surfaceLabel.className = "sw-platform-surface-nav__label";
+        surfaceLabel.textContent = options.labels.surfaces[surface];
+        const surfaceHint = options.labels.hints[surface];
+        const copy = doc.createElement("span");
+        copy.className = "sw-platform-surface-nav__copy";
+        copy.appendChild(surfaceLabel);
+        if (surfaceHint) {
+            const hint = doc.createElement("span");
+            hint.className = "sw-platform-surface-nav__hint";
+            hint.textContent = surfaceHint;
+            copy.appendChild(hint);
+        }
+        control.append(surfaceIcon, copy);
+        control.setAttribute("aria-label", surfaceHint
+            ? `${options.labels.surfaces[surface]}：${surfaceHint}`
+            : options.labels.surfaces[surface]);
+        control.setAttribute("title", surfaceHint
+            ? `${options.labels.surfaces[surface]}：${surfaceHint}`
+            : options.labels.surfaces[surface]);
+        if (surface === options.surface) {
+            control.classList.add("is-active");
+            control.setAttribute("aria-current", "page");
+            control.setAttribute("aria-label", `${options.labels.surfaces[surface]}（当前）`);
+        }
+        if (navigable) {
+            control.type = "button";
+            control.addEventListener("click", () => { var _a; return (_a = options.onNavigate) === null || _a === void 0 ? void 0 : _a.call(options, surface); });
+        }
+        nav.appendChild(control);
+    });
+    const actions = doc.createElement("div");
+    actions.className = "sw-platform-header__actions";
+    if ((_a = options.status) === null || _a === void 0 ? void 0 : _a.label) {
+        actions.appendChild((0, platform_dom_2.createPlatformStatus)(doc, options.status.state || "ready", options.status.label));
+    }
+    if (options.onSettings) {
+        const settings = doc.createElement("button");
+        settings.type = "button";
+        settings.className = "b3-button b3-button--text sw-platform-header__icon-action sw-platform-header__settings";
+        settings.setAttribute("aria-label", options.settingsLabel || "Settings");
+        settings.title = options.settingsLabel || "Settings";
+        settings.innerHTML = '<svg><use xlink:href="#iconSettings"></use></svg>';
+        settings.addEventListener("click", () => { var _a; return (_a = options.onSettings) === null || _a === void 0 ? void 0 : _a.call(options); });
+        actions.appendChild(settings);
+    }
+    if (options.onHelp) {
+        const help = doc.createElement("button");
+        help.type = "button";
+        help.className = "b3-button b3-button--text sw-platform-header__icon-action sw-platform-header__help";
+        const helpLabel = options.helpLabel || "Quick start";
+        help.setAttribute("aria-label", helpLabel);
+        help.title = helpLabel;
+        help.innerHTML = '<svg><use xlink:href="#iconHelp"></use></svg>';
+        const helpText = doc.createElement("span");
+        helpText.className = "sw-platform-header__help-label";
+        helpText.textContent = helpLabel;
+        help.appendChild(helpText);
+        help.addEventListener("click", () => { var _a; return (_a = options.onHelp) === null || _a === void 0 ? void 0 : _a.call(options); });
+        actions.appendChild(help);
+    }
+    if (options.onClose) {
+        const closeGroup = doc.createElement("span");
+        closeGroup.className = "sw-platform-header__close-group";
+        const closeHint = doc.createElement("span");
+        closeHint.className = "sw-platform-header__close-hint";
+        closeHint.setAttribute("aria-label", options.closeHint || "Escape to close");
+        closeHint.appendChild((0, platform_dom_1.createPlatformKbd)(doc, "Esc"));
+        const closeHintLabel = doc.createElement("span");
+        closeHintLabel.className = "sw-platform-header__close-hint-label";
+        closeHintLabel.textContent = options.closeHint || "to close";
+        closeHint.appendChild(closeHintLabel);
+        closeGroup.appendChild(closeHint);
+        const close = doc.createElement("button");
+        close.type = "button";
+        close.className = "b3-button b3-button--text sw-platform-header__close";
+        close.setAttribute("aria-label", options.closeLabel || "Close");
+        close.title = options.closeLabel || "Close";
+        close.innerHTML = '<svg><use xlink:href="#iconClose"></use></svg>';
+        close.addEventListener("click", () => { var _a; return (_a = options.onClose) === null || _a === void 0 ? void 0 : _a.call(options); });
+        closeGroup.appendChild(close);
+        actions.appendChild(closeGroup);
+    }
+    header.append(brand, nav, actions);
+    const context = doc.createElement("div");
+    context.className = "sw-platform-context";
+    context.setAttribute("role", "group");
+    context.setAttribute("aria-label", options.labels.contextLabel);
+    const trail = doc.createElement("span");
+    trail.className = "sw-platform-context__trail";
+    trail.textContent = options.labels.contextLabel;
+    const separator = doc.createElement("span");
+    separator.className = "sw-platform-context__separator";
+    separator.setAttribute("aria-hidden", "true");
+    separator.textContent = "›";
+    const object = doc.createElement("strong");
+    object.className = "sw-platform-context__object";
+    const caption = (0, platform_surface_model_1.buildSurfaceContextCaption)({ surface: options.surface, context: options.context, labels: options.labels });
+    object.textContent = caption.object;
+    const hint = doc.createElement("span");
+    hint.className = "sw-platform-context__hint";
+    hint.textContent = caption.hint;
+    if (caption.hasQuery)
+        hint.title = caption.hint;
+    context.append(trail, separator, object, hint);
+    // T-6871（RZ-1）：键位提示芯片组常驻上下文栏尾部（键盘可见性，Raycast/Linear 惯例）。
+    if (options.kbdHints && options.kbdHints.length > 0) {
+        const kbdHints = doc.createElement("span");
+        kbdHints.className = "sw-platform-context__kbd-hints";
+        options.kbdHints.forEach((text) => {
+            const trimmed = typeof text === "string" ? text.trim() : "";
+            if (trimmed)
+                kbdHints.appendChild((0, platform_dom_1.createPlatformKbd)(doc, trimmed));
+        });
+        if (kbdHints.childElementCount > 0)
+            context.appendChild(kbdHints);
+    }
+    chrome.append(header, context);
+    root.prepend(chrome);
+    return chrome;
+}
+const SORT_BY_LIST = ["mru", "layout", "layoutDesc", "titleAsc", "titleDesc", "updatedDesc"];
+// 存储 key / dock type / 快捷键等注册常量已集中到 ./constants.ts（ADR-0002 遗留闭环，v0.16.5）
+// 默认设置（可被用户设置覆盖）
+const DEFAULT_SETTINGS = {
+    // T-7026（ADR 0099）：模块可见性——「启用=可见且可进入」单一语义；切换器为平台根
+    // 恒启用不设开关；缺省全开，旧配置零迁移。
+    moduleVisibility: { workbench: true, studio: true, floatingBall: true },
+    dialogWidth: 880, // 固定尺寸模式的宽度 px
+    dialogHeight: 600, // 固定尺寸模式的高度 px
+    panelSizeMode: "fullscreen", // 面板尺寸模式：fullscreen=全屏（ADR 0080 默认，三表面内容优先）/ adaptive=屏幕比例自适应 / custom=固定尺寸
+    panelScale: constants_1.PANEL_SCALE_DEFAULT, // 自适应比例（百分比，相对当前可视区宽高）
+    groupBy: constants_1.TAB_GROUP_MODE_DEFAULT, // 列表分组：默认按笔记本
+    // T-7274 / ADR 0199：新装工作台先以紧凑小组件窗口打开；已有设置中的显式值不迁移。
+    homeSizeMode: "custom",
+    homePalette: "soft", // 组件卡片强调色：自动多彩 / 柔和 / 单色
+    homeWidth: 920, // 紧凑小组件窗口固定宽度
+    homeHeight: 390, // 紧凑小组件窗口固定高度
+    studioSizeMode: "fullscreen", // 片段实验室尺寸模式：全屏（ADR 0080 默认）/ 自适应 / 固定（T-6986）
+    studioWidth: 1120, // 片段实验室固定宽度（编辑/预览/AI 三栏需要更宽）
+    studioHeight: 800, // 片段实验室固定高度
+    columns: 0, // 缩略图列数，0=自动
+    thumbHeight: 128, // 缂╃暐鍥鹃珮搴?px
+    sortBy: "mru", // 页签排序方式
+    excludedDocks: [], // 不显示在左侧列表的面板类型
+    dockDisplay: "collapsed", // Default to the compact icon rail; users can expand it when labels are needed.
+    fullscreen: false, // 全屏模式：切换器铺满整个窗口，按 Esc 退出（由 panelSizeMode 派生）
+    showCardUpdatedBadge: false, // T-6848 页签卡更新时间与近 7 天改动标记（默认关）
+    sidebarLayout: "enlarge", // 侧边栏缩略图布局：enlarge 放大填满栏宽（默认）/ columns 按宽度自动加列
+    fabEnabled: false, // 手机端悬浮按钮默认关闭，需要的用户在设置中打开
+    floatingBall: (0, floating_ball_model_1.createDefaultFloatingBallConfig)(), // T-6757 版本化悬浮球配置（旧 fabEnabled 仍兼容）
+    mobileColumns: constants_1.MOBILE_COLUMNS_AUTO, // 默认自动（竖屏单列，横屏双列）
+    mobileThumbHeight: 80, // 手机端缩略图高度
+    journalNotebook: "", // 默认日记笔记本 id，空=未设置（首次点击日记按钮时弹出选择）
+    journalAutoCreate: true, // 日记不存在时自动创建
+    rememberScrollPosition: true, // 会话级文档滚动位置记忆
+    lastSettingsTab: "appearance", // 设置面板上次所在标签页（打开时直接跳转，提升反复进入设置的操作效率）
+    quickActions: (0, quick_actions_1.getDefaultQuickActions)(),
+    quickActionsRightRail: false,
+    quickActionsDisplayDesktop: "full",
+    quickActionsDisplaySidebar: "full",
+    quickActionsDisplayMobile: "full",
+    quickActionsCollapsedDesktopBottom: false,
+    quickActionsCollapsedDesktopRight: false,
+    quickActionsCollapsedSidebar: false,
+    quickActionsCollapsedMobile: false,
+    agentActionsEnabled: true, // T-6692b 灰度开关：Agent 受控动作总开关（默认开）
+    documentSetsAutoSave: true, // T-6800 工作区切换：离开当前集时自动快照（默认开）
+    documentSetsCurrentId: "", // T-6800 当前工作区集 id（空=尚未激活任何集）
+    favoriteSmartGroups: [], // T-6804 标签智能分组
+    savedSearches: [], // T-6827 保存的搜索
+    skin: "fusion", // T-6796 默认融合思源主题
+    pinyinMatch: true, // T-6805 拼音辅助匹配默认开
+    density: "comfortable", // T-6823 密度默认舒适
+    reuseOpenTabs: false, // T-6830 打开策略默认总是新开
+    documentSetEssentials: [], // T-6810 Essentials 常驻文档
+    homeStore: { rememberState: true, defaultViewMode: "grid", retryFailed: true }, // T-6851/T-7001 工作台偏好与现场记忆
+    snippetGist: { token: "", links: {} },
+};
+const DOCK_DISPLAY_LIST = ["hidden", "collapsed", "full"];
+const SIDEBAR_LAYOUT_LIST = ["enlarge", "columns"];
+// 模块级 WeakMap：滚动容器 → 已挂的 IntersectionObserver，避免在 HTMLElement 上自挂私有属性
+const thumbObserverCache = new WeakMap();
+class SpeedSwitchPlugin extends siyuan_1.Plugin {
+    constructor() {
+        super(...arguments);
+        this.isMobile = false;
+        // 内核 JSON 请求共用超时、取消、可安全读取的重试及相同请求去重策略。
+        this.requestService = (0, request_service_1.createRequestService)();
+        this.snippetStudioDialog = null;
+        this.disposeRaikiriBridge = null;
+        this.snippetStudioSession = { draft: null, baseline: null };
+        // T-6869（P1-c）：平台会话级路由状态——最近表面供悬浮球恢复（无持久化，
+        // 新会话回落切换器），三个表面 Dialog 各自单例守卫，防止热键/悬浮球连点叠窗。
+        this.lastPlatformSurface = "switcher";
+        this.lastPlatformContext = null;
+        // T-7163：切换器会话级搜索现场快照（query/筛选/滚动）——跨面板往返恢复，
+        // 新入口（无 context 的热键/悬浮球）重置；仅内存，不持久化。
+        this.switcherScene = null;
+        this.platformSwitcherDialog = null;
+        this.mobileSwitcherDialog = null;
+        this.workbenchDialog = null;
+        this.platformGuideDialog = null;
+        // 仅当工作台经表面导航离开时记录编辑现场；普通打开与 X 关闭保持查看态。
+        this.workbenchResumeEditing = false;
+        // T-6878（P2）：片段对象投影的会话缓存（60s TTL）与竞态代际。
+        this.snippetObjectsCache = null;
+        this.snippetObjectsGeneration = 0;
+        this.snippetObjectsInFlight = null;
+        // 文档搜索链路状态宿主（R5a，D-381）：6 个实例级状态收拢为单一状态对象，
+        // WeakMap/Set 语义与代际竞态保护不变；生命周期（含卸载清理）由原消费点继续驱动。
+        this.docSearchState = (0, doc_search_state_1.createDocSearchState)();
+        // v0.17 阶段 1（D-220）：workspace 运行时只读诊断能力的生命周期持有者
+        this.workspaceRuntimeDiagnostics = null;
+        // v0.17：保留有界的 Agent 只读注册生命周期快照，仅供插件内部诊断使用。
+        this.agentReadOnlyAuditHistory = (0, agent_readonly_audit_1.createAgentReadOnlyAuditHistory)(8);
+        // 存储迁移演练快照（v0.20 数据连续性，D-386）：onload 只读恢复报告，仅内存、不落盘。
+        this.storageMigrationReport = null;
+        // 存储版本戳降级证据（D-401）：载入到比当前插件更新的版本戳时记录原值——
+        // 数据可能来自更高版本的插件，保留证据且不覆写，供诊断透出；正常路径恒为 null。
+        this.storageSchemaDowngradeFrom = null;
+        // onDataChanged 重入保护：同步批次会连续广播，合并为"这轮跑完再补一轮"。
+        this.dataChangeReloadInFlight = false;
+        this.dataChangeReloadQueued = false;
+        this.activeAgentSearchControllers = new Set();
+        this.activeDocumentSetRestoreControllers = new Set();
+        this.switcherRefreshers = new Set();
+        this.quickActionAdapters = new Map();
+        this.quickActionAdapterTargets = new Map();
+        this.quickActionProviders = new Map();
+        this.quickActionProviderTokens = new Map();
+        this.quickActionRegistry = (0, quick_actions_1.createQuickActionRegistry)();
+        this.homeRuntime = (0, home_runtime_1.createHomeRuntime)();
+        this.homeModuleChangeListeners = new Set();
+        this.switcherRefreshFrame = null;
+        this.switcherRefreshFrameCancel = null;
+        this.sidebarElement = null; // 侧边栏 dock 面板内容元素
+        this.sidebarHistoryDropdownDispose = null;
+        this.sidebarSearchFilterDispose = null;
+        this.sidebarResizeObserver = null; // 侧边栏尺寸监听，变化时重算缩略图缩放
+        this.sidebarIconObserver = null;
+        this.sidebarIconFrameCancel = null;
+        this.saveTimers = new Map(); // 去抖写盘定时器：MRU/置顶/收藏等高频数据合并落盘
+        this.saveChains = new Map(); // 同一 key 的写入严格串行，避免旧请求覆盖新数据
+        this.recentOpenSnapshot = new Map();
+        this.recentClosedSyncTimer = null;
+        this.lifecycleGeneration = 0;
+        this.isUnloading = false;
+        this.syncing = false;
+        this.syncDepth = 0;
+        this.syncRefreshPending = false;
+        this.syncWatchdogTimer = null;
+        this.globalEventHandlers = null;
+        this.favCollapsed = new Set(); // 收藏下拉中已折叠的分组名（已持久化，重启后恢复）
+        this.fabElement = null; // 手机端悬浮按钮
+        this.floatingBallUi = null;
+        // T-6758: each surface owns its controller and persisted position.  The
+        // legacy `floatingBallUi` field remains a mobile alias for existing
+        // suspend/toolbar code until the action surface is fully migrated.
+        this.floatingBallUis = new Map();
+        this.floatingBallPanels = new Map();
+        this.fabModalDepth = 0; // Keep the floating button behind plugin dialogs, including nested transitions.
+        this.mobileTopBarButton = null; // 手机端顶栏切换器入口按钮（自行注入 mobileTopBar）
+        this.cardTabs = new WeakMap(); // 复用卡片始终指向最新的 Tab 对象
+        // T-6461 动作面板键：卡片构建时缓存 handlers，供 Shift+F10 / ContextMenu 键盘呼出动作菜单
+        this.cardMenuHandlers = new WeakMap();
+        this.activeHistoryMenu = null;
+        this.historyDropdownClosers = new WeakMap();
+        this.historyDropdownCloseSet = new Set();
+        this.groupOperationBusy = false;
+        // T-6831 面包屑入口：3.8.5+ Plugin.addBreadcrumbButton（v3.8.5 源码实证，
+        // icon 须为 svg id/tag）。旧版宿主无此方法=能力缺失，静默不挂载不报错。
+        this.breadcrumbButtonId = "";
+        // ==================== 设置 ====================
+        // 读取设置：与默认值合并，保证新增字段有默认值
+        this.settingsCache = null;
+        // T-7003：设置页撤销钩子——设置弹窗打开期间由 openSetting 装配，updateSettings
+        // 在写盘前把「逆向补丁」交给它入撤销栈；弹窗销毁即置空，其他入口零开销。
+        this.settingsUndoRecorder = null;
+        // T-7003：撤销应用自身不得再入栈（否则撤销被撤销项顶掉）。
+        this.settingsUndoSuppress = false;
+        // T-7003：各 key 最近一次落盘结果（pending/ok/failed）——queueSave 失败此前只进
+        // 日志（静默失败），设置页据此显示保存回执；仅内存态，不持久化。
+        this.lastSaveOutcome = {};
+        // T-7003：设置弹窗装配的「带现场恢复的面板重渲染」钩子——分组恢复默认等批量
+        // 变更后由宿主侧触发，替换面板内容并复位滚动/焦点。
+        this.settingsSceneReloader = null;
+        // T-6796 皮肤层应用：body 上只放标记属性；变量覆盖在 CSS 内限定于速切
+        // 自己的根容器（.speed-switch/.sw-home/.sw-fab-root/.sw-settings-dialog），
+        // 宿主思源与其他插件零影响。onload 应用、设置变更即刷新、onunload 移除。
+        // ==================== T-6805 phase 3：全库标题拼音补齐 ====================
+        // 纯 ASCII 查询且内核标题结果不足时，从惰性标题缓存（一次有界 SQL + 5 分钟
+        // TTL）中按拼音补齐结果。缓存超界（>20000 行）整体重建。
+        this.pinyinTitleCache = null;
+        // 设置条目：左侧标题+可选描述，右侧控件；column 时控件占满整行
+        this.settingTitleSeq = 0;
+        // T-6799 统一索引分区：收藏/最近关闭/文档集的查询命中。挂在页签卡片之后、
+        // 全库文档结果区之前；激活语义见 activateUnifiedItem。纯过滤逻辑在
+        // switcher-unified-index.js（可单元测试），本层只做装配。
+        // T-6820 命令前缀渲染：`>查询` 只列可执行动作（内建 + 宿主命令），
+        // 点击/激活走既有 executeQuickAction（回执与失败原因同管线）。
+        // T-6911（T-6846 落地）：命令模式分组折叠状态，插件会话内记忆，跨键盘输入重渲染保持。
+        this.commandCollapsedGroups = new Set();
+        // ==================== T-6820/R3 marks 书签（会话级） ====================
+        // 记录活动文档的滚动位置（rootId + 比例），一键跳回。会话级内存（FIFO ≤12），
+        // 不持久化——跨会话浏览位置属宿主能力，不伪造（同 T-6801 口径）。
+        this.sessionMarks = new Map();
+        // T-6814 关联内容：拉取 + 填充。缓存以 rootId 绑定（60s TTL，FIFO ≤8），
+        // 面板被移除/卸载后竞态丢弃；失败静默收起该行，不给空查询工作台添噪音。
+        this.relatedContentCache = new Map();
+        this.relatedContentRequestGenerations = new Map();
+        // T-6840 SWR 持久层：sw_related_swr 落盘（≤8 条、7 天年龄上界，归一化在模型层）。
+        // 命中时先显"缓存"标注的投影再后台刷新，重启冷启动消除；60s 会话 TTL 语义不变。
+        this.relatedSwrStore = new Map();
+        // ==================== 第二面板（小组件主页） ====================
+        // 第三方模块的"跳转本体"回调（仅内存，不持久化）；模块读取失败时面板显示跳转按钮
+        this.homeModuleOpens = new Map();
+        this.homeThirdPartyIds = new Set();
+        // 秒开快照（D-382）：面板会话内存级的"最后一次好数据"，按 instanceId 键控；
+        // 仅插件生命周期内有效（不落盘），配置变更时失效，重开面板时直出"缓存"态。
+        this.homePanelSnapshots = new Map();
+        this.homeBuiltinAdapterIds = new Set();
+        // 供 second-panel-ui 的宿主契约读取（this 参数模式拿不到类静态成员）
+        this.homeAccents = SpeedSwitchPlugin.HOME_ACCENTS;
+        // 「最近编辑」排序的 SQL 结果短缓存：排序方式来回切换 / 列表重渲染时不重复打内核
+        this.updatedMapCache = null;
+        // ==================== T-6801 重开现场（会话级滚动记忆） ====================
+        // 纯比例计算在 recent-closed.js；本层只负责捕获时机（关闭前/切换离开前）、
+        // 有界等待渲染后的回卷，以及 50 份现场的 FIFO 容量上限。会话级内存态，
+        // 不持久化——跨会话的"浏览位置"属宿主能力，插件不伪造。
+        this.docScrollMemory = new Map();
+        // T-6802 上次选择置顶：同一查询下用户上次选中的文档结果优先展示（会话级，FIFO 32）
+        this.lastPickedByQuery = new Map();
+        // T-6806 跳转栈：速切驱动的文档跳转可后退/前进（会话级，FIFO 50）。
+        // 思源原生 backStack 的正确推入依赖模块私有 forwardStack 与内部选区契约，
+        // 公开 API 不可达（R2 取证），故自建等价栈。
+        this.jumpBackStack = [];
+        this.jumpForwardStack = [];
+        this.suppressJumpCapture = false;
+        // ==================== 分类分组（笔记本/收藏/创建月份） ====================
+        // 会话内折叠状态（键 = groupMode:groupKey）；跨会话记忆属设置页范畴，列表内保持轻量
+        this.groupCollapseState = new Set();
+        this.createdByIdCache = {};
+        this.notebookListCache = null;
+        // T-6475：rootId → 真实笔记本 ID 缓存。resolveSearchNotebookId 的路径回退会把
+        // 文档路径首段（根文档 ID）误当作笔记本 ID，产生"未知笔记本"幻影组；本缓存由
+        // 一次有界 SQL（blocks.box）异步富化，纠正这些页签的分组归属。
+        this.rootNotebookCache = {};
+        this.groupFlowObserver = null;
+        this.homeRefreshTimer = 0;
+        this.sidebarRefreshTimer = 0;
+        this.groupFlowLastWidth = 0;
+        // getDoc 回源并发闸门：视口懒渲染下仍可能同时暴露多张缺图卡片，
+        // 限制同时在途请求数，手机端更保守，避免打开瞬间打爆内核/网络
+        this.thumbApiActive = 0;
+        this.thumbApiQueue = [];
+        // T-7172：在途回源控制器（按缩略图元素登记，关闭切换器时批量取消）
+        this.thumbApiControllers = new Map();
+    }
+    async onload() {
+        this.isUnloading = false;
+        this.lifecycleGeneration += 1;
+        // 允许同一插件实例在宿主热重载后重新开始一段独立的审计历史。
+        if (this.agentReadOnlyAuditHistory.status().disposed) {
+            this.agentReadOnlyAuditHistory = (0, agent_readonly_audit_1.createAgentReadOnlyAuditHistory)(8);
+        }
+        this.isMobile = (0, siyuan_1.getFrontend)() === "mobile" || (0, siyuan_1.getFrontend)() === "browser-mobile";
+        // 尽早注入卡片按钮图标：官方 sprite 为异步注入，首帧渲染的三按钮可能引用到空 symbol
+        this.addIcons(CARD_ICON_SPRITE);
+        this.fixLegacyHotkey();
+        await this.initPersistentData();
+        const switcherTopBar = {
+            icon: "iconLayout",
+            title: this.i18n.switchTabs,
+            position: "right",
+            contextMenu: (menu) => {
+                // T-7026（ADR 0099）D3：顶栏收敛为唯一平台入口——菜单动态列出全部已启用
+                // 表面 + 设置；工作台/实验室仍可经 SurfaceNav、快捷动作、命令进入。
+                menu.addItem({
+                    icon: "iconSettings",
+                    label: this.i18n.settings,
+                    click: () => void this.openSetting(),
+                });
+                for (const surface of this.getAvailablePlatformSurfaces()) {
+                    if (surface === "switcher")
+                        continue;
+                    menu.addItem({
+                        icon: surface === "workbench" ? "iconLayoutHome" : "iconCode",
+                        label: this.platformSurfaceDisplayName(surface),
+                        click: () => this.openPlatformSurface(surface, "switcher", { entry: "topbar-context-menu" }),
+                    });
+                }
+            },
+            callback: () => {
+                this.showSwitcher();
+            },
+        };
+        this.addTopBar(switcherTopBar);
+        // T-7026（ADR 0099）D3：第二面板顶栏入口已收敛——顶栏只保留切换器这一个统一
+        // 平台入口；工作台经 SurfaceNav/快捷动作/命令/统一入口菜单四条路径进入。
+        // 注册侧边栏 dock 面板（桌面）与手机端入口（顶栏 + FAB），互斥
+        if (!this.isMobile) {
+            this.registerDesktopDock();
+        }
+        if (this.isMobile) {
+            this.registerMobileEntries();
+        }
+        else {
+            // ADR 0072: only the desktop window mounts a floating ball; the
+            // sidebar dock no longer hosts its own portal.
+            this.updateFloatingBallVisibility();
+        }
+        this.captureRecentOpenSnapshot();
+        // T-6796：设置加载完成后应用已保存的皮肤（body 标记）
+        this.applySkin();
+        // T-6823：密度档位（body 标记）随 onload 一并应用
+        this.applyDensity();
+        this.bindGlobalEvents();
+        // 命令注册经 safeRegisterPluginCommand 隔离：内核 addCommand 抛错（如
+        // globalCallback 触发的 sendGlobalShortcut 读 window.siyuan.languages["_trayMenu"]
+        // 而 languages 未就绪，issue #1）不得中断 onload——否则后面整个
+        // registerAgentCapabilities 与受控动作注册都会被跳过。
+        (0, util_1.safeRegisterPluginCommand)(this, {
+            langKey: "switchTabs",
+            hotkey: constants_1.DEFAULT_HOTKEY,
+            callback: () => {
+                this.showSwitcher();
+            },
+        }, (langKey, error) => logger_1.logger.warn(`register plugin command ${langKey} fail`, error));
+        // globalCallback: 焦点不在思源时也执行。思源为这类命令提供系统级
+        // 全局热键位（设置→快捷键 里绑定"全局"），触发时会同时把思源带到前台。
+        // languages 未就绪的宿主时序下降级为仅应用内热键（见上方 issue #1 注释）。
+        const secondPanelCommand = {
+            langKey: "secondPanel",
+            hotkey: constants_1.SECOND_PANEL_HOTKEY,
+            callback: () => {
+                this.openPlatformSurface("workbench", "switcher", { entry: "command" });
+            },
+        };
+        if ((0, util_1.isGlobalShortcutHostReady)(window.siyuan)) {
+            secondPanelCommand.globalCallback = () => {
+                this.openPlatformSurface("workbench", "switcher", { entry: "command" });
+            };
+        }
+        (0, util_1.safeRegisterPluginCommand)(this, secondPanelCommand, (langKey, error) => logger_1.logger.warn(`register plugin command ${langKey} fail`, error));
+        // T-6327：思源 v3.8.3 起自带命令面板，多注册命令零 UI 成本地提升可发现性。
+        (0, util_1.safeRegisterPluginCommand)(this, {
+            langKey: "openSettings",
+            hotkey: "",
+            callback: () => {
+                void this.openSetting();
+            },
+        }, (langKey, error) => logger_1.logger.warn(`register plugin command ${langKey} fail`, error));
+        (0, util_1.safeRegisterPluginCommand)(this, {
+            langKey: "openJournal",
+            hotkey: "",
+            callback: () => {
+                void this.openJournal();
+            },
+        }, (langKey, error) => logger_1.logger.warn(`register plugin command ${langKey} fail`, error));
+        (0, util_1.safeRegisterPluginCommand)(this, {
+            langKey: "snippetStudioOpen",
+            hotkey: "",
+            callback: () => {
+                this.openPlatformSurface("studio", "switcher", { entry: "plugin-command" });
+            },
+        }, (langKey, error) => logger_1.logger.warn(`register plugin command ${langKey} fail`, error));
+        (0, util_1.safeRegisterPluginCommand)(this, {
+            langKey: "clipboardEntry",
+            hotkey: "",
+            callback: () => {
+                void this.openClipboardEntry();
+            },
+        }, (langKey, error) => logger_1.logger.warn(`register plugin command ${langKey} fail`, error));
+        (0, util_1.safeRegisterPluginCommand)(this, {
+            langKey: "setSessionMark",
+            hotkey: "",
+            callback: () => {
+                this.setSessionMark();
+            },
+        }, (langKey, error) => logger_1.logger.warn(`register plugin command ${langKey} fail`, error));
+        (0, util_1.safeRegisterPluginCommand)(this, {
+            langKey: "jumpToSessionMark",
+            hotkey: "",
+            callback: () => {
+                void this.jumpToSessionMark();
+            },
+        }, (langKey, error) => logger_1.logger.warn(`register plugin command ${langKey} fail`, error));
+        this.registerAgentCapabilities();
+        // 受控导航动作：Agent 可把查询结果直接打开为页面（不修改任何笔记数据）
+        const pluginWithAgentAction = this;
+        (0, agent_capabilities_1.registerAgentActionCapability)(pluginWithAgentAction, {
+            spec: agent_capabilities_1.AGENT_CAPABILITY_SPECS.openDocument,
+            // ADR 0063：效果显式声明 localRead（免确认）——确认链由宿主 Agent 确认卡承担
+            effects: { localRead: true, localWrite: false, dataEgress: false, externalCost: false },
+            handler: async (args) => {
+                const id = (0, agent_capabilities_1.normalizeAgentDocumentId)(args === null || args === void 0 ? void 0 : args.id);
+                if (!id)
+                    return { error: "invalid document id" };
+                try {
+                    if (this.isMobile) {
+                        await this.mobileOpenDoc(id);
+                    }
+                    else {
+                        await (0, siyuan_1.openTab)({ app: this.app, doc: { id } });
+                    }
+                    return { structuredContent: { ok: true, id }, result: JSON.stringify({ ok: true, id }) };
+                }
+                catch (error) {
+                    logger_1.logger.warn("Agent open document fail", error);
+                    return { error: "open failed" };
+                }
+            },
+        }, (error, spec) => logger_1.logger.warn(`register Agent capability ${(spec === null || spec === void 0 ? void 0 : spec.name) || "unknown"} fail`, error));
+        // 受控导航（批量）：AI 一次打开最多 5 篇文档组成工作区。ADR 0063：批量动作
+        // 声明 localWrite → 确认（含标题列表、超时=拒绝）由宿主 Agent 确认卡承担
+        // T-6692b 灰度开关：受控写入/批量动作受 agentActionsEnabled 总开关约束（默认开）；
+        // 关闭后仅保留只读能力与单文档导航（open-document），执行链一并停用
+        const agentActionsOn = this.getSettings().agentActionsEnabled !== false;
+        if (agentActionsOn) {
+            (0, agent_capabilities_1.registerAgentActionCapability)(pluginWithAgentAction, {
+                spec: agent_capabilities_1.AGENT_CAPABILITY_SPECS.openDocuments,
+                effects: { localRead: true, localWrite: true, dataEgress: false, externalCost: false },
+                handler: async (args) => {
+                    const ids = (0, agent_capabilities_1.normalizeAgentDocumentIds)(args === null || args === void 0 ? void 0 : args.ids);
+                    if (ids.length === 0)
+                        return { error: "no valid document ids" };
+                    const opened = [];
+                    const failed = [];
+                    for (const id of ids) {
+                        try {
+                            if (this.isMobile) {
+                                await this.mobileOpenDoc(id);
+                            }
+                            else {
+                                await (0, siyuan_1.openTab)({ app: this.app, doc: { id } });
+                            }
+                            opened.push(id);
+                        }
+                        catch (error) {
+                            logger_1.logger.warn("Agent batch open document fail", id, error);
+                            failed.push(id);
+                        }
+                    }
+                    return { structuredContent: { ok: failed.length === 0, opened, failed }, result: JSON.stringify({ ok: failed.length === 0, opened, failed }) };
+                },
+            }, (error, spec) => logger_1.logger.warn(`register Agent capability ${(spec === null || spec === void 0 ? void 0 : spec.name) || "unknown"} fail`, error));
+            // 受控写试点：AI 切换任务勾选状态。确认（含任务摘要、超时=拒绝）由宿主
+            // Agent 确认卡按 localWrite 声明承担，只改勾选标记不改写任务文本
+            (0, agent_capabilities_1.registerAgentActionCapability)(pluginWithAgentAction, {
+                spec: agent_capabilities_1.AGENT_CAPABILITY_SPECS.updateTask,
+                effects: { localRead: true, localWrite: true, dataEgress: false, externalCost: false },
+                handler: async (args) => {
+                    const id = (0, agent_capabilities_1.normalizeAgentDocumentId)(args === null || args === void 0 ? void 0 : args.id);
+                    const done = (args === null || args === void 0 ? void 0 : args.done) === true;
+                    if (!id)
+                        return { error: "invalid task id" };
+                    const rowJson = await this.fetchKernelJson("/api/query/sql", {
+                        stmt: `SELECT markdown, content FROM blocks WHERE id='${id}' AND type='p'`,
+                    });
+                    const row = ((rowJson === null || rowJson === void 0 ? void 0 : rowJson.data) || [])[0];
+                    if (!row)
+                        return { error: "task not found" };
+                    const newMarkdown = (0, agent_capabilities_1.flipTaskMarkdown)(String(row.markdown || ""), done);
+                    if (!newMarkdown)
+                        return { error: "not a task block" };
+                    const updateJson = await this.fetchKernelJson("/api/block/updateBlock", {
+                        dataType: "markdown", data: this.clampTaskWritePayload(newMarkdown), id,
+                    });
+                    if (!updateJson || updateJson.code !== 0)
+                        return { error: "update failed" };
+                    return { structuredContent: { ok: true, id, done }, result: JSON.stringify({ ok: true, id, done }) };
+                },
+            }, (error, spec) => logger_1.logger.warn(`register Agent capability ${(spec === null || spec === void 0 ? void 0 : spec.name) || "unknown"} fail`, error));
+            // 受控写：AI 在指定笔记本下新建文档（确认由宿主确认卡按 localWrite 声明承担；
+            // 参数 notebook 支持 ID 或名称）
+            (0, agent_capabilities_1.registerAgentActionCapability)(pluginWithAgentAction, {
+                spec: agent_capabilities_1.AGENT_CAPABILITY_SPECS.createDocument,
+                effects: { localRead: true, localWrite: true, dataEgress: false, externalCost: false },
+                handler: async (args) => {
+                    var _a;
+                    const rawNotebook = String((args === null || args === void 0 ? void 0 : args.notebook) || "").trim();
+                    const title = String((args === null || args === void 0 ? void 0 : args.title) || "").trim().slice(0, 128);
+                    const markdown = String((args === null || args === void 0 ? void 0 : args.markdown) || "").slice(0, 4096);
+                    if (!rawNotebook || !title)
+                        return { error: "notebook and title are required" };
+                    const notebooks = await this.loadNotebooks();
+                    const target = (0, agent_capabilities_1.normalizeAgentNotebookId)(rawNotebook)
+                        ? notebooks.find((nb) => nb.id === rawNotebook)
+                        : notebooks.find((nb) => nb.name === rawNotebook);
+                    if (!target)
+                        return { error: "unknown notebook" };
+                    const createJson = await this.fetchKernelJson("/api/filetree/createDocWithMd", {
+                        notebook: target.id, path: title, markdown,
+                    });
+                    if (!createJson || createJson.code !== 0) {
+                        logger_1.logger.warn("Agent create document fail", createJson === null || createJson === void 0 ? void 0 : createJson.msg);
+                        return { error: "create failed" };
+                    }
+                    // createDocWithMd 不回传文档 ID：按标题回查最近创建的同名根文档
+                    const locate = await this.fetchKernelJson("/api/query/sql", {
+                        stmt: `SELECT id FROM blocks WHERE type='d' AND content='${title.split("'").join("''")}' ORDER BY created DESC LIMIT 1`,
+                    });
+                    const docId = ((_a = ((locate === null || locate === void 0 ? void 0 : locate.data) || [])[0]) === null || _a === void 0 ? void 0 : _a.id) || "";
+                    return { structuredContent: { ok: true, notebook: target.id, title, docId }, result: JSON.stringify({ ok: true, notebook: target.id, title, docId }) };
+                },
+            }, (error, spec) => logger_1.logger.warn(`register Agent capability ${(spec === null || spec === void 0 ? void 0 : spec.name) || "unknown"} fail`, error));
+            // 受控写：向今日日记末尾追加一条内容（日记缺失自动创建；确认由宿主确认卡
+            // 按 localWrite 声明承担；只追加不改写）
+            (0, agent_capabilities_1.registerAgentActionCapability)(pluginWithAgentAction, {
+                spec: agent_capabilities_1.AGENT_CAPABILITY_SPECS.appendToJournal,
+                effects: { localRead: true, localWrite: true, dataEgress: false, externalCost: false },
+                handler: async (args) => {
+                    const content = (0, agent_capabilities_1.sanitizeJournalAppend)(args === null || args === void 0 ? void 0 : args.content);
+                    if (!content)
+                        return { error: "invalid content" };
+                    const notebook = (0, agent_capabilities_1.normalizeAgentNotebookId)(this.getSettings().journalNotebook);
+                    if (!notebook)
+                        return { error: "journal notebook not configured" };
+                    const docId = await this.ensureTodayJournal(notebook);
+                    if (!docId)
+                        return { error: "journal unavailable" };
+                    const appendJson = await this.fetchKernelJson("/api/block/appendBlock", {
+                        dataType: "markdown", data: content, parentID: docId,
+                    });
+                    if (!appendJson || appendJson.code !== 0)
+                        return { error: "append failed" };
+                    return { structuredContent: { ok: true, docId }, result: JSON.stringify({ ok: true, docId }) };
+                },
+            }, (error, spec) => logger_1.logger.warn(`register Agent capability ${(spec === null || spec === void 0 ? void 0 : spec.name) || "unknown"} fail`, error));
+        }
+        this.registerWorkspacePlanCapabilities(pluginWithAgentAction);
+        this.registerBuiltinHomeAdapters();
+    }
+    // T-1219 执行链（ADR 0063 宿主路线）：
+    // - propose（只读，localRead）：把请求步骤归一化为固定白名单动作计划（≤8 步、带过期），不执行；
+    // - execute（localWrite）：整份计划是一次确认单元——宿主确认卡承担执行前批准/取消，
+    //   当前 SDK handler 不提供执行期 AbortSignal。批准后按序执行并返回有界回执；
+    //   结构/过期校验在执行侧强制，单步失败不阻断其余步骤。
+    registerWorkspacePlanCapabilities(pluginWithAgent) {
+        (0, agent_capabilities_1.registerReadOnlyAgentCapabilities)(pluginWithAgent, [{
+                spec: agent_workspace_plan_1.WORKSPACE_PLAN_SPEC,
+                handler: async (args) => {
+                    const plan = (0, agent_workspace_plan_1.buildWorkspacePlan)(args);
+                    if (!plan || !plan.steps.length)
+                        return { error: "no valid steps" };
+                    return { structuredContent: plan, result: JSON.stringify(plan) };
+                },
+            }], (error, spec) => logger_1.logger.warn(`register Agent capability ${(spec === null || spec === void 0 ? void 0 : spec.name) || "unknown"} fail`, error));
+        (0, agent_capabilities_1.registerAgentActionCapability)(pluginWithAgent, {
+            spec: agent_workspace_plan_1.WORKSPACE_EXECUTE_SPEC,
+            effects: { localRead: true, localWrite: true, dataEgress: false, externalCost: false },
+            handler: async (args) => {
+                var _a, _b;
+                // T-6692b 灰度开关：execute 受 agentActionsEnabled 约束（注册期一次性判定）
+                if (this.getSettings().agentActionsEnabled === false)
+                    return { error: "agent actions disabled" };
+                const plan = (args === null || args === void 0 ? void 0 : args.plan) && typeof args.plan === "object" ? args.plan : args;
+                if (!(0, agent_workspace_plan_1.validateWorkspacePlan)(plan).ok)
+                    return { error: "invalid plan" };
+                if ((0, agent_workspace_plan_1.isWorkspacePlanExpired)(plan))
+                    return { error: "plan expired" };
+                const handlers = (0, agent_workspace_registry_1.createWorkspaceHostHandlers)({
+                    navigation: {
+                        isMobile: this.isMobile, app: this.app, openTab: siyuan_1.openTab,
+                        tabs: (_b = (_a = (0, types_1.getSiyuan)()) === null || _a === void 0 ? void 0 : _a.mobile) === null || _b === void 0 ? void 0 : _b.tabs, logger: logger_1.logger,
+                    },
+                    documentSet: {
+                        getSet: (setId) => {
+                            const sets = (0, document_sets_1.normalizeDocumentSets)(this.data[constants_1.DOCUMENT_SETS_KEY]).sets;
+                            return sets.find((item) => item.setId === setId) || null;
+                        },
+                        openDocument: (rootId) => this.isMobile ? this.mobileOpenDoc(rootId) : (0, document_actions_1.openDocumentOnDesktop)({ rootId, app: this.app, openTab: siyuan_1.openTab, logger: logger_1.logger }),
+                    },
+                    write: {
+                        readTask: async (id) => {
+                            const json = await this.fetchKernelJson("/api/query/sql", {
+                                stmt: `SELECT markdown, content FROM blocks WHERE id='${id}' AND type IN ('i','p')`,
+                            });
+                            return ((json === null || json === void 0 ? void 0 : json.data) || [])[0];
+                        },
+                        updateBlock: async (id, markdown) => {
+                            const json = await this.fetchKernelJson("/api/block/updateBlock", {
+                                dataType: "markdown", data: this.clampTaskWritePayload(markdown), id,
+                            });
+                            return !!json && json.code === 0;
+                        },
+                        createDocument: async (payload) => {
+                            var _a;
+                            const notebooks = await this.loadNotebooks();
+                            const target = (0, agent_capabilities_1.normalizeAgentNotebookId)(payload.notebook)
+                                ? notebooks.find((nb) => nb.id === payload.notebook)
+                                : notebooks.find((nb) => nb.name === payload.notebook);
+                            if (!target)
+                                return { docId: "" };
+                            const created = await this.fetchKernelJson("/api/filetree/createDocWithMd", {
+                                notebook: target.id, path: payload.title, markdown: payload.markdown,
+                            });
+                            if (!created || created.code !== 0)
+                                return { docId: "" };
+                            // 优先直读内核响应中的原生文档 ID（真机同步返回），免疫同名冲突与异步索引延迟
+                            if (typeof created.data === "string" && constants_1.BLOCK_ID_RE.test(created.data)) {
+                                return { docId: created.data };
+                            }
+                            // 宿主兼容兜底：若旧内核未直接回传 ID，限定当前笔记本与标题回查
+                            const cleanTitle = (payload.title || "").replace(/^\/+/, "");
+                            const locate = await this.fetchKernelJson("/api/query/sql", {
+                                stmt: `SELECT id FROM blocks WHERE box='${target.id}' AND type='d' AND content='${cleanTitle.split("'").join("''")}' ORDER BY created DESC LIMIT 1`,
+                            });
+                            return { docId: ((_a = ((locate === null || locate === void 0 ? void 0 : locate.data) || [])[0]) === null || _a === void 0 ? void 0 : _a.id) || "" };
+                        },
+                        ensureJournal: (notebook) => this.ensureTodayJournal(notebook),
+                        appendBlock: async (docId, content) => {
+                            const json = await this.fetchKernelJson("/api/block/appendBlock", {
+                                dataType: "markdown", data: content, parentID: docId,
+                            });
+                            return !!json && json.code === 0;
+                        },
+                        notebook: (0, agent_capabilities_1.normalizeAgentNotebookId)(this.getSettings().journalNotebook),
+                    },
+                });
+                const receipt = await (0, agent_workspace_plan_1.runWorkspacePlan)(plan, {
+                    // The host handler receives (args, app), with no AbortSignal
+                    // in siyuan 1.2.8. Its confirmation card approves this run;
+                    // local runner callers may pass signal through to the executor.
+                    approved: true,
+                    runStep: (0, agent_workspace_actions_1.createWorkspaceActionExecutor)(handlers),
+                });
+                return { structuredContent: receipt, result: JSON.stringify(receipt) };
+            },
+        }, (error, spec) => logger_1.logger.warn(`register Agent capability ${(spec === null || spec === void 0 ? void 0 : spec.name) || "unknown"} fail`, error));
+    }
+    // T-6685 RSS 已读状态：宿主侧唯一读写点。读取返回归一化后的 seen 映射；
+    // 标记合并进当前状态后重新有界化（最旧剪除），去抖落盘。
+    rssReadState() {
+        return (0, rss_model_1.normalizeRssReadState)(this.data[constants_1.RSS_READ_KEY]).seen;
+    }
+    markRssItemsSeen(keys) {
+        if (!Array.isArray(keys) || keys.length === 0)
+            return;
+        const state = (0, rss_model_1.normalizeRssReadState)(this.data[constants_1.RSS_READ_KEY]);
+        const stamp = Date.now();
+        for (const key of keys) {
+            if (typeof key === "string" && key.length >= 1 && key.length <= 128)
+                state.seen[key] = stamp;
+        }
+        const bounded = (0, rss_model_1.normalizeRssReadState)(state);
+        this.data[constants_1.RSS_READ_KEY] = bounded;
+        this.saveDataDebounced(constants_1.RSS_READ_KEY);
+    }
+    // 只读取持久化 key、不产生任何写入：onload 与 onDataChanged 共用同一份清单，
+    // 防止两处 key 列表各写一遍而漂移。
+    async loadPersistentKeys() {
+        return Promise.all(constants_1.PERSISTENT_KEYS.map((key) => this.loadData(key)))
+            .catch((e) => logger_1.logger.warn("load data fail", e));
+    }
+    // 预加载 13 个持久化 key：loadData 写入 this.data，让 getMru 等能读到旧值
+    async initPersistentData() {
+        await this.loadPersistentKeys();
+        // 加载期 sanitize：清理历史脏数据（0.16.5），仅在确实变化时回写，避免每次启动重写文件
+        this.sanitizePersistentData();
+        // 存储迁移演练快照（v0.20 数据连续性，D-386）：在宿主静默修复链之后运行
+        // 同源演练管道，生成只读恢复报告存实例内存——不落盘、不重写数据。
+        // 报告出现 cleaned/reset 即暴露宿主清洗缺口，是演练同源性的运行时验证。
+        this.captureStorageMigrationSnapshot();
+        this.runQuickActionDefaultsMigration();
+        // 存储版本戳（D-401）：在全部加载期清洗与一次性迁移之后落戳——戳存在
+        // 即代表"这份数据已经过当前版本的全部加载期处理"。仅在 onload 路径执行；
+        // onDataChanged 钩子链禁写盘（写盘会再次广播形成回环），不做落戳。
+        this.stampStorageSchemaVersion();
+        // 收藏分组折叠状态：从持久化数据初始化（旧版本无此数据时为默认展开）
+        this.initFavCollapsed();
+    }
+    // 存储版本戳（D-401）：STORAGE_SCHEMA_VERSION 此前只存在于演练管道，
+    // 无处持久化，因此无法识别"数据来自更新/更旧版本的插件"。
+    // 语义：缺失或损坏 → 落当前版本；等于当前版本 → 幂等跳过（无写入）；
+    // 小于当前版本 → 未来版本迁移入口，当前对齐后落戳；大于当前版本 →
+    // 疑似降级：保留原值不覆写（抹掉会丢失证据），记录字段并告警。
+    stampStorageSchemaVersion() {
+        const stored = this.data[constants_1.SCHEMA_VERSION_KEY];
+        if (stored === storage_migration_1.STORAGE_SCHEMA_VERSION)
+            return;
+        if (typeof stored === "number" && Number.isInteger(stored) && Number.isFinite(stored) && stored >= 1) {
+            if (stored > storage_migration_1.STORAGE_SCHEMA_VERSION) {
+                this.storageSchemaDowngradeFrom = stored;
+                logger_1.logger.warn("storage schema stamp is newer than the plugin (downgrade suspected); value preserved", {
+                    stored,
+                    current: storage_migration_1.STORAGE_SCHEMA_VERSION,
+                });
+                return;
+            }
+        }
+        this.data[constants_1.SCHEMA_VERSION_KEY] = storage_migration_1.STORAGE_SCHEMA_VERSION;
+        this.saveDataDebounced(constants_1.SCHEMA_VERSION_KEY);
+    }
+    // 加载期数据净化：收藏列表结构校验/按 key 去重，置顶与分组注册表过滤非法字符串
+    sanitizePersistentData() {
+        var _a;
+        const favorites = (0, util_1.sanitizeFavorites)(this.data[constants_1.FAV_KEY], constants_1.FAVORITES_MAX);
+        if (favorites.changed) {
+            this.data[constants_1.FAV_KEY] = favorites.items;
+            this.saveDataDebounced(constants_1.FAV_KEY);
+        }
+        const pinned = (0, util_1.sanitizeStringList)(this.data[constants_1.PINNED_KEY], constants_1.PINNED_MAX);
+        if (pinned.changed) {
+            this.data[constants_1.PINNED_KEY] = pinned.items;
+            this.saveDataDebounced(constants_1.PINNED_KEY);
+        }
+        const groups = (0, util_1.sanitizeStringList)(this.data[constants_1.FAV_GROUPS_KEY], constants_1.FAVORITE_GROUPS_MAX);
+        if (groups.changed) {
+            this.data[constants_1.FAV_GROUPS_KEY] = groups.items;
+            this.saveDataDebounced(constants_1.FAV_GROUPS_KEY);
+        }
+        const history = (0, util_1.sanitizeOpenHistory)(this.data[constants_1.HISTORY_KEY], constants_1.HISTORY_MAX);
+        if (history.changed) {
+            this.data[constants_1.HISTORY_KEY] = history.items;
+            this.saveDataDebounced(constants_1.HISTORY_KEY);
+        }
+        const closedHistory = (0, recent_closed_1.normalizeClosedEntries)(this.data[constants_1.CLOSED_HISTORY_KEY], constants_1.HISTORY_MAX);
+        if (closedHistory.changed) {
+            this.data[constants_1.CLOSED_HISTORY_KEY] = closedHistory.items;
+            this.saveDataDebounced(constants_1.CLOSED_HISTORY_KEY);
+        }
+        const quickActions = (0, quick_actions_1.sanitizeQuickActions)(this.data[constants_1.QUICK_ACTIONS_KEY], constants_1.QUICK_ACTIONS_MAX);
+        if (quickActions.changed) {
+            this.data[constants_1.QUICK_ACTIONS_KEY] = quickActions.items;
+            this.saveDataDebounced(constants_1.QUICK_ACTIONS_KEY);
+        }
+        const documentSets = (0, document_sets_1.normalizeDocumentSets)(this.data[constants_1.DOCUMENT_SETS_KEY]);
+        if (documentSets.changed || ((_a = this.data[constants_1.DOCUMENT_SETS_KEY]) === null || _a === void 0 ? void 0 : _a.schemaVersion) !== documentSets.schemaVersion) {
+            this.data[constants_1.DOCUMENT_SETS_KEY] = documentSets;
+            this.saveDataDebounced(constants_1.DOCUMENT_SETS_KEY);
+        }
+        // 缩略图缓存（v0.20 数据连续性，D-392）：此前只有写入侧上限，而写入侧只拦新增、
+        // 不清理存量——磁盘上的超限/损坏条目无处回收（结构损坏，或手机端 v0.7.0 写入侧
+        // 误用桌面上限、v0.8.0 起收紧到 30 条 / 80 KiB 后留下的 31~40 条残留）。
+        // 桌面 40 条 / 200 KiB 自 v0.2.0 引入起从未变过。
+        // 这里按当前端型（手机上限更保守）做读取侧归一化，规则与 setThumbCache 完全镜像。
+        const thumbCache = (0, util_1.normalizeThumbCache)(this.data[constants_1.THUMB_CACHE_KEY], {
+            max: this.isMobile ? constants_1.THUMB_CACHE_MAX_MOBILE : constants_1.THUMB_CACHE_MAX,
+            htmlMax: this.isMobile ? constants_1.THUMB_HTML_MAX_MOBILE : constants_1.THUMB_HTML_MAX,
+        });
+        if (thumbCache.changed) {
+            this.data[constants_1.THUMB_CACHE_KEY] = thumbCache.cache;
+            this.saveDataDebounced(constants_1.THUMB_CACHE_KEY);
+        }
+        // 关联内容 SWR 持久缓存（T-6840）：重启后工作台"当前文档相关"冷启动消除。
+        // 载入侧归一化（版本/年龄/有界/去重）；显示语义=先显缓存标注"缓存"再后台刷新。
+        const relatedSwr = (0, related_content_model_1.normalizeRelatedSwrStore)(this.data[constants_1.RELATED_SWR_KEY]);
+        this.relatedSwrStore = new Map(relatedSwr.entries.map((entry) => [entry.rootId, entry]));
+        if (relatedSwr.entries.length > 0 && JSON.stringify(this.data[constants_1.RELATED_SWR_KEY]) !== JSON.stringify(relatedSwr)) {
+            this.data[constants_1.RELATED_SWR_KEY] = relatedSwr;
+            this.saveDataDebounced(constants_1.RELATED_SWR_KEY);
+        }
+        const snippetGroups = (0, snippet_groups_1.normalizeSnippetGroupStore)(this.data[constants_1.SNIPPET_GROUPS_KEY]);
+        if (JSON.stringify(this.data[constants_1.SNIPPET_GROUPS_KEY]) !== JSON.stringify(snippetGroups)) {
+            this.data[constants_1.SNIPPET_GROUPS_KEY] = snippetGroups;
+            this.saveDataDebounced(constants_1.SNIPPET_GROUPS_KEY);
+        }
+    }
+    // 存储迁移演练快照（D-386 第二步·保守桥接）：宿主静默修复链已执行完毕，
+    // 此处用同源演练管道对 this.data 再做一次只读演练。理想情况下全部 kept；
+    // 出现 cleaned/reset 即宿主清洗与演练管道存在缺口，报告即为发现机制。
+    // 报告仅存实例内存（有界、无原始数据回显），不落盘、不重写 this.data。
+    captureStorageMigrationSnapshot() {
+        const payloads = {};
+        for (const key of storage_migration_1.KEY_ORDER) {
+            payloads[key] = this.data[key];
+        }
+        const result = (0, storage_migration_1.runStorageMigration)(payloads, {
+            // 端型上限必须与 sanitizePersistentData / setThumbCache 一致，否则演练会
+            // 与宿主判级分叉：手机端缓存上限 30/80 KiB 比桌面 40/200 KiB 更紧，
+            // 若演练恒用桌面上限，手机端宿主已清洗的 key 会在报告里显示为 kept，
+            // 而 35 条缓存在手机端会显示 kept、实际宿主会 cleaned——报告就不再同源。
+            limits: {
+                thumbCache: this.isMobile ? constants_1.THUMB_CACHE_MAX_MOBILE : constants_1.THUMB_CACHE_MAX,
+                thumbHtml: this.isMobile ? constants_1.THUMB_HTML_MAX_MOBILE : constants_1.THUMB_HTML_MAX,
+            },
+        });
+        this.storageMigrationReport = result.report;
+        const anomalies = result.report.keys.filter((entry) => entry.status === "cleaned" || entry.status === "reset" || entry.status === "migrated");
+        if (anomalies.length > 0) {
+            logger_1.logger.warn("storage migration drill found gaps after host sanitize", {
+                keys: anomalies.map((entry) => `${entry.key}:${entry.status}`).join(","),
+            });
+        }
+    }
+    // One-time migration: pre-marker quick-action bars were machine-written
+    // from older default sets (auto-registered provider entries included).
+    // Reset them to the current minimal defaults exactly once; from then on
+    // the stored marker keeps user curation untouched.
+    runQuickActionDefaultsMigration() {
+        const decision = (0, quick_actions_1.migrateQuickActionDefaults)(this.data[constants_1.QUICK_ACTIONS_KEY], this.data[constants_1.QUICK_ACTIONS_DEFAULTS_KEY]);
+        if (!decision.migrated)
+            return;
+        this.data[constants_1.QUICK_ACTIONS_KEY] = decision.items;
+        this.saveDataDebounced(constants_1.QUICK_ACTIONS_KEY);
+        this.data[constants_1.QUICK_ACTIONS_DEFAULTS_KEY] = quick_actions_1.QUICK_ACTION_DEFAULTS_VERSION;
+        this.saveDataDebounced(constants_1.QUICK_ACTIONS_DEFAULTS_KEY);
+    }
+    // 桌面侧边栏 dock：与切换器同样的卡片列表，常驻便于快速切换；
+    // resize 只重算缩略图缩放比例，不重建列表（避免闪烁与滚动位置丢失）
+    registerDesktopDock() {
+        const self = this;
+        this.addDock({
+            config: {
+                position: "RightBottom",
+                size: { width: constants_1.SIDEBAR_DEFAULT_WIDTH_PX, height: 0 },
+                icon: "iconLayout",
+                title: this.i18n.switchTabs,
+                show: false,
+            },
+            data: {},
+            type: constants_1.SIDEBAR_DOCK_TYPE,
+            init() {
+                const handler = this;
+                self.renderSidebarPanel(handler.element);
+            },
+            resize() {
+                const handler = this;
+                const element = handler.element;
+                if (element === null || element === void 0 ? void 0 : element.isConnected) {
+                    self.rescaleThumbs(element);
+                }
+            },
+        });
+    }
+    // 手机端入口：顶栏按钮（常驻，思源 3.8.x 不开放插件顶栏，自行插入）
+    // + 悬浮按钮（可选，设置里可关）
+    registerMobileEntries() {
+        this.ensureMobileTopBarButton();
+        this.updateFABVisibility();
+    }
+    // 全局事件：切换 / 打开 / 关闭页签时同步侧边栏高亮或全量刷新；
+    // 手机端顺带确认入口按钮仍在（内核个别场景会重建顶栏 DOM）
+    bindGlobalEvents() {
+        if (this.globalEventHandlers)
+            return;
+        const switchProtyle = () => {
+            this.refreshSidebarActive();
+            this.scheduleOpenSwitchersRefresh();
+            if (this.isMobile) {
+                this.ensureMobileTopBarButton();
+            }
+        };
+        // 页签增减（文档打开/关闭）时全量刷新侧边栏列表
+        const loadedProtyle = () => {
+            this.captureRecentOpenSnapshot();
+            if (this.syncing)
+                return;
+            // 侧栏全量重建合并调度：批量开关文档时不再逐事件重建
+            this.scheduleSidebarRefresh();
+            this.scheduleOpenSwitchersRefresh();
+        };
+        const destroyProtyle = () => {
+            this.scheduleRecentClosedSync();
+            if (this.syncing)
+                return;
+            this.scheduleSidebarRefresh();
+            this.scheduleOpenSwitchersRefresh();
+        };
+        const syncStart = () => {
+            this.syncDepth += 1;
+            this.syncRefreshPending = true;
+            this.armSyncWatchdog();
+            this.setSyncPresentation(true);
+        };
+        const syncFinish = (failed = false) => {
+            if (failed) {
+                this.syncDepth = 0;
+            }
+            else if (this.syncDepth > 0) {
+                this.syncDepth -= 1;
+            }
+            if (this.syncDepth > 0)
+                return;
+            this.clearSyncWatchdog();
+            this.syncRefreshPending = false;
+            this.setSyncPresentation(false);
+            this.scheduleSidebarRefresh();
+        };
+        const syncEnd = () => syncFinish(false);
+        const syncFail = () => syncFinish(true);
+        this.globalEventHandlers = { switchProtyle, loadedProtyle, destroyProtyle, syncStart, syncEnd, syncFail };
+        this.eventBus.on("switch-protyle", switchProtyle);
+        this.eventBus.on("loaded-protyle-static", loadedProtyle);
+        this.eventBus.on("destroy-protyle", destroyProtyle);
+        this.eventBus.on("sync-start", syncStart);
+        this.eventBus.on("sync-end", syncEnd);
+        this.eventBus.on("sync-fail", syncFail);
+    }
+    setSyncPresentation(syncing) {
+        this.syncing = syncing;
+        const roots = [];
+        if (this.sidebarElement)
+            roots.push(this.sidebarElement);
+        document.querySelectorAll(".sw-home").forEach((root) => roots.push(root));
+        roots.forEach((root) => {
+            root.classList.toggle("sw--syncing", syncing);
+            root.setAttribute("aria-busy", String(syncing));
+            root.dataset.syncing = String(syncing);
+        });
+    }
+    clearSyncWatchdog() {
+        if (this.syncWatchdogTimer !== null) {
+            window.clearTimeout(this.syncWatchdogTimer);
+            this.syncWatchdogTimer = null;
+        }
+    }
+    armSyncWatchdog() {
+        this.clearSyncWatchdog();
+        this.syncWatchdogTimer = window.setTimeout(() => {
+            this.syncWatchdogTimer = null;
+            if (!this.syncing)
+                return;
+            this.syncDepth = 0;
+            this.syncRefreshPending = false;
+            this.setSyncPresentation(false);
+            this.scheduleSidebarRefresh();
+        }, constants_1.SYNC_WATCHDOG_MS);
+    }
+    registerSwitcherRefresh(callback) {
+        this.switcherRefreshers.add(callback);
+        return () => this.switcherRefreshers.delete(callback);
+    }
+    refreshOpenSwitchers() {
+        Array.from(this.switcherRefreshers).forEach((refresh) => {
+            try {
+                refresh();
+            }
+            catch (e) {
+                logger_1.logger.warn("refresh switcher fail", e);
+            }
+        });
+    }
+    scheduleOpenSwitchersRefresh() {
+        if (this.switcherRefreshFrame !== null || this.switcherRefreshers.size === 0)
+            return;
+        const refresh = () => {
+            this.switcherRefreshFrame = null;
+            this.switcherRefreshFrameCancel = null;
+            this.refreshOpenSwitchers();
+        };
+        if (typeof requestAnimationFrame === "function") {
+            const frame = requestAnimationFrame(refresh);
+            this.switcherRefreshFrame = frame;
+            this.switcherRefreshFrameCancel = () => cancelAnimationFrame(frame);
+        }
+        else {
+            const timer = window.setTimeout(refresh, 16);
+            this.switcherRefreshFrame = timer;
+            this.switcherRefreshFrameCancel = () => window.clearTimeout(timer);
+        }
+    }
+    scheduleAnimationFrame(callback) {
+        if (typeof requestAnimationFrame === "function")
+            return requestAnimationFrame(callback);
+        return window.setTimeout(() => callback(Date.now()), 16);
+    }
+    // 布局就绪后再次确认手机端入口：部分机型上 onload 执行时顶栏尚未构建完成，
+    // 插件按钮会插入失败；这里兜底重试一次
+    onLayoutReady() {
+        this.isMobile ? this.ensureMobileTopBarButton() : undefined;
+        this.updateFloatingBallVisibility();
+        this.exposePublicApi();
+        this.setupBreadcrumbEntry();
+    }
+    setupBreadcrumbEntry() {
+        const host = this;
+        if (typeof host.addBreadcrumbButton !== "function")
+            return;
+        try {
+            this.breadcrumbButtonId = host.addBreadcrumbButton({
+                id: "swBreadcrumbEntry",
+                icon: "iconSearch",
+                title: this.i18n.breadcrumbEntry,
+                callback: () => {
+                    if (!this.isMobile && !this.isUnloading)
+                        this.showSwitcher(true);
+                },
+            }) || "";
+        }
+        catch (error) {
+            logger_1.logger.warn("breadcrumb entry unavailable", error);
+            this.breadcrumbButtonId = "";
+        }
+    }
+    teardownBreadcrumbEntry() {
+        if (!this.breadcrumbButtonId)
+            return;
+        const host = this;
+        if (typeof host.removeBreadcrumbButton === "function") {
+            try {
+                host.removeBreadcrumbButton(this.breadcrumbButtonId);
+            }
+            catch (error) {
+                logger_1.logger.warn("breadcrumb entry teardown fail", error);
+            }
+        }
+        this.breadcrumbButtonId = "";
+    }
+    /**
+     * T-6833 公开钩子：E2E 真实例测试与生态消费的稳定入口
+     * （契约对齐小驴打卡 window.siyuanCheckin：whenReady 为就绪信号）。
+     * 钩子在 onLayoutReady 后挂载——它的存在本身即代表初始化完成；
+     * onunload 移除，不留悬挂引用。只暴露受控动作，不泄漏内部状态。
+     * [Epoch 6] 挂载标准化生态服务桥（协议 v1），包含多端工作台呼叫与导航上下文。
+     */
+    exposePublicApi() {
+        const legacyTarget = {
+            whenReady: () => true,
+            openSwitcher: () => {
+                if (!this.isMobile && !this.isUnloading) {
+                    this.showSwitcher(true);
+                }
+            },
+        };
+        window.siyuanSpeedSwitch = legacyTarget;
+        this.disposeRaikiriBridge = (0, external_bridge_1.mountRaikiriBridge)({
+            openSwitcher: (focusSearch = true) => {
+                if (!this.isMobile && !this.isUnloading) {
+                    this.showSwitcher(focusSearch);
+                }
+            },
+            openWorkbench: (context) => {
+                if (!this.isUnloading) {
+                    this.openPlatformSurface("workbench", "switcher", {
+                        entry: (context === null || context === void 0 ? void 0 : context.entry) || "external-bridge",
+                    });
+                }
+            },
+            openStudio: (context) => {
+                if (!this.isUnloading && this.getAvailablePlatformSurfaces().includes("studio")) {
+                    this.openPlatformSurface("studio", "switcher", {
+                        entry: (context === null || context === void 0 ? void 0 : context.entry) || "external-bridge",
+                        objectId: context === null || context === void 0 ? void 0 : context.objectId,
+                        query: context === null || context === void 0 ? void 0 : context.query,
+                    });
+                }
+            },
+            getNavigationContext: () => {
+                const active = this.isMobile ? null : (0, siyuan_1.getActiveTab)();
+                const opened = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+                return {
+                    device: this.isMobile ? "mobile" : "desktop",
+                    activeDocument: active ? { id: this.rootIdOf(active) || "", title: this.titleOf(active) } : undefined,
+                    openTabs: opened.map((tab) => ({
+                        id: this.rootIdOf(tab) || tab.id,
+                        rootId: this.rootIdOf(tab) || undefined,
+                        title: this.titleOf(tab),
+                        path: String(tab.path || tab.hPath || ""),
+                        notebookId: (0, search_model_1.resolveSearchNotebookId)(tab),
+                        source: "tabs",
+                    })),
+                    closedTabs: this.getClosedHistory().map((entry) => ({
+                        id: entry.rootId,
+                        rootId: entry.rootId,
+                        title: entry.title,
+                        ts: entry.closedAt,
+                    })),
+                    documentSets: this.getDocumentSets().map((set) => ({
+                        name: String((set === null || set === void 0 ? void 0 : set.name) || ""),
+                        count: Array.isArray(set === null || set === void 0 ? void 0 : set.entries) ? set.entries.length : 0,
+                    })),
+                    availableSurfaces: this.getAvailablePlatformSurfaces(),
+                    syncing: this.syncing,
+                };
+            },
+            getWorkspaceStats: () => {
+                const opened = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+                return {
+                    openTabCount: opened.length,
+                    closedTabCount: this.getClosedHistory().length,
+                    documentSetCount: this.getDocumentSets().length,
+                    availableSurfaces: this.getAvailablePlatformSurfaces(),
+                    isMobile: this.isMobile,
+                };
+            },
+            searchDocuments: async (args) => {
+                return await this.searchAgentDocuments(args);
+            },
+        }, legacyTarget);
+    }
+    /**
+     * 宿主默认行为：插件存储数据变化时整体重载插件（并等待返回的 Promise）。
+     * 小驴雷切有 13 个持久化 key，任一跨设备同步合并（sync）或其他窗口写盘（overwrite）
+     * 都会销毁已打开的切换器/第二面板与搜索会话，表现为图标闪烁、弹窗凭空关闭。
+     * 这里改为有界重读 + 惰性刷新。
+     *
+     * 纪律：本钩子调用链内不得写盘——写盘会再次广播数据变更并回到本钩子，形成
+     * "写⇄重载"回环。因此只走只读的 loadPersistentKeys + 只读演练，跳过
+     * sanitizePersistentData 与一次性默认值迁移这类会回写的步骤；各 getter 的读时
+     * sanitize 仍会兜住脏数据，加载期收敛留给下一次 onload。
+     * 另：宿主在拆除预算内等待本钩子返回的 Promise，故必须保持有界、不并发重入。
+     */
+    async onDataChanged(reason) {
+        if (this.isUnloading || this.dataChangeReloadInFlight) {
+            this.dataChangeReloadQueued = true;
+            return;
+        }
+        this.dataChangeReloadInFlight = true;
+        // T-7183：await 期间可能发生卸载——代际快照守卫，卸载后不再触碰 FAB/侧栏
+        const generation = this.lifecycleGeneration;
+        const stale = () => this.isUnloading || this.lifecycleGeneration !== generation;
+        try {
+            do {
+                this.dataChangeReloadQueued = false;
+                await this.loadPersistentKeys();
+                if (stale())
+                    return;
+                this.settingsCache = null;
+                this.updateFloatingBallVisibility();
+                this.captureStorageMigrationSnapshot();
+                this.initFavCollapsed();
+                this.scheduleSidebarRefresh();
+            } while (this.dataChangeReloadQueued && !stale());
+        }
+        catch (error) {
+            logger_1.logger.warn("data change refresh fail", { reason: reason || "unknown" });
+            logger_1.logger.debug(error);
+        }
+        finally {
+            this.dataChangeReloadInFlight = false;
+            this.dataChangeReloadQueued = false;
+        }
+    }
+    async onunload() {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
+        this.isUnloading = true;
+        this.lifecycleGeneration += 1;
+        // T-7179：三面板 Dialog 统一回收——不依赖宿主代销毁（真实宿主行为未证明）
+        (_a = this.snippetStudioDialog) === null || _a === void 0 ? void 0 : _a.destroy();
+        this.snippetStudioDialog = null;
+        // 卸载必须主动销毁所有仍打开的表面 Dialog；宿主移除 DOM 不保证触发
+        // destroyCallback，而这些回调负责释放面板控制器、FAB 挂起和监听器。
+        (_b = this.platformSwitcherDialog) === null || _b === void 0 ? void 0 : _b.destroy();
+        this.platformSwitcherDialog = null;
+        (_c = this.mobileSwitcherDialog) === null || _c === void 0 ? void 0 : _c.destroy();
+        this.mobileSwitcherDialog = null;
+        (_d = this.workbenchDialog) === null || _d === void 0 ? void 0 : _d.destroy();
+        this.workbenchDialog = null;
+        (_e = this.platformGuideDialog) === null || _e === void 0 ? void 0 : _e.destroy();
+        this.platformGuideDialog = null;
+        (_f = this.mobileSwitcherDialog) === null || _f === void 0 ? void 0 : _f.destroy();
+        this.mobileSwitcherDialog = null;
+        // T-6831：面包屑入口随生命周期拆除
+        this.teardownBreadcrumbEntry();
+        // T-6823：密度档位标记随生命周期移除
+        if (typeof document !== "undefined" && document.body) {
+            delete document.body.dataset.swDensity;
+        }
+        // T-6833：公开钩子随生命周期拆除
+        if (typeof window !== "undefined") {
+            delete window.siyuanSpeedSwitch;
+        }
+        if (this.disposeRaikiriBridge) {
+            this.disposeRaikiriBridge();
+            this.disposeRaikiriBridge = null;
+        }
+        // T-6796 皮肤层：卸载时移除 body 标记，宿主恢复纯净主题
+        if (typeof document !== "undefined" && document.body) {
+            delete document.body.dataset.swSkin;
+        }
+        const pendingSaves = this.flushPendingSaves();
+        const globalEventHandlers = this.globalEventHandlers;
+        if (globalEventHandlers && typeof this.eventBus.off === "function") {
+            this.eventBus.off("switch-protyle", globalEventHandlers.switchProtyle);
+            this.eventBus.off("loaded-protyle-static", globalEventHandlers.loadedProtyle);
+            this.eventBus.off("destroy-protyle", globalEventHandlers.destroyProtyle);
+            this.eventBus.off("sync-start", globalEventHandlers.syncStart);
+            this.eventBus.off("sync-end", globalEventHandlers.syncEnd);
+            this.eventBus.off("sync-fail", globalEventHandlers.syncFail);
+        }
+        this.globalEventHandlers = null;
+        this.syncDepth = 0;
+        this.syncRefreshPending = false;
+        this.syncing = false;
+        this.clearSyncWatchdog();
+        this.docSearchState.activeSessions.forEach((session) => (0, search_session_1.disposeSearchSession)(session));
+        this.docSearchState.activeSessions.clear();
+        this.activeAgentSearchControllers.forEach((controller) => controller.abort());
+        this.activeAgentSearchControllers.clear();
+        this.activeDocumentSetRestoreControllers.forEach((controller) => controller.abort());
+        this.activeDocumentSetRestoreControllers.clear();
+        // v0.17 阶段 1（D-220）：销毁 workspace 诊断运行时（registry/queue/coordinator）
+        (_g = this.workspaceRuntimeDiagnostics) === null || _g === void 0 ? void 0 : _g.dispose();
+        this.workspaceRuntimeDiagnostics = null;
+        // v0.17：卸载前写入脱敏 disposed 快照，再销毁历史容器；不向 Agent/UI 透传明细。
+        this.agentReadOnlyAuditHistory.record((0, agent_readonly_audit_1.buildAgentReadOnlyAuditSnapshot)({
+            status: "unavailable",
+            reason: "unavailable",
+            disposed: true,
+        }));
+        this.agentReadOnlyAuditHistory.dispose();
+        this.switcherRefreshers.clear();
+        this.quickActionAdapters.clear();
+        this.quickActionAdapterTargets.clear();
+        this.quickActionProviders.clear();
+        this.quickActionProviderTokens.clear();
+        this.quickActionRegistry = (0, quick_actions_1.createQuickActionRegistry)();
+        if (this.sidebarRefreshTimer) {
+            window.clearTimeout(this.sidebarRefreshTimer);
+            this.sidebarRefreshTimer = 0;
+        }
+        (_h = this.groupFlowObserver) === null || _h === void 0 ? void 0 : _h.disconnect();
+        this.groupFlowObserver = null;
+        this.homeRuntime.dispose();
+        (0, life_widget_network_1.clearLifeWidgetCaches)();
+        this.homeModuleChangeListeners.clear();
+        this.closeHistoryMenu();
+        (_j = this.sidebarHistoryDropdownDispose) === null || _j === void 0 ? void 0 : _j.call(this);
+        this.sidebarHistoryDropdownDispose = null;
+        (_k = this.sidebarSearchFilterDispose) === null || _k === void 0 ? void 0 : _k.call(this);
+        this.sidebarSearchFilterDispose = null;
+        this.historyDropdownCloseSet.forEach((close) => close());
+        this.historyDropdownCloseSet.clear();
+        document.querySelectorAll(".sw__mobile-sort-overlay, .sw__mobile-sheet-overlay, .sw-quick-icon-picker-overlay").forEach((overlay) => overlay.remove());
+        if (this.switcherRefreshFrame !== null) {
+            (_l = this.switcherRefreshFrameCancel) === null || _l === void 0 ? void 0 : _l.call(this);
+            this.switcherRefreshFrame = null;
+            this.switcherRefreshFrameCancel = null;
+        }
+        if (this.recentClosedSyncTimer !== null) {
+            window.clearTimeout(this.recentClosedSyncTimer);
+            this.recentClosedSyncTimer = null;
+        }
+        (_m = this.sidebarResizeObserver) === null || _m === void 0 ? void 0 : _m.disconnect();
+        this.sidebarResizeObserver = null;
+        (_o = this.sidebarIconObserver) === null || _o === void 0 ? void 0 : _o.disconnect();
+        this.sidebarIconObserver = null;
+        (_p = this.sidebarIconFrameCancel) === null || _p === void 0 ? void 0 : _p.call(this);
+        this.sidebarIconFrameCancel = null;
+        this.removeDock(constants_1.SIDEBAR_DOCK_TYPE);
+        this.sidebarElement = null;
+        this.floatingBallPanels.forEach((panel) => panel === null || panel === void 0 ? void 0 : panel.destroy());
+        this.floatingBallPanels.clear();
+        this.floatingBallUis.forEach((controller) => controller.destroy());
+        this.floatingBallUis.clear();
+        this.floatingBallUi = null;
+        this.fabElement = null;
+        this.fabModalDepth = 0;
+        (_q = this.mobileTopBarButton) === null || _q === void 0 ? void 0 : _q.remove();
+        this.mobileTopBarButton = null;
+        await pendingSaves;
+    }
+    // ==================== 鎸佷箙鍖栨€ц兘 ====================
+    // 去抖写盘：高频数据（MRU/置顶/收藏）每次操作只更新内存，合并后延迟落盘，
+    // 避免连续收藏/置顶/切换页签时每个动作都触发一次内核文件写入（交互卡顿的根因）
+    // T-6466 存储用量透明化配套之前：Miniflux 分类发现——设置表单的分类选择器
+    // 据此渲染选项；凭据仅经 X-Auth-Token 请求头，绝不写入日志或缓存。
+    // T-6689 ActivityWatch 桶发现：仅本地端点（网络层白名单放行 /api/0/buckets），
+    // 只保留 aw-watcher-window 类型，供配置表单下拉选择
+    async loadActivityWatchBuckets(endpoint) {
+        const url = (0, life_widget_model_2.buildActivityWatchBucketsUrl)({ endpoint });
+        if (!url)
+            return [];
+        const envelope = await (0, life_widget_network_2.loadActivityWatchBuckets)(url);
+        return (0, life_widget_model_2.normalizeActivityWatchBuckets)(envelope === null || envelope === void 0 ? void 0 : envelope.payload);
+    }
+    async loadMinifluxCategoryOptions(endpoint, token) {
+        const normalized = (0, life_widget_model_1.normalizeMinifluxConfig)({ endpoint, token });
+        if (!normalized.origin || !normalized.token)
+            return [];
+        try {
+            // Use the normalized token that passed validation.  The config form
+            // commonly supplies leading/trailing whitespace while users paste a
+            // token; sending the raw value makes discovery fail even though the
+            // same normalized config is accepted by the Miniflux adapter.
+            const response = await this.fetchActivityWatchViaKernel(`${normalized.origin}/v1/categories`, { headers: { "X-Auth-Token": normalized.token } });
+            if (!response || response.ok !== true)
+                return [];
+            const body = await response.text();
+            const rows = JSON.parse(body);
+            if (!Array.isArray(rows))
+                return [];
+            const seen = new Set();
+            const items = [];
+            for (const row of rows.slice(0, 64)) {
+                const id = String(row && row.id !== undefined && row.id !== null ? row.id : "");
+                const name = String(row && row.title !== undefined && row.title !== null ? row.title : "")
+                    .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 64);
+                if (!/^\d{1,12}$/.test(id) || !name || seen.has(id))
+                    continue;
+                seen.add(id);
+                items.push({ id, name });
+            }
+            return items;
+        }
+        catch (_a) {
+            return [];
+        }
+    }
+    // T-6463 存储用量透明化：逐常量显式 loadData（存储 key 审计门禁要求首参为 *_KEY
+    // 常量），测量近似 UTF-8 字节数；单 key 读取失败按 0 计，不拖垮整个报表。
+    async measureStorageUsage() {
+        const encoder = new TextEncoder();
+        const measure = async (key, value) => {
+            let bytes = 0;
+            try {
+                const data = await value;
+                const json = data === undefined || data === null ? "" : JSON.stringify(data);
+                bytes = encoder.encode(json).length;
+            }
+            catch (_a) {
+                bytes = 0;
+            }
+            return { key, bytes };
+        };
+        return Promise.all(constants_1.PERSISTENT_KEYS.map((key) => measure(key, this.loadData(key))));
+    }
+    // T-7004：存储结构健康（设置页存储标签消费）——stored=已落戳版本（缺失/损坏为
+    // null），current=插件当前版本，downgradeFrom=检出「数据来自更新版本」的原始值
+    // （D-401 降级保护证据，未覆写）。纯读取，不触发写入。
+    getStorageSchemaHealth() {
+        const stored = this.data[constants_1.SCHEMA_VERSION_KEY];
+        const valid = typeof stored === "number" && Number.isInteger(stored) && Number.isFinite(stored) && stored >= 1;
+        return {
+            stored: valid ? stored : null,
+            current: storage_migration_1.STORAGE_SCHEMA_VERSION,
+            downgradeFrom: this.storageSchemaDowngradeFrom,
+        };
+    }
+    // T-7004：清空缩略图缓存——只清 THUMB_CACHE_KEY（rootID → HTML 快照，可由
+    // 回源 API 重建）；RSS 已读与关联投影是用户语义数据，不在清空范围。
+    clearThumbCache() {
+        this.data[constants_1.THUMB_CACHE_KEY] = {};
+        this.saveDataDebounced(constants_1.THUMB_CACHE_KEY);
+    }
+    saveDataDebounced(key) {
+        if (this.isUnloading)
+            return;
+        const timer = this.saveTimers.get(key);
+        if (timer) {
+            clearTimeout(timer);
+        }
+        this.saveTimers.set(key, window.setTimeout(() => {
+            this.saveTimers.delete(key);
+            this.queueSave(key, this.data[key]);
+        }, constants_1.SAVE_DEBOUNCE_MS));
+    }
+    queueSave(key, value) {
+        const previous = this.saveChains.get(key) || Promise.resolve();
+        // T-7003：记录落盘结果供设置页保存回执消费（失败不再只进日志）。
+        this.lastSaveOutcome[key] = "pending";
+        const next = previous
+            .then(() => this.saveData(key, value))
+            .then(() => {
+            this.lastSaveOutcome[key] = "ok";
+            if (key === constants_1.SETTINGS_KEY)
+                this.notifySettingsSaveState();
+        })
+            .catch((e) => {
+            this.lastSaveOutcome[key] = "failed";
+            if (key === constants_1.SETTINGS_KEY)
+                this.notifySettingsSaveState();
+            logger_1.logger.warn("save data fail", e);
+        });
+        this.saveChains.set(key, next);
+        void next.then(() => {
+            if (this.saveChains.get(key) === next) {
+                this.saveChains.delete(key);
+            }
+        });
+        return next;
+    }
+    // T-7003：保存状态广播（设置弹窗监听刷新回执；document 缺失时静默跳过）。
+    notifySettingsSaveState() {
+        if (typeof document === "object" && document) {
+            document.dispatchEvent(new Event("sw-settings-save-state"));
+        }
+    }
+    // T-7003：保存失败后的手动重试——用当前内存值重新排队落盘（走同一串行链）。
+    retrySettingsSave() {
+        if (this.isUnloading)
+            return;
+        void this.queueSave(constants_1.SETTINGS_KEY, this.data[constants_1.SETTINGS_KEY]);
+    }
+    // T-7003：分组恢复默认——keys 必须全部是已知默认设置字段（防止任意 key 注入），
+    // 经 updateSettings 应用（自动入撤销栈、触发皮肤/密度等派生刷新）。
+    resetSettingsToDefaults(keys) {
+        var _a;
+        const defaults = DEFAULT_SETTINGS;
+        const patch = {};
+        for (const key of keys) {
+            if (!Object.prototype.hasOwnProperty.call(defaults, key))
+                return false;
+            patch[key] = defaults[key];
+        }
+        if (Object.keys(patch).length === 0)
+            return false;
+        this.updateSettings(patch);
+        (_a = this.settingsSceneReloader) === null || _a === void 0 ? void 0 : _a.call(this);
+        return true;
+    }
+    // 立即落盘全部待写数据（卸载时调用，避免丢失最近一次去抖窗口内的改动）
+    flushPendingSaves() {
+        this.saveTimers.forEach((timer, key) => {
+            clearTimeout(timer);
+            this.queueSave(key, this.data[key]);
+        });
+        this.saveTimers.clear();
+        return Promise.all(Array.from(this.saveChains.values())).then(() => undefined);
+    }
+    // 旧版本默认快捷键 "⇧⌥S" 无法被思源热键匹配命中，且可能已持久化到快捷键配置中，
+    // 加载时将其修正为可匹配的 "⌥⇧S"（组合键不变，仍是 Alt+Shift+S）
+    fixLegacyHotkey() {
+        var _a, _b, _c, _d;
+        try {
+            const siyuan = (0, types_1.getSiyuan)();
+            const keymapItem = (_d = (_c = (_b = (_a = siyuan === null || siyuan === void 0 ? void 0 : siyuan.config) === null || _a === void 0 ? void 0 : _a.keymap) === null || _b === void 0 ? void 0 : _b.plugin) === null || _c === void 0 ? void 0 : _c[this.name]) === null || _d === void 0 ? void 0 : _d.switchTabs;
+            if (keymapItem && keymapItem.custom === constants_1.LEGACY_HOTKEY) {
+                keymapItem.custom = constants_1.DEFAULT_HOTKEY;
+            }
+        }
+        catch (e) {
+            // 配置不可用时忽略，默认值本身已是正确顺序
+        }
+    }
+    // 设置对象记忆化：规范化成本虽小但调用频次高（渲染/绑定路径每次都会读取），
+    // 命中缓存时零开销返回；updateSettings 写入后统一失效
+    getSettings() {
+        if (!this.settingsCache) {
+            this.settingsCache = this.computeSettings();
+        }
+        return this.settingsCache;
+    }
+    computeSettings() {
+        // 磁盘读取的是 unknown，老版本/异常数据字段可能缺失，全部按字段逐一降级到默认值。
+        // 用 Partial<ISwSettings> 把整个 saved 一次性收窄，后续字段访问就不再需要每行断言。
+        const saved = this.data[constants_1.SETTINGS_KEY];
+        if (!saved || typeof saved !== "object" || Array.isArray(saved))
+            return Object.assign({}, DEFAULT_SETTINGS);
+        return (0, settings_model_1.normalizeSettings)(saved, {
+            defaults: DEFAULT_SETTINGS,
+            clamp: (value, min, max, fallback) => this.clampNum(value, min, max, fallback),
+            normalizeEnum: (value, allowed, fallback) => (0, util_1.normalizeSortBy)(value, allowed, fallback),
+            ranges: {
+                dialogWidth: [constants_1.DIALOG_WIDTH_MIN_PX, constants_1.DIALOG_WIDTH_MAX_PX],
+                dialogHeight: [constants_1.DIALOG_HEIGHT_MIN_PX, constants_1.DIALOG_HEIGHT_MAX_PX],
+                panelScale: [constants_1.PANEL_SCALE_MIN, constants_1.PANEL_SCALE_MAX],
+                homeWidth: [480, 1920],
+                homeHeight: [360, 1280],
+                studioWidth: [480, 1920],
+                studioHeight: [360, 1280],
+                columns: [constants_1.COLUMNS_MIN, constants_1.COLUMNS_MAX],
+                thumbHeight: [constants_1.THUMB_HEIGHT_MIN_PX, constants_1.THUMB_HEIGHT_MAX_PX],
+                mobileColumns: [constants_1.MOBILE_COLUMNS_MIN, constants_1.MOBILE_COLUMNS_MAX],
+                mobileThumbHeight: [constants_1.MOBILE_THUMB_HEIGHT_MIN_PX, constants_1.MOBILE_THUMB_HEIGHT_MAX_PX],
+            },
+            sortBy: SORT_BY_LIST,
+            dockDisplay: DOCK_DISPLAY_LIST,
+            sidebarLayout: SIDEBAR_LAYOUT_LIST,
+            quickActions: () => (0, quick_actions_1.sanitizeQuickActions)(this.data[constants_1.QUICK_ACTIONS_KEY], constants_1.QUICK_ACTIONS_MAX).items,
+        });
+    }
+    normalizeQuickActionDisplay(value, fallback) {
+        return value === "full" || value === "icons" || value === "hidden" ? value : fallback;
+    }
+    updateSettings(patch) {
+        var _a, _b, _c;
+        const previous = this.getSettings();
+        const settings = Object.assign(Object.assign({}, previous), patch);
+        this.data[constants_1.SETTINGS_KEY] = settings;
+        this.settingsCache = null; // 设置已变更，下一次读取重新规范化
+        this.saveDataDebounced(constants_1.SETTINGS_KEY);
+        // T-7003：撤销栈——把「逆向补丁」（本次 patch 各 key 的变更前值）交给设置页
+        // 钩子；lastSettingsTab 是导航记忆不是用户变更，不入栈；撤销应用本身经
+        // settingsUndoSuppress 抑制。逆向值取自规范化后的当前设置，与任何保存同语义。
+        const patchKeys = Object.keys(patch).filter((key) => key !== "lastSettingsTab");
+        if (patchKeys.length > 0 && this.settingsUndoRecorder && !this.settingsUndoSuppress) {
+            const previousRecord = previous;
+            const inverse = {};
+            for (const key of patchKeys)
+                inverse[key] = previousRecord[key];
+            this.settingsUndoRecorder(inverse);
+        }
+        if (patchKeys.length > 0 && typeof document === "object" && document) {
+            // T-7003：设置变更广播——外部入口改设置时，打开中的设置弹窗据此带现场重建。
+            document.dispatchEvent(new Event("sw-settings-updated"));
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "skin")) {
+            this.applySkin();
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "density")) {
+            this.applyDensity();
+        }
+        if (Object.keys(patch).some((key) => key !== "lastSettingsTab")) {
+            this.refreshOpenSwitchers();
+            if ((_a = this.sidebarElement) === null || _a === void 0 ? void 0 : _a.isConnected) {
+                this.refreshSidebar();
+            }
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "floatingBall")) {
+            this.updateFloatingBallVisibility();
+            if (typeof document === "object") {
+                (_b = document.querySelector(".sw-floating-ball-settings")) === null || _b === void 0 ? void 0 : _b.dispatchEvent(new Event("sw-floating-ball-refresh"));
+            }
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "savedSearches")) {
+            this.refreshFloatingBallPanels();
+            if (typeof document === "object") {
+                (_c = document.querySelector(".sw-floating-ball-settings")) === null || _c === void 0 ? void 0 : _c.dispatchEvent(new Event("sw-floating-ball-refresh"));
+            }
+        }
+    }
+    async getPinyinTitleMatches(keyword, existing) {
+        if (this.isMobile)
+            return [];
+        const needle = keyword.trim().toLowerCase();
+        if (!/^[a-z0-9]+$/.test(needle) || needle.length < 2)
+            return [];
+        const now = Date.now();
+        if (!this.pinyinTitleCache || now - this.pinyinTitleCache.ts > 300000) {
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: "SELECT id, content FROM blocks WHERE type='d' LIMIT 20000",
+            });
+            const rows = (Array.isArray(json === null || json === void 0 ? void 0 : json.data) ? json.data : [])
+                .map((row) => ({
+                id: typeof (row === null || row === void 0 ? void 0 : row.id) === "string" ? row.id : "",
+                title: typeof (row === null || row === void 0 ? void 0 : row.content) === "string" ? row.content.trim() : "",
+            }))
+                .filter((row) => row.id && row.title);
+            this.pinyinTitleCache = { rows, ts: now };
+        }
+        const exclude = new Set(existing.map((doc) => doc.id).filter(Boolean));
+        const matches = [];
+        for (const row of this.pinyinTitleCache.rows) {
+            if (exclude.has(row.id))
+                continue;
+            if ((0, search_model_1.pinyinTitleHit)(row.title, needle)) {
+                exclude.add(row.id);
+                matches.push({
+                    id: row.id,
+                    rootId: row.id,
+                    title: row.title,
+                    hPath: "",
+                    source: "pinyin",
+                });
+            }
+            if (matches.length >= 12)
+                break;
+        }
+        return matches;
+    }
+    applySkin() {
+        if (typeof document === "undefined" || !document.body)
+            return;
+        const skin = this.getSettings().skin || "fusion";
+        if (skin === "fusion") {
+            delete document.body.dataset.swSkin;
+        }
+        else {
+            document.body.dataset.swSkin = skin;
+        }
+    }
+    // T-6823 密度档位：comfortable（默认，现状）| compact（紧凑行高/间距）。
+    // 与皮肤同机制：body 只放标记，SCSS 按标记覆盖间距变量；卸载移除。
+    applyDensity() {
+        if (typeof document === "undefined" || !document.body)
+            return;
+        if (this.getSettings().density === "compact") {
+            document.body.dataset.swDensity = "compact";
+        }
+        else {
+            delete document.body.dataset.swDensity;
+        }
+    }
+    clampNum(value, min, max, fallback) {
+        // 委派到 util.clampNum（pure，便于单元测试）；class 内保留方法签名以便现有调用点不变
+        return (0, util_1.clampNum)(value, min, max, fallback);
+    }
+    // T-6999：面板窗口预览入口——设置页「面板」标签从这里打开对应面板查看当前
+    // 尺寸效果。走 openPlatformSurface 统一管线（单例守卫、FAB 串行释放、会话记录）；
+    // 设置弹窗保持打开叠在下层，关闭预览面板即回到设置现场。
+    openPanelPreview(surface) {
+        if (this.isUnloading)
+            return;
+        if (surface === "studio" && this.isMobile)
+            return;
+        this.openPlatformSurface(surface, "switcher");
+    }
+    // ==================== 设置页本地控件工厂（统一格式、减少重复） ====================
+    // 数字输入：右侧带单位标签，change 时经 clampNum 校验后回调；label 用于读屏与移动端语义
+    num(value, min, max, step, unit, onChange, label) {
+        const wrap = document.createElement("div");
+        wrap.className = "sw-settings__num";
+        const input = document.createElement("input");
+        input.className = "b3-text-field fn__flex-center";
+        input.type = "number";
+        input.inputMode = "numeric";
+        input.min = String(min);
+        input.max = String(max);
+        input.step = String(step);
+        input.value = String(value);
+        if (label) {
+            input.setAttribute("aria-label", label);
+        }
+        input.addEventListener("change", () => {
+            const normalized = this.clampNum(input.value, min, max, value);
+            input.value = String(normalized);
+            onChange(normalized);
+        });
+        const unitEl = document.createElement("span");
+        unitEl.className = "sw-settings__num-unit";
+        unitEl.textContent = unit;
+        wrap.appendChild(input);
+        wrap.appendChild(unitEl);
+        return wrap;
+    }
+    rangeNumber(value, min, max, step, unit, onChange, label) {
+        const wrap = document.createElement("div");
+        wrap.className = "sw-settings__range-number";
+        const range = document.createElement("input");
+        range.type = "range";
+        range.className = "sw-settings__range";
+        range.min = String(min);
+        range.max = String(max);
+        range.step = String(step);
+        range.value = String(value);
+        if (label)
+            range.setAttribute("aria-label", `${label} · ${this.i18n.settingsControlSlider || "Slider"}`);
+        const numeric = document.createElement("input");
+        numeric.className = "b3-text-field fn__flex-center sw-settings__range-value";
+        numeric.type = "number";
+        numeric.inputMode = "numeric";
+        numeric.min = String(min);
+        numeric.max = String(max);
+        numeric.step = String(step);
+        numeric.value = String(value);
+        if (label)
+            numeric.setAttribute("aria-label", `${label} · ${this.i18n.settingsControlNumber || "Number"}`);
+        const unitEl = document.createElement("span");
+        unitEl.className = "sw-settings__num-unit";
+        unitEl.textContent = unit;
+        const sync = (raw) => {
+            const normalized = this.clampNum(raw, min, max, value);
+            range.value = String(normalized);
+            numeric.value = String(normalized);
+            return normalized;
+        };
+        const apply = (raw) => {
+            const normalized = sync(raw);
+            onChange(normalized);
+        };
+        range.addEventListener("input", () => sync(range.value));
+        range.addEventListener("change", () => apply(range.value));
+        numeric.addEventListener("change", () => apply(numeric.value));
+        wrap.append(range, numeric, unitEl);
+        return wrap;
+    }
+    // 下拉选择控件
+    select(options, value, onChange) {
+        const selectEl = document.createElement("select");
+        selectEl.className = "b3-select fn__flex-center";
+        options.forEach(({ value: v, label }) => {
+            const option = document.createElement("option");
+            option.value = v;
+            option.textContent = label;
+            selectEl.appendChild(option);
+        });
+        selectEl.value = value;
+        selectEl.addEventListener("change", () => onChange(selectEl.value));
+        return selectEl;
+    }
+    // 行容器用 div：开关本身是 label（b3-switch 标准结构 input+span），label 不可嵌套
+    switcher(checked, onChange) {
+        const label = document.createElement("label");
+        label.className = "sw-switch";
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = checked;
+        input.addEventListener("change", () => onChange(input.checked));
+        label.appendChild(input);
+        label.appendChild(document.createElement("span"));
+        return label;
+    }
+    // T-6872（RZ-2）：设置分组标题——组卡片的上一级说明（小号大写字距弱化）
+    settingGroupTitle(text) {
+        const el = document.createElement("div");
+        el.className = "sw-settings__group-title";
+        el.textContent = text;
+        return el;
+    }
+    // T-6872（RZ-2）：分组卡片容器——组内行共享一张卡（hairline 分隔 + hover 提亮）
+    settingGroupCard(...children) {
+        const card = document.createElement("div");
+        card.className = "sw-settings__group-card";
+        card.append(...children);
+        return card;
+    }
+    // T-6872（RZ-2）：分段控件设置行——2~4 个互斥取值用分段而非下拉（取值可见、一次切换）
+    settingSegmented(title, description, items, current, onChange) {
+        const control = (0, platform_dom_1.createPlatformSegmented)(document, { items, active: current, onChange, ariaLabel: title });
+        return this.settingItem(title, description, control);
+    }
+    // T-7166：设置行标题/说明与控件的可访问名称关联——标题 id 由 settingItem 统一
+    // 分发并注入 action 内的表单控件（select/input/label>input），双语标题即控件名称。
+    settingItem(title, description, action, column = false) {
+        const item = document.createElement("div");
+        item.className = column ? "sw-settings__item sw-settings__item--column" : "sw-settings__item";
+        const main = document.createElement("div");
+        main.className = "sw-settings__item-main";
+        const seq = ++this.settingTitleSeq;
+        const titleId = `sw-set-title-${seq}`;
+        const titleEl = document.createElement("div");
+        titleEl.className = "sw-settings__item-title";
+        titleEl.id = titleId;
+        titleEl.textContent = title;
+        main.appendChild(titleEl);
+        let descriptionEl = null;
+        let descId = null;
+        if (description) {
+            descId = `sw-set-desc-${seq}`;
+            const desc = document.createElement("div");
+            desc.className = "sw-settings__item-desc";
+            desc.id = descId;
+            desc.textContent = description;
+            main.appendChild(desc);
+            descriptionEl = desc;
+        }
+        const actionEl = document.createElement("div");
+        actionEl.className = "sw-settings__item-action";
+        actionEl.appendChild(action);
+        // 关联目标：控件本体（select/input）或 label 包裹的输入（switcher）
+        const control = action.tagName === "SELECT" || action.tagName === "INPUT"
+            ? action
+            : action.querySelector("select, input");
+        if (control) {
+            control.setAttribute("aria-labelledby", titleId);
+            if (descId)
+                control.setAttribute("aria-describedby", descId);
+        }
+        item.appendChild(main);
+        item.appendChild(actionEl);
+        (0, settings_control_dom_1.bindSettingControlSemantics)(item, titleEl, descriptionEl, action, {
+            slider: this.i18n.settingsControlSlider || "Slider",
+            number: this.i18n.settingsControlNumber || "Number",
+        });
+        return item;
+    }
+    // 拉取已打开的笔记本列表（id + name），用于默认日记笔记本下拉
+    // T-7185：失败可区分的笔记本加载——failed=true 时调用方展示失败回执/重试，
+    // 不再与「真空笔记本」同形。
+    async loadNotebooksDetailed() {
+        var _a, _b;
+        // 内核无响应时超时中断请求，避免设置页下拉一直停在加载中
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        let timer = null;
+        const timeoutPromise = new Promise((_, reject) => {
+            timer = window.setTimeout(() => {
+                controller === null || controller === void 0 ? void 0 : controller.abort();
+                reject(new Error("timeout"));
+            }, constants_1.NOTEBOOK_FETCH_TIMEOUT_MS);
+        });
+        try {
+            const request = fetch("/api/notebook/lsNotebooks", Object.assign({ method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }, (controller ? { signal: controller.signal } : {})));
+            const response = await Promise.race([request, timeoutPromise]);
+            if (!response.ok) {
+                throw new Error(`lsNotebooks HTTP ${response.status}`);
+            }
+            const json = await response.json();
+            const notebooks = ((_b = (_a = json === null || json === void 0 ? void 0 : json.data) === null || _a === void 0 ? void 0 : _a.notebooks) !== null && _b !== void 0 ? _b : []);
+            const result = notebooks
+                .filter((nb) => nb && nb.id && !nb.closed)
+                .map((nb) => ({ id: nb.id, name: nb.name }));
+            return { notebooks: result, failed: false };
+        }
+        catch (e) {
+            logger_1.logger.warn("load notebooks fail", e);
+            return { notebooks: [], failed: true };
+        }
+        finally {
+            window.clearTimeout(timer);
+        }
+    }
+    async loadNotebooks() {
+        return (await this.loadNotebooksDetailed()).notebooks;
+    }
+    // 默认日记笔记本下拉（异步填充已打开笔记本，当前值命中时回填选中）
+    notebookSelect(current, onPick) {
+        const wrap = document.createElement("div");
+        wrap.className = "sw-settings__journal-sel";
+        const sel = document.createElement("select");
+        sel.className = "b3-select fn__flex-center";
+        sel.disabled = true; // 加载完成前禁用
+        sel.appendChild(new Option(this.i18n.notebookLoading, ""));
+        wrap.appendChild(sel);
+        // T-7185：失败可区分——内核读取失败展示失败回执 + 重试，不再与真空笔记本同形。
+        this.loadNotebooksDetailed().then(({ notebooks, failed }) => {
+            sel.innerHTML = "";
+            if (failed) {
+                sel.appendChild(new Option(this.i18n.notebookLoadFailed, ""));
+                sel.disabled = true;
+                const retry = document.createElement("button");
+                retry.type = "button";
+                retry.className = "b3-button b3-button--text sw-settings__journal-retry";
+                retry.textContent = this.i18n.homeRetry;
+                retry.setAttribute("aria-label", this.i18n.homeRetry);
+                retry.addEventListener("click", () => {
+                    retry.remove();
+                    sel.disabled = true;
+                    sel.innerHTML = "";
+                    sel.appendChild(new Option(this.i18n.notebookLoading, ""));
+                    this.loadNotebooks().then((retryNotebooks) => {
+                        sel.innerHTML = "";
+                        sel.appendChild(new Option(this.i18n.notebookPlaceholder, ""));
+                        retryNotebooks.forEach((nb) => {
+                            const opt = new Option(nb.name, nb.id);
+                            opt.title = nb.name;
+                            sel.appendChild(opt);
+                        });
+                        sel.value = retryNotebooks.some((nb) => nb.id === current) ? current : "";
+                        sel.disabled = false;
+                    });
+                });
+                wrap.appendChild(retry);
+                return;
+            }
+            sel.appendChild(new Option(this.i18n.notebookPlaceholder, ""));
+            notebooks.forEach((nb) => {
+                const opt = new Option(nb.name, nb.id);
+                opt.title = nb.name;
+                sel.appendChild(opt);
+            });
+            sel.value = notebooks.some((nb) => nb.id === current) ? current : "";
+            sel.disabled = false;
+        });
+        sel.addEventListener("change", () => onPick(sel.value));
+        return wrap;
+    }
+    // 打开/创建当日日记：默认日记本未设置时先弹出下拉选择
+    // 快速记录：Flomo 式弹窗，输入一句追加到今日日记末尾（未配置日记本时先让用户选择）
+    // 商店实时预览：以默认尺寸渲染真实组件（数据与面板同源），关闭窗口即释放实例
+    openHomeWidgetGuide() {
+        const dialog = new siyuan_1.Dialog({
+            title: this.i18n.homeStoreGuideTitle,
+            content: '<div class="speed-switch sw-home-store-guide"></div>',
+            width: this.isMobile ? "min(520px, 94vw)" : "min(720px, 76vw)",
+            height: this.isMobile ? "min(640px, 82vh)" : "min(620px, 78vh)",
+        });
+        (0, platform_dom_3.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "to close");
+        const root = dialog.element.querySelector(".sw-home-store-guide");
+        // 宿主主题可能改写 Dialog 内容；没有根节点时销毁空壳，避免留下
+        // 无法关闭的遮罩层。
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
+        const hint = document.createElement("p");
+        hint.className = "sw-home-store-guide__hint";
+        hint.textContent = this.i18n.homeStoreGuideHint;
+        root.appendChild(hint);
+        const link = document.createElement("a");
+        link.className = "b3-button b3-button--outline sw-home-store-guide__link";
+        link.href = "https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/component-store-guide.md";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = this.i18n.homeStoreGuide;
+        root.appendChild(link);
+        const note = document.createElement("p");
+        note.className = "sw-home-store-guide__note";
+        note.textContent = "docs/component-store-guide.md";
+        root.appendChild(note);
+        const dependencyTitle = document.createElement("h3");
+        dependencyTitle.className = "sw-home-store-guide__dependency-title";
+        dependencyTitle.textContent = this.i18n.homeStoreDependencyTitle;
+        root.appendChild(dependencyTitle);
+        const dependencySummary = (0, home_store_model_1.summarizeHomeStoreDependencies)();
+        const dependencySummaryText = document.createElement("p");
+        dependencySummaryText.className = "sw-home-store-guide__dependency-summary";
+        dependencySummaryText.textContent = this.i18n.homeStoreDependencySummary.replace("{total}", String(dependencySummary.total)).replace("{required}", String(dependencySummary.required)).replace("{optional}", String(dependencySummary.optional));
+        root.appendChild(dependencySummaryText);
+        const dependencyList = document.createElement("ul");
+        dependencyList.className = "sw-home-store-guide__dependency-list";
+        dependencyList.setAttribute("aria-label", this.i18n.homeStoreDependencyListLabel);
+        dependencySummary.entries.forEach(({ info }) => {
+            const item = document.createElement("li");
+            item.className = `sw-home-store-guide__dependency-item is-${info.required ? "required" : "optional"}`;
+            const name = document.createElement("strong");
+            name.textContent = info.name;
+            item.appendChild(name);
+            const badge = document.createElement("span");
+            badge.className = "sw-home-store-guide__dependency-badge";
+            badge.textContent = info.required ? this.i18n.homeStoreDependencyRequired : this.i18n.homeStoreDependencyOptional;
+            item.appendChild(badge);
+            const setup = document.createElement("span");
+            setup.className = "sw-home-store-guide__dependency-setup";
+            setup.textContent = info.setup;
+            item.appendChild(setup);
+            if (info.installUrl) {
+                const install = document.createElement("a");
+                install.href = info.installUrl;
+                install.target = "_blank";
+                install.rel = "noopener noreferrer";
+                install.textContent = this.i18n.homeStoreDependencyInstall;
+                install.setAttribute("aria-label", this.i18n.homeStoreDependencyInstallAria.replace("{name}", info.name));
+                item.appendChild(install);
+            }
+            dependencyList.appendChild(item);
+        });
+        root.appendChild(dependencyList);
+        const dependencyLink = document.createElement("a");
+        dependencyLink.className = "b3-button b3-button--outline sw-home-store-guide__dependency-link";
+        dependencyLink.href = "https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/external-component-installation.md";
+        dependencyLink.target = "_blank";
+        dependencyLink.rel = "noopener noreferrer";
+        dependencyLink.textContent = this.i18n.homeStoreDependencyLink;
+        root.appendChild(dependencyLink);
+    }
+    // T-7236：共享快速开始说明。它使用本地 DOM，不依赖网络，也不改变当前
+    // 表面的搜索/编辑现场；帮助入口始终可见，用户可以随时重新查看。
+    openPlatformGuide(surface = "switcher") {
+        var _a, _b;
+        if ((_a = this.platformGuideDialog) === null || _a === void 0 ? void 0 : _a.element.isConnected) {
+            (_b = this.platformGuideDialog.element.querySelector(".sw-platform-guide__close")) === null || _b === void 0 ? void 0 : _b.focus({ preventScroll: true });
+            return;
+        }
+        const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const dialog = new siyuan_1.Dialog({
+            title: this.i18n.platformGuideTitle || "快速开始",
+            content: '<div class="sw-platform-guide"></div>',
+            width: this.isMobile ? "min(520px, 94vw)" : "min(760px, 78vw)",
+            height: this.isMobile ? "min(680px, 86vh)" : "min(620px, 78vh)",
+            destroyCallback: () => {
+                if (this.platformGuideDialog === dialog)
+                    this.platformGuideDialog = null;
+                if (!this.isUnloading && (returnFocus === null || returnFocus === void 0 ? void 0 : returnFocus.isConnected))
+                    returnFocus.focus({ preventScroll: true });
+            },
+        });
+        this.platformGuideDialog = dialog;
+        (0, platform_dom_3.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "退出");
+        const root = dialog.element.querySelector(".sw-platform-guide");
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
+        dialog.element.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape" || event.defaultPrevented)
+                return;
+            event.preventDefault();
+            event.stopPropagation();
+            dialog.destroy();
+        }, true);
+        const close = document.createElement("button");
+        close.type = "button";
+        close.className = "b3-button b3-button--outline sw-platform-guide__close";
+        close.textContent = this.i18n.platformGuideClose || this.i18n.close || "关闭";
+        close.addEventListener("click", () => dialog.destroy());
+        const intro = document.createElement("p");
+        intro.className = "sw-platform-guide__intro";
+        intro.textContent = this.i18n.platformGuideIntro || "从这里开始熟悉小驴雷切的三个工作面板。";
+        root.append(intro);
+        const sections = [
+            { surface: "switcher", title: this.i18n.platformGuideSwitcherTitle || "第一面板 · 切换器", steps: [this.i18n.platformGuideSwitcherStep1 || "在搜索框输入关键词，立即筛选已打开页签，并可继续查找全库文档。", this.i18n.platformGuideSwitcherStep2 || "全库结果普通点击打开或定位；按住 Alt 点击可预览命中片段。", this.i18n.platformGuideSwitcherStep3 || "用收藏、最近和日记入口恢复高频工作现场。"] },
+            { surface: "workbench", title: this.i18n.platformGuideWorkbenchTitle || "第二面板 · 工作台", steps: [this.i18n.platformGuideWorkbenchStep1 || "打开组件商店，选择要放到工作台的信息组件。", this.i18n.platformGuideWorkbenchStep2 || "点击“编辑布局”后拖动、调整尺寸或移除组件，改动会实时保存。", this.i18n.platformGuideWorkbenchStep3 || "组件出现旧内容或失败时，使用卡片上的刷新/重试；设置可调整显示模块和窗口。"] },
+            { surface: "studio", title: this.i18n.platformGuideStudioTitle || "第三面板 · 片段实验室", steps: [this.i18n.platformGuideStudioStep1 || "选择已有片段，或新建 CSS/JS 草稿；商店片段会先以禁用状态加入。", this.i18n.platformGuideStudioStep2 || "在编辑区修改并查看预览，保存后才会写入片段库。", this.i18n.platformGuideStudioStep3 || "确认内容后再单独启用；JS 片段不会在实验室中直接执行。"] },
+            { title: this.i18n.platformGuideFloatingBallTitle || "悬浮球 · 全局入口", steps: [this.i18n.platformGuideFloatingBallStep1 || "在设置中分别开启桌面端或手机端；轻触执行主点击动作，默认打开切换器。", this.i18n.platformGuideFloatingBallStep2 || "拖动超过 8 px 可选择首层动作；拖到空白处松手保存位置，拖到动作上松手执行。", this.i18n.platformGuideFloatingBallStep3 || "手机端可配置快滑、双击和长按；半隐藏或弹窗让位后，点击边缘恢复把手即可找回悬浮球。"] },
+        ];
+        sections.forEach((section) => {
+            const article = document.createElement("section");
+            article.className = `sw-platform-guide__section${section.surface === surface ? " is-current" : ""}`;
+            const heading = document.createElement("h3");
+            heading.textContent = section.title;
+            article.appendChild(heading);
+            const list = document.createElement("ol");
+            section.steps.forEach((step) => {
+                const item = document.createElement("li");
+                item.textContent = step;
+                list.appendChild(item);
+            });
+            article.appendChild(list);
+            root.appendChild(article);
+        });
+        const footer = document.createElement("p");
+        footer.className = "sw-platform-guide__footer";
+        const shortcuts = this.getPlatformShortcutBindings();
+        footer.textContent = (this.i18n.platformGuideSettings || "当前快捷键：切换器 {switcher}，工作台 {workbench}。需要调整窗口尺寸、快捷键或模块显示时，打开右上角设置。")
+            .replace("{switcher}", shortcuts.switcher)
+            .replace("{workbench}", shortcuts.workbench);
+        root.append(footer, close);
+        close.focus({ preventScroll: true });
+    }
+    // 商店预览 dialog（openStoreWidgetPreview）已外迁至 home-store-ui.ts（R1，D-379）
+    // T-6818 快速捕获流程：输入 → 目标（今日日记/当前文档）→ 目的地预览 →
+    // 受控写入（白名单端点/既有桥）→ 回执。每步失败原因独立呈现。
+    openQuickCapture(preferredNotebook = "", initialText = "") {
+        const dialog = new siyuan_1.Dialog({
+            title: this.i18n.quickCaptureTitle,
+            content: '<div class="speed-switch sw-quick-capture"></div>',
+            width: this.isMobile ? "min(420px, 92vw)" : "380px",
+            // 快速记录内容包含目标、输入、预览和操作行；给底部动作保留完整
+            // 呼吸空间，避免宿主 Dialog 在固定高度下裁切主按钮。
+            height: this.isMobile ? "min(320px, 68vh)" : "288px",
+        });
+        const root = dialog.element.querySelector(".sw-quick-capture");
+        // 快速记录没有根节点就没有输入或退出入口，按失败边界销毁空壳。
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
+        let target = "journal";
+        // 快速记录是独立操作弹窗，宿主标题栏在窄端可能被隐藏；在内容层补一组
+        // 明确的退出动作，保持与平台面板相同的 Esc 可发现性。
+        const header = document.createElement("div");
+        header.className = "sw-quick-capture__header";
+        const headerTitle = document.createElement("strong");
+        headerTitle.className = "sw-quick-capture__header-title";
+        headerTitle.textContent = this.i18n.quickCaptureTitle;
+        const headerActions = document.createElement("div");
+        headerActions.className = "sw-quick-capture__header-actions";
+        const escapeHint = document.createElement("span");
+        escapeHint.className = "sw-quick-capture__close-hint";
+        escapeHint.setAttribute("aria-label", this.i18n.platformCloseHint || "Escape to close");
+        escapeHint.appendChild((0, platform_dom_1.createPlatformKbd)(document, "Esc"));
+        const closeButton = document.createElement("button");
+        closeButton.type = "button";
+        closeButton.className = "b3-button b3-button--text sw-quick-capture__close";
+        closeButton.setAttribute("aria-label", this.i18n.close);
+        closeButton.title = this.i18n.close;
+        closeButton.innerHTML = '<svg><use xlink:href="#iconClose"></use></svg>';
+        closeButton.addEventListener("click", () => dialog.destroy());
+        headerActions.append(escapeHint, closeButton);
+        header.append(headerTitle, headerActions);
+        root.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape")
+                return;
+            event.preventDefault();
+            event.stopPropagation();
+            dialog.destroy();
+        });
+        const input = document.createElement("textarea");
+        input.className = "b3-text-field fn__block sw-quick-capture__input";
+        input.rows = 3;
+        input.placeholder = this.i18n.quickCapturePlaceholder;
+        input.value = initialText;
+        input.setAttribute("aria-label", this.i18n.quickCaptureTitle);
+        // T-6815/T-6818 目的地预览：写到哪里、写什么副作用，提交前可见
+        const previewLine = document.createElement("p");
+        previewLine.className = "sw-quick-capture__preview";
+        previewLine.setAttribute("role", "status");
+        previewLine.setAttribute("aria-live", "polite");
+        const actions = document.createElement("div");
+        actions.className = "sw-quick-capture__actions";
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "b3-button b3-button--text";
+        cancel.textContent = this.i18n.quickCaptureCancel;
+        cancel.addEventListener("click", () => dialog.destroy());
+        const save = document.createElement("button");
+        save.type = "button";
+        save.className = "b3-button b3-button--outline sw-quick-capture__save";
+        save.textContent = this.i18n.quickCaptureSave;
+        // T-6875（RZ-5）：键位提示芯片——只陈述真实绑定（保存=Ctrl/Cmd+Enter，Esc=宿主关闭）
+        // T-6888 审查修复：提示只保留真实绑定芯片（Ctrl+Enter）——此前附带
+        // 保存/取消文字与按钮文本重复且在窄弹窗内竖排溢出。
+        const kbdHints = document.createElement("span");
+        kbdHints.className = "sw-quick-capture__kbd-hints";
+        kbdHints.append((0, platform_dom_1.createPlatformKbd)(document, "Ctrl+Enter"));
+        const targets = document.createElement("div");
+        targets.className = "sw-quick-capture__targets";
+        // Destination choices are a pressed-button group; they do not switch
+        // tabpanels, so do not expose an incomplete tablist interaction model.
+        targets.setAttribute("role", "group");
+        targets.setAttribute("aria-label", this.i18n.quickCaptureTitle);
+        const targetButtons = [];
+        const makeTargetButton = (key, label) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "b3-button b3-button--small";
+            button.textContent = label;
+            button.addEventListener("click", () => setActiveTarget(key));
+            targetButtons.push({ key, el: button });
+            targets.appendChild(button);
+        };
+        makeTargetButton("journal", this.i18n.quickCaptureTargetJournal);
+        const captureRoot = this.resolveActiveCaptureRoot();
+        if (!this.isMobile)
+            makeTargetButton("current", this.i18n.quickCaptureTargetCurrent);
+        const setActiveTarget = (next) => {
+            target = next;
+            targetButtons.forEach(({ key, el }) => {
+                el.classList.toggle("sw__target--active", key === target);
+                // T-7042：同 chips 收口——单选按钮组用 aria-pressed，不用 tablist 专属 aria-selected
+                el.setAttribute("aria-pressed", String(key === target));
+            });
+            updatePreview();
+        };
+        const updatePreview = () => {
+            if (target === "journal") {
+                save.disabled = false;
+                const today = new Date();
+                const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+                previewLine.textContent = this.i18n.quickCapturePreviewJournal.replace("{x}", ymd);
+                // 预览 enriched：笔记本名异步补齐（有界缓存清单）
+                void this.loadNotebooks().then((notebooks) => {
+                    if (!previewLine.isConnected)
+                        return;
+                    const notebookId = (0, agent_capabilities_1.normalizeAgentNotebookId)(preferredNotebook) || (0, agent_capabilities_1.normalizeAgentNotebookId)(this.getSettings().journalNotebook);
+                    const found = notebooks.find((nb) => nb.id === notebookId);
+                    if (found)
+                        previewLine.textContent = this.i18n.quickCapturePreviewJournal.replace("{x}", `${found.name} · ${ymd}`);
+                }).catch(() => undefined);
+                return;
+            }
+            const capture = this.resolveActiveCaptureRoot();
+            if (capture) {
+                save.disabled = false;
+                previewLine.textContent = this.i18n.quickCapturePreviewCurrent.replace("{x}", capture.title);
+            }
+            else {
+                save.disabled = true;
+                previewLine.textContent = this.i18n.quickCaptureNoTarget;
+            }
+        };
+        let saving = false;
+        let writeOutcomeUnknown = false;
+        const submit = () => {
+            if (saving)
+                return;
+            void (async () => {
+                const content = (0, agent_capabilities_1.sanitizeJournalAppend)(input.value);
+                if (!content) {
+                    (0, siyuan_1.showMessage)(this.i18n.quickCaptureEmpty);
+                    return;
+                }
+                saving = true;
+                save.disabled = true;
+                cancel.disabled = true;
+                let completed = false;
+                try {
+                    if (target === "current") {
+                        // 受控写入（当前文档）：追加到活动文档末尾（内核 appendBlock，白名单端点）
+                        const capture = this.resolveActiveCaptureRoot();
+                        if (!capture) {
+                            (0, siyuan_1.showMessage)(this.i18n.quickCaptureNoTarget, constants_1.MESSAGE_DEFAULT_MS, "error");
+                            return;
+                        }
+                        const appendResult = await this.fetchKernelJsonOutcome("/api/block/appendBlock", {
+                            dataType: "markdown", data: content, parentID: capture.rootId,
+                        });
+                        if (!appendResult.ok) {
+                            if (appendResult.outcome === "unknown") {
+                                writeOutcomeUnknown = true;
+                                previewLine.textContent = this.i18n.quickCaptureUnknown || "请求已发出，但结果暂时无法确认。请先核对目标文档；本窗口已锁定追加，避免重复写入。";
+                                input.readOnly = true;
+                                targetButtons.forEach(({ el }) => { el.disabled = true; });
+                                save.textContent = this.i18n.quickCapturePending || "结果待核实";
+                                (0, siyuan_1.showMessage)(this.i18n.quickCaptureUnknown || "请求已发出，但结果暂时无法确认。请先核对目标文档；本窗口已锁定追加，避免重复写入。", constants_1.MESSAGE_DEFAULT_MS, "error");
+                            }
+                            else {
+                                (0, siyuan_1.showMessage)(this.i18n.quickCaptureFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+                            }
+                            return;
+                        }
+                        const appendJson = appendResult.value;
+                        if (!appendJson || appendJson.code !== 0) {
+                            (0, siyuan_1.showMessage)(this.i18n.quickCaptureFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+                            return;
+                        }
+                        completed = true;
+                        dialog.destroy();
+                        (0, siyuan_1.showMessage)(`${this.i18n.quickCaptureDone} · ${this.i18n.quickCapturePreviewCurrent.replace("{x}", capture.title)}`);
+                        return;
+                    }
+                    let notebook = (0, agent_capabilities_1.normalizeAgentNotebookId)(preferredNotebook) || (0, agent_capabilities_1.normalizeAgentNotebookId)(this.getSettings().journalNotebook);
+                    if (!notebook) {
+                        notebook = await this.promptJournalNotebook();
+                        if (!notebook)
+                            return;
+                    }
+                    const journalResult = await this.ensureTodayJournalOutcome(notebook);
+                    if (journalResult.ok === false) {
+                        const message = journalResult.outcome === "unknown"
+                            ? this.i18n.journalResultUnknown || "日记创建请求已发出，但结果暂时无法确认。请先核对今日日记，再继续捕获。"
+                            : journalResult.error.kind === "unauthorized" || journalResult.error.kind === "forbidden"
+                                ? this.i18n.kernelPermissionDenied || "思源会话或权限不可用，请在思源中恢复后重试。"
+                                : this.i18n.quickCaptureFailed;
+                        (0, siyuan_1.showMessage)(message, constants_1.MESSAGE_DEFAULT_MS, "error");
+                        return;
+                    }
+                    const docId = journalResult.id;
+                    const appendResult = await this.fetchKernelJsonOutcome("/api/block/appendBlock", {
+                        dataType: "markdown", data: content, parentID: docId,
+                    });
+                    if (!appendResult.ok) {
+                        if (appendResult.outcome === "unknown") {
+                            writeOutcomeUnknown = true;
+                            previewLine.textContent = this.i18n.quickCaptureUnknown || "请求已发出，但结果暂时无法确认。请先核对今日日记；本窗口已锁定追加，避免重复写入。";
+                            input.readOnly = true;
+                            targetButtons.forEach(({ el }) => { el.disabled = true; });
+                            save.textContent = this.i18n.quickCapturePending || "结果待核实";
+                            (0, siyuan_1.showMessage)(this.i18n.quickCaptureUnknown || "请求已发出，但结果暂时无法确认。请先核对今日日记；本窗口已锁定追加，避免重复写入。", constants_1.MESSAGE_DEFAULT_MS, "error");
+                        }
+                        else {
+                            (0, siyuan_1.showMessage)(this.i18n.quickCaptureFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+                        }
+                        return;
+                    }
+                    const appendJson = appendResult.value;
+                    if (!appendJson || appendJson.code !== 0) {
+                        (0, siyuan_1.showMessage)(this.i18n.quickCaptureFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+                        return;
+                    }
+                    completed = true;
+                    dialog.destroy();
+                    (0, siyuan_1.showMessage)(this.i18n.quickCaptureDone);
+                }
+                catch (error) {
+                    logger_1.logger.warn("quick capture failed", error);
+                    (0, siyuan_1.showMessage)(this.i18n.quickCaptureFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+                }
+                finally {
+                    if (!completed) {
+                        saving = false;
+                        save.disabled = writeOutcomeUnknown;
+                        cancel.disabled = false;
+                        input.focus();
+                    }
+                }
+            })();
+        };
+        save.addEventListener("click", submit);
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                submit();
+            }
+        });
+        actions.append(kbdHints, cancel, save);
+        root.append(header, targets, input, previewLine, actions);
+        setActiveTarget("journal");
+        window.setTimeout(() => {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }, 30);
+    }
+    // T-6818：活动文档捕获目标（rootId + 可见标题）；无活动编辑器时为 null
+    resolveActiveCaptureRoot() {
+        var _a, _b, _c, _d, _e, _f;
+        const editor = this.resolveActiveHostEditor();
+        const rootId = String(((_b = (_a = editor === null || editor === void 0 ? void 0 : editor.protyle) === null || _a === void 0 ? void 0 : _a.block) === null || _b === void 0 ? void 0 : _b.parentID) || "");
+        if (!editor || !rootId)
+            return null;
+        const title = ((_d = (_c = document.querySelector(".layout__wnd--active .item--focus .protyle-title")) === null || _c === void 0 ? void 0 : _c.textContent) === null || _d === void 0 ? void 0 : _d.trim())
+            || ((_f = (_e = document.querySelector(".protyle-title")) === null || _e === void 0 ? void 0 : _e.textContent) === null || _f === void 0 ? void 0 : _f.trim())
+            || rootId;
+        return { rootId, title: title.slice(0, 120) };
+    }
+    async openJournal(preferredNotebook = "") {
+        let notebook = (0, agent_capabilities_1.normalizeAgentNotebookId)(preferredNotebook) || (0, agent_capabilities_1.normalizeAgentNotebookId)(this.getSettings().journalNotebook);
+        if (!notebook) {
+            notebook = await this.promptJournalNotebook();
+            if (!notebook) {
+                return; // 鐢ㄦ埛鍙栨秷閫夋嫨
+            }
+        }
+        const result = this.getSettings().journalAutoCreate === false
+            ? await this.findTodayJournalOutcome(notebook)
+            : await this.ensureTodayJournalOutcome(notebook);
+        if (result.ok === false) {
+            const message = result.outcome === "unknown"
+                ? this.i18n.journalResultUnknown || "日记创建请求已发出，但结果暂时无法确认。请先检查今日日记，再决定是否重试。"
+                : result.error.kind === "unauthorized" || result.error.kind === "forbidden"
+                    ? this.i18n.kernelPermissionDenied || "思源会话或权限不可用，请在思源中恢复后重试。"
+                    : this.i18n.journalFailed;
+            (0, siyuan_1.showMessage)(message, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const id = result.id;
+        if (!id) {
+            (0, siyuan_1.showMessage)(this.i18n.journalFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        if (this.isMobile) {
+            // openTab 在手机端是空实现，走 MobileTabs.open
+            this.mobileOpenDoc(id);
+        }
+        else {
+            (0, siyuan_1.openTab)({ app: this.app, doc: { id } });
+        }
+    }
+    // 调用内核 createDailyNote：已有当日日记时返回其 id（不重复创建）
+    async ensureTodayJournal(notebook) {
+        const result = await this.ensureTodayJournalOutcome(notebook);
+        return result.ok ? result.id : null;
+    }
+    async findTodayJournal(notebook) {
+        const result = await this.findTodayJournalOutcome(notebook);
+        return result.ok ? result.id : null;
+    }
+    async ensureTodayJournalOutcome(notebook) {
+        return (0, journal_actions_1.ensureTodayJournalOutcome)({
+            notebook,
+            logger: logger_1.logger,
+            requestJson: (url, body, requestOptions) => this.fetchKernelJsonOutcome(url, body, requestOptions),
+        });
+    }
+    async findTodayJournalOutcome(notebook) {
+        return (0, journal_actions_1.findTodayJournalOutcome)({
+            notebook,
+            logger: logger_1.logger,
+            requestJson: (url, body, requestOptions) => this.fetchKernelJsonOutcome(url, body, requestOptions),
+        });
+    }
+    // 首次点击日记按钮：弹窗选择默认日记笔记本，选择后保存并返回
+    promptJournalNotebook() {
+        return new Promise((resolve) => {
+            var _a;
+            let settled = false;
+            const finish = (value) => {
+                if (settled)
+                    return;
+                settled = true;
+                resolve(value);
+            };
+            let releaseJournalDialog = () => undefined;
+            const dialog = new siyuan_1.Dialog({
+                title: this.i18n.journalChoose,
+                content: this.buildJournalPromptHtml(),
+                width: "min(460px, 90vw)",
+                destroyCallback: () => releaseJournalDialog(),
+            });
+            (0, platform_dom_3.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "to close");
+            releaseJournalDialog = this.suspendFABForDialog(() => finish(""));
+            const sel = (_a = dialog.element.querySelector(".sw-journal-prompt__sel > select")) !== null && _a !== void 0 ? _a : this.createJournalSelect(dialog);
+            const confirmBtn = dialog.element.querySelector(".sw-journal-prompt__confirm");
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+            }
+            this.loadNotebooks().then((notebooks) => {
+                this.populateJournalNotebookSelect(sel, confirmBtn, notebooks);
+            });
+            this.bindJournalPromptEvents(dialog, sel, confirmBtn, finish);
+        });
+    }
+    // 笔记本选择弹窗 HTML：提示文本 + select 占位 + 取消/确认按钮
+    buildJournalPromptHtml() {
+        return `<div class="b3-dialog__content sw-journal-prompt">
+    <div class="b3-label__text sw-journal-prompt__tip">${this.i18n.journalChooseTip}</div>
+    <div class="sw-journal-prompt__sel"></div>
+</div>
+<div class="b3-dialog__action">
+    <button class="b3-button b3-button--cancel">${this.i18n.cancel}</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--text sw-journal-prompt__confirm">${this.i18n.confirm}</button>
+</div>`;
+    }
+    // select 不存在时（DOM 未找到占位 div）动态创建一个；正常情况下 HTML 里已有占位
+    createJournalSelect(dialog) {
+        var _a;
+        const sel = document.createElement("select");
+        sel.className = "b3-select fn__flex-center fn__block";
+        sel.disabled = true;
+        sel.appendChild(new Option(this.i18n.notebookLoading, ""));
+        (_a = dialog.element.querySelector(".sw-journal-prompt__sel")) === null || _a === void 0 ? void 0 : _a.appendChild(sel);
+        return sel;
+    }
+    // 加载到笔记本列表后填充选项：无笔记本显示空态；否则默认选中第一项
+    populateJournalNotebookSelect(sel, confirmBtn, notebooks) {
+        if (notebooks.length === 0) {
+            sel.disabled = true;
+            sel.innerHTML = "";
+            sel.appendChild(new Option(this.i18n.journalNoNotebook, ""));
+            return;
+        }
+        sel.disabled = false;
+        sel.innerHTML = "";
+        notebooks.forEach((nb) => {
+            const opt = new Option(nb.name, nb.id);
+            opt.title = nb.name;
+            sel.appendChild(opt);
+        });
+        sel.value = notebooks[0].id;
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+        }
+    }
+    // 确认：写入设置 + 关闭弹窗 + resolve(id)；取消：resolve("")（调用方按空值兜底）
+    bindJournalPromptEvents(dialog, sel, confirmBtn, resolve) {
+        var _a;
+        confirmBtn === null || confirmBtn === void 0 ? void 0 : confirmBtn.addEventListener("click", () => {
+            const picked = sel.value;
+            if (!picked) {
+                return;
+            }
+            this.updateSettings({ journalNotebook: picked });
+            resolve(picked);
+            dialog.destroy();
+        });
+        (_a = dialog.element.querySelector(".b3-button--cancel")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", () => {
+            dialog.destroy();
+            resolve("");
+        });
+    }
+    // 插件设置页（设置 → 插件 → 小驴速切 → 设置图标）
+    // 布局：左侧标签栏（外观/行为/面板/收藏/手机端）+ 右侧分组面板，点击标签切换
+    // T-7012：returnTo 是打开设置时的平台表面；设置关闭后恢复该表面
+    // （不固定回切换器）。无面板来源的入口（顶栏/悬浮球/侧栏）不传，行为不变。
+    openSetting(initialPanel, returnTo, returnContext) {
+        var _a;
+        const restoreSurface = (0, platform_surface_model_1.normalizeSurfaceId)(returnTo || "", "");
+        const restoreContext = (0, platform_surface_model_1.normalizeSurfaceContext)(returnContext);
+        const panelKeys = ["appearance", "behavior", "panels", "favorites", "quickActions", "floatingBall", "documentSets", "journal", "mobile", "storage"];
+        const panelLabels = {
+            appearance: this.i18n.secAppearance,
+            behavior: this.i18n.secBehavior,
+            panels: this.i18n.secPanels,
+            favorites: this.i18n.secFavorites,
+            quickActions: this.i18n.secQuickActions,
+            floatingBall: this.i18n.secFloatingBall,
+            documentSets: this.i18n.secDocumentSets,
+            journal: this.i18n.secJournal,
+            mobile: this.i18n.secMobile,
+            storage: this.i18n.secStorage,
+        };
+        // T-6479：设置弹窗的 resize 监听释放改挂宿主 destroyCallback（不再覆写 dialog.destroy）。
+        let releaseSettingsDialog = () => undefined;
+        let releaseSettingsFab = () => undefined;
+        // T-7003：设置页回执/撤销/外部重建的监听器释放（openSetting 后段装配）
+        let releaseSettingsListeners = () => undefined;
+        const dialog = new siyuan_1.Dialog({
+            title: this.i18n.settings,
+            content: '<div class="sw-settings"></div>',
+            destroyCallback: () => {
+                releaseSettingsDialog();
+                releaseSettingsFab();
+                releaseSettingsListeners();
+                // T-7003：弹窗销毁即摘除撤销/重建钩子，其他入口回归零开销
+                this.settingsUndoRecorder = null;
+                this.settingsSceneReloader = null;
+                // T-7012：设置互返——从平台表面打开时，关闭后恢复该表面；
+                // 面板重开走 openPlatformSurface 的单例守卫与 FAB 串行释放。
+                if (restoreSurface && !this.isUnloading) {
+                    this.openPlatformSurface(restoreSurface, "switcher", Object.assign(Object.assign(Object.assign(Object.assign({ entry: "back" }, ((restoreContext === null || restoreContext === void 0 ? void 0 : restoreContext.objectKind) ? { objectKind: restoreContext.objectKind } : {})), ((restoreContext === null || restoreContext === void 0 ? void 0 : restoreContext.objectId) ? { objectId: restoreContext.objectId } : {})), ((restoreContext === null || restoreContext === void 0 ? void 0 : restoreContext.query) ? { query: restoreContext.query } : {})), ((restoreContext === null || restoreContext === void 0 ? void 0 : restoreContext.focusSource) ? { focusSource: restoreContext.focusSource } : {})));
+                }
+            },
+            // 桌面端独立采用 70% 视口自适应（不与第一面板的 panelScale 联动）；手机端按视口收缩，避免溢出屏幕
+            width: this.isMobile ? "min(720px, 88vw)" : `${(0, settings_model_1.resolvePanelSize)(Object.assign(Object.assign({}, this.getSettings()), { panelSizeMode: "adaptive", panelScale: constants_1.SETTINGS_PANEL_SCALE }), { width: window.innerWidth, height: window.innerHeight, minWidth: constants_1.PANEL_SIZE_MIN_PX, minHeight: constants_1.PANEL_SIZE_MIN_PX }).width}px`,
+            height: this.isMobile ? "min(560px, 85vh)" : `${(0, settings_model_1.resolvePanelSize)(Object.assign(Object.assign({}, this.getSettings()), { panelSizeMode: "adaptive", panelScale: constants_1.SETTINGS_PANEL_SCALE }), { width: window.innerWidth, height: window.innerHeight, minWidth: constants_1.PANEL_SIZE_MIN_PX, minHeight: constants_1.PANEL_SIZE_MIN_PX }).height}px`,
+        });
+        releaseSettingsFab = this.suspendFABForDialog();
+        const root = dialog.element.querySelector(".sw-settings");
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
+        (_a = dialog.element.querySelector(".b3-dialog__container")) === null || _a === void 0 ? void 0 : _a.classList.add("sw-settings-dialog");
+        (0, platform_dom_3.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "to close");
+        const tabs = document.createElement("div");
+        tabs.className = "sw-settings__tabs";
+        tabs.setAttribute("role", "tablist");
+        tabs.setAttribute("aria-label", this.i18n.settings);
+        const horizontalTabs = typeof window === "object" && typeof window.matchMedia === "function"
+            && window.matchMedia("(max-width: 560px)").matches;
+        tabs.setAttribute("aria-orientation", horizontalTabs ? "horizontal" : "vertical");
+        const updateTabsOrientation = () => {
+            const isHorizontal = typeof window === "object" && typeof window.matchMedia === "function"
+                && window.matchMedia("(max-width: 560px)").matches;
+            tabs.setAttribute("aria-orientation", isHorizontal ? "horizontal" : "vertical");
+        };
+        const onSettingsResize = () => updateTabsOrientation();
+        if (typeof window === "object" && typeof window.addEventListener === "function") {
+            window.addEventListener("resize", onSettingsResize);
+        }
+        let settingsDestroyed = false;
+        releaseSettingsDialog = () => {
+            if (settingsDestroyed)
+                return;
+            settingsDestroyed = true;
+            if (typeof window === "object" && typeof window.removeEventListener === "function") {
+                window.removeEventListener("resize", onSettingsResize);
+            }
+        };
+        const panels = document.createElement("div");
+        panels.className = "sw-settings__panels";
+        const ensureTabVisible = (key, behavior = "auto") => {
+            const activeTab = tabs.querySelector(`.sw-settings__tab[data-panel="${key}"]`);
+            if (!activeTab || tabs.scrollWidth <= tabs.clientWidth)
+                return;
+            const itemLeft = activeTab.offsetLeft;
+            const itemRight = itemLeft + activeTab.offsetWidth;
+            const edge = Math.max(12, Math.min(28, Math.floor(tabs.clientWidth * 0.12)));
+            let nextLeft = tabs.scrollLeft;
+            if (itemLeft < tabs.scrollLeft + edge)
+                nextLeft = itemLeft - edge;
+            else if (itemRight > tabs.scrollLeft + tabs.clientWidth - edge)
+                nextLeft = itemRight - tabs.clientWidth + edge;
+            nextLeft = Math.max(0, Math.min(nextLeft, tabs.scrollWidth - tabs.clientWidth));
+            const reduceMotion = typeof window === "object" && typeof window.matchMedia === "function"
+                && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            const scrollBehavior = reduceMotion ? "auto" : behavior;
+            if (typeof tabs.scrollTo === "function") {
+                try {
+                    tabs.scrollTo({ left: nextLeft, behavior: scrollBehavior });
+                    return;
+                }
+                catch (_) {
+                    // Older WebViews may reject the options object.
+                }
+            }
+            tabs.scrollLeft = nextLeft;
+        };
+        // 切换分组：仅激活对应标签与面板，同步 aria-selected 供读屏感知；
+        // persist=true 时记录最近选中的标签页（仅用户主动点击时写盘，避免打开设置就产生一次无效写入）
+        const activate = (key, persist = false) => {
+            var _a;
+            if (key === "floatingBall") {
+                (_a = panels.querySelector(".sw-floating-ball-settings")) === null || _a === void 0 ? void 0 : _a.dispatchEvent(new Event("sw-floating-ball-refresh"));
+            }
+            tabs.querySelectorAll(".sw-settings__tab").forEach((tab) => {
+                const active = tab.dataset.panel === key;
+                tab.classList.toggle("is-active", active);
+                tab.setAttribute("aria-selected", active ? "true" : "false");
+                tab.tabIndex = active ? 0 : -1;
+            });
+            panels.querySelectorAll(".sw-settings__panel").forEach((p) => {
+                const active = p.dataset.panel === key;
+                p.classList.toggle("is-active", active);
+                p.hidden = !active;
+                p.setAttribute("aria-hidden", active ? "false" : "true");
+            });
+            if (persist) {
+                this.updateSettings({ lastSettingsTab: key });
+            }
+            this.scheduleAnimationFrame(() => ensureTabVisible(key, persist ? "smooth" : "auto"));
+        };
+        const activateByOffset = (currentKey, offset) => {
+            var _a;
+            const currentIndex = panelKeys.indexOf(currentKey);
+            if (currentIndex < 0)
+                return;
+            const nextKey = panelKeys[(currentIndex + offset + panelKeys.length) % panelKeys.length];
+            activate(nextKey, true);
+            (_a = tabs.querySelector(`.sw-settings__tab[data-panel="${nextKey}"]`)) === null || _a === void 0 ? void 0 : _a.focus();
+        };
+        const builders = {
+            appearance: () => settings_sections_1.buildSettingsAppearance.call(this, this.getSettings()),
+            behavior: () => settings_sections_1.buildSettingsBehavior.call(this, this.getSettings()),
+            panels: () => settings_sections_1.buildSettingsPanels.call(this, this.getSettings()),
+            favorites: () => settings_sections_1.buildSettingsFavorites.call(this),
+            quickActions: () => settings_sections_1.buildSettingsQuickActions.call(this),
+            floatingBall: () => settings_sections_1.buildSettingsFloatingBall.call(this, this.getSettings()),
+            documentSets: () => settings_sections_1.buildSettingsDocumentSets.call(this),
+            journal: () => settings_sections_1.buildSettingsJournal.call(this, this.getSettings()),
+            mobile: () => settings_sections_1.buildSettingsMobile.call(this, this.getSettings()),
+            storage: () => settings_sections_1.buildSettingsStorage.call(this),
+        };
+        // 构建标签栏与分组面板
+        panelKeys.forEach((key) => {
+            const tab = document.createElement("button");
+            tab.type = "button";
+            tab.className = "sw-settings__tab";
+            tab.setAttribute("role", "tab");
+            tab.dataset.panel = key;
+            tab.id = `sw-settings-tab-${key}`;
+            tab.setAttribute("aria-controls", `sw-settings-panel-${key}`);
+            tab.tabIndex = -1;
+            tab.textContent = panelLabels[key];
+            tab.addEventListener("click", () => activate(key, true));
+            tab.addEventListener("keydown", (event) => {
+                var _a;
+                if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+                    event.preventDefault();
+                    activateByOffset(key, 1);
+                }
+                else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+                    event.preventDefault();
+                    activateByOffset(key, -1);
+                }
+                else if (event.key === "Home" || event.key === "End") {
+                    event.preventDefault();
+                    const targetKey = event.key === "Home" ? panelKeys[0] : panelKeys[panelKeys.length - 1];
+                    activate(targetKey, true);
+                    (_a = tabs.querySelector(`.sw-settings__tab[data-panel="${targetKey}"]`)) === null || _a === void 0 ? void 0 : _a.focus();
+                }
+            });
+            tabs.appendChild(tab);
+            const panelEl = document.createElement("div");
+            panelEl.className = "sw-settings__panel";
+            panelEl.setAttribute("role", "tabpanel");
+            panelEl.dataset.panel = key;
+            panelEl.id = `sw-settings-panel-${key}`;
+            panelEl.setAttribute("aria-labelledby", `sw-settings-tab-${key}`);
+            panelEl.appendChild(builders[key]());
+            panels.appendChild(panelEl);
+        });
+        root.appendChild(tabs);
+        root.appendChild(panels);
+        // T-6951：设置全局搜索——面板全量预构建后对生产 DOM 扫描一次建索引
+        //（只收标题/描述/面板归属，不收 token 与用户值）；定位 = 切组 + 滚入视口 +
+        // 聚焦真实控件 + 短暂强调。空查询回正常分组浏览。
+        // T-7002：combobox 语义补全（aria-expanded/controls/activedescendant）、
+        // 清空按钮、分组 chips 过滤与 `/`·Ctrl+K 直达（见下方接线）。
+        const searchWrap = document.createElement("div");
+        searchWrap.className = "sw-settings__search";
+        const searchInput = document.createElement("input");
+        searchInput.type = "text";
+        searchInput.className = "sw-settings__search-input";
+        searchInput.placeholder = this.i18n.settingsSearch;
+        searchInput.setAttribute("aria-label", this.i18n.settingsSearch);
+        searchInput.setAttribute("role", "combobox");
+        searchInput.setAttribute("aria-autocomplete", "list");
+        searchInput.setAttribute("aria-expanded", "false");
+        searchInput.setAttribute("aria-controls", "sw-settings-search-results");
+        const searchClear = document.createElement("button");
+        searchClear.type = "button";
+        searchClear.className = "sw-settings__search-clear";
+        searchClear.textContent = "×";
+        searchClear.setAttribute("aria-label", this.i18n.settingsSearchClear);
+        searchClear.title = this.i18n.settingsSearchClear;
+        searchClear.hidden = true;
+        const searchChips = document.createElement("div");
+        searchChips.className = "sw-settings__search-chips";
+        searchChips.setAttribute("role", "group");
+        searchChips.setAttribute("aria-label", this.i18n.settingsSearchFilter);
+        searchChips.hidden = true;
+        const searchResults = document.createElement("div");
+        searchResults.className = "sw-settings__search-results";
+        searchResults.id = "sw-settings-search-results";
+        searchResults.setAttribute("role", "listbox");
+        searchResults.setAttribute("aria-label", this.i18n.settingsSearch);
+        searchResults.hidden = true;
+        searchWrap.append(searchInput, searchClear, searchChips, searchResults);
+        // 常驻面板滚动列顶部（sticky），tabs 栏保持原布局
+        panels.insertBefore(searchWrap, panels.firstChild);
+        const searchEntries = (0, settings_search_model_1.collectSettingsSearchEntries)(panels, panelLabels);
+        let searchMatches = [];
+        // T-7002：结果分组过滤 chips 的当前选中组（空串=全部）；查询变化即重置。
+        let searchGroupFilter = "";
+        let searchSelected = -1;
+        const findSettingsScroller = (start) => {
+            let el = (start === null || start === void 0 ? void 0 : start.parentElement) || null;
+            while (el && el !== document.body) {
+                const style = window.getComputedStyle(el);
+                if (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 4)
+                    return el;
+                el = el.parentElement;
+            }
+            return null;
+        };
+        const locateSettingEntry = (entry) => {
+            clearSettingsSearchView();
+            searchInput.value = "";
+            activate(entry.key);
+            this.scheduleAnimationFrame(() => {
+                var _a;
+                if (!((_a = entry.element) === null || _a === void 0 ? void 0 : _a.isConnected) || !root.isConnected)
+                    return;
+                const scroller = findSettingsScroller(entry.element);
+                if (scroller) {
+                    const itemRect = entry.element.getBoundingClientRect();
+                    const scrollerRect = scroller.getBoundingClientRect();
+                    const target = scroller.scrollTop + (itemRect.top - scrollerRect.top)
+                        - Math.max(24, scrollerRect.height * 0.2);
+                    scroller.scrollTop = Math.max(0, target);
+                }
+                entry.element.classList.add("sw-settings__item--locate");
+                const control = entry.element.querySelector("button, input, select, textarea, [tabindex]:not([tabindex='-1'])");
+                try {
+                    control === null || control === void 0 ? void 0 : control.focus({ preventScroll: true });
+                }
+                catch (_) {
+                    control === null || control === void 0 ? void 0 : control.focus();
+                }
+                window.setTimeout(() => { var _a; return (_a = entry.element) === null || _a === void 0 ? void 0 : _a.classList.remove("sw-settings__item--locate"); }, 1800);
+            });
+        };
+        const updateSettingsSearchSelection = () => {
+            const options = searchResults.querySelectorAll(".sw-settings__search-option");
+            options.forEach((option, index) => {
+                const active = index === searchSelected;
+                option.classList.toggle("is-active", active);
+                option.setAttribute("aria-selected", active ? "true" : "false");
+            });
+            // T-7002：combobox 的 activedescendant 必须跟随键盘选择（读屏播报当前项）。
+            const activeEl = options[searchSelected];
+            if (activeEl === null || activeEl === void 0 ? void 0 : activeEl.id)
+                searchInput.setAttribute("aria-activedescendant", activeEl.id);
+            else
+                searchInput.removeAttribute("aria-activedescendant");
+            if (activeEl) {
+                const top = activeEl.offsetTop;
+                if (top < searchResults.scrollTop)
+                    searchResults.scrollTop = top;
+                else if (top + activeEl.offsetHeight > searchResults.scrollTop + searchResults.clientHeight) {
+                    searchResults.scrollTop = top + activeEl.offsetHeight - searchResults.clientHeight;
+                }
+            }
+        };
+        const renderSettingsSearchResults = () => {
+            const query = searchInput.value;
+            const { results, total } = (0, settings_search_model_1.searchSettingsIndex)(searchEntries, query);
+            searchMatches = results;
+            searchGroupFilter = "";
+            searchSelected = results.length > 0 ? 0 : -1;
+            searchResults.textContent = "";
+            searchChips.textContent = "";
+            searchClear.hidden = !query;
+            searchInput.setAttribute("aria-expanded", query.trim() ? "true" : "false");
+            if (!query.trim()) {
+                searchChips.hidden = true;
+                searchResults.hidden = true;
+                searchInput.removeAttribute("aria-activedescendant");
+                return;
+            }
+            searchResults.hidden = false;
+            // T-7002：分组 chips——只在结果非空时出现，全部 + 结果内去重组（有界 6）。
+            const groups = (0, settings_search_model_1.collectEntryGroups)(results, 6);
+            if (groups.length > 1) {
+                const makeChip = (label, value) => {
+                    const chip = document.createElement("button");
+                    chip.type = "button";
+                    chip.className = "sw-settings__search-chip" + (value === searchGroupFilter ? " is-active" : "");
+                    chip.textContent = label;
+                    chip.dataset.group = value;
+                    chip.setAttribute("aria-pressed", String(value === searchGroupFilter));
+                    chip.addEventListener("click", () => {
+                        searchGroupFilter = searchGroupFilter === value ? "" : value;
+                        renderSettingsSearchResultOptions();
+                    });
+                    return chip;
+                };
+                searchChips.append(makeChip(this.i18n.settingsSearchFilterAll, ""));
+                groups.forEach((group) => searchChips.append(makeChip(group, group)));
+                searchChips.hidden = false;
+            }
+            else {
+                searchChips.hidden = true;
+            }
+            renderSettingsSearchResultOptions();
+            if (results.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "sw-settings__search-note";
+                empty.textContent = this.i18n.settingsSearchNoResults;
+                searchResults.appendChild(empty);
+            }
+            else if (total > results.length) {
+                const more = document.createElement("div");
+                more.className = "sw-settings__search-note";
+                more.textContent = this.i18n.settingsSearchMore.replace("{x}", String(total - results.length));
+                searchResults.appendChild(more);
+            }
+        };
+        // T-7002：选项装配独立成函数——分组 chips 切换只重画 listbox，不重跑索引。
+        // option id 稳定（索引序），供 combobox 的 aria-activedescendant 引用；
+        // 「路径结果」= 面板归属 + 分组标题两枚路径徽标 + 标题 + 描述。
+        const renderSettingsSearchResultOptions = () => {
+            const visible = searchGroupFilter
+                ? searchMatches.filter((entry) => entry.group === searchGroupFilter)
+                : searchMatches;
+            searchResults.textContent = "";
+            searchSelected = visible.length > 0 ? 0 : -1;
+            visible.forEach((entry, index) => {
+                const option = document.createElement("button");
+                option.type = "button";
+                option.className = "sw-settings__search-option" + (index === searchSelected ? " is-active" : "");
+                option.id = `sw-settings-search-option-${index}`;
+                option.setAttribute("role", "option");
+                option.setAttribute("aria-selected", index === searchSelected ? "true" : "false");
+                const label = document.createElement("span");
+                label.className = "sw-settings__search-option-label";
+                label.textContent = entry.label;
+                option.append(label);
+                if (entry.group) {
+                    const group = document.createElement("span");
+                    group.className = "sw-settings__search-option-group";
+                    group.textContent = entry.group;
+                    option.append(group);
+                }
+                const title = document.createElement("span");
+                title.className = "sw-settings__search-option-title";
+                title.textContent = entry.title;
+                const desc = document.createElement("span");
+                desc.className = "sw-settings__search-option-desc";
+                desc.textContent = entry.description;
+                option.append(title, desc);
+                option.addEventListener("click", () => locateSettingEntry(entry));
+                searchResults.appendChild(option);
+            });
+            updateSettingsSearchSelection();
+        };
+        const clearSettingsSearchView = () => {
+            searchMatches = [];
+            searchGroupFilter = "";
+            searchSelected = -1;
+            searchResults.textContent = "";
+            searchResults.hidden = true;
+            searchChips.textContent = "";
+            searchChips.hidden = true;
+            searchClear.hidden = true;
+            searchInput.setAttribute("aria-expanded", "false");
+            searchInput.removeAttribute("aria-activedescendant");
+        };
+        let settingsSearchComposing = false;
+        let settingsSearchCommittedValue = null;
+        searchInput.addEventListener("compositionstart", () => { settingsSearchComposing = true; });
+        searchInput.addEventListener("compositionend", () => {
+            settingsSearchComposing = false;
+            settingsSearchCommittedValue = searchInput.value;
+            renderSettingsSearchResults();
+        });
+        searchInput.addEventListener("input", (event) => {
+            if (settingsSearchComposing || event.isComposing)
+                return;
+            if (settingsSearchCommittedValue === searchInput.value) {
+                settingsSearchCommittedValue = null;
+                return;
+            }
+            settingsSearchCommittedValue = null;
+            renderSettingsSearchResults();
+        });
+        // T-7002：清空按钮——清查询、收起结果、回焦搜索框（清空是显式动作，可键盘触达）。
+        searchClear.addEventListener("click", () => {
+            searchInput.value = "";
+            renderSettingsSearchResults();
+            searchInput.focus({ preventScroll: true });
+        });
+        // 键盘导航/Enter 只在「当前可视结果集」（分组过滤后）上循环，不越过 chips。
+        const visibleSearchMatches = () => searchGroupFilter
+            ? searchMatches.filter((entry) => entry.group === searchGroupFilter)
+            : searchMatches;
+        searchInput.addEventListener("keydown", (event) => {
+            if (settingsSearchComposing || event.isComposing || event.keyCode === 229) {
+                event.stopPropagation();
+                return;
+            }
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                event.preventDefault();
+                const visible = visibleSearchMatches();
+                if (visible.length === 0)
+                    return;
+                const delta = event.key === "ArrowDown" ? 1 : -1;
+                searchSelected = (searchSelected + delta + visible.length) % visible.length;
+                updateSettingsSearchSelection();
+            }
+            else if (event.key === "Enter") {
+                event.preventDefault();
+                const visible = visibleSearchMatches();
+                const entry = visible[searchSelected >= 0 ? searchSelected : 0];
+                if (entry)
+                    locateSettingEntry(entry);
+            }
+            else if (event.key === "Escape") {
+                searchInput.value = "";
+                renderSettingsSearchResults();
+            }
+        });
+        // 打开时直接跳转到上次所在的标签页（默认外观）；activate 内部会记录切换，下次进入保持
+        const lastTab = initialPanel || this.getSettings().lastSettingsTab;
+        const panelKeysArr = [...panelKeys];
+        const initial = panelKeysArr.includes(lastTab) ? lastTab : panelKeys[0];
+        activate(initial);
+        // ==================== T-7003：保存回执 + 撤销 + 分组恢复默认 + 外部变更重建 ====================
+        // 状态栏（搜索框上方）：落盘结果三态（待写入/已保存/保存失败+重试）与撤销入口。
+        // 回执语义诚实：防抖期间显示「待写入」而非已保存；失败保留本地值并提供重试。
+        const statusbar = document.createElement("div");
+        statusbar.className = "sw-settings__statusbar";
+        const saveState = document.createElement("span");
+        saveState.className = "sw-settings__save-state";
+        saveState.setAttribute("role", "status");
+        saveState.setAttribute("aria-live", "polite");
+        const saveRetry = document.createElement("button");
+        saveRetry.type = "button";
+        saveRetry.className = "b3-button b3-button--text sw-settings__save-retry";
+        saveRetry.textContent = this.i18n.settingsSaveRetry;
+        saveRetry.setAttribute("aria-label", `${this.i18n.settingsSaveRetry} · ${this.i18n.settingsSaveFailed}`);
+        saveRetry.hidden = true;
+        saveRetry.addEventListener("click", () => this.retrySettingsSave());
+        const undoButton = document.createElement("button");
+        undoButton.type = "button";
+        undoButton.className = "b3-button b3-button--text sw-settings__undo";
+        undoButton.textContent = this.i18n.settingsUndo;
+        undoButton.setAttribute("aria-label", this.i18n.settingsUndo);
+        undoButton.title = this.i18n.settingsUndo;
+        undoButton.disabled = true;
+        statusbar.append(saveState, saveRetry, undoButton);
+        panels.insertBefore(statusbar, searchWrap);
+        const syncSaveState = () => {
+            const outcome = this.lastSaveOutcome[constants_1.SETTINGS_KEY] || "idle";
+            statusbar.hidden = outcome === "idle";
+            statusbar.dataset.state = outcome;
+            saveState.textContent = outcome === "pending" ? this.i18n.settingsSavePending
+                : outcome === "failed" ? this.i18n.settingsSaveFailed
+                    : outcome === "ok" ? this.i18n.settingsSaveOk : "";
+            saveState.dataset.state = outcome;
+            saveRetry.hidden = outcome !== "failed";
+        };
+        document.addEventListener("sw-settings-save-state", syncSaveState);
+        syncSaveState();
+        // 带现场恢复的面板重渲染：替换当前激活面板内容后复位滚动，焦点按同位索引找回
+        // （设置项在重建前后顺序稳定）；找不到同位元素诚实放弃，不猜焦点。
+        const rebuildActivePanelPreservingScene = () => {
+            var _a;
+            const activeTab = tabs.querySelector(".sw-settings__tab.is-active");
+            const key = (activeTab === null || activeTab === void 0 ? void 0 : activeTab.dataset.panel) || "";
+            const panelEl = panels.querySelector(`.sw-settings__panel[data-panel="${key}"]`);
+            if (!key || !panelEl)
+                return;
+            const scrollCapture = { panels: panels.scrollTop, panel: panelEl.scrollTop };
+            const activeBefore = document.activeElement instanceof HTMLElement && panelEl.contains(document.activeElement)
+                ? document.activeElement : null;
+            const focusables = Array.from(panelEl.querySelectorAll("button, input, select, textarea, [tabindex]:not([tabindex='-1'])"));
+            const focusIndex = activeBefore ? focusables.indexOf(activeBefore) : -1;
+            panelEl.replaceChildren(builders[key]());
+            panels.scrollTop = scrollCapture.panels;
+            panelEl.scrollTop = scrollCapture.panel;
+            if (focusIndex >= 0) {
+                const nextFocusables = Array.from(panelEl.querySelectorAll("button, input, select, textarea, [tabindex]:not([tabindex='-1'])"));
+                (_a = nextFocusables[focusIndex]) === null || _a === void 0 ? void 0 : _a.focus({ preventScroll: true });
+            }
+        };
+        this.settingsSceneReloader = rebuildActivePanelPreservingScene;
+        // 撤销栈（会话级，最多 20 步）：updateSettings 把逆向补丁交给 recorder 入栈；
+        // 撤销应用经 settingsUndoSuppress 抑制再入栈，撤销后带现场重建。
+        const undoStack = [];
+        this.settingsUndoRecorder = (inverse) => {
+            if (this.settingsUndoSuppress)
+                return;
+            undoStack.push(inverse);
+            if (undoStack.length > 20)
+                undoStack.shift();
+            undoButton.disabled = false;
+            undoButton.setAttribute("aria-label", `${this.i18n.settingsUndo} (${undoStack.length})`);
+        };
+        undoButton.addEventListener("click", () => {
+            const inverse = undoStack.pop();
+            if (!inverse)
+                return;
+            this.settingsUndoSuppress = true;
+            try {
+                this.updateSettings(inverse);
+            }
+            finally {
+                this.settingsUndoSuppress = false;
+            }
+            undoButton.disabled = undoStack.length === 0;
+            if (undoStack.length === 0)
+                undoButton.setAttribute("aria-label", this.i18n.settingsUndo);
+            (0, siyuan_1.showMessage)(this.i18n.settingsUndoDone, 3000, "info");
+            rebuildActivePanelPreservingScene();
+        });
+        // 外部变更重建：设置弹窗未持有焦点（变更来自切换器/工作台/悬浮球等入口）时，
+        // 带现场重建当前面板保持显示真实；本页正在交互（焦点在弹窗内）时跳过——
+        // 逐控件编辑自含视觉状态，重建反而打断输入。防抖合并同批多次变更。
+        let externalRefreshTimer = 0;
+        const onSettingsUpdatedExternal = () => {
+            const active = document.activeElement;
+            if (active instanceof HTMLElement && root.contains(active))
+                return;
+            if (externalRefreshTimer)
+                return;
+            externalRefreshTimer = window.setTimeout(() => {
+                externalRefreshTimer = 0;
+                if (!root.isConnected || this.isUnloading)
+                    return;
+                rebuildActivePanelPreservingScene();
+            }, 50);
+        };
+        document.addEventListener("sw-settings-updated", onSettingsUpdatedExternal);
+        releaseSettingsListeners = () => {
+            document.removeEventListener("sw-settings-save-state", syncSaveState);
+            document.removeEventListener("sw-settings-updated", onSettingsUpdatedExternal);
+            if (externalRefreshTimer) {
+                window.clearTimeout(externalRefreshTimer);
+                externalRefreshTimer = 0;
+            }
+        };
+        // T-7002：桌面端设置页首焦点落在搜索框（页面第一个可交互元素、跨组查找入口）；
+        // 移动端不自动聚焦——避免打开设置即弹出软键盘。
+        if (!this.isMobile) {
+            this.scheduleAnimationFrame(() => {
+                if (root.isConnected && searchInput.isConnected)
+                    searchInput.focus({ preventScroll: true });
+            });
+        }
+        // T-7002：`/` 与 Ctrl/Cmd+K 直达搜索——只在设置页根容器内监听（不注册全局
+        // 命令、不抢宿主快捷键）；焦点已在输入框/其他可编辑控件内时不接管。
+        root.addEventListener("keydown", (event) => {
+            if (settingsSearchComposing || event.isComposing || event.keyCode === 229) {
+                event.stopPropagation();
+                return;
+            }
+            const target = event.target;
+            const editable = target instanceof HTMLElement
+                && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+            const jump = event.key === "/" && !editable
+                || (event.ctrlKey || event.metaKey) && (event.key === "k" || event.key === "K");
+            if (!jump)
+                return;
+            event.preventDefault();
+            searchInput.focus({ preventScroll: true });
+            searchInput.select();
+        });
+        // Only move the horizontal tab strip. scrollIntoView also scrolls
+        // Dialog ancestors in Android WebView and can shift the entire settings
+        // page off screen when opening the quick-action panel directly.
+        this.scheduleAnimationFrame(() => {
+            if (!root.isConnected)
+                return;
+            root.scrollLeft = 0;
+            panels.scrollLeft = 0;
+            ensureTabVisible(initial);
+        });
+    }
+    // 设置页“外观/行为/面板/收藏/日记/移动端/主页”各分节的 UI 构建已外迁至 settings-sections.ts（R4 重构 D-376）。
+    reorderFavoriteGroups(source, target) {
+        const names = this.getFavoriteGroupNames();
+        const from = names.indexOf(source);
+        const to = names.indexOf(target);
+        if (from < 0 || to < 0 || from === to)
+            return;
+        const [moved] = names.splice(from, 1);
+        names.splice(names.indexOf(target), 0, moved);
+        this.saveFavGroupRegistry(names);
+        this.refreshFavSelects();
+    }
+    reorderFavoritesInGroup(group, sourceKey, targetKey) {
+        const list = this.getFavorites();
+        const groupItems = list.filter((item) => (item.group || "") === group);
+        const from = groupItems.findIndex((item) => item.key === sourceKey);
+        const to = groupItems.findIndex((item) => item.key === targetKey);
+        if (from < 0 || to < 0 || from === to)
+            return;
+        const [moved] = groupItems.splice(from, 1);
+        groupItems.splice(to, 0, moved);
+        let cursor = 0;
+        for (let index = 0; index < list.length; index++) {
+            if ((list[index].group || "") === group)
+                list[index] = groupItems[cursor++];
+        }
+        this.saveFavorites(list);
+        this.refreshFavSelects();
+    }
+    // 单个分组行：名称 + 收藏数 + 重命名按钮 + 删除按钮
+    buildFavGroupRow(name, count, render) {
+        const row = document.createElement("div");
+        row.className = "sw-setting__group-row";
+        const label = document.createElement("span");
+        label.className = "sw-setting__group-name";
+        label.textContent = name;
+        label.title = name;
+        const countEl = document.createElement("span");
+        countEl.className = "sw-setting__group-count";
+        countEl.textContent = String(count);
+        countEl.title = this.i18n.groupCountTip;
+        // 重命名：行内切换为输入框，确认后整组迁移
+        const renameBtn = document.createElement("button");
+        renameBtn.type = "button";
+        renameBtn.className = "b3-button b3-button--small sw-setting__group-btn";
+        renameBtn.textContent = this.i18n.rename;
+        renameBtn.addEventListener("click", () => {
+            this.replaceFavGroupRowWithRenameControls(row, name, render);
+        });
+        // 删除分组：组内收藏项移出到未分组
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "b3-button b3-button--small sw-setting__group-btn sw-setting__group-del";
+        deleteBtn.textContent = this.i18n.deleteGroup;
+        deleteBtn.addEventListener("click", () => {
+            if (confirm(this.i18n.deleteGroupConfirm)) {
+                this.deleteFavoriteGroup(name);
+                render();
+            }
+        });
+        row.appendChild(label);
+        row.appendChild(countEl);
+        row.appendChild(renameBtn);
+        row.appendChild(deleteBtn);
+        return row;
+    }
+    // 行内重命名 UI：清空行内容 → 输入框 + 确认/取消按钮 + 事件绑定
+    replaceFavGroupRowWithRenameControls(row, name, render) {
+        row.innerHTML = "";
+        const input = document.createElement("input");
+        input.className = "b3-text-field";
+        input.value = name;
+        const okBtn = document.createElement("button");
+        okBtn.type = "button";
+        okBtn.className = "b3-button b3-button--small b3-button--text";
+        okBtn.textContent = this.i18n.confirm;
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "b3-button b3-button--small b3-button--cancel";
+        cancelBtn.textContent = this.i18n.cancel;
+        const apply = () => {
+            const to = input.value.trim();
+            if (to && to !== name) {
+                this.renameFavoriteGroup(name, to);
+            }
+            render();
+        };
+        okBtn.addEventListener("click", apply);
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                apply();
+            }
+            else if (event.key === "Escape") {
+                render();
+            }
+        });
+        cancelBtn.addEventListener("click", () => render());
+        row.appendChild(input);
+        row.appendChild(okBtn);
+        row.appendChild(cancelBtn);
+        input.focus();
+        input.select();
+    }
+    // 收藏项列表：每行标题 + 分组下拉（改动即保存）；无收藏时追加空态
+    appendSettingsFavItems(box, favorites, groupNames, render) {
+        if (favorites.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw-setting__fav-empty";
+            empty.setAttribute("role", "status");
+            empty.textContent = this.i18n.noFavorites;
+            box.appendChild(empty);
+            return;
+        }
+        const list = document.createElement("div");
+        list.className = "sw-setting__fav-list";
+        favorites.forEach((fav) => {
+            const row = document.createElement("div");
+            row.className = "sw-setting__fav-row";
+            const name = document.createElement("span");
+            name.className = "sw-setting__fav-name";
+            name.textContent = fav.title;
+            name.title = fav.title;
+            const selectEl = document.createElement("select");
+            selectEl.className = "b3-select";
+            selectEl.appendChild(new Option(this.i18n.ungrouped, ""));
+            groupNames.forEach((group) => selectEl.appendChild(new Option(group, group)));
+            selectEl.value = fav.group || "";
+            selectEl.addEventListener("change", () => {
+                this.setFavoriteGroup(fav.key, selectEl.value);
+                render();
+            });
+            row.appendChild(name);
+            row.appendChild(selectEl);
+            list.appendChild(row);
+        });
+        box.appendChild(list);
+    }
+    // ==================== 切换器 ====================
+    /**
+     * Single host adapter for the shared surface navigation.  The surface
+     * modules close their current Dialog before calling this method, so the
+     * existing FAB suspension and destroy callbacks remain serialized.
+     */
+    openPlatformSurface(surface, returnTo = "switcher", context) {
+        if (this.isUnloading)
+            return;
+        // T-7026（ADR 0099）：路由层唯一校验点——禁用模块的残留调用（命令/Agent 动作/
+        // 会话回跳）诚实回执拒绝，不静默也不降级打开；已打开窗口保留至用户关闭（D5）。
+        if (!this.getAvailablePlatformSurfaces().includes(surface)) {
+            (0, siyuan_1.showMessage)(this.i18n.moduleDisabledReceipt.replace("{x}", this.platformSurfaceDisplayName(surface)));
+            return;
+        }
+        this.notePlatformSurface(surface, context);
+        const openSurface = (0, platform_surface_model_1.createPlatformSurfaceAdapter)({
+            switcher: (nextReturnTo, nextContext) => this.isMobile
+                ? this.showMobileSwitcher(false, nextReturnTo, nextContext)
+                : this.showSwitcher(false, nextReturnTo, nextContext),
+            workbench: (_nextReturnTo, nextContext) => second_panel_ui_1.openSecondPanel.call(this, nextContext),
+            studio: (nextReturnTo, nextContext) => this.openSnippetStudio(nextReturnTo, nextContext),
+        });
+        openSurface(surface, returnTo, context);
+    }
+    // T-6869：平台表面打开时的会话级记录（悬浮球"恢复上次表面"的数据来源）。
+    notePlatformSurface(surface, context) {
+        this.lastPlatformSurface = (0, platform_surface_model_1.normalizeSurfaceId)(surface, "switcher");
+        this.lastPlatformContext = (0, platform_surface_model_1.normalizeSurfaceContext)(context);
+    }
+    // 表面装配模块（second-panel-ui 等）经 host 钩子记录工作台打开；开放给 this 参数模式。
+    notePlatformSurfaceOpened(surface, context) {
+        this.notePlatformSurface(surface, context);
+    }
+    // 当前端的可用表面清单：片段实验室仍是桌面专属（ADR 0078），移动端只有切换器/工作台。
+    getAvailablePlatformSurfaces() {
+        // T-7026（ADR 0099）：端侧可用 ∩ 模块启用——SurfaceNav available、悬浮球回退
+        // 目标、设置预览入口等消费方经此自动继承模块过滤。
+        const base = this.isMobile ? ["switcher", "workbench"] : [...PLATFORM_SURFACES];
+        return (0, platform_surface_model_1.filterSurfacesByVisibility)(base, this.getSettings().moduleVisibility);
+    }
+    // T-7026（ADR 0099）：表面显示名——路由拒绝回执与顶栏菜单共用同一文案源。
+    platformSurfaceDisplayName(surface) {
+        if (surface === "workbench")
+            return this.i18n.secondPanel;
+        if (surface === "studio")
+            return this.i18n.platformStudio;
+        return this.i18n.platformSwitcher;
+    }
+    // T-6869（ADR 0079 §7）：悬浮球轻触=打开平台并恢复上次表面；上次表面在当前端
+    // 不可用（如移动端的桌面专属片段实验室）或会话外非法值时，安全回退切换器。
+    openPlatformFromBall() {
+        this.openPlatformSurface((0, platform_surface_model_1.resolveSurfaceReturnTarget)(this.lastPlatformSurface, this.getAvailablePlatformSurfaces()), "switcher", { entry: "fab" });
+    }
+    getPlatformSurfaceLabels() {
+        return resolvePlatformSurfaceLabels({
+            platformName: this.i18n.platformName,
+            platformSubtitle: this.i18n.platformSubtitle,
+            platformContext: this.i18n.platformContext,
+            platformSwitcher: this.i18n.platformSwitcher,
+            platformWorkbench: this.i18n.platformWorkbench,
+            platformStudio: this.i18n.platformStudio,
+            platformSwitcherHint: this.i18n.platformSwitcherHint,
+            platformWorkbenchHint: this.i18n.platformWorkbenchHint,
+            platformStudioHint: this.i18n.platformStudioHint,
+            switchTabs: this.i18n.switchTabs,
+            secondPanel: this.i18n.secondPanel,
+            snippetStudioTitle: this.i18n.snippetStudioTitle,
+        });
+    }
+    // 快捷键设置只读取思源当前 keymap，不写回宿主配置；未自定义时回退到
+    // 插件注册的默认值，让设置页明确展示“当前生效值”而不是静态猜测。
+    getPlatformShortcutBindings() {
+        var _a, _b, _c, _d;
+        const pluginKeymap = ((_d = (_c = (_b = (_a = (0, types_1.getSiyuan)()) === null || _a === void 0 ? void 0 : _a.config) === null || _b === void 0 ? void 0 : _b.keymap) === null || _c === void 0 ? void 0 : _c.plugin) === null || _d === void 0 ? void 0 : _d[this.name]) || {};
+        const resolve = (id, fallback) => {
+            var _a;
+            const custom = (_a = pluginKeymap[id]) === null || _a === void 0 ? void 0 : _a.custom;
+            return typeof custom === "string" && custom.trim() ? custom.trim() : fallback;
+        };
+        return {
+            switcher: resolve("switchTabs", constants_1.DEFAULT_HOTKEY),
+            workbench: resolve("secondPanel", constants_1.SECOND_PANEL_HOTKEY),
+        };
+    }
+    mountPlatformChrome(root, options) {
+        return mountPlatformChrome(root, options);
+    }
+    // 打开页签切换器
+    showSwitcher(focusSearch = false, returnTo = "switcher", context) {
+        var _a;
+        this.notePlatformSurface("switcher", context);
+        // T-7163：新入口（热键/悬浮球等无 context）重置会话现场；往返（带 context）恢复。
+        if (!context)
+            this.switcherScene = null;
+        // 手机端走独立适配
+        if (this.isMobile) {
+            this.showMobileSwitcher(focusSearch, returnTo, context);
+            return;
+        }
+        const tabs = (0, siyuan_1.getAllTabs)();
+        const settings = this.getSettings();
+        const activeTab = this.getActiveTab();
+        // 全屏模式：切换器铺满整个窗口（Esc 退出由思源 Dialog 默认行为提供）
+        const fullscreen = settings.fullscreen;
+        // T-6869 单例守卫：热键/悬浮球/表面导航连点不再叠出多个切换器，
+        // 先销毁旧实例（其 destroyCallback 串行释放 FAB 挂起），再开新实例。
+        if ((_a = this.platformSwitcherDialog) === null || _a === void 0 ? void 0 : _a.element.isConnected)
+            this.platformSwitcherDialog.destroy();
+        // T-6481：Dialog 的 destroyCallback 必须在构造时就成型，而资源是在后续装配方法里
+        // 创建的，故用一个可变 holder 把两者接起来（宿主只认构造参数）。
+        const releaseFab = this.suspendFABForDialog();
+        const switcherRelease = { fn: releaseFab };
+        const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease, returnTo, context);
+        // 宿主主题可能在 Dialog 构造后改写内容，导致平台根节点消失。
+        // 在装配任何子模块前销毁空壳，避免留下遮罩并释放 FAB 挂起。
+        if (!dialog.element.querySelector('[data-sw-surface="switcher"]')) {
+            dialog.destroy();
+            return;
+        }
+        // 工具栏、列表/回到顶部/缩略图懒加载 等子模块装配
+        this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease, focusSearch, returnTo, context);
+        // T-7012：跨表面返回焦点——带焦点来源重开时，把焦点送回来源控件
+        // （对象行/搜索输入）；找不到保留装配默认首焦点，不强制回退。
+        if (context === null || context === void 0 ? void 0 : context.focusSource) {
+            window.setTimeout(() => {
+                if (!dialog.element.isConnected || this.isUnloading)
+                    return;
+                const surfaceRoot = dialog.element.querySelector('[data-sw-surface="switcher"]');
+                const target = surfaceRoot ? (0, platform_surface_model_1.resolveSurfaceFocusRestoreTarget)(surfaceRoot, context.focusSource) : null;
+                target === null || target === void 0 ? void 0 : target.focus({ preventScroll: true });
+            }, 0);
+        }
+    }
+    // 构造桌面端切换器 Dialog（内容 HTML + 尺寸），外部只关心装配顺序，不关心 DOM 结构细节
+    createSwitcherDialog(settings, fullscreen, release, returnTo = "switcher", context = null) {
+        var _a;
+        const size = this.resolvePanelDialogSize(settings, fullscreen);
+        const holder = { dialog: null };
+        const dialog = new siyuan_1.Dialog({
+            title: this.i18n.dialogSwitcherTitle || "页签切换器",
+            content: this.buildSwitcherHtml(fullscreen),
+            width: `${size.width}px`,
+            height: `${size.height}px`,
+            destroyCallback: () => {
+                if (this.platformSwitcherDialog === holder.dialog)
+                    this.platformSwitcherDialog = null;
+                // T-7172：切换器关闭时批量取消在途缩略图回源
+                this.cancelThumbFetches();
+                // T-7163：销毁前捕获搜索现场，跨面板往返时恢复
+                const sceneInput = dialog.element.querySelector(".sw__search");
+                const sceneScroll = dialog.element.querySelector(".sw__scroll");
+                if (sceneInput && sceneScroll) {
+                    this.switcherScene = {
+                        query: sceneInput.value,
+                        filters: Object.assign({}, (this.docSearchState.filters.get(sceneScroll) || {})),
+                        scrollTop: sceneScroll.scrollTop,
+                    };
+                }
+                release.fn();
+            },
+        });
+        holder.dialog = dialog;
+        this.platformSwitcherDialog = dialog;
+        (_a = dialog.element.querySelector(".b3-dialog__container")) === null || _a === void 0 ? void 0 : _a.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
+        const surfaceRoot = dialog.element.querySelector('[data-sw-surface="switcher"]');
+        if (surfaceRoot) {
+            mountPlatformChrome(surfaceRoot, {
+                surface: "switcher",
+                labels: this.getPlatformSurfaceLabels(),
+                available: this.getAvailablePlatformSurfaces(),
+                context,
+                kbdHints: ["Tab", "1-9", "Enter", this.i18n.platformKbdPreview],
+                status: { state: "ready", label: this.i18n.platformConnected },
+                onHelp: () => this.openPlatformGuide("switcher"),
+                helpLabel: this.i18n.platformGuideButton,
+                onSettings: () => {
+                    var _a, _b;
+                    if (!dialog.element.isConnected)
+                        return;
+                    const focusSource = (0, platform_surface_model_1.encodeSurfaceFocusSource)(((_a = dialog.element.ownerDocument) === null || _a === void 0 ? void 0 : _a.activeElement) || null);
+                    const query = ((_b = dialog.element.querySelector("input.sw__search")) === null || _b === void 0 ? void 0 : _b.value.trim()) || (context === null || context === void 0 ? void 0 : context.query) || "";
+                    dialog.destroy();
+                    this.openSetting(undefined, "switcher", Object.assign(Object.assign(Object.assign(Object.assign({ entry: "back" }, ((context === null || context === void 0 ? void 0 : context.objectKind) ? { objectKind: context.objectKind } : {})), ((context === null || context === void 0 ? void 0 : context.objectId) ? { objectId: context.objectId } : {})), (query ? { query } : {})), (focusSource ? { focusSource } : {})));
+                },
+                settingsLabel: this.i18n.settings,
+                closeHint: this.i18n.platformCloseHint,
+                onClose: () => dialog.destroy(),
+                closeLabel: this.i18n.close,
+                onNavigate: (surface) => {
+                    var _a;
+                    if (this.isUnloading || !dialog.element.isConnected)
+                        return;
+                    // T-7012：导航离开前捕获焦点来源，配合 query 透传供返回后恢复现场。
+                    const focusSource = (0, platform_surface_model_1.encodeSurfaceFocusSource)(((_a = dialog.element.ownerDocument) === null || _a === void 0 ? void 0 : _a.activeElement) || null);
+                    dialog.destroy();
+                    this.openPlatformSurface(surface, returnTo, Object.assign({ entry: "surface-nav", objectKind: context === null || context === void 0 ? void 0 : context.objectKind, objectId: context === null || context === void 0 ? void 0 : context.objectId, query: context === null || context === void 0 ? void 0 : context.query }, (focusSource ? { focusSource } : {})));
+                },
+            });
+        }
+        return dialog;
+    }
+    // Experimental desktop-only studio. It is deliberately reachable from
+    // the tab panel toolbar so it does not become a second global command or
+    // a mobile surface before the wide layout has real device evidence.
+    openSnippetStudio(returnTo = "switcher", context) {
+        var _a, _b, _c, _d;
+        if (this.isMobile)
+            return;
+        if (!this.getAvailablePlatformSurfaces().includes("studio")) {
+            (0, siyuan_1.showMessage)(this.i18n.moduleDisabledReceipt.replace("{x}", this.i18n.moduleStudio));
+            return;
+        }
+        if ((_a = this.snippetStudioDialog) === null || _a === void 0 ? void 0 : _a.element.isConnected)
+            return;
+        this.notePlatformSurface("studio", context);
+        const holder = { dialog: null, controller: null };
+        const releaseFab = this.suspendFABForDialog();
+        // T-6986（D1 决断）：工作室尺寸模式 fullscreen/adaptive/custom——默认保持全屏
+        // （ADR 0080 不回退）；adaptive/custom 沿用 resolvePanelSize 的最小尺寸与
+        // 视口钳制语义（与工作台 openSecondPanel 同一管线），不再叠加全屏容器类。
+        const studioSettings = this.getSettings();
+        const studioViewport = { width: window.innerWidth, height: window.innerHeight, minWidth: constants_1.PANEL_SIZE_MIN_PX, minHeight: constants_1.PANEL_SIZE_MIN_PX };
+        const studioMode = constants_1.STUDIO_SIZE_MODES.includes(studioSettings.studioSizeMode)
+            ? studioSettings.studioSizeMode
+            : "fullscreen";
+        const size = studioMode === "fullscreen"
+            ? { width: studioViewport.width, height: studioViewport.height }
+            : studioMode === "adaptive"
+                ? (0, settings_model_1.resolvePanelSize)(Object.assign(Object.assign({}, studioSettings), { panelSizeMode: "adaptive", panelScale: constants_1.PANEL_SCALE_DEFAULT }), studioViewport)
+                : (0, settings_model_1.resolvePanelSize)(Object.assign(Object.assign({}, studioSettings), { panelSizeMode: "custom", dialogWidth: studioSettings.studioWidth, dialogHeight: studioSettings.studioHeight }), studioViewport);
+        const dialog = new siyuan_1.Dialog({
+            title: this.i18n.dialogStudioTitle || "片段工作室",
+            content: '<div class="sw-snippet-studio-host"></div>',
+            width: `${size.width}px`,
+            height: `${size.height}px`,
+            disableClose: true,
+            destroyCallback: () => {
+                var _a;
+                (_a = holder.controller) === null || _a === void 0 ? void 0 : _a.dispose();
+                holder.controller = null;
+                if (this.snippetStudioDialog === holder.dialog)
+                    this.snippetStudioDialog = null;
+                releaseFab();
+            },
+        });
+        holder.dialog = dialog;
+        this.snippetStudioDialog = dialog;
+        // 全屏模式才叠加 fullscreen 容器类（T-6941 的 100vw/100vh 跟随规则随之生效）；
+        // 自适应/固定模式用 Dialog 内联尺寸，缩窗后保持打开时尺寸（与工作台语义一致）。
+        if (studioMode === "fullscreen") {
+            (_b = dialog.element.querySelector(".b3-dialog__container")) === null || _b === void 0 ? void 0 : _b.classList.add("sw-dialog--fullscreen");
+        }
+        (_c = dialog.element.querySelector(".b3-dialog__container")) === null || _c === void 0 ? void 0 : _c.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
+        (_d = dialog.element.querySelector(".b3-dialog__body")) === null || _d === void 0 ? void 0 : _d.classList.add("sw-scroll-locked");
+        const root = dialog.element.querySelector(".sw-snippet-studio-host");
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
+        // Lazy Studio chunk 尚未到达时，Dialog 默认关闭被禁用，原本会出现一段
+        // 没有任何退出入口的空白等待态。先挂一层可销毁的临时平台头部；正式
+        // Studio mount 时会由 mountPlatformChrome 幂等移除并替换，不触碰脏稿守卫。
+        const loading = document.createElement("div");
+        loading.className = "sw-studio-loading";
+        loading.setAttribute("role", "status");
+        loading.setAttribute("aria-live", "polite");
+        const loadingSpinner = document.createElement("span");
+        loadingSpinner.className = "sw-studio-loading__spinner";
+        loadingSpinner.setAttribute("aria-hidden", "true");
+        const loadingLabel = document.createElement("span");
+        loadingLabel.textContent = this.i18n.snippetLoading;
+        loading.append(loadingSpinner, loadingLabel);
+        root.appendChild(loading);
+        mountPlatformChrome(root, {
+            surface: "studio",
+            labels: this.getPlatformSurfaceLabels(),
+            available: this.getAvailablePlatformSurfaces(),
+            status: { state: "loading", label: this.i18n.snippetLoading },
+            onHelp: () => this.openPlatformGuide("studio"),
+            helpLabel: this.i18n.platformGuideButton,
+            closeHint: this.i18n.platformCloseHint,
+            closeLabel: this.i18n.close,
+            onClose: () => dialog.destroy(),
+        });
+        const loadingKeydown = (event) => {
+            if (event.key !== "Escape" || event.defaultPrevented)
+                return;
+            event.preventDefault();
+            event.stopPropagation();
+            dialog.destroy();
+        };
+        root.addEventListener("keydown", loadingKeydown);
+        void Promise.resolve().then(() => require(/* webpackChunkName: "snippet-studio" */ "./snippet-studio-ui")).then(({ mountSnippetStudio }) => {
+            root.removeEventListener("keydown", loadingKeydown);
+            if (!dialog.element.isConnected || this.snippetStudioDialog !== dialog)
+                return;
+            holder.controller = mountSnippetStudio(root, {
+                i18n: this.i18n,
+                getConfig: () => { var _a; return ((_a = window.siyuan) === null || _a === void 0 ? void 0 : _a.config) || {}; },
+                session: this.snippetStudioSession,
+                // T-7025（ADR 0100）：回收站持久化通道——插件侧 sw_snippet_recycle key，
+                // 写入走防抖队列；归一/去重/三限淘汰在 snippet-recycle 纯模型（写入侧
+                // appendRecycleEntry 先归一；启动侧 runStorageMigration 已归一），此处裸存取
+                // 避免主图增长（production graph 上限 71，契约钉住）。
+                recycle: {
+                    load: () => (0, snippet_recycle_1.normalizeRecycleStore)(this.data[constants_1.SNIPPET_RECYCLE_KEY]),
+                    save: (next) => {
+                        this.data[constants_1.SNIPPET_RECYCLE_KEY] = next;
+                        this.saveDataDebounced(constants_1.SNIPPET_RECYCLE_KEY);
+                    },
+                },
+                groups: {
+                    load: () => (0, snippet_groups_1.normalizeSnippetGroupStore)(this.data[constants_1.SNIPPET_GROUPS_KEY]),
+                    save: (next) => {
+                        this.data[constants_1.SNIPPET_GROUPS_KEY] = (0, snippet_groups_1.normalizeSnippetGroupStore)(next);
+                        this.saveDataDebounced(constants_1.SNIPPET_GROUPS_KEY);
+                    },
+                },
+                gist: {
+                    load: () => this.getSettings().snippetGist,
+                    save: (next) => this.updateSettings({ snippetGist: next }),
+                },
+                objectId: !(context === null || context === void 0 ? void 0 : context.objectKind) || context.objectKind === "snippet" ? context.objectId || "" : "",
+                platform: {
+                    labels: this.getPlatformSurfaceLabels(),
+                    status: { state: "ready", label: this.i18n.platformConnected },
+                    onHelp: () => this.openPlatformGuide("studio"),
+                    helpLabel: this.i18n.platformGuideButton,
+                    onSettings: () => {
+                        var _a;
+                        if (!dialog.element.isConnected)
+                            return;
+                        const focusSource = (0, platform_surface_model_1.encodeSurfaceFocusSource)(((_a = dialog.element.ownerDocument) === null || _a === void 0 ? void 0 : _a.activeElement) || null);
+                        dialog.destroy();
+                        this.openSetting(undefined, "studio", Object.assign(Object.assign(Object.assign(Object.assign({ entry: "back" }, ((context === null || context === void 0 ? void 0 : context.objectKind) ? { objectKind: context.objectKind } : {})), ((context === null || context === void 0 ? void 0 : context.objectId) ? { objectId: context.objectId } : {})), ((context === null || context === void 0 ? void 0 : context.query) ? { query: context.query } : {})), (focusSource ? { focusSource } : {})));
+                    },
+                    settingsLabel: this.i18n.settings,
+                    closeHint: this.i18n.platformCloseHint,
+                    available: this.getAvailablePlatformSurfaces(),
+                    context: context || null,
+                    mount: mountPlatformChrome,
+                    onNavigate: (surface) => {
+                        var _a;
+                        if (this.isUnloading || !dialog.element.isConnected)
+                            return;
+                        // T-7012：离开前捕获焦点来源并透传 query，供返回后恢复现场。
+                        const focusSource = (0, platform_surface_model_1.encodeSurfaceFocusSource)(((_a = dialog.element.ownerDocument) === null || _a === void 0 ? void 0 : _a.activeElement) || null);
+                        dialog.destroy();
+                        this.openPlatformSurface(surface, returnTo, Object.assign({ entry: "surface-nav", objectKind: context === null || context === void 0 ? void 0 : context.objectKind, objectId: context === null || context === void 0 ? void 0 : context.objectId, query: context === null || context === void 0 ? void 0 : context.query }, (focusSource ? { focusSource } : {})));
+                    },
+                    onClose: (guarded = false) => {
+                        if (!guarded && holder.controller && !holder.controller.canClose())
+                            return;
+                        dialog.destroy();
+                    },
+                    closeLabel: this.i18n.close,
+                },
+                onBack: (guarded = false) => {
+                    var _a;
+                    if (!guarded && holder.controller && !holder.controller.canClose())
+                        return;
+                    // T-7012：返回前捕获焦点来源（studio 内多为无描述符控件，空值诚实降级）。
+                    const focusSource = (0, platform_surface_model_1.encodeSurfaceFocusSource)(((_a = dialog.element.ownerDocument) === null || _a === void 0 ? void 0 : _a.activeElement) || null);
+                    dialog.destroy();
+                    if (!this.isUnloading)
+                        this.openPlatformSurface(returnTo, "switcher", Object.assign({ entry: "back", objectKind: context === null || context === void 0 ? void 0 : context.objectKind, objectId: context === null || context === void 0 ? void 0 : context.objectId, query: context === null || context === void 0 ? void 0 : context.query }, (focusSource ? { focusSource } : {})));
+                },
+            });
+            void holder.controller.ready.catch((error) => logger_1.logger.warn("snippet studio load failed", error));
+        }).catch((error) => {
+            root.removeEventListener("keydown", loadingKeydown);
+            logger_1.logger.warn("snippet studio import failed", error);
+            // The Dialog is intentionally non-dismissible while the studio is
+            // mounted so its own Back action can protect unsaved drafts. If
+            // the lazy chunk cannot load, restore the switcher instead of
+            // leaving an empty modal with no recovery path.
+            if (this.snippetStudioDialog === dialog) {
+                dialog.destroy();
+                if (!this.isUnloading) {
+                    (0, siyuan_1.showMessage)(this.i18n.snippetFailed);
+                    this.showSwitcher(false, returnTo);
+                }
+            }
+        });
+    }
+    // Shared sizing for the desktop switcher and second-panel dialogs:
+    // fullscreen fills the viewport, adaptive follows the configured screen
+    // ratio, custom uses the fixed pixel settings.
+    resolvePanelDialogSize(settings, fullscreen) {
+        return (0, settings_model_1.resolvePanelSize)(Object.assign(Object.assign({}, settings), { panelSizeMode: fullscreen ? "fullscreen" : settings.panelSizeMode }), { width: window.innerWidth, height: window.innerHeight, minWidth: constants_1.PANEL_SIZE_MIN_PX, minHeight: constants_1.PANEL_SIZE_MIN_PX });
+    }
+    // 切换器主体 HTML 字符串（结构：顶栏搜索/收藏下拉/排序/全屏按钮 + 滚动区 + 回到顶部）
+    buildSwitcherHtml(fullscreen) {
+        return `<div class="speed-switch sw__body sw-platform-surface sw-platform-surface--switcher${fullscreen ? " sw--fullscreen" : ""}" data-sw-surface="switcher">
+    <div class="sw__main">
+        <div class="sw__dock fn__none"></div>
+        <div class="sw__content">
+            <div class="sw__toolbar">
+                <div class="sw__search-wrap">
+                    <svg class="sw__search-icon" width="14" height="14"><use xlink:href="#iconSearch"></use></svg>
+                    <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" aria-label="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
+                    <button type="button" class="sw__search-filter-btn" aria-label="${this.i18n.searchFilters}" title="${this.i18n.searchFilters}">
+                        <svg width="14" height="14"><use xlink:href="#iconFilter"></use></svg>
+                    </button>
+                </div>
+                <div class="sw__select-wrap">
+                    <div class="sw__fav-dd"></div>
+                </div>
+                <div class="sw__select-wrap">
+                    <div class="sw__history-dd"></div>
+                </div>
+                <div class="sw__select-wrap">
+                    <button type="button" class="b3-button b3-button--text sw__sort-trigger" aria-label="${this.i18n.setSortBy}">
+                        <svg width="16" height="16"><use xlink:href="#iconSort"></use></svg>
+                        <span class="sw__sort-trigger-label"></span>
+                    </button>
+                </div>
+                <button type="button" class="b3-button b3-button--text sw__icon-btn sw__fullscreen-btn" aria-label="${fullscreen ? this.i18n.exitFullscreen : this.i18n.enterFullscreen}" title="${fullscreen ? this.i18n.exitFullscreen : this.i18n.enterFullscreen}">
+                    <svg class="sw__fs-enter" width="16" height="16" viewBox="0 0 24 24"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="sw__fs-exit" width="16" height="16" viewBox="0 0 24 24"><path d="M9 4v3.5A1.5 1.5 0 0 1 7.5 9H4M20 9h-3.5A1.5 1.5 0 0 1 15 7.5V4M15 20v-3.5a1.5 1.5 0 0 1 1.5-1.5H20M4 15h3.5A1.5 1.5 0 0 1 9 16.5V20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="b3-button b3-button--text sw__icon-btn sw__journal-btn" aria-label="${this.i18n.journalBtn}" title="${this.i18n.journalBtn}">
+                    <svg width="16" height="16"><use xlink:href="#iconCalendar"></use></svg>
+                </button>
+                <button type="button" class="b3-button b3-button--text sw__icon-btn sw__refresh-btn" aria-label="${this.i18n.homeRefreshAll}" title="${this.i18n.homeRefreshAll}">
+                    <svg width="16" height="16"><use xlink:href="#iconRefresh"></use></svg>
+                </button>
+                <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}" title="${this.i18n.settings}">
+                    <svg width="16" height="16"><use xlink:href="#iconSettings"></use></svg>
+                </button>
+                <button type="button" class="b3-button b3-button--text sw__icon-btn sw__snippet-studio-btn" aria-label="${this.i18n.snippetStudioOpen}" title="${this.i18n.snippetStudioOpen}">
+                    <svg width="16" height="16"><use xlink:href="#iconCode"></use></svg>
+                </button>
+            </div>
+            <div class="sw__scroll" tabindex="0"></div>
+            <div class="sw__workbench-dock fn__none"></div>
+            <div class="sw__quick-actions" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
+            <button type="button" class="sw__back-top b3-tooltips b3-tooltips__n" aria-label="${this.i18n.backTop}">
+                <svg><use xlink:href="#iconUp"></use></svg>
+            </button>
+        </div>
+        <div class="sw__quick-rail fn__none" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
+    </div>
+</div>`;
+    }
+    // 装配：全屏切换、工具栏事件、收藏下拉、列表渲染、搜索过滤、回到顶部、缩略图懒加载
+    assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, release, focusSearch = false, returnTo = "switcher", context) {
+        var _a;
+        const releaseFab = release.fn;
+        this.prepareSwitcherChrome(dialog, fullscreen);
+        // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），按设置排除与显示方式渲染，无可面板时自动隐藏
+        const dockElement = dialog.element.querySelector(".sw__dock");
+        this.renderDockList(dockElement, dialog, settings.excludedDocks, settings.dockDisplay);
+        // 清理缩略图缓存中已无对应打开页签的孤儿条目（页签关闭即失效）
+        this.pruneThumbCache(tabs);
+        // 宸ュ叿鏍忓紩鐢?
+        const searchInput = dialog.element.querySelector(".sw__search");
+        const sortSelect = dialog.element.querySelector(".sw__sort");
+        const scrollElement = dialog.element.querySelector(".sw__scroll");
+        if (!scrollElement) {
+            return;
+        }
+        const closeOverlay = () => dialog.destroy();
+        let refreshList = () => undefined;
+        const listOpts = { onOverlayClose: closeOverlay, onTabsChanged: () => refreshList() };
+        // 列表区与工具栏排序切换共享的「最近编辑」更新时间映射（loadUpdatedMap 异步回填）
+        const updatedMap = {};
+        refreshList = () => {
+            if (!dialog.element.isConnected) {
+                return;
+            }
+            this.renderList(scrollElement, (0, siyuan_1.getAllTabs)(), this.getActiveTab(), listOpts, (sortSelect === null || sortSelect === void 0 ? void 0 : sortSelect.value) || settings.sortBy, updatedMap);
+            if (searchInput && (searchInput.value.trim() !== "" || doc_search_ui_1.hasDocSearchFilter.call(this, scrollElement))) {
+                this.applySearch(scrollElement, searchInput, closeOverlay);
+            }
+            else {
+                // T-6807/T-6814：首次打开（空查询且无筛选）也要呈现零词条工作台
+                this.renderWorkbench(scrollElement, "", closeOverlay);
+            }
+        };
+        const refreshQuickActions = () => {
+            var _a, _b, _c;
+            if (!dialog.element.isConnected)
+                return;
+            const currentSettings = this.getSettings();
+            this.renderQuickActions(dialog.element, "desktop", searchInput, closeOverlay, ".sw__quick-actions");
+            this.renderQuickActions(dialog.element, "desktop", searchInput, closeOverlay, ".sw__quick-rail");
+            const useRightRail = currentSettings.quickActionsRightRail
+                && currentSettings.quickActionsDisplayDesktop !== "hidden";
+            (_a = dialog.element.querySelector(".sw__body")) === null || _a === void 0 ? void 0 : _a.classList.toggle("sw--quick-rail", useRightRail);
+            (_b = dialog.element.querySelector(".sw__quick-actions")) === null || _b === void 0 ? void 0 : _b.classList.toggle("fn__none", currentSettings.quickActionsRightRail);
+            (_c = dialog.element.querySelector(".sw__quick-rail")) === null || _c === void 0 ? void 0 : _c.classList.toggle("fn__none", !currentSettings.quickActionsRightRail);
+        };
+        // T-7163：跨面板往返——恢复会话快照的 query/筛选/滚动（新入口已在 showSwitcher 重置）。
+        const switcherScene = context ? this.switcherScene : null;
+        if (switcherScene && searchInput) {
+            if (Object.keys(switcherScene.filters).length > 0) {
+                this.docSearchState.filters.set(scrollElement, Object.assign({}, switcherScene.filters));
+            }
+            searchInput.value = switcherScene.query;
+        }
+        const restoreSceneScroll = () => {
+            if (!switcherScene || !switcherScene.scrollTop)
+                return;
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    if (dialog.element.isConnected)
+                        scrollElement.scrollTop = switcherScene.scrollTop;
+                });
+            });
+        };
+        const refreshSurface = () => {
+            refreshList();
+            refreshQuickActions();
+        };
+        (_a = dialog.element.querySelector(".sw__refresh-btn")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", () => {
+            this.notebookListCache = null;
+            refreshSurface();
+        });
+        const unregisterRefresh = this.registerSwitcherRefresh(refreshSurface);
+        let iconClampFrame = 0;
+        const clampIcons = () => {
+            if (iconClampFrame || !dialog.element.isConnected)
+                return;
+            iconClampFrame = requestAnimationFrame(() => {
+                iconClampFrame = 0;
+                if (dialog.element.isConnected)
+                    (0, util_1.clampOversizedIcons)(dialog.element);
+            });
+        };
+        const iconObserver = typeof MutationObserver === "function"
+            ? new MutationObserver(clampIcons) : null;
+        iconObserver === null || iconObserver === void 0 ? void 0 : iconObserver.observe(dialog.element, { childList: true, subtree: true });
+        clampIcons();
+        const disposeSearchFilter = searchInput
+            ? doc_search_ui_1.bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay)
+            : () => undefined;
+        const disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector(".sw__history-dd"), closeOverlay);
+        // T-7040：排序浮层 disposer 由 bindSwitcherToolbarActions 返回后在释放链调用
+        let disposeSortMenu = () => undefined;
+        let disposeBackTop = () => undefined;
+        let switcherReleased = false;
+        release.fn = () => {
+            if (switcherReleased)
+                return;
+            switcherReleased = true;
+            releaseFab();
+            unregisterRefresh();
+            iconObserver === null || iconObserver === void 0 ? void 0 : iconObserver.disconnect();
+            if (iconClampFrame)
+                cancelAnimationFrame(iconClampFrame);
+            disposeSearchFilter();
+            disposeBackTop();
+            disposeHistoryDropdown();
+            disposeSortMenu();
+            doc_search_ui_1.disposeDocSearchSession.call(this, scrollElement);
+        };
+        this.bindSwitcherFullscreenToggle(dialog, settings, fullscreen);
+        disposeSortMenu = this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay, updatedMap, returnTo, context);
+        // 收藏下拉组件：星标触发 + 分组面板（分组可折叠/展开，项点击跳转）
+        const favDd = dialog.element.querySelector(".sw__fav-dd");
+        this.setupFavDropdown(favDd, closeOverlay, refreshList);
+        if (sortSelect) {
+            sortSelect.value = settings.sortBy;
+        }
+        // 右侧页签缩略图网格：每次打开都重新克隆渲染，展示各页签的最新状态
+        this.bindSwitcherListArea(dialog, scrollElement, tabs, activeTab, listOpts, settings, searchInput, sortSelect, closeOverlay, updatedMap);
+        refreshQuickActions();
+        restoreSceneScroll();
+        // 普通打开仍把焦点交给滚动区，保持键盘卡片导航语义；动作面板
+        // 的“搜索”入口显式要求搜索框获得焦点，避免只打开切换器却让
+        // 用户再点一次输入框。
+        if (focusSearch && searchInput) {
+            searchInput.focus();
+        }
+        else {
+            scrollElement.focus();
+        }
+        // 回到顶部按钮（RAF 节流与解绑通道）
+        disposeBackTop = this.bindSwitcherBackTop(dialog, scrollElement);
+    }
+    // 弹窗外观准备：全屏模式下给容器加类（去圆角/边框/最大宽度），并锁定 .b3-dialog__body 不整体滚动
+    prepareSwitcherChrome(dialog, fullscreen) {
+        var _a;
+        if (fullscreen) {
+            (_a = dialog.element.querySelector(".b3-dialog__container")) === null || _a === void 0 ? void 0 : _a.classList.add("sw-dialog--fullscreen");
+        }
+        // 思源 .b3-dialog__body 默认 overflow:auto，内容一高就会整体滚动把工具栏滚走，
+        // 加类锁定它（配套 SCSS 规则见 .sw-scroll-locked），保证只有 .sw__scroll 滚动、顶栏始终固定
+        const dialogBody = dialog.element.querySelector(".b3-dialog__body");
+        if (dialogBody) {
+            dialogBody.classList.add("sw-scroll-locked");
+        }
+    }
+    // 绑定切换器列表区：初次渲染 + 键盘导航 + 「最近编辑」排序回源 + 搜索输入
+    bindSwitcherListArea(dialog, scrollElement, tabs, activeTab, listOpts, settings, searchInput, sortSelect, closeOverlay, updatedMap) {
+        // T-7163：初次 paint 与 refreshList 同分支——往返恢复的 query/筛选直接走搜索渲染。
+        if (searchInput && (searchInput.value.trim() !== "" || doc_search_ui_1.hasDocSearchFilter.call(this, scrollElement))) {
+            this.applySearch(scrollElement, searchInput, closeOverlay);
+        }
+        else {
+            this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
+            // T-6807/T-6814：首次打开（空查询且无筛选）即呈现零词条工作台（含关联内容行）
+            this.renderWorkbench(scrollElement, "", closeOverlay);
+        }
+        this.bindKeydown(scrollElement, closeOverlay);
+        // 最近编辑排序和可选卡片改动信息共用 blocks.updated。默认按 MRU 且未开启
+        // 改动标记时，首屏不消费该映射，跳过一次内核 SQL，避免打开切换器被无用请求拖慢。
+        if (settings.sortBy === "updatedDesc" || settings.showCardUpdatedBadge === true) {
+            this.loadUpdatedMap(tabs).then((map) => {
+                Object.assign(updatedMap, map);
+                if (!dialog.element.isConnected)
+                    return;
+                if ((sortSelect === null || sortSelect === void 0 ? void 0 : sortSelect.value) === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
+                    this.renderList(scrollElement, (0, siyuan_1.getAllTabs)(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
+                }
+                else if (this.getSettings().showCardUpdatedBadge === true) {
+                    this.refreshCardUpdatedBadges(scrollElement, updatedMap);
+                }
+            });
+        }
+        // 搜索：已打开页签匹配显示在上半部分，同时全库文档结果显示在下半部分
+        if (searchInput) {
+            this.bindSearchInputComposition(searchInput, () => {
+                this.applySearch(scrollElement, searchInput, closeOverlay);
+            });
+        }
+    }
+    /**
+     * 中文输入法（IME）守卫：composition（拼音候选中）期间的 input 事件
+     * 不触发搜索，避免拼音中间态作为关键词发出请求并闪现错误结果；
+     * compositionend 后立即补一次触发。applySearch 内部有防抖与请求
+     * 序号去重，compositionend 与随后的 input 双触发是无害的。
+     */
+    bindSearchInputComposition(input, onTrigger) {
+        let composing = false;
+        input.addEventListener("compositionstart", () => {
+            composing = true;
+        });
+        input.addEventListener("compositionend", () => {
+            composing = false;
+            onTrigger();
+        });
+        input.addEventListener("input", () => {
+            if (composing)
+                return;
+            onTrigger();
+        });
+    }
+    // 绑定回到顶部按钮：滚动超过 240px 显示，点击平滑回顶（RAF 节流 + 被动监听 + 销毁解绑）
+    bindSwitcherBackTop(dialog, scrollElement) {
+        const backTopBtn = dialog.element.querySelector(".sw__back-top");
+        if (!backTopBtn) {
+            return () => undefined;
+        }
+        let rafId = 0;
+        const onScroll = () => {
+            if (rafId)
+                return;
+            rafId = window.requestAnimationFrame(() => {
+                rafId = 0;
+                backTopBtn.classList.toggle("sw__show", scrollElement.scrollTop >= constants_1.BACK_TOP_THRESHOLD_PX);
+            });
+        };
+        const onClick = () => {
+            if (rafId) {
+                window.cancelAnimationFrame(rafId);
+                rafId = 0;
+            }
+            scrollElement.scrollTo({ top: 0, behavior: "smooth" });
+        };
+        scrollElement.addEventListener("scroll", onScroll, { passive: true });
+        backTopBtn.addEventListener("click", onClick);
+        return () => {
+            if (rafId) {
+                window.cancelAnimationFrame(rafId);
+                rafId = 0;
+            }
+            scrollElement.removeEventListener("scroll", onScroll);
+            backTopBtn.removeEventListener("click", onClick);
+        };
+    }
+    // 绑定"全屏 ⇄ 普通"原地切换按钮（与关闭弹窗不同：原地切换可以保留搜索/缩略图状态）
+    bindSwitcherFullscreenToggle(dialog, settings, initialFullscreen) {
+        const fsBtn = dialog.element.querySelector(".sw__fullscreen-btn");
+        const swBody = dialog.element.querySelector(".sw__body");
+        let isFullscreen = initialFullscreen;
+        const toggleFullscreen = (toFullscreen) => {
+            const container = dialog.element.querySelector(".b3-dialog__container");
+            if (!container || toFullscreen === isFullscreen) {
+                return;
+            }
+            isFullscreen = toFullscreen;
+            if (toFullscreen) {
+                container.style.width = "100vw";
+                // Dynamic viewport units keep the fullscreen surface inside the
+                // currently visible area when mobile browser chrome/IME changes.
+                // Older WebViews ignore the value and retain the CSS 100vh fallback.
+                container.style.height = "100dvh";
+                container.classList.add("sw-dialog--fullscreen");
+                swBody === null || swBody === void 0 ? void 0 : swBody.classList.add("sw--fullscreen");
+                fsBtn === null || fsBtn === void 0 ? void 0 : fsBtn.setAttribute("aria-label", this.i18n.exitFullscreen);
+                fsBtn === null || fsBtn === void 0 ? void 0 : fsBtn.setAttribute("title", this.i18n.exitFullscreen);
+            }
+            else {
+                const restored = this.resolvePanelDialogSize(settings, false);
+                container.style.width = `${restored.width}px`;
+                container.style.height = `${restored.height}px`;
+                container.classList.remove("sw-dialog--fullscreen");
+                swBody === null || swBody === void 0 ? void 0 : swBody.classList.remove("sw--fullscreen");
+                fsBtn === null || fsBtn === void 0 ? void 0 : fsBtn.setAttribute("aria-label", this.i18n.enterFullscreen);
+                fsBtn === null || fsBtn === void 0 ? void 0 : fsBtn.setAttribute("title", this.i18n.enterFullscreen);
+            }
+        };
+        fsBtn === null || fsBtn === void 0 ? void 0 : fsBtn.addEventListener("click", () => toggleFullscreen(!isFullscreen));
+    }
+    // 工具栏顶栏按钮：设置 / 侧边栏 / 日记按钮 + 排序切换；返回排序浮层 disposer 供弹窗释放链调用
+    bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay, updatedMap, returnTo = "switcher", context) {
+        var _a, _b;
+        (_a = dialog.element.querySelector(".sw__settings-btn")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", () => {
+            var _a;
+            const focusSource = (0, platform_surface_model_1.encodeSurfaceFocusSource)(((_a = dialog.element.ownerDocument) === null || _a === void 0 ? void 0 : _a.activeElement) || null);
+            const query = (searchInput === null || searchInput === void 0 ? void 0 : searchInput.value.trim()) || (context === null || context === void 0 ? void 0 : context.query) || "";
+            dialog.destroy();
+            // T-7012：设置从切换器打开，关闭后恢复切换器。
+            this.openSetting(undefined, "switcher", Object.assign(Object.assign(Object.assign(Object.assign({ entry: "back" }, ((context === null || context === void 0 ? void 0 : context.objectKind) ? { objectKind: context.objectKind } : {})), ((context === null || context === void 0 ? void 0 : context.objectId) ? { objectId: context.objectId } : {})), (query ? { query } : {})), (focusSource ? { focusSource } : {})));
+        });
+        const studioToolbarButton = dialog.element.querySelector(".sw__snippet-studio-btn");
+        if (!this.getAvailablePlatformSurfaces().includes("studio")) {
+            studioToolbarButton === null || studioToolbarButton === void 0 ? void 0 : studioToolbarButton.remove();
+        }
+        else {
+            studioToolbarButton === null || studioToolbarButton === void 0 ? void 0 : studioToolbarButton.addEventListener("click", () => {
+                dialog.destroy();
+                this.openPlatformSurface("studio", returnTo, {
+                    entry: "toolbar", objectKind: context === null || context === void 0 ? void 0 : context.objectKind, objectId: context === null || context === void 0 ? void 0 : context.objectId, query: context === null || context === void 0 ? void 0 : context.query,
+                });
+            });
+        }
+        // 顶栏日记按钮：打开/新建当日日记（未设默认日记本时首次点击弹出选择）
+        (_b = dialog.element.querySelector(".sw__journal-btn")) === null || _b === void 0 ? void 0 : _b.addEventListener("click", () => {
+            dialog.destroy();
+            this.openJournal();
+        });
+        // 排序/分组一体化变更：更新设置 → 重排列表 → 补查最近编辑 → 清搜索词
+        const applySortChange = (nextSort) => {
+            this.updateSettings({ sortBy: nextSort });
+            const scrollElement = dialog.element.querySelector(".sw__scroll");
+            // 弹窗存活期间页签可能已增减，重取最新列表；沿用共享 updatedMap，已回源的更新时间不重算
+            if (scrollElement) {
+                this.renderList(scrollElement, (0, siyuan_1.getAllTabs)(), this.getActiveTab(), listOpts, nextSort, updatedMap);
+            }
+            this.loadUpdatedMap((0, siyuan_1.getAllTabs)()).then((map) => {
+                Object.assign(updatedMap, map);
+                if (dialog.element.isConnected && this.getSettings().sortBy === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
+                    const el = dialog.element.querySelector(".sw__scroll");
+                    if (el) {
+                        this.renderList(el, (0, siyuan_1.getAllTabs)(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
+                    }
+                }
+                else if (dialog.element.isConnected && this.getSettings().showCardUpdatedBadge === true) {
+                    const el = dialog.element.querySelector(".sw__scroll");
+                    if (el)
+                        this.refreshCardUpdatedBadges(el, updatedMap);
+                }
+            });
+            if (searchInput) {
+                searchInput.value = "";
+                this.applySearch(scrollElement, searchInput, closeOverlay);
+            }
+            scrollElement === null || scrollElement === void 0 ? void 0 : scrollElement.focus();
+        };
+        const applyGroupChange = (nextGroup) => {
+            this.updateSettings({ groupBy: nextGroup });
+            this.updateSortTriggerLabel(dialog.element);
+            const scrollElement = dialog.element.querySelector(".sw__scroll");
+            if (scrollElement) {
+                this.renderList(scrollElement, (0, siyuan_1.getAllTabs)(), this.getActiveTab(), listOpts, this.getSettings().sortBy, updatedMap);
+                // 分组变化也必须重放当前搜索现场。否则输入框仍显示关键词，
+                // 但卡片、统一索引和全库结果已经退回未筛选状态。
+                if (searchInput && (searchInput.value.trim() !== "" || doc_search_ui_1.hasDocSearchFilter.call(this, scrollElement))) {
+                    this.applySearch(scrollElement, searchInput, closeOverlay);
+                }
+            }
+        };
+        sortSelect === null || sortSelect === void 0 ? void 0 : sortSelect.addEventListener("change", () => {
+            applySortChange(sortSelect.value);
+        });
+        return this.bindSortTriggerMenu(dialog.element, applySortChange, applyGroupChange);
+    }
+    // 排序触发按钮：标签 = 分组·排序 组合；点击弹出自制浮层（与收藏/最近下拉同模式，
+    // 不用思源 Menu——插件弹窗层级可能盖住 body 级菜单），浮层含分组方式与组内排序两段单选
+    updateSortTriggerLabel(scope) {
+        const labelEl = scope.querySelector(".sw__sort-trigger .sw__sort-trigger-label");
+        if (!labelEl)
+            return;
+        const s = this.getSettings();
+        const groupLabels = {
+            none: this.i18n.groupNone,
+            notebook: this.i18n.groupNotebook,
+            path: this.i18n.groupPath,
+            favorites: this.i18n.groupFavorites,
+            createdMonth: this.i18n.groupCreatedMonth,
+        };
+        const sortLabels = {
+            mru: this.i18n.sortMru,
+            layout: this.i18n.sortLayout,
+            layoutDesc: this.i18n.sortLayoutDesc,
+            updatedDesc: this.i18n.sortUpdatedDesc,
+            titleAsc: this.i18n.sortTitleAsc,
+            titleDesc: this.i18n.sortTitleDesc,
+        };
+        labelEl.textContent = (groupLabels[s.groupBy] || s.groupBy) + " · " + (sortLabels[s.sortBy] || s.sortBy);
+    }
+    bindSortTriggerMenu(scope, applySortChange, applyGroupChange) {
+        const trigger = scope.querySelector(".sw__sort-trigger");
+        if (!trigger)
+            return () => undefined;
+        trigger.setAttribute("aria-haspopup", "menu");
+        trigger.setAttribute("aria-expanded", "false");
+        this.updateSortTriggerLabel(scope);
+        let panel = null;
+        let outsideHandler = null;
+        let keyHandler = null;
+        let resizeHandler = null;
+        const closePanel = () => {
+            if (!panel)
+                return;
+            // T-7040：焦点回归——浮层内焦点随菜单销毁会丢到 body，关闭时还给触发钮
+            const focusInside = panel.contains(document.activeElement);
+            panel.remove();
+            panel = null;
+            trigger.setAttribute("aria-expanded", "false");
+            if (outsideHandler)
+                document.removeEventListener("pointerdown", outsideHandler, true);
+            if (keyHandler)
+                document.removeEventListener("keydown", keyHandler, true);
+            if (resizeHandler)
+                window.removeEventListener("resize", resizeHandler);
+            outsideHandler = null;
+            keyHandler = null;
+            resizeHandler = null;
+            if (focusInside) {
+                try {
+                    trigger.focus({ preventScroll: true });
+                }
+                catch (_) {
+                    trigger.focus();
+                }
+            }
+        };
+        // T-7040：owner disposer——表面切换/弹窗销毁时由宿主释放链调用；
+        // 浮层挂 document.body 且监听注册在 document/window，无 owner 通道时
+        // 表面重建会留下幽灵菜单与全局监听残留。
+        const disposeSortMenu = () => { closePanel(); };
+        const radioRow = (label, checked, onClick) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__sort-menu-option";
+            item.setAttribute("role", "menuitemradio");
+            item.setAttribute("aria-checked", String(checked));
+            item.innerHTML = "<span></span>" + (checked ? '<svg><use xlink:href="#iconCheck"></use></svg>' : "");
+            item.querySelector("span").textContent = label;
+            item.addEventListener("click", () => {
+                closePanel();
+                onClick();
+            });
+            return item;
+        };
+        const sectionTitle = (label) => {
+            const title = document.createElement("div");
+            title.className = "sw__sort-menu-section";
+            title.textContent = label;
+            return title;
+        };
+        trigger.addEventListener("click", () => {
+            if (panel) {
+                closePanel();
+                return;
+            }
+            trigger.setAttribute("aria-expanded", "true");
+            panel = document.createElement("div");
+            panel.className = "sw__sort-menu";
+            panel.setAttribute("role", "menu");
+            panel.setAttribute("aria-label", this.i18n.setSortBy);
+            const s = this.getSettings();
+            panel.appendChild(sectionTitle(this.i18n.groupModeTitle));
+            [
+                ["notebook", this.i18n.groupNotebook],
+                ["path", this.i18n.groupPath],
+                ["favorites", this.i18n.groupFavorites],
+                ["createdMonth", this.i18n.groupCreatedMonth],
+                ["none", this.i18n.groupNone],
+            ].forEach(([value, label]) => {
+                panel.appendChild(radioRow(label, s.groupBy === value, () => {
+                    this.updateSortTriggerLabel(scope);
+                    applyGroupChange(value);
+                }));
+            });
+            panel.appendChild(sectionTitle(this.i18n.groupSortTitle));
+            [
+                ["mru", this.i18n.sortMru],
+                ["layout", this.i18n.sortLayout],
+                ["layoutDesc", this.i18n.sortLayoutDesc],
+                ["updatedDesc", this.i18n.sortUpdatedDesc],
+                ["titleAsc", this.i18n.sortTitleAsc],
+                ["titleDesc", this.i18n.sortTitleDesc],
+            ].forEach(([value, label]) => {
+                panel.appendChild(radioRow(label, s.sortBy === value, () => {
+                    this.updateSortTriggerLabel(scope);
+                    applySortChange(value);
+                }));
+            });
+            // 挂到 body：dialog.element 不在 .speed-switch 内容容器内，挂这里样式选择器会失配，
+            // 浮层退化为文档流裸块；body + fixed + 高 z-index 与手机端排序面板同模式
+            document.body.appendChild(panel);
+            const positionPanel = () => {
+                const rect = trigger.getBoundingClientRect();
+                panel.style.top = `${Math.round(rect.bottom + 6)}px`;
+                panel.style.right = `${Math.round(Math.max(6, window.innerWidth - rect.right))}px`;
+            };
+            positionPanel();
+            // 排序面板挂在 body 上，窗口尺寸变化后重新计算位置，避免
+            // 缩放或旋转后浮层落在旧坐标甚至离开视口。
+            resizeHandler = positionPanel;
+            window.addEventListener("resize", resizeHandler);
+            // T-7192：radiogroup 键盘合同——打开入焦首个 menuitemradio，方向键循环选择。
+            const menuItems = Array.from(panel.querySelectorAll(".sw__sort-menu-option"));
+            if (menuItems.length > 0)
+                menuItems[0].focus({ preventScroll: true });
+            panel.addEventListener("keydown", (event) => {
+                const items = Array.from(panel.querySelectorAll(".sw__sort-menu-option"));
+                if (items.length === 0)
+                    return;
+                const currentIndex = items.indexOf(document.activeElement);
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    const dir = event.key === "ArrowDown" ? 1 : -1;
+                    const next = items[(currentIndex + dir + items.length) % items.length];
+                    next.focus({ preventScroll: true });
+                }
+                else if (event.key === "Home") {
+                    event.preventDefault();
+                    items[0].focus({ preventScroll: true });
+                }
+                else if (event.key === "End") {
+                    event.preventDefault();
+                    items[items.length - 1].focus({ preventScroll: true });
+                }
+            });
+            outsideHandler = (event) => {
+                if (!(panel === null || panel === void 0 ? void 0 : panel.contains(event.target)) && event.target !== trigger && !trigger.contains(event.target))
+                    closePanel();
+            };
+            document.addEventListener("pointerdown", outsideHandler, true);
+            keyHandler = (event) => {
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closePanel();
+                }
+            };
+            document.addEventListener("keydown", keyHandler, true);
+        });
+        return disposeSortMenu;
+    }
+    // 执行搜索：已打开页签匹配卡片显示在上半部分，同时（防抖）搜索全库文档标题显示在下半部分
+    applySearch(scrollElement, searchInput, onClose) {
+        var _a;
+        const keyword = searchInput.value.trim();
+        scrollElement.dataset.swDocSearchQuery = keyword;
+        searchInput.dataset.swMode = keyword.startsWith(">") ? "command" : "search";
+        const session = doc_search_ui_1.getDocSearchSession.call(this, scrollElement);
+        // 所有输入分支（含命令模式）均立即取消旧定时器/请求并使旧结果失效。
+        const version = (0, search_session_1.beginSearch)(session);
+        const filters = this.docSearchState.filters.get(scrollElement) || {};
+        // T-6802 查询运算符：解析一次，全链路共享（本地页签匹配 / 内核查询清洗 /
+        // 统一索引分区 / 文档结果客户端预过滤）。发给内核的查询剔除排除项。
+        const parsedQuery = (0, search_model_1.parseSearchQuery)(searchInput.value);
+        const kernelQuery = keyword.startsWith(">") ? "" : (0, search_model_1.formatCleanQuery)(parsedQuery);
+        this.docSearchState.parsedQueries.set(scrollElement, parsedQuery);
+        const localTabCount = this.filterCards(scrollElement, searchInput.value, new Set(), filters, parsedQuery);
+        doc_search_ui_1.updateDocSearchHealth.call(this, scrollElement, {
+            query: keyword,
+            remote: Boolean(kernelQuery),
+            state: kernelQuery ? "loading" : "idle",
+            counts: { tabs: localTabCount },
+            sources: {
+                tabs: { status: localTabCount > 0 ? "ready" : "empty" },
+                opened: { status: kernelQuery ? "pending" : "skipped" },
+                global: { status: kernelQuery ? "pending" : "skipped" },
+            },
+        }, true);
+        // T-6799 统一索引：查询时把"收藏/最近关闭/文档集"的命中分区渲染在
+        // 页签卡片与全库文档结果之间；空查询时整块移除。
+        // T-6820 命令前缀：`>` 进入命令面板模式，只列可执行动作（不再搜文档）
+        if (keyword.startsWith(">")) {
+            (_a = scrollElement.querySelector(".sw__snippet-results")) === null || _a === void 0 ? void 0 : _a.remove();
+            this.renderCommandList(scrollElement, keyword.slice(1).trim(), onClose);
+            return;
+        }
+        this.renderUnifiedSections(scrollElement, keyword, onClose, parsedQuery);
+        // T-6881 查询态片段分区：关键词命中原生片段时呈现"片段实验室"分区
+        this.renderSnippetSearchSection(scrollElement, keyword);
+        // T-6807 零词条工作台：空查询时直接呈现"场景预设/文档集/智能分组"入口。
+        this.renderWorkbench(scrollElement, keyword, onClose);
+        // T-6809 过滤条：查询时在结果区顶部提供类型收窄 chips（纯展示层可见性）。
+        this.applySearchChips(scrollElement, keyword);
+        // 关键词为空：隐藏文档结果，恢复纯列表
+        if (keyword === "" || kernelQuery === "") {
+            // 空查询，或只剩排除项（没有正向词可交给内核）时不发请求
+            doc_search_ui_1.renderDocResults.call(this, scrollElement, null, onClose);
+            const tabLayout = scrollElement.querySelector(".sw__tab-preview");
+            if (tabLayout)
+                doc_search_ui_1.mountDocPreviewPane.call(this, tabLayout, scrollElement);
+            return;
+        }
+        // 命中缓存直接渲染（缓存结果可安全复用）
+        const cacheKey = (0, search_model_1.buildSearchCacheKey)({ scope: "global", query: kernelQuery, filters });
+        const cached = session.cache.get(cacheKey);
+        if (cached) {
+            doc_search_ui_1.renderDocResults.call(this, scrollElement, cached, onClose);
+            // Open-tab content is surface-specific and may have changed since
+            // the cached global result. Refresh it without re-fetching global.
+            void doc_search_ui_1.runDocSearchFetch.call(this, scrollElement, searchInput, keyword, version, onClose, filters, cacheKey, kernelQuery);
+            return;
+        }
+        doc_search_ui_1.renderDocResults.call(this, scrollElement, [], onClose, "loading");
+        // 延迟 180ms 再请求全库文档（防抖），避免每个按键都打内核；
+        session.timer = window.setTimeout(() => {
+            session.timer = null;
+            // 守卫用原始 keyword，内核请求用清洗后的 kernelQuery（T-6802 修正）
+            void doc_search_ui_1.runDocSearchFetch.call(this, scrollElement, searchInput, keyword, version, onClose, filters, cacheKey, kernelQuery);
+        }, constants_1.SEARCH_DEBOUNCE_MS);
+    }
+    // ==================== T-6809 搜索过滤条（类型收窄 chips） ====================
+    applySearchChips(scrollElement, keyword) {
+        var _a;
+        if (!keyword) {
+            this.docSearchState.chipFilters.delete(scrollElement);
+            scrollElement.removeAttribute("data-sw-chip");
+            (_a = scrollElement.querySelector(".sw__search-chips")) === null || _a === void 0 ? void 0 : _a.remove();
+            return;
+        }
+        const selected = this.docSearchState.chipFilters.get(scrollElement) || "all";
+        scrollElement.dataset.swChip = selected;
+        let row = scrollElement.querySelector(".sw__search-chips");
+        if (!row) {
+            row = document.createElement("div");
+            row.className = "sw__search-chips";
+            // T-7007：chips 语义收口为按钮组（aria-pressed）——半套 tablist
+            // （有 role=tab 无 aria-controls/roving/方向键）比诚实降级更误导读屏。
+            row.setAttribute("role", "group");
+            row.setAttribute("aria-label", this.i18n.chipsLabel);
+            const defs = [
+                ["all", this.i18n.chipsAll],
+                ["tabs", this.i18n.chipsTabs],
+                ["unified", this.i18n.chipsCollections],
+                ["docs", this.i18n.chipsDocs],
+            ];
+            defs.forEach(([key, label]) => {
+                const chip = document.createElement("button");
+                chip.type = "button";
+                chip.className = "sw__search-chip";
+                chip.dataset.chip = key;
+                chip.textContent = label;
+                chip.setAttribute("aria-pressed", "false");
+                chip.addEventListener("click", () => {
+                    this.docSearchState.chipFilters.set(scrollElement, key);
+                    scrollElement.dataset.swChip = key;
+                    row.querySelectorAll(".sw__search-chip").forEach((el) => {
+                        const active = el.dataset.chip === key;
+                        el.classList.toggle("is-active", active);
+                        el.setAttribute("aria-pressed", String(active));
+                    });
+                });
+                row.appendChild(chip);
+            });
+            scrollElement.prepend(row);
+        }
+        row.querySelectorAll(".sw__search-chip").forEach((el) => {
+            const active = el.dataset.chip === selected;
+            el.classList.toggle("is-active", active);
+            el.setAttribute("aria-pressed", String(active));
+        });
+    }
+    renderCommandList(scrollElement, query, onClose) {
+        var _a, _b, _c;
+        (_a = scrollElement.querySelector(".sw__unified")) === null || _a === void 0 ? void 0 : _a.remove();
+        (_b = scrollElement.querySelector(".sw__doc-results")) === null || _b === void 0 ? void 0 : _b.remove();
+        (_c = scrollElement.querySelector(".sw__search-chips")) === null || _c === void 0 ? void 0 : _c.remove();
+        let box = scrollElement.querySelector(".sw__command-list");
+        if (!box) {
+            box = document.createElement("div");
+            box.className = "sw__command-list sw__group";
+            scrollElement.appendChild(box);
+        }
+        box.textContent = "";
+        const label = document.createElement("div");
+        label.className = "sw__window-label";
+        label.textContent = this.i18n.commandModeLabel;
+        box.appendChild(label);
+        // T-6845：命令模式标签同走宿主 i18n（P-F 中英混排收口）
+        const catalog = [...(0, quick_actions_1.getBuiltinQuickActions)(), ...(0, quick_actions_1.getGlobalQuickActions)()]
+            .filter((action) => { var _a; return (_a = action.targets) === null || _a === void 0 ? void 0 : _a.includes("desktop"); })
+            .map((action) => (Object.assign(Object.assign({}, action), { label: (0, quick_actions_1.resolveQuickActionLabel)(action, this.i18n) })));
+        const q = query.toLowerCase();
+        const matched = q ? catalog.filter((action) => (action.label || "").toLowerCase().includes(q)) : catalog;
+        if (!matched.length) {
+            const empty = document.createElement("div");
+            empty.className = "sw__doc-status sw__doc-status--empty";
+            empty.textContent = this.i18n.commandModeEmpty;
+            box.appendChild(empty);
+            return;
+        }
+        // T-6911：内建动作与思源宿主命令分两组展示；组头可折叠（P5 选择器同款交互 +
+        // 键盘等价），注册表本身有界（内建 22 + 宿主 12），不再做整体截断。
+        const groups = [
+            { key: "builtin", label: this.i18n.commandGroupBuiltin, actions: matched.filter((action) => action.kind !== "global") },
+            { key: "global", label: this.i18n.commandGroupGlobal, actions: matched.filter((action) => action.kind === "global") },
+        ];
+        for (const group of groups) {
+            if (!group.actions.length)
+                continue;
+            const section = document.createElement("div");
+            section.className = "sw__command-group";
+            const heading = document.createElement("div");
+            heading.className = "sw__window-label sw__command-group-toggle";
+            heading.textContent = `${group.label} · ${group.actions.length}`;
+            heading.setAttribute("role", "button");
+            heading.tabIndex = 0;
+            const commandGroupList = document.createElement("div");
+            commandGroupList.className = "sw__command-group-list";
+            const applyCollapsed = () => {
+                const collapsed = this.commandCollapsedGroups.has(group.key);
+                commandGroupList.style.display = collapsed ? "none" : "";
+                heading.setAttribute("aria-expanded", String(!collapsed));
+            };
+            const toggleCollapsed = () => {
+                if (this.commandCollapsedGroups.has(group.key))
+                    this.commandCollapsedGroups.delete(group.key);
+                else
+                    this.commandCollapsedGroups.add(group.key);
+                applyCollapsed();
+            };
+            heading.addEventListener("click", toggleCollapsed);
+            heading.addEventListener("keydown", (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    toggleCollapsed();
+                }
+            });
+            section.appendChild(heading);
+            group.actions.forEach((action) => {
+                // 审查轮 P-A：命令项重做为 quick pick 式行（左图标 + 左对齐标签 + 右激活提示），
+                // 之前复用 .sw__doc-item 类但处在 .sw__command-list 作用域外，退化为裸按钮
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "sw__command-item";
+                const icon = document.createElement("span");
+                icon.className = "sw__command-icon";
+                icon.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${this.escapeAttr(action.icon || "iconTerminal")}"></use></svg>`;
+                const label = document.createElement("span");
+                label.className = "sw__command-label";
+                label.textContent = action.label || action.value || "";
+                const hint = document.createElement("span");
+                hint.className = "sw__command-kind";
+                hint.textContent = "↵";
+                hint.title = this.i18n.commandModeLabel;
+                item.append(icon, label, hint);
+                item.addEventListener("click", () => {
+                    onClose();
+                    this.executeQuickAction(action, null, onClose);
+                });
+                commandGroupList.appendChild(item);
+            });
+            section.appendChild(commandGroupList);
+            applyCollapsed();
+            box.appendChild(section);
+        }
+    }
+    renderUnifiedSections(scrollElement, keyword, onClose, parsedQuery) {
+        const existing = scrollElement.querySelector(".sw__unified");
+        if (!keyword) {
+            existing === null || existing === void 0 ? void 0 : existing.remove();
+            return;
+        }
+        const sections = (0, search_model_1.buildUnifiedSections)({
+            query: keyword,
+            favorites: this.getFavorites(),
+            closed: this.getClosedHistory(),
+            documentSets: this.getDocumentSets(),
+            excludeRootIds: doc_search_ui_1.collectOpenRootIds.call(this),
+            limitPerSection: 4,
+            parsedQuery,
+        });
+        const navigation = (0, search_model_1.buildNavigationResultModel)({
+            query: keyword,
+            unifiedSections: sections,
+            maxItemsPerGroup: 4,
+            maxTotalItems: 12,
+        });
+        const unifiedGroup = navigation.groups.find((group) => group.key === "unified");
+        const visibleSections = (unifiedGroup === null || unifiedGroup === void 0 ? void 0 : unifiedGroup.sections) || [];
+        if (!visibleSections.length) {
+            existing === null || existing === void 0 ? void 0 : existing.remove();
+            return;
+        }
+        let box = existing;
+        if (!box) {
+            box = document.createElement("div");
+            box.className = "sw__unified";
+            const docResults = scrollElement.querySelector(".sw__doc-results");
+            if (docResults)
+                scrollElement.insertBefore(box, docResults);
+            else
+                scrollElement.appendChild(box);
+        }
+        box.textContent = "";
+        const sectionTitles = {
+            favorites: this.i18n.unifiedFavorites,
+            closed: this.i18n.unifiedClosed,
+            "doc-sets": this.i18n.unifiedDocSets,
+        };
+        visibleSections.forEach((section) => {
+            const sectionEl = document.createElement("div");
+            sectionEl.className = "sw__unified-section";
+            const label = document.createElement("div");
+            label.className = "sw__window-label";
+            label.textContent = sectionTitles[section.key] || section.key;
+            const grid = document.createElement("div");
+            grid.className = "sw__doc-grid";
+            section.items.forEach((item) => {
+                const record = item;
+                const meta = item.kind === "favorite"
+                    ? (String(record.group || "") || this.i18n.unifiedFavorites)
+                    : item.kind === "doc-set"
+                        ? `${record.entryCount} ${this.i18n.unifiedDocSetDocs}`
+                        : (Number(record.closedAt) > 0 ? new Date(Number(record.closedAt)).toLocaleDateString() : "");
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "sw__doc-item";
+                // T-6799 布局修复：补齐 32px 图标列——统一分区条目此前缺少
+                // .sw__doc-icon 导致 .sw__doc-copy 被放入 32px 列，文字压成 2 字宽
+                const icon = document.createElement("span");
+                icon.className = "sw__doc-icon";
+                icon.innerHTML = '<svg aria-hidden="true"><use xlink:href="#iconFile"></use></svg>';
+                const copy = document.createElement("span");
+                copy.className = "sw__doc-copy";
+                const title = document.createElement("span");
+                title.className = "sw__doc-title";
+                title.textContent = item.kind === "doc-set"
+                    ? String(record.name || "")
+                    : String(record.title || "");
+                const metaEl = document.createElement("span");
+                metaEl.className = "sw__doc-path";
+                if (meta)
+                    metaEl.textContent = meta;
+                copy.append(title, metaEl);
+                button.append(icon, copy);
+                button.addEventListener("click", () => this.activateUnifiedItem(item, onClose));
+                // T-6810 并排打开：右键在右侧分屏打开（桌面）
+                if (!this.isMobile && (item.kind === "favorite" || item.kind === "closed")) {
+                    const itemRecord = item;
+                    const rootId = String(itemRecord.rootId || "");
+                    if (rootId && constants_1.BLOCK_ID_RE.test(rootId)) {
+                        button.title = (button.title ? button.title + " · " : "") + this.i18n.docSearchSplitHint;
+                        button.addEventListener("contextmenu", (event) => {
+                            event.preventDefault();
+                            onClose();
+                            void (0, siyuan_1.openTab)({ app: this.app, doc: { id: rootId }, position: "right" });
+                        });
+                    }
+                }
+                grid.appendChild(button);
+            });
+            sectionEl.append(label, grid);
+            box.appendChild(sectionEl);
+        });
+    }
+    activateUnifiedItem(item, onClose) {
+        if (item.kind === "favorite") {
+            const favorite = this.getFavorites().find((fav) => fav.key === item.key);
+            if (favorite) {
+                onClose();
+                void this.jumpToFavorite(favorite, () => undefined);
+                return;
+            }
+        }
+        if (item.kind === "closed" || (item.kind === "favorite" && item.rootId)) {
+            const rootId = String(item.rootId || "");
+            if (!rootId)
+                return;
+            onClose();
+            if (this.isMobile) {
+                void this.mobileOpenDoc(rootId);
+            }
+            else {
+                void (0, siyuan_1.openTab)({ app: this.app, doc: { id: rootId } });
+            }
+            return;
+        }
+        if (item.kind === "doc-set" && item.setId) {
+            onClose();
+            void this.restoreDocumentSetFromHome(item.setId);
+        }
+    }
+    getQuickActions() {
+        return (0, quick_actions_1.sanitizeQuickActions)(this.data[constants_1.QUICK_ACTIONS_KEY], constants_1.QUICK_ACTIONS_MAX).items;
+    }
+    saveQuickActions(actions) {
+        var _a;
+        const normalized = (0, quick_actions_1.sanitizeQuickActions)(actions, constants_1.QUICK_ACTIONS_MAX).items;
+        if (!(0, floating_ball_settings_model_1.checkFloatingBallSettingsBudget)(this.getSettings().floatingBall, normalized).ok) {
+            (0, siyuan_1.showMessage)(this.i18n.floatingBallImportFailed);
+            return;
+        }
+        this.data[constants_1.QUICK_ACTIONS_KEY] = normalized;
+        this.saveDataDebounced(constants_1.QUICK_ACTIONS_KEY);
+        this.refreshOpenSwitchers();
+        this.refreshSidebar();
+        this.refreshFloatingBallPanels();
+        if (typeof document === "object") {
+            (_a = document.querySelector(".sw-floating-ball-settings")) === null || _a === void 0 ? void 0 : _a.dispatchEvent(new Event("sw-floating-ball-refresh"));
+        }
+    }
+    refreshFloatingBallPanels() {
+        if (this.floatingBallPanels.size === 0)
+            return;
+        const config = this.getSettings().floatingBall || {};
+        const actions = this.getFloatingBallActions();
+        const savedSearches = this.getSavedSearches();
+        this.floatingBallPanels.forEach((panel) => panel === null || panel === void 0 ? void 0 : panel.update({ config, actions, savedSearches }));
+    }
+    /**
+     * 供第三方插件注册稳定的公开动作。持久化配置只保存 adapter id/value；
+     * 不保存函数或 DOM 选择器；插件卸载后对应入口会安全地变为无动作。
+     */
+    registerQuickActionAdapter(id, handler, targets) {
+        if (!/^[A-Za-z0-9._:-]+$/.test(id) || typeof handler !== "function") {
+            return () => undefined;
+        }
+        this.quickActionAdapters.set(id, handler);
+        if (Array.isArray(targets)) {
+            this.quickActionAdapterTargets.set(id, targets.filter((target, index, list) => ["desktop", "sidebar", "mobile"].includes(target) && list.indexOf(target) === index));
+        }
+        else {
+            this.quickActionAdapterTargets.delete(id);
+        }
+        this.refreshFloatingBallPanels();
+        return () => {
+            if (this.quickActionAdapters.get(id) === handler) {
+                this.quickActionAdapters.delete(id);
+                this.quickActionAdapterTargets.delete(id);
+                this.refreshFloatingBallPanels();
+            }
+        };
+    }
+    /**
+     * Register a persistent entry for another plugin. The callback stays in
+     * memory while the provider is loaded; only serializable metadata is saved.
+     */
+    registerQuickAction(options) {
+        if (!options || !/^[A-Za-z0-9._:-]+$/.test(options.id) || typeof options.handler !== "function") {
+            return () => undefined;
+        }
+        const adapterId = options.id;
+        const actionValue = options.value ? `${adapterId}/${options.value}` : adapterId;
+        const registrationToken = Symbol(actionValue);
+        this.quickActionProviderTokens.set(actionValue, registrationToken);
+        const declaredTargets = Array.isArray(options.targets) ? options.targets : undefined;
+        this.quickActionRegistry.register({
+            id: adapterId,
+            name: options.label,
+            targets: declaredTargets,
+            actions: [{ value: options.value || "action", label: options.label, icon: options.icon || "iconPlugin", kind: "adapter" }],
+        }, (action) => options.handler(String((action === null || action === void 0 ? void 0 : action.value) || "").replace(`${adapterId}/`, "")));
+        const unregisterAdapter = this.registerQuickActionAdapter(adapterId, options.handler, declaredTargets);
+        this.quickActionProviders.set(actionValue, {
+            id: adapterId,
+            label: (0, util_1.normalizeQuickActionText)(options.label, 80),
+            icon: options.icon || "iconPlugin",
+            value: actionValue,
+            targets: (declaredTargets ? [...declaredTargets] : (0, quick_actions_1.getDefaultQuickActionTargets)("adapter", actionValue)),
+            declaredTargets: declaredTargets ? [...declaredTargets] : undefined,
+        });
+        const actions = this.getQuickActions();
+        const existing = actions.find((item) => item.kind === "adapter" && item.value === actionValue);
+        if (existing) {
+            existing.label = (0, util_1.normalizeQuickActionText)(options.label, 80) || existing.label;
+            existing.icon = options.icon || existing.icon;
+            existing.targets = declaredTargets ? [...declaredTargets] : existing.targets;
+            this.saveQuickActions(actions);
+        }
+        this.refreshFloatingBallPanels();
+        return () => {
+            if (this.quickActionProviderTokens.get(actionValue) !== registrationToken)
+                return;
+            this.quickActionProviderTokens.delete(actionValue);
+            unregisterAdapter();
+            this.quickActionProviders.delete(actionValue);
+            this.quickActionRegistry.unregister(adapterId);
+            this.refreshFloatingBallPanels();
+        };
+    }
+    /** Opt-in read-only module boundary for the future home/second-panel UI. */
+    registerHomeModule(options) {
+        const registration = this.homeRuntime.registerAdapter(options);
+        const moduleId = String((options === null || options === void 0 ? void 0 : options.moduleId) || "");
+        if (registration.registered && typeof (options === null || options === void 0 ? void 0 : options.open) === "function") {
+            this.homeModuleOpens.set(String(options.moduleId), options.open);
+        }
+        else if (registration.registered) {
+            this.homeModuleOpens.delete(moduleId);
+        }
+        if (registration.registered) {
+            this.homeThirdPartyIds.add(moduleId);
+            this.homeModuleChangeListeners.forEach((listener) => listener());
+        }
+        if (!registration.registered)
+            return () => undefined;
+        return () => {
+            if (!registration.unregister())
+                return;
+            this.homeModuleOpens.delete(moduleId);
+            this.homeThirdPartyIds.delete(moduleId);
+            this.homeModuleChangeListeners.forEach((listener) => listener());
+        };
+    }
+    getHomeModules(device = this.isMobile ? "mobile" : "desktop") {
+        return this.homeRuntime.listModules(device);
+    }
+    readHomeModule(moduleId, device = this.isMobile ? "mobile" : "desktop", config = {}, options = {}) {
+        return this.homeRuntime.read(moduleId, device, config, options);
+    }
+    buildHomeModuleView(moduleId, device = this.isMobile ? "mobile" : "desktop", result, collapsed = false) {
+        const module = this.homeRuntime.listModules(device).find((item) => item.moduleId === moduleId);
+        return (0, home_view_1.buildHomeModuleView)(module, result, { collapsed });
+    }
+    /**
+     * Convert an opt-in home module view into a DOM subtree. The host decides
+     * where (or whether) to mount it; no default panel is created here.
+     */
+    renderHomeModuleView(doc, view, options = {}) {
+        return (0, home_view_1.renderHomeModuleView)(doc, view, options);
+    }
+    /** Create an explicit, lifecycle-bound home module mount for integrations. */
+    createHomeModuleController(container, moduleId, device = this.isMobile ? "mobile" : "desktop", config = {}, options = {}) {
+        const module = this.homeRuntime.listModules(device).find((item) => item.moduleId === moduleId);
+        if (!module || !container || typeof container.appendChild !== "function")
+            return null;
+        return (0, home_controller_1.createHomeModuleController)({
+            document: container.ownerDocument || document,
+            container,
+            module,
+            config,
+            labels: options.labels,
+            onItem: options.onItem,
+            onToggle: options.onToggle,
+            onToggleItem: options.onToggleItem,
+            read: (nextConfig, readOptions) => this.homeRuntime.read(moduleId, device, nextConfig, readOptions),
+        });
+    }
+    /** Create an explicit multi-module second-panel mount for integrations. */
+    createHomePanelController(container, device = this.isMobile ? "mobile" : "desktop", options = {}) {
+        if (!container || typeof container.appendChild !== "function")
+            return null;
+        const modules = this.homeRuntime.listModules(device);
+        return (0, home_panel_1.createHomePanelController)({
+            document: container.ownerDocument || document,
+            container,
+            modules,
+            title: options.title,
+            labels: options.labels,
+            onItem: options.onItem,
+            onToggle: options.onToggle,
+            onToggleItem: options.onToggleItem,
+            read: (module, config, readOptions) => this.homeRuntime.read(module.moduleId, device, config, readOptions),
+        });
+    }
+    getPluginCommands() {
+        const plugins = this.app.plugins;
+        if (!Array.isArray(plugins))
+            return [];
+        const commands = [];
+        const seen = new Set();
+        plugins.forEach((plugin) => {
+            const pluginName = typeof (plugin === null || plugin === void 0 ? void 0 : plugin.name) === "string" ? plugin.name : "";
+            if (!pluginName || pluginName === this.name || !Array.isArray(plugin.commands))
+                return;
+            const pluginTitle = (0, util_1.normalizeQuickActionText)(plugin.displayName, 40) || pluginName;
+            plugin.commands.forEach((command) => {
+                var _a;
+                if (!command || typeof command !== "object")
+                    return;
+                const commandKey = typeof (command === null || command === void 0 ? void 0 : command.langKey) === "string" ? command.langKey : "";
+                if (!commandKey || (!command.callback && !command.globalCallback))
+                    return;
+                const value = `${pluginName}::${commandKey}`;
+                if (seen.has(value))
+                    return;
+                seen.add(value);
+                const safeId = `${pluginName}-${commandKey}`.replace(/[^A-Za-z0-9_-]/g, "-");
+                const commandLabel = (0, util_1.normalizeQuickActionText)(command.langText || ((_a = plugin.i18n) === null || _a === void 0 ? void 0 : _a[commandKey]) || commandKey, 24) || commandKey;
+                commands.push({
+                    id: `command-${safeId}`,
+                    value,
+                    label: commandLabel,
+                    icon: typeof command.icon === "string"
+                        && /^[A-Za-z][A-Za-z0-9_-]*$/.test(command.icon)
+                        && command.icon !== "iconCommand"
+                        ? command.icon : "iconPlugin",
+                    pluginName,
+                    pluginTitle,
+                    commandKey,
+                    declaredTargets: this.getQuickActionDeclaredTargets({ kind: "command", value }),
+                });
+            });
+        });
+        return commands;
+    }
+    getQuickActionDeclaredTargets(action) {
+        if (action.kind === "command") {
+            const plugins = this.app.plugins;
+            return (0, quick_actions_1.getQuickActionCommandTargets)(plugins, action.value);
+        }
+        // Host commands ship a source-verified surface set in their catalog
+        // entry (T-6790); treat it as the declaration.
+        if (action.kind === "global" && Array.isArray(action.targets)) {
+            return [...action.targets];
+        }
+        if (action.kind !== "adapter")
+            return undefined;
+        const adapterId = action.value.split("/", 1)[0];
+        return this.quickActionAdapterTargets.get(adapterId);
+    }
+    getQuickActionSupport(action, target) {
+        // globalCommand is only exported by SiYuan 3.8.3+; older hosts must
+        // see these actions as unsupported rather than broken at runtime.
+        if (action.kind === "global" && !this.hostCommandsAvailable())
+            return "unsupported";
+        return (0, quick_actions_1.resolveQuickActionSupport)(action.kind, action.value, target, this.getQuickActionDeclaredTargets(action));
+    }
+    /** SiYuan 3.8.3+ exposes globalCommand on the plugin instance (API.ts createAPI). */
+    hostCommandsAvailable() {
+        return typeof this.globalCommand === "function";
+    }
+    /** Dispatch a verified host command (T-6790 catalog) through the official bridge. */
+    runHostCommand(value) {
+        const bridge = this;
+        if (typeof bridge.globalCommand !== "function")
+            return false;
+        bridge.globalCommand.call(this, value, this.app);
+        return true;
+    }
+    /**
+     * T-6792 插入模板：列出 <data>/templates/ 下的模板（内核 manage 端点），
+     * 选中后 render 为 HTML 并经官方 protyle.insert 写入当前光标处。
+     * 渲染目标 id 取活动编辑器根块；无活动编辑器时提示后放弃。
+     */
+    async openTemplatePicker() {
+        const editor = this.resolveActiveHostEditor();
+        if (!editor) {
+            (0, siyuan_1.showMessage)(this.i18n.templatePickerNoEditor, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const listing = await this.fetchKernelJson("/api/template/manage", { action: "list" });
+        const entries = Array.isArray(listing === null || listing === void 0 ? void 0 : listing.data)
+            ? listing.data.filter((entry) => {
+                const item = entry;
+                return Boolean(item) && typeof item.path === "string" && item.path.length > 0 && item.isDir !== true;
+            })
+            : [];
+        if (!entries.length) {
+            (0, siyuan_1.showMessage)(this.i18n.templatePickerEmpty, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const dialog = new siyuan_1.Dialog({
+            title: this.i18n.templatePickerTitle,
+            content: '<div class="speed-switch sw-template-picker"></div>',
+            width: this.isMobile ? "min(440px, 92vw)" : "400px",
+            height: this.isMobile ? "min(420px, 68vh)" : "360px",
+        });
+        (0, platform_dom_3.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "to close");
+        const root = dialog.element.querySelector(".sw-template-picker");
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
+        const list = document.createElement("div");
+        list.className = "sw-template-picker__list";
+        entries.forEach((entry) => {
+            const name = entry.path.split("/").pop() || entry.path;
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "b3-list-item b3-list-item--narrow sw-template-picker__item";
+            button.textContent = name;
+            button.title = entry.path;
+            button.addEventListener("click", () => {
+                button.disabled = true;
+                void this.insertHostTemplate(editor, entry.path).then((inserted) => {
+                    if (inserted)
+                        dialog.destroy();
+                    else
+                        button.disabled = false;
+                });
+            });
+            list.appendChild(button);
+        });
+        root.appendChild(list);
+    }
+    resolveActiveHostEditor() {
+        var _a;
+        const bridge = this;
+        if (typeof bridge.getActiveEditor !== "function")
+            return null;
+        const editor = bridge.getActiveEditor.call(this);
+        return ((_a = editor === null || editor === void 0 ? void 0 : editor.protyle) === null || _a === void 0 ? void 0 : _a.insert) ? editor : null;
+    }
+    async insertHostTemplate(editor, path) {
+        var _a, _b;
+        const rendered = await this.fetchKernelJson("/api/template/render", {
+            id: ((_a = editor.protyle.block) === null || _a === void 0 ? void 0 : _a.parentID) || "",
+            path,
+            mode: "editorInsert",
+        }, 15000);
+        const content = (_b = rendered === null || rendered === void 0 ? void 0 : rendered.data) === null || _b === void 0 ? void 0 : _b.content;
+        if (!rendered || rendered.code !== 0 || typeof content !== "string" || !content.trim()) {
+            logger_1.logger.warn("template insert failed", (rendered === null || rendered === void 0 ? void 0 : rendered.msg) || "empty content");
+            (0, siyuan_1.showMessage)(this.i18n.templateInsertFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return false;
+        }
+        editor.protyle.insert(content, true, true);
+        return true;
+    }
+    /**
+     * T-6791 一键同步：直调内核 performSync（不走 globalCommand 的确认弹窗）。
+     * 只读/发布模式与同步进行中的拒绝都来自内核（CheckReadonly/互斥），
+     * 插件侧只区分完成与失败两种提示；大库同步放宽到 60s 超时。
+     */
+    async syncNow() {
+        const payload = await this.fetchKernelJson("/api/sync/performSync", {}, 60000);
+        if (!payload || payload.code !== 0) {
+            logger_1.logger.warn("sync failed", (payload === null || payload === void 0 ? void 0 : payload.msg) || "kernel unreachable");
+            (0, siyuan_1.showMessage)(this.i18n.syncNowFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        (0, siyuan_1.showMessage)(this.i18n.syncNowCompleted, constants_1.MESSAGE_DEFAULT_MS);
+    }
+    /**
+     * Return only SVG symbol ids from the current document.  Plugin DOM
+     * elements can legitimately share an id with an icon-like value, so
+     * getElementById alone is not sufficient for deciding whether a symbol
+     * reference is renderable.
+     */
+    getAvailableIconSymbols() {
+        return new Set(Array.from(document.querySelectorAll("symbol[id]"))
+            .map((symbol) => symbol.id)
+            .filter((id) => /^[A-Za-z][A-Za-z0-9_-]*$/.test(id)));
+    }
+    renderQuickActionIcon(host, raw, fallback = "iconFile") {
+        host.innerHTML = "";
+        const resolved = (0, util_1.resolveIconReference)(raw, this.getAvailableIconSymbols(), fallback);
+        host.classList.remove("sw__quick-action-icon--image", "sw__quick-action-icon--emoji");
+        if (resolved.type === "image") {
+            const image = document.createElement("img");
+            image.alt = "";
+            image.loading = "lazy";
+            image.referrerPolicy = "no-referrer";
+            image.src = resolved.value;
+            image.className = "sw__quick-action-icon-image";
+            image.addEventListener("error", () => {
+                if (image.parentNode === host)
+                    this.renderQuickActionIcon(host, "", fallback);
+            }, { once: true });
+            host.appendChild(image);
+            host.classList.add("sw__quick-action-icon--image");
+            return;
+        }
+        if (resolved.type === "emoji") {
+            host.textContent = resolved.value;
+            host.classList.add("sw__quick-action-icon--emoji");
+            return;
+        }
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("aria-hidden", "true");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        use.setAttribute("href", `#${resolved.value}`);
+        use.setAttribute("xlink:href", `#${resolved.value}`);
+        svg.appendChild(use);
+        host.appendChild(svg);
+    }
+    // T-7026（ADR 0099）D7：模块级快捷动作可用性——仅覆盖平台表面类内建动作，
+    // 第三方 provider 动作不经此判定（其能力声明自有契约）。
+    moduleActionEnabled(value) {
+        const visibility = this.getSettings().moduleVisibility;
+        if (!visibility)
+            return true;
+        if (value === "home")
+            return visibility.workbench !== false;
+        if (value === "snippet-studio")
+            return visibility.studio !== false;
+        return true;
+    }
+    renderQuickActions(container, surface, searchInput, close, selector = ".sw__quick-actions") {
+        const host = container.querySelector(selector);
+        if (!host)
+            return;
+        host.innerHTML = "";
+        const settings = this.getSettings();
+        const presentation = (0, util_1.resolveQuickActionSurfaceState)(surface, settings, selector);
+        const { display, isRightRail, collapsed } = presentation;
+        host.classList.toggle("sw__quick-actions--icons", display === "icons" || (collapsed && isRightRail));
+        host.classList.toggle("sw__quick-actions--hidden", display === "hidden");
+        host.classList.toggle("sw__quick-actions--collapsed", collapsed && display !== "hidden");
+        if (display === "hidden")
+            return;
+        const collapseButton = document.createElement("button");
+        collapseButton.type = "button";
+        collapseButton.className = "sw__quick-action sw__quick-action--collapse";
+        collapseButton.setAttribute("aria-label", collapsed ? this.i18n.quickExpand : this.i18n.quickCollapse);
+        collapseButton.title = collapsed ? this.i18n.quickExpand : this.i18n.quickCollapse;
+        collapseButton.innerHTML = `<span class="sw__quick-action-icon"><svg><use xlink:href="#${collapsed ? (isRightRail ? "iconLeft" : "iconUp") : (isRightRail ? "iconRight" : "iconDown")}"></use></svg></span>`;
+        collapseButton.addEventListener("click", () => {
+            if (surface === "desktop" && isRightRail)
+                this.updateSettings({ quickActionsCollapsedDesktopRight: !collapsed });
+            else if (surface === "desktop")
+                this.updateSettings({ quickActionsCollapsedDesktopBottom: !collapsed });
+            else if (surface === "sidebar")
+                this.updateSettings({ quickActionsCollapsedSidebar: !collapsed });
+            else
+                this.updateSettings({ quickActionsCollapsedMobile: !collapsed });
+        });
+        host.appendChild(collapseButton);
+        if (collapsed && !isRightRail)
+            return;
+        const actions = this.getQuickActions()
+            .filter((action) => (0, quick_actions_1.shouldRenderQuickAction)(action, surface, "switcher", this.getQuickActionDeclaredTargets(action)))
+            // T-7026（ADR 0099）D7：模块级快捷动作过滤——禁用模块的动作不出现在
+            // 工具栏/更多面板/悬浮球面板（执行侧由路由层校验兜底）。
+            .filter((action) => this.moduleActionEnabled(action.value))
+            .sort((a, b) => a.order - b.order);
+        // The same action host is used by desktop, sidebar, and mobile. Only
+        // hide it when the current surface has no enabled actions; hiding all
+        // non-desktop surfaces made the newly added entries unreachable there.
+        actions.forEach((action) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "sw__quick-action b3-tooltips b3-tooltips__n";
+            button.setAttribute("aria-label", action.label);
+            button.title = action.label;
+            const icon = document.createElement("span");
+            icon.className = "sw__quick-action-icon";
+            const pluginFallback = action.kind === "adapter" || action.kind === "command"
+                ? ["iconPlugin", "iconFile"] : "iconFile";
+            this.renderQuickActionIcon(icon, action.icon, pluginFallback);
+            const label = document.createElement("span");
+            label.className = "sw__quick-action-label";
+            label.textContent = action.label;
+            button.append(icon, label);
+            button.addEventListener("click", () => this.executeQuickAction(action, searchInput, close, surface));
+            host.appendChild(button);
+        });
+        // 组件面板入口：桌面与手机底栏都常驻（手机端此前只能绕道"更多"菜单）
+        if ((surface === "desktop" || surface === "mobile") && this.getAvailablePlatformSurfaces().includes("workbench")) {
+            const homeButton = document.createElement("button");
+            homeButton.type = "button";
+            homeButton.className = "sw__quick-action sw__quick-action--home b3-tooltips b3-tooltips__n";
+            homeButton.setAttribute("aria-label", this.i18n.secondPanel);
+            homeButton.title = this.i18n.secondPanel;
+            homeButton.innerHTML = `<span class="sw__quick-action-icon"><svg><use xlink:href="#iconLayoutHome"></use></svg></span><span class="sw__quick-action-label">${this.i18n.secondPanel}</span>`;
+            homeButton.addEventListener("click", () => {
+                close();
+                this.openPlatformSurface("workbench", "switcher", { entry: "quick-action" });
+            });
+            host.appendChild(homeButton);
+        }
+        const addButton = document.createElement("button");
+        addButton.type = "button";
+        addButton.className = "sw__quick-action sw__quick-action--add b3-tooltips b3-tooltips__n";
+        addButton.setAttribute("aria-label", this.i18n.addQuickAction);
+        addButton.title = this.i18n.addQuickAction;
+        const addIcon = document.createElement("span");
+        addIcon.className = "sw__quick-action-icon";
+        addIcon.innerHTML = '<svg><use xlink:href="#iconAdd"></use></svg>';
+        const addLabel = document.createElement("span");
+        addLabel.className = "sw__quick-action-label";
+        addLabel.textContent = this.i18n.addQuickAction;
+        addButton.append(addIcon, addLabel);
+        addButton.addEventListener("click", () => {
+            close();
+            this.openSetting("quickActions");
+        });
+        host.appendChild(addButton);
+    }
+    /** Cycle through the host's current tabs, wrapping at either edge. */
+    cycleFloatingBallTab(offset) {
+        var _a;
+        const tabs = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+        const activeId = this.isMobile ? this.getMobileActiveTabId() : (_a = this.getActiveTab()) === null || _a === void 0 ? void 0 : _a.id;
+        const next = (0, floating_ball_generic_actions_1.selectAdjacentTab)(tabs, activeId, offset);
+        if (!next)
+            return false;
+        this.activateTab(next);
+        return true;
+    }
+    /** Scroll the active document first, then fall back to a visible host list. */
+    scrollFloatingBallSurface(surface, edge) {
+        const preferred = [];
+        if (surface !== "sidebar") {
+            const active = this.isMobile
+                ? this.getMobileTabs().find((tab) => tab.id === this.getMobileActiveTabId())
+                : this.getActiveTab();
+            const panel = active === null || active === void 0 ? void 0 : active.panelElement;
+            const content = panel === null || panel === void 0 ? void 0 : panel.querySelector(".protyle-content, .protyle-wysiwyg");
+            if (content)
+                preferred.push(content);
+        }
+        return (0, floating_ball_generic_actions_1.scrollSurfaceTo)(document, surface, this.sidebarElement, edge, { preferredElements: preferred });
+    }
+    executeQuickAction(action, searchInput, close, surface) {
+        const actionSurface = surface || (this.isMobile ? "mobile" : "desktop");
+        const executor = (0, floating_ball_actions_1.createFloatingBallActionExecutor)({
+            adapters: this.quickActionAdapters,
+            registry: this.quickActionRegistry,
+            getDockByType: (type) => this.getDockByType(type),
+            plugins: this.app.plugins,
+            context: { surface: actionSurface, source: "quick-actions" },
+            close,
+            onSwitcher: () => this.showSwitcher(),
+            onSearch: () => {
+                if (searchInput === null || searchInput === void 0 ? void 0 : searchInput.isConnected) {
+                    searchInput.focus();
+                    return;
+                }
+                // Home/second-panel callers do not own a search input. Keep
+                // the action useful by opening the correct switcher surface
+                // and asking that surface to focus its real input.
+                this.showSwitcher(true);
+            },
+            onJournal: () => this.openJournal(),
+            onSettings: () => this.openSetting(),
+            onHome: () => this.openPlatformSurface("workbench", "switcher", { entry: "quick-action" }),
+            onSnippetStudio: () => this.openPlatformSurface("studio", "switcher", { entry: "quick-action" }),
+            onQuickCapture: () => this.openQuickCapture(),
+            onPreviousTab: () => this.cycleFloatingBallTab(-1),
+            onNextTab: () => this.cycleFloatingBallTab(1),
+            onScrollTop: () => this.scrollFloatingBallSurface(actionSurface, "top"),
+            onScrollBottom: () => this.scrollFloatingBallSurface(actionSurface, "bottom"),
+            onSyncNow: () => this.syncNow(),
+            onInsertTemplate: () => this.openTemplatePicker(),
+            onCycleDocSet: () => this.cycleDocumentSet(),
+            onCycleBallPreset: () => this.cycleBallPreset(),
+            onThrowToWindow: () => this.throwActiveDocToWindow()
+                ? undefined : { ok: false, reason: "unavailable" },
+            onHideKeyboard: () => this.hideMobileKeyboard()
+                ? undefined : { ok: false, reason: "unavailable" },
+            onJumpBack: () => this.jumpBack().then((ok) => {
+                if (!ok)
+                    (0, siyuan_1.showMessage)(this.i18n.jumpStackEmpty, constants_1.MESSAGE_DEFAULT_MS, "error");
+            }),
+            onJumpForward: () => this.jumpForward().then((ok) => {
+                if (!ok)
+                    (0, siyuan_1.showMessage)(this.i18n.jumpStackEmpty, constants_1.MESSAGE_DEFAULT_MS, "error");
+            }),
+            // T-6856 目录扩充：marks/剪贴板/关闭页签复用既有命令实现
+            onMarkSet: () => this.setSessionMark(),
+            onMarkJump: () => this.jumpToSessionMark(),
+            onClipboard: () => this.openClipboardEntry(),
+            onCloseTab: () => this.closeActiveTabForAction()
+                ? undefined : { ok: false, reason: "unavailable" },
+            onGlobalCommand: (action) => this.runHostCommand(action.value)
+                ? undefined : { ok: false, reason: "unavailable" },
+        });
+        void Promise.resolve(executor(action)).then((result) => {
+            if (result === null || result === void 0 ? void 0 : result.ok)
+                return;
+            const reason = (result === null || result === void 0 ? void 0 : result.reason) === "failed" ? "failed" : "unavailable";
+            logger_1.logger.warn(`quick action ${reason}`, action.value);
+            (0, siyuan_1.showMessage)(reason === "failed" ? this.i18n.quickActionFailed : this.i18n.quickActionUnavailable, constants_1.MESSAGE_DEFAULT_MS, "error");
+        }).catch((error) => {
+            // The executor normalises provider errors, but keep this final
+            // boundary defensive so a host callback can never create an
+            // unhandled rejection in a toolbar click handler.
+            logger_1.logger.warn("quick action execution failed", error);
+            (0, siyuan_1.showMessage)(this.i18n.quickActionFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+        });
+    }
+    // T-6807 零词条工作台：空查询时直接呈现"场景预设/文档集/智能分组"入口
+    // （Kvaesitso/Notion 的零态即工作台思想）。全部来自本地配置或按需拉取，
+    // 不发任何无界请求；有查询时整块移除，避免与结果区争抢注意力。
+    renderWorkbench(scrollElement, keyword, onClose) {
+        var _a;
+        // P3：工作台停靠坞——独立于滚动流的固定区域，页签再多也常驻首屏
+        const dock = (_a = scrollElement.parentElement) === null || _a === void 0 ? void 0 : _a.querySelector(".sw__workbench-dock");
+        if (!dock)
+            return;
+        const existing = dock.querySelector(".sw__workbench");
+        if (keyword) {
+            existing === null || existing === void 0 ? void 0 : existing.remove();
+            dock.classList.add("fn__none");
+            return;
+        }
+        if (existing)
+            return;
+        const presets = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall).presets || [];
+        const docSets = this.getDocumentSets();
+        const smartGroups = this.getSettings().favoriteSmartGroups || [];
+        const savedSearches = this.getSettings().savedSearches || [];
+        const activeRootId = this.rootIdOf(this.getActiveTab());
+        const snippetCache = this.snippetObjectsCache;
+        const snippetCacheFresh = Boolean(snippetCache && snippetCache.items.length && Date.now() - snippetCache.at < 60000);
+        if (!presets.length && !docSets.length && !smartGroups.length && !savedSearches.length && !activeRootId && !snippetCacheFresh) {
+            dock.classList.add("fn__none");
+            return;
+        }
+        dock.classList.remove("fn__none");
+        const box = document.createElement("div");
+        box.className = "sw__workbench";
+        const title = document.createElement("div");
+        title.className = "sw__window-label";
+        title.textContent = this.i18n.workbenchLabel;
+        box.appendChild(title);
+        const addRow = (label, items, kind = "default") => {
+            if (!items.length)
+                return;
+            const rowTitle = document.createElement("div");
+            rowTitle.className = "sw__workbench-row-label";
+            rowTitle.textContent = label;
+            box.appendChild(rowTitle);
+            const row = document.createElement("div");
+            row.className = "sw__workbench-row";
+            items.forEach((item) => {
+                const chip = document.createElement("button");
+                chip.type = "button";
+                chip.className = "sw__workbench-chip";
+                chip.dataset.swWorkbenchKind = kind;
+                chip.textContent = item.label;
+                chip.addEventListener("click", () => {
+                    chip.disabled = true;
+                    item.onClick();
+                    chip.disabled = false;
+                });
+                // T-6827：保存的搜索支持右键删除（确认后移除并重建工作台）
+                chip.addEventListener("contextmenu", (event) => {
+                    if (!item.onRemove)
+                        return;
+                    event.preventDefault();
+                    item.onRemove();
+                });
+                row.appendChild(chip);
+            });
+            box.appendChild(row);
+        };
+        addRow(this.i18n.workbenchPresets, presets.map((preset) => ({
+            label: preset.name,
+            onClick: () => {
+                const applied = (0, floating_ball_model_1.applyFloatingBallPreset)(this.getSettings().floatingBall, preset.id);
+                if (!applied.preset)
+                    return;
+                this.updateSettings({ floatingBall: applied.config });
+                (0, siyuan_1.showMessage)(this.i18n.floatingBallPresetApplied.replace("{x}", applied.preset.name), constants_1.MESSAGE_DEFAULT_MS);
+            },
+        })), "preset");
+        addRow(this.i18n.workbenchDocSets, docSets.map((set) => ({
+            label: set.name,
+            onClick: () => {
+                onClose();
+                void this.restoreDocumentSetFromHome(set.setId);
+            },
+        })), "document-set");
+        addRow(this.i18n.workbenchSmart, smartGroups.map((group) => ({
+            label: `#${group.tag}`,
+            onClick: () => this.openTagSmartGroupEntries(group),
+        })), "smart-group");
+        // T-6827 保存的搜索：单击应用（查询+笔记本筛选回放），右键删除
+        addRow(this.i18n.workbenchSaved, savedSearches.map((saved) => ({
+            label: saved.name,
+            onClick: () => this.applySavedSearch(scrollElement, saved, onClose),
+            onRemove: () => {
+                var _a;
+                if (!confirm(String(this.i18n.searchSavedDeleteConfirm).replace("{x}", String(saved.name || ""))))
+                    return;
+                this.updateSettings({
+                    savedSearches: (this.getSettings().savedSearches || []).filter((item) => (item === null || item === void 0 ? void 0 : item.id) !== saved.id),
+                });
+                (_a = scrollElement.querySelector(".sw__workbench")) === null || _a === void 0 ? void 0 : _a.remove();
+                this.renderWorkbench(scrollElement, "", onClose);
+            },
+        })), "saved-search");
+        // T-6814 关联内容：活动文档的反链/提及（官方 getBacklink2 单次往返，
+        // 有界投影 + 60s 会话缓存 + 竞态丢弃）。无活动文档或加载失败时整行不出现。
+        if (activeRootId) {
+            const relatedBox = document.createElement("div");
+            relatedBox.className = "sw__workbench-related";
+            // P2 骨架屏：等待期显示脉冲占位，数据到达后整行替换
+            const skeleton = document.createElement("div");
+            skeleton.className = "sw__workbench-row-label sw__workbench-related--loading";
+            skeleton.textContent = this.i18n.workbenchRelated;
+            skeleton.setAttribute("aria-busy", "true");
+            relatedBox.appendChild(skeleton);
+            box.appendChild(relatedBox);
+            void this.fillRelatedContent(relatedBox, activeRootId, onClose);
+        }
+        // T-6979：无查询态的回执区只保留当前文档相关内容；片段对象
+        // 仍可通过查询态分区及片段实验室内部选择器访问。
+        // P3：工作台渲染到停靠坞（滚动流外），不随页签滚动
+        dock.textContent = "";
+        dock.appendChild(box);
+        dock.classList.remove("fn__none");
+    }
+    // T-6878/T-6881：片段对象取数唯一入口——60s 会话缓存命中直接返回；
+    // 未命中走单飞取数（并发调用共享同一 Promise），代际不匹配时丢弃迟到回包。
+    ensureSnippetObjects() {
+        const cached = this.snippetObjectsCache;
+        if (cached && Date.now() - cached.at < 60000)
+            return Promise.resolve(cached.items);
+        if (this.snippetObjectsInFlight)
+            return this.snippetObjectsInFlight;
+        const generation = ++this.snippetObjectsGeneration;
+        const request = this.fetchKernelJson("/api/snippet/getSnippet", { type: "all", enabled: 2 }, 8000).then((payload) => {
+            if (generation !== this.snippetObjectsGeneration) {
+                return this.snippetObjectsCache ? this.snippetObjectsCache.items : [];
+            }
+            const items = (0, platform_surface_model_1.projectSnippetObjects)(payload, { limit: 6 });
+            this.snippetObjectsCache = { items, at: Date.now() };
+            return items;
+        }).catch((error) => {
+            logger_1.logger.warn("snippet objects load fail", error);
+            return [];
+        }).then((items) => {
+            this.snippetObjectsInFlight = null;
+            return items;
+        });
+        this.snippetObjectsInFlight = request;
+        return request;
+    }
+    // T-6881（P2 第三批）：查询态片段分区——关键词命中原生片段名/类型时，
+    // 在统一分区之后渲染"片段实验室"分区；单击行为与工作台 chips 一致
+    // （携带 objectId 打开工作室定位片段）。关键词已变时丢弃本次渲染；
+    // 空查询/无命中不占位。
+    renderSnippetSearchSection(scrollElement, keyword) {
+        const existing = scrollElement.querySelector(".sw__snippet-results");
+        if (!keyword) {
+            existing === null || existing === void 0 ? void 0 : existing.remove();
+            return;
+        }
+        void this.ensureSnippetObjects().then((items) => {
+            var _a;
+            if (!scrollElement.isConnected)
+                return;
+            // 输入已前进：放弃旧关键词的渲染（本次取数已入缓存，下一次 applySearch 受益）
+            if (scrollElement.dataset.swDocSearchQuery !== keyword) {
+                existing === null || existing === void 0 ? void 0 : existing.remove();
+                return;
+            }
+            const matched = (0, platform_surface_model_1.filterSnippetObjects)(((_a = this.snippetObjectsCache) === null || _a === void 0 ? void 0 : _a.items) || [], keyword, 6);
+            if (!matched.length) {
+                existing === null || existing === void 0 ? void 0 : existing.remove();
+                return;
+            }
+            let box = existing;
+            if (!box) {
+                box = document.createElement("div");
+                box.className = "sw__snippet-results";
+                const docResults = scrollElement.querySelector(".sw__doc-results");
+                if (docResults)
+                    scrollElement.insertBefore(box, docResults);
+                else
+                    scrollElement.appendChild(box);
+            }
+            box.textContent = "";
+            const label = document.createElement("div");
+            label.className = "sw__window-label";
+            label.textContent = `${this.i18n.workbenchSnippets} · ${matched.length}`;
+            box.appendChild(label);
+            const grid = document.createElement("div");
+            grid.className = "sw__doc-grid";
+            matched.forEach((item) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "sw__doc-item";
+                const icon = document.createElement("span");
+                icon.className = "sw__doc-icon";
+                icon.textContent = item.type.toUpperCase();
+                const copy = document.createElement("span");
+                copy.className = "sw__doc-copy";
+                const title = document.createElement("span");
+                title.className = "sw__doc-title";
+                title.textContent = item.name;
+                const meta = document.createElement("span");
+                meta.className = "sw__doc-path";
+                meta.textContent = `${item.type.toUpperCase()} · ${item.lines} ${this.i18n.unitLines}${item.enabled ? " · " + this.i18n.snippetEnabledShort : ""}`;
+                copy.append(title, meta);
+                button.append(icon, copy);
+                button.addEventListener("click", () => {
+                    this.openPlatformSurface("studio", "switcher", { entry: "toolbar", objectId: item.id, query: keyword });
+                });
+                grid.appendChild(button);
+            });
+            box.appendChild(grid);
+        });
+    }
+    // T-6821 深链接/剪贴板入口：读剪贴板 → 思源块链接（siyuan://blocks/<id>）
+    // 确认后打开；普通文本预填进快速捕获（目标选择照常）。消毒、来源标记、
+    // 用户确认、不保存凭据；空/不可读剪贴板给出明确回执。
+    async openClipboardEntry() {
+        var _a, _b;
+        let text = "";
+        try {
+            text = String(await ((_b = (_a = navigator.clipboard) === null || _a === void 0 ? void 0 : _a.readText) === null || _b === void 0 ? void 0 : _b.call(_a)) || "");
+        }
+        catch (error) {
+            logger_1.logger.warn("clipboard read fail", error);
+        }
+        const clean = text.trim();
+        if (!clean) {
+            (0, siyuan_1.showMessage)(this.i18n.clipboardEmpty, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const linkMatch = clean.match(/^siyuan:\/\/blocks\/(\d{14}-[0-9a-z]+)$/i);
+        if (linkMatch) {
+            // 来源标记：链接来自剪贴板，打开前向用户确认目的地
+            if (confirm(this.i18n.clipboardOpenConfirm)) {
+                void doc_search_ui_1.openDocSearchResult.call(this, linkMatch[1], null);
+            }
+            return;
+        }
+        this.openQuickCapture("", clean.slice(0, 500));
+    }
+    // ==================== T-6824 可迁移配置包：导出 / 导入 ====================
+    exportConfigPack() {
+        const pack = (0, config_pack_model_1.buildConfigPack)({ settings: this.getSettings(), documentSets: this.data[constants_1.DOCUMENT_SETS_KEY] }, { now: Date.now() });
+        return JSON.stringify(pack, null, 2);
+    }
+    /**
+     * 导入配置包：整体校验通过后才落盘（校验-提交两段式）。T-6961：支持组粒度
+     * 应用（groups 缺省 = 全部可迁移组）；多 key 持久化非原子事务，写入异常如实
+     * 回执已应用范围，不虚报全部成功。settings 深校验走既有 normalizeSettings；
+     * documentSets 深校验走既有 normalizeDocumentSets 迁移门禁。
+     */
+    importConfigPack(payload, options) {
+        const result = (0, config_pack_model_1.normalizeConfigPackImport)(payload);
+        if (!result.ok)
+            return { ok: false, reason: result.reason };
+        const requested = Array.isArray(options === null || options === void 0 ? void 0 : options.groups) && options.groups.length > 0
+            ? options.groups
+            : ["settings", ...(result.documentSets ? ["documentSets"] : [])];
+        const selected = new Set(requested.filter((group) => group === "settings" || group === "documentSets"));
+        let dsState = null;
+        if (selected.has("documentSets") && result.documentSets) {
+            const normalized = (0, document_sets_1.normalizeDocumentSets)(result.documentSets);
+            dsState = { schemaVersion: normalized.schemaVersion, sets: normalized.sets };
+        }
+        const applied = [];
+        try {
+            if (selected.has("settings")) {
+                this.updateSettings(result.settings);
+                applied.push("settings");
+            }
+            if (selected.has("documentSets") && result.documentSets) {
+                this.data[constants_1.DOCUMENT_SETS_KEY] = dsState;
+                this.saveDataDebounced(constants_1.DOCUMENT_SETS_KEY);
+                applied.push("documentSets");
+            }
+        }
+        catch (error) {
+            logger_1.logger.warn("config pack apply failed", error);
+            return { ok: false, reason: "apply-failed", applied };
+        }
+        return { ok: true, applied };
+    }
+    // T-6827 保存的搜索：设置读取、保存（名称默认=查询文本，免去 Electron 不支持的
+    // window.prompt；重命名交由后续版本）与应用回放。
+    getSavedSearches() {
+        return Array.isArray(this.getSettings().savedSearches) ? this.getSettings().savedSearches : [];
+    }
+    saveCurrentSearch(query, filters = {}) {
+        const cleanQuery = String(query || "").trim();
+        if (!cleanQuery)
+            return;
+        const entry = {
+            id: `sw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            name: cleanQuery.slice(0, 40),
+            query: cleanQuery.slice(0, 120),
+        };
+        if (filters && typeof filters.notebook === "string" && filters.notebook) {
+            entry.notebook = String(filters.notebook).slice(0, 64);
+        }
+        this.updateSettings({ savedSearches: [...this.getSavedSearches(), entry] });
+        (0, siyuan_1.showMessage)(this.i18n.searchSavedDone, constants_1.MESSAGE_DEFAULT_MS);
+    }
+    // T-6952：编辑保存的搜索——纯模型归一（长度裁剪/空查询拒绝/notebook 清除），
+    // 原 ID 恒不变（悬浮球固定槽与工作台 chips 按 ID 回读新条件）；取消路径不进本函数。
+    updateSavedSearch(id, patch) {
+        const result = (0, search_model_1.updateSavedSearchEntry)(this.getSavedSearches(), id, patch);
+        if (!result.ok) {
+            (0, siyuan_1.showMessage)(this.i18n.searchSavedUpdateFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return false;
+        }
+        this.updateSettings({ savedSearches: result.list });
+        return true;
+    }
+    applySavedSearch(scrollElement, saved, onClose) {
+        // 输入框在顶栏（.sw__toolbar），是滚动容器的兄弟节点——必须从对话框根查找
+        const root = scrollElement.closest(".speed-switch");
+        const searchInput = (root || scrollElement.ownerDocument).querySelector(".sw__search");
+        if (!searchInput)
+            return;
+        doc_search_ui_1.applySavedSearchFilters.call(this, scrollElement, searchInput, saved, onClose);
+    }
+    // T-6891（T-6857 余项）：固定数字槽保存搜索回放。槽位只保存 searchId，
+    // 执行时重新从当前设置解析对象，删除或损坏后只报告不可用，不把数字静默
+    // 改指向另一条搜索。桌面/手机使用各自切换器实例，侧栏复用常驻 DOM。
+    executeFloatingBallSavedSearch(surface, reference) {
+        var _a, _b;
+        const searchId = typeof (reference === null || reference === void 0 ? void 0 : reference.searchId) === "string"
+            ? String(reference.searchId).trim() : "";
+        const saved = searchId ? this.getSavedSearches().find((item) => (item === null || item === void 0 ? void 0 : item.id) === searchId) : undefined;
+        if (!(saved === null || saved === void 0 ? void 0 : saved.query)) {
+            (0, siyuan_1.showMessage)(this.i18n.quickActionUnavailable, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return { ok: false, reason: "unavailable" };
+        }
+        let root = null;
+        let onClose = () => undefined;
+        if (surface === "sidebar") {
+            root = ((_a = this.sidebarElement) === null || _a === void 0 ? void 0 : _a.isConnected) ? this.sidebarElement : null;
+            onClose = () => this.refreshSidebar();
+        }
+        else {
+            this.showSwitcher(true);
+            const dialog = this.isMobile ? this.mobileSwitcherDialog : this.platformSwitcherDialog;
+            root = ((_b = dialog === null || dialog === void 0 ? void 0 : dialog.element) === null || _b === void 0 ? void 0 : _b.isConnected) ? dialog.element : null;
+            onClose = () => dialog === null || dialog === void 0 ? void 0 : dialog.destroy();
+        }
+        const scrollElement = root === null || root === void 0 ? void 0 : root.querySelector(".sw__scroll");
+        const searchInput = root === null || root === void 0 ? void 0 : root.querySelector(".sw__search");
+        if (!scrollElement || !searchInput) {
+            (0, siyuan_1.showMessage)(this.i18n.quickActionUnavailable, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return { ok: false, reason: "unavailable" };
+        }
+        doc_search_ui_1.applySavedSearchFilters.call(this, scrollElement, searchInput, saved, onClose);
+        return { ok: true };
+    }
+    // T-6830 打开策略：按 rootId 找已打开页签；桌面/移动共用 rootIdOf 归一
+    findOpenTabByRootId(rootId) {
+        const target = String(rootId || "");
+        if (!target)
+            return null;
+        const tabs = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+        return tabs.find((tab) => this.rootIdOf(tab) === target) || null;
+    }
+    reuseOpenTabsEnabled() {
+        return this.getSettings().reuseOpenTabs === true;
+    }
+    activateTabForReuse(rootId, onClose) {
+        const existing = this.findOpenTabByRootId(rootId);
+        if (!existing)
+            return false;
+        this.activateTab(existing, onClose);
+        return true;
+    }
+    activeScrollElement() {
+        var _a, _b, _c, _d;
+        const editor = this.resolveActiveHostEditor();
+        const content = (_d = (_c = (_b = (_a = editor === null || editor === void 0 ? void 0 : editor.protyle) === null || _a === void 0 ? void 0 : _a.element) === null || _b === void 0 ? void 0 : _b.querySelector) === null || _c === void 0 ? void 0 : _c.call(_b, ".protyle-content")) !== null && _d !== void 0 ? _d : document.querySelector(".layout__wnd--active .protyle-content");
+        return content;
+    }
+    setSessionMark() {
+        const scroller = this.activeScrollElement();
+        const rootId = this.rootIdOf(this.getActiveTab());
+        if (!scroller || !rootId) {
+            (0, siyuan_1.showMessage)(this.i18n.sessionMarkNoDoc, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const ratio = (0, recent_closed_1.computeScrollRatio)(scroller.scrollTop, scroller.scrollHeight, scroller.clientHeight);
+        if (this.sessionMarks.size >= 12) {
+            const oldest = this.sessionMarks.keys().next().value;
+            if (oldest !== undefined)
+                this.sessionMarks.delete(oldest);
+        }
+        this.sessionMarks.set(rootId, ratio);
+        (0, siyuan_1.showMessage)(this.i18n.sessionMarkSet);
+    }
+    async jumpToSessionMark() {
+        if (this.sessionMarks.size === 0) {
+            (0, siyuan_1.showMessage)(this.i18n.sessionMarkNone, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const entries = [...this.sessionMarks.entries()];
+        const [rootId, ratio] = entries[this.sessionMarks.size - 1]; // 最近一次标记
+        // 先确保目标文档处于打开并聚焦状态，再按比例回卷
+        const alreadyActive = this.rootIdOf(this.getActiveTab()) === rootId;
+        if (!alreadyActive) {
+            await doc_search_ui_1.openDocSearchResult.call(this, rootId, null);
+        }
+        // 有界等待渲染稳定后按比例回卷（复用 T-6801 口径）
+        for (let attempt = 0; attempt < 30; attempt++) {
+            await new Promise((resolve) => window.setTimeout(resolve, 50));
+            const scroller = this.activeScrollElement();
+            if (!scroller)
+                continue;
+            const target = (0, recent_closed_1.planScrollRestore)({ scrollTop: scroller.scrollTop, scrollHeight: scroller.scrollHeight, clientHeight: scroller.clientHeight }, ratio);
+            if (target !== null) {
+                scroller.scrollTop = target.top;
+                break;
+            }
+        }
+        (0, siyuan_1.showMessage)(this.i18n.sessionMarkJumped);
+    }
+    persistRelatedSwr() {
+        this.data[constants_1.RELATED_SWR_KEY] = (0, related_content_model_1.buildRelatedSwrStore)([...this.relatedSwrStore.values()]);
+        this.saveDataDebounced(constants_1.RELATED_SWR_KEY);
+    }
+    async fillRelatedContent(box, rootId, onClose) {
+        const requestGeneration = (0, related_content_model_1.beginRelatedContentRequest)(this.relatedContentRequestGenerations, rootId);
+        const isCurrentRequest = () => (0, related_content_model_1.isRelatedContentRequestCurrent)(this.relatedContentRequestGenerations, rootId, requestGeneration);
+        const finishRequest = () => (0, related_content_model_1.finishRelatedContentRequest)(this.relatedContentRequestGenerations, rootId, requestGeneration);
+        const now = Date.now();
+        const cached = this.relatedContentCache.get(rootId);
+        let projection = cached && (0, related_content_model_1.isRelatedCacheHit)(cached, rootId, now) ? cached.projection : null;
+        if (!projection) {
+            // T-6840 SWR：持久层命中先显"缓存"标注的投影（不管 60s TTL），
+            // 后台刷新照常进行——数据到达后整行替换为新鲜内容。
+            const persisted = this.relatedSwrStore.get(rootId);
+            if (persisted) {
+                this.renderRelatedRow(box, persisted.projection, onClose, { cached: true });
+            }
+            // k/mk 为契约必传字段（可为空串）；块引索引在文档创建后有秒级延迟，
+            // 首查为空时有界轮询（2.5s×5 次，共约 12.5s），期间面板被移除即放弃。
+            const attempt = async (delayMs, retried) => {
+                if (delayMs) {
+                    await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+                    // 仅重试路径提前判连：首次调用时工作台尚未插入 DOM（同步执行段）
+                    if (!box.isConnected || this.isUnloading || !isCurrentRequest()) {
+                        finishRequest();
+                        return;
+                    }
+                }
+                let payload;
+                try {
+                    payload = await this.fetchKernelJson("/api/ref/getBacklink2", { id: rootId, k: "", mk: "", includeMentions: true });
+                }
+                catch (_a) {
+                    if (!persisted && box.isConnected && !this.isUnloading && isCurrentRequest())
+                        box.remove();
+                    finishRequest();
+                    return;
+                }
+                if (!box.isConnected || this.isUnloading || !isCurrentRequest()) {
+                    finishRequest();
+                    return;
+                }
+                projection = payload ? (0, related_content_model_1.projectRelatedContent)(payload.data) : null;
+                if (!projection || projection.items.length === 0) {
+                    if (retried < 5) {
+                        // 审查轮 P-E：首轮为空且尚无缓存内容时才把骨架换成"暂无关联"
+                        // 弱提示（继续轮询），避免块引索引延迟期间 ~12s 的纯 spinner 观感
+                        if (retried === 0 && !persisted) {
+                            const skeleton = box.firstElementChild;
+                            if (skeleton === null || skeleton === void 0 ? void 0 : skeleton.classList.contains("sw__workbench-related--loading")) {
+                                skeleton.classList.remove("sw__workbench-related--loading");
+                                skeleton.textContent = this.i18n.workbenchRelatedEmpty;
+                            }
+                        }
+                        return void attempt(2500, retried + 1);
+                    }
+                    // 终态：重试耗尽仍无数据 → 已有缓存内容时保留（SWR 语义），
+                    // 否则移除空占位框，不留空白
+                    if (isCurrentRequest()) {
+                        if (!persisted && box.dataset.swRelatedRendered !== "1") {
+                            box.remove();
+                        }
+                    }
+                    finishRequest();
+                    return;
+                }
+                const storedAt = Date.now();
+                this.relatedContentCache.delete(rootId);
+                this.relatedContentCache.set(rootId, { rootId, at: storedAt, projection });
+                while (this.relatedContentCache.size > 8) {
+                    const oldest = [...this.relatedContentCache.values()].sort((left, right) => left.at - right.at)[0];
+                    if (!oldest)
+                        break;
+                    this.relatedContentCache.delete(oldest.rootId);
+                }
+                const nextRelatedSwr = (0, related_content_model_1.mergeRelatedSwrEntry)([...this.relatedSwrStore.values()], { rootId, at: storedAt, projection });
+                this.relatedSwrStore = new Map(nextRelatedSwr.entries.map((entry) => [entry.rootId, entry]));
+                this.persistRelatedSwr();
+                this.renderRelatedRow(box, projection, onClose);
+                finishRequest();
+            };
+            return void attempt(0, 0);
+        }
+        this.renderRelatedRow(box, projection, onClose);
+        finishRequest();
+    }
+    renderRelatedRow(box, projection, onClose, options = {}) {
+        if (!box.isConnected || projection.items.length === 0)
+            return;
+        box.textContent = "";
+        // T-6840：SWR 命中渲染过的行带标记——后台刷新失败时不被终态清理误删
+        box.dataset.swRelatedRendered = "1";
+        const rowLabel = document.createElement("div");
+        rowLabel.className = "sw__workbench-row-label";
+        const total = projection.counts.backlinks + projection.counts.mentions;
+        // T-6840：持久层命中（stale-while-revalidate 的 stale 半程）标注"缓存"
+        const cachedSuffix = options.cached ? ` · ${this.i18n.workbenchRelatedCached}` : "";
+        rowLabel.textContent = (projection.truncated
+            ? `${this.i18n.workbenchRelated} (${projection.counts.shown}/${total})`
+            : this.i18n.workbenchRelated) + cachedSuffix;
+        box.appendChild(rowLabel);
+        const row = document.createElement("div");
+        row.className = "sw__workbench-row";
+        projection.items.forEach((item) => {
+            const chip = document.createElement("button");
+            chip.type = "button";
+            chip.className = "sw__workbench-chip";
+            chip.textContent = (item.source === "mention" ? "∼ " : "") + item.title;
+            chip.title = item.hPath || item.title;
+            chip.addEventListener("click", () => {
+                onClose();
+                void doc_search_ui_1.openDocSearchResult.call(this, item.id, null);
+            });
+            row.appendChild(chip);
+        });
+        box.appendChild(row);
+    }
+    // T-6804/T-6807：拉取一个标签智能分组的条目并以只读列表呈现
+    openTagSmartGroupEntries(group) {
+        const query = (0, favorite_actions_1.buildTagSmartGroupQuery)(group, { nowMs: Date.now() });
+        if (!query)
+            return;
+        void this.fetchKernelJson("/api/query/sql", query).then((json) => {
+            const entries = (0, favorite_actions_1.projectTagSmartGroupEntries)(json === null || json === void 0 ? void 0 : json.data);
+            const list = document.createElement("div");
+            list.className = "sw__workbench-entries";
+            entries.forEach((entry) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "sw__doc-item";
+                const copy = document.createElement("span");
+                copy.className = "sw__doc-copy";
+                const title = document.createElement("span");
+                title.className = "sw__doc-title";
+                title.textContent = entry.title;
+                copy.appendChild(title);
+                item.appendChild(copy);
+                item.addEventListener("click", () => {
+                    if (this.isMobile)
+                        void this.mobileOpenDoc(entry.rootId);
+                    else
+                        void (0, siyuan_1.openTab)({ app: this.app, doc: { id: entry.rootId } });
+                });
+                list.appendChild(item);
+            });
+            if (!entries.length) {
+                const empty = document.createElement("p");
+                empty.className = "sw-settings__hint";
+                empty.textContent = this.i18n.favSmartGroupEmpty;
+                list.appendChild(empty);
+            }
+            this.openHostListDialog(`${group.name} · #${group.tag}`, list);
+        });
+    }
+    openHostListDialog(title, content) {
+        const dialog = new siyuan_1.Dialog({
+            title,
+            content: '<div class="speed-switch sw__host-list"></div>',
+            width: this.isMobile ? "min(440px, 92vw)" : "400px",
+            height: this.isMobile ? "min(420px, 68vh)" : "360px",
+        });
+        (0, platform_dom_3.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "to close");
+        const root = dialog.element.querySelector(".sw__host-list");
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
+        root.appendChild(content);
+    }
+    // 全库扫描时间窗起点：days 天前的 "YYYYMMDDHHmmss"（思源 updated 同格式，可直接字符串比较）
+    taskWindowStart(days) {
+        const d = new Date(Date.now() - Math.max(1, days) * 86400000);
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}000000`;
+    }
+    /**
+     * 语义搜索能力判定（P3-3）：读取宿主 AI embedding 配置，与内核
+     * isEmbeddingEnabled 镜像一致。实时读取不缓存——用户中途启用 AI 配置
+     * 后无需重载插件即可生效；未配置时语义选项不出现且请求静默走 keyword。
+     */
+    isSemanticSearchAvailable() {
+        var _a;
+        try {
+            return (0, search_model_1.isSemanticEmbeddingConfigured)((_a = (0, types_1.getSiyuan)()) === null || _a === void 0 ? void 0 : _a.config);
+        }
+        catch (_) {
+            return false;
+        }
+    }
+    async fetchKernelJson(url, body, timeoutOrOptions = 5000, options) {
+        const result = await this.fetchKernelJsonOutcome(url, body, timeoutOrOptions, options);
+        return result.ok ? result.value : null;
+    }
+    /** Shared transport bridge for extracted search UI modules. */
+    requestKernelJsonOutcome(url, body, options = {}) {
+        return this.fetchKernelJsonOutcome(url, body, options);
+    }
+    /** Structured result for flows that must distinguish failed from unknown writes. */
+    async fetchKernelJsonOutcome(url, body, timeoutOrOptions = 5000, options) {
+        // 安全守卫（纵深防御）：仅允许同源、硬编码的思源内核相对路径。
+        // - 必须以 "/" 开头（相对路径 → 同源），拒绝任何绝对 URL 与外部 host；
+        // - 必须命中端点白名单，杜绝把请求指向任意地址（SSRF）。
+        if (typeof url !== "string" || !url.startsWith("/") || url.startsWith("//") || !SpeedSwitchPlugin.KERNEL_ENDPOINTS.has(url)) {
+            logger_1.logger.warn("blocked non-whitelisted kernel endpoint", url);
+            return { ok: false, error: { kind: "blocked" }, attempts: 0, outcome: "failed" };
+        }
+        // Callers in extracted UI modules pass the cancellation options as the
+        // third argument, while older host-side callers pass a numeric timeout
+        // followed by options.  Treating the object as `setTimeout`'s delay
+        // coerces it to zero and aborts every request immediately (the preview
+        // pane then only shows the incomplete-load state).  Normalize both
+        // forms at the boundary so one host contract serves both paths.
+        const timeoutMs = typeof timeoutOrOptions === "number" ? timeoutOrOptions
+            : Number.isFinite(timeoutOrOptions.timeoutMs) ? Math.max(1, Math.min(120000, Math.trunc(timeoutOrOptions.timeoutMs))) : 5000;
+        const requestOptions = typeof timeoutOrOptions === "number" ? options : timeoutOrOptions;
+        const externalSignal = requestOptions === null || requestOptions === void 0 ? void 0 : requestOptions.signal;
+        const latestKey = typeof (requestOptions === null || requestOptions === void 0 ? void 0 : requestOptions.latestKey) === "string" ? requestOptions.latestKey : "";
+        const key = (0, request_service_1.buildRequestKey)(url, body);
+        const sqlRead = url === "/api/query/sql" && /^\s*SELECT\b/i.test(String((body === null || body === void 0 ? void 0 : body.stmt) || ""));
+        const retrySafe = SpeedSwitchPlugin.KERNEL_READ_ENDPOINTS.has(url) || sqlRead;
+        const result = await this.requestService.request({
+            key,
+            dedupe: retrySafe || (requestOptions === null || requestOptions === void 0 ? void 0 : requestOptions.dedupe) === true,
+            latestKey,
+            signal: externalSignal,
+            timeoutMs,
+            maxRetries: retrySafe ? 1 : 0,
+            execute: async (signal) => {
+                // 每个端点的 fetch 都使用字面量 URL（安全扫描要求：不存在变量 URL 请求）
+                const init = Object.assign({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, (signal ? { signal } : {}));
+                let response;
+                switch (url) {
+                    case "/api/query/sql":
+                        response = await fetch("/api/query/sql", init);
+                        break;
+                    case "/api/tag/getTag":
+                        response = await fetch("/api/tag/getTag", init);
+                        break;
+                    case "/api/bookmark/getBookmark":
+                        response = await fetch("/api/bookmark/getBookmark", init);
+                        break;
+                    case "/api/filetree/getDoc":
+                        response = await fetch("/api/filetree/getDoc", init);
+                        break;
+                    case "/api/filetree/searchDocs":
+                        response = await fetch("/api/filetree/searchDocs", init);
+                        break;
+                    case "/api/search/semanticSearchBlock":
+                        response = await fetch("/api/search/semanticSearchBlock", init);
+                        break;
+                    case "/api/search/fullTextSearchBlock":
+                        response = await fetch("/api/search/fullTextSearchBlock", init);
+                        break;
+                    case "/api/filetree/createDocWithMd":
+                        response = await fetch("/api/filetree/createDocWithMd", init);
+                        break;
+                    case "/api/filetree/createDailyNote":
+                        response = await fetch("/api/filetree/createDailyNote", init);
+                        break;
+                    case "/api/block/updateBlock":
+                        response = await fetch("/api/block/updateBlock", init);
+                        break;
+                    case "/api/block/insertBlock":
+                        response = await fetch("/api/block/insertBlock", init);
+                        break;
+                    case "/api/block/appendBlock":
+                        response = await fetch("/api/block/appendBlock", init);
+                        break;
+                    case "/api/outline/getDocOutline":
+                        response = await fetch("/api/outline/getDocOutline", init);
+                        break;
+                    case "/api/riff/getNotebookRiffDueCards":
+                        response = await fetch("/api/riff/getNotebookRiffDueCards", init);
+                        break;
+                    case "/api/filetree/listDocsByPath":
+                        response = await fetch("/api/filetree/listDocsByPath", init);
+                        break;
+                    case "/api/filetree/getPinnedDocs":
+                        response = await fetch("/api/filetree/getPinnedDocs", init);
+                        break;
+                    case "/api/inbox/getShorthands":
+                        response = await fetch("/api/inbox/getShorthands", init);
+                        break;
+                    case "/api/block/getRecentUpdatedBlocks":
+                        response = await fetch("/api/block/getRecentUpdatedBlocks", init);
+                        break;
+                    case "/api/asset/getMissingAssets":
+                        response = await fetch("/api/asset/getMissingAssets", init);
+                        break;
+                    case "/api/ref/getBacklink2":
+                        response = await fetch("/api/ref/getBacklink2", init);
+                        break;
+                    case "/api/storage/getRecentDocs":
+                        response = await fetch("/api/storage/getRecentDocs", init);
+                        break;
+                    case "/api/storage/getCriteria":
+                        response = await fetch("/api/storage/getCriteria", init);
+                        break;
+                    case "/api/av/renderAttributeView":
+                        response = await fetch("/api/av/renderAttributeView", init);
+                        break;
+                    case "/api/av/getAttributeView":
+                        response = await fetch("/api/av/getAttributeView", init);
+                        break;
+                    case "/api/sync/performSync":
+                        response = await fetch("/api/sync/performSync", init);
+                        break;
+                    case "/api/template/manage":
+                        response = await fetch("/api/template/manage", init);
+                        break;
+                    case "/api/template/render":
+                        response = await fetch("/api/template/render", init);
+                        break;
+                    case "/api/snippet/getSnippet":
+                        response = await fetch("/api/snippet/getSnippet", init);
+                        break;
+                    default:
+                        logger_1.logger.warn("blocked non-whitelisted kernel endpoint", url);
+                        return null;
+                }
+                if (!response.ok)
+                    throw Object.assign(new Error("http_error"), { status: response.status });
+                return await response.json();
+            },
+        });
+        if (!result.ok) {
+            logger_1.logger.warn("kernel request fail", url, result.error.kind, result.error.status || "");
+            const uncertainWrite = !retrySafe && result.attempts > 0
+                && ["aborted", "timeout", "network", "server", "invalid_response", "failed"].includes(result.error.kind);
+            return Object.assign(Object.assign({}, result), { outcome: uncertainWrite ? "unknown" : "failed" });
+        }
+        return Object.assign(Object.assign({}, result), { outcome: "success" });
+    }
+    // 外部生活组件在桌面 WebView 中可能受 CORS/代理环境影响。这里复用思源公开的
+    // JSON 正向代理；目标在发出前仍必须命中生活组件 HTTPS 白名单或 ActivityWatch
+    // 回环地址 + 固定 query 路由，避免形成任意 SSRF 通道。
+    async fetchActivityWatchViaKernel(url, init) {
+        // T-6466：补上 Miniflux 两条路由（entries/categories）——此前代理门禁不含
+        // Miniflux，真实请求会被 blocked_endpoint 拦截（单测 mock fetchImpl 掩盖）。
+        if (!(0, life_widget_network_1.allowedActivityWatchUrl)(url) && !(0, life_widget_network_1.allowedLifeWidgetUrl)(url)
+            && !(0, life_widget_network_1.allowedMinifluxUrl)(url) && !(0, life_widget_network_1.allowedMinifluxCategoriesUrl)(url))
+            throw new Error("blocked_endpoint");
+        const isPost = typeof (init === null || init === void 0 ? void 0 : init.body) === "string";
+        const proxyBody = {
+            url,
+            method: isPost ? "POST" : "GET",
+            timeout: 8000,
+            contentType: "application/json",
+            headers: [{ Accept: "application/json" }],
+            responseEncoding: "text",
+        };
+        // 附加请求头（如 Miniflux 的 X-Auth-Token）：逐键合并进代理头数组。
+        // 值只进入发往本机内核的代理请求体；不写入任何插件日志、缓存或错误消息。
+        const extraHeaders = (init === null || init === void 0 ? void 0 : init.headers) && typeof init.headers === "object" ? init.headers : {};
+        for (const [name, value] of Object.entries(extraHeaders)) {
+            if (!/^[A-Za-z0-9-]+$/.test(name) || typeof value !== "string" || !value)
+                continue;
+            proxyBody.headers = [...proxyBody.headers, { [name]: value }];
+        }
+        if (isPost) {
+            proxyBody.payload = init.body;
+            proxyBody.payloadEncoding = "text";
+        }
+        const response = await fetch("/api/network/forwardProxy", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(proxyBody),
+            signal: init === null || init === void 0 ? void 0 : init.signal,
+        });
+        if (!response.ok)
+            throw new Error("proxy_http_error");
+        const envelope = await response.json();
+        const data = (envelope === null || envelope === void 0 ? void 0 : envelope.code) === 0 && (envelope === null || envelope === void 0 ? void 0 : envelope.data) && typeof envelope.data === "object" ? envelope.data : null;
+        const body = typeof (data === null || data === void 0 ? void 0 : data.body) === "string" ? data.body : "";
+        const status = Number(data === null || data === void 0 ? void 0 : data.status);
+        return {
+            ok: Number.isFinite(status) && status >= 200 && status < 300,
+            headers: { get: (name) => name.toLowerCase() === "content-length" ? String(body.length) : null },
+            text: async () => body,
+        };
+    }
+    // Bangumi 的固定公开日历在浏览器直连时具备 CORS；部分环境的思源代理出口
+    // 无法连接 api.bgm.tv，因此先走浏览器网络，失败再回退同一白名单代理。
+    async fetchBangumiCalendar(url, init) {
+        var _a, _b;
+        if (url !== "https://api.bgm.tv/calendar")
+            throw new Error("blocked_endpoint");
+        try {
+            const response = await fetch(url, init);
+            if (response.ok)
+                return response;
+        }
+        catch (error) {
+            if ((_a = init === null || init === void 0 ? void 0 : init.signal) === null || _a === void 0 ? void 0 : _a.aborted)
+                throw new Error("aborted");
+        }
+        if ((_b = init === null || init === void 0 ? void 0 : init.signal) === null || _b === void 0 ? void 0 : _b.aborted)
+            throw new Error("aborted");
+        return this.fetchActivityWatchViaKernel(url, { signal: init === null || init === void 0 ? void 0 : init.signal });
+    }
+    // 内置只读适配器：面板数据全部来自插件既有领域数据（最近/收藏/日记/文档集/指定文档）。
+    // 注册定义覆盖 home-model DEFAULT_MODULES 的同名项（标题随 i18n）。
+    registerBuiltinHomeAdapters() {
+        const register = (moduleId, title, icon, description, refreshOn, read, policies = {}, source) => {
+            const result = this.homeRuntime.registerAdapter(Object.assign(Object.assign({ moduleId, title, icon, description, category: "siyuan", builtin: true, supportedDevices: ["desktop", "sidebar", "mobile"], refreshOn,
+                read }, policies), (source ? { source } : {})));
+            if (result.registered)
+                this.homeBuiltinAdapterIds.add(moduleId);
+        };
+        register("recent-documents", this.i18n.homeRecentDocuments, "iconHistory", this.i18n.homeDescRecent, ["switch-protyle", "loaded-protyle", "destroy-protyle"], async (config) => {
+            const json = await this.fetchKernelJson("/api/storage/getRecentDocs", {});
+            const labels = {
+                title: this.i18n.homeRecentDocuments, empty: this.i18n.homeHostRecentEmpty, stat: this.i18n.homeUnitDocs,
+                today: this.i18n.homeRecentToday, yesterday: this.i18n.homeRecentYesterday,
+                unavailable: this.i18n.homeRecentUnavailable,
+            };
+            const recent = (0, kernel_widget_model_1.buildHostRecentDocsSnapshot)(json, config, labels);
+            if (!recent)
+                throw new Error("invalid_recent_documents");
+            const ids = recent.items.map((item) => String(item.value || "")).filter((id) => constants_1.BLOCK_ID_RE.test(id));
+            if (ids.length === 0)
+                return recent;
+            const quoted = ids.map((id) => `'${id}'`).join(",");
+            const metadata = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id FROM blocks WHERE type='d' AND id IN (${quoted}) LIMIT 12`,
+            });
+            if (!Array.isArray(metadata === null || metadata === void 0 ? void 0 : metadata.data))
+                throw new Error("invalid_recent_documents_metadata");
+            const availableIds = new Set(metadata.data.map((row) => String((row === null || row === void 0 ? void 0 : row.id) || "")));
+            return (0, kernel_widget_model_1.buildHostRecentDocsSnapshot)(json, config, labels, Date.now(), "fresh", availableIds);
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        register("favorites", this.i18n.homeFavorites, "iconStar", this.i18n.homeDescFav, ["switch-protyle", "loaded-protyle", "destroy-protyle"], async (config) => {
+            const favorites = this.getFavorites();
+            const documentIds = (0, document_widget_model_1.favoriteDocumentIdsForProbe)(favorites, config);
+            let documents = [];
+            if (documentIds.length > 0) {
+                const quoted = documentIds.map((id) => `'${id}'`).join(",");
+                const json = await this.fetchKernelJson("/api/query/sql", {
+                    stmt: `SELECT id, content, hpath FROM blocks WHERE type='d' AND id IN (${quoted}) LIMIT 12`,
+                });
+                if (!Array.isArray(json === null || json === void 0 ? void 0 : json.data))
+                    throw new Error("invalid_favorite_documents");
+                documents = json.data;
+            }
+            const tabs = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+            const openedKeys = new Set(tabs.map((tab) => this.pinKeyOf(tab)));
+            return (0, document_widget_model_1.buildFavoritesWidgetSnapshot)(favorites, documents, openedKeys, config, {
+                title: this.i18n.homeFavorites,
+                stat: this.i18n.homeStatFavorites,
+                empty: this.i18n.homeFavoritesEmpty,
+                emptyGroup: this.i18n.homeFavoritesGroupEmpty,
+                emptyAvailable: this.i18n.homeFavoritesAvailableEmpty,
+                ungrouped: this.i18n.homeFavoritesUngrouped,
+                unavailable: this.i18n.homeFavoritesUnavailable,
+                sessionOnly: this.i18n.homeFavoritesSessionOnly,
+            });
+        }, { timeoutMs: 1200, cacheTtlMs: 0 });
+        register("today-journal", this.i18n.homeTodayJournal, "iconCalendar", this.i18n.homeDescJournal, ["switch-protyle", "loaded-protyle"], async (config) => {
+            const normalized = (0, kernel_widget_model_1.normalizeTodayJournalConfig)(config);
+            const notebook = (0, agent_capabilities_1.normalizeAgentNotebookId)(config.notebook);
+            const journalAction = notebook ? `action:journal:${notebook}` : "action:journal";
+            const now = new Date();
+            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+            const compactToday = today.replace(/-/g, "");
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(notebook, "d");
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT d.id, d.content, d.hpath, d.updated, a.name AS daily_attr, COALESCE((SELECT SUM(CASE WHEN c.type<>'d' THEN c.length ELSE 0 END) FROM blocks c WHERE c.root_id=d.id), 0) AS characters FROM blocks d LEFT JOIN attributes a ON a.block_id=d.id AND a.name='custom-dailynote-${compactToday}' WHERE d.type='d'${notebookScope} AND (d.content LIKE '${today}%' OR a.name IS NOT NULL) ORDER BY d.updated DESC LIMIT 4`,
+            });
+            const snapshot = (0, kernel_widget_model_1.buildTodayJournalSnapshot)(json === null || json === void 0 ? void 0 : json.data, Object.assign(Object.assign({}, normalized), { notebook }), {
+                title: this.i18n.homeTodayJournal,
+                open: this.i18n.homeTodayJournalOpen,
+                create: this.i18n.homeTodayJournalCreate,
+                characters: this.i18n.homeTodayJournalCharacters,
+                action: journalAction,
+            }, now.getTime());
+            if (!snapshot)
+                throw new Error("invalid_today_journal");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 0 });
+        register("document-sets", this.i18n.homeDocumentSets, "iconLayout", this.i18n.homeDescDocSets, ["loaded-protyle", "destroy-protyle"], (config) => (0, document_widget_model_1.buildDocumentSetsWidgetSnapshot)(this.getDocumentSets(), config, {
+            title: this.i18n.homeDocumentSets,
+            stat: this.i18n.homeStatDocSets,
+            documents: this.i18n.homeUnitDocs,
+            empty: this.i18n.homeDocumentSetsEmpty,
+        }), { cacheTtlMs: 0 });
+        register("fixed-document", this.i18n.homeFixedDocument, "iconFile", this.i18n.homeDescFixed, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const normalized = (0, document_widget_model_1.normalizeFixedDocumentConfig)(config);
+            if (!normalized.docId)
+                return (0, document_widget_model_1.buildFixedDocumentSnapshot)([], normalized, {
+                    configure: this.i18n.homeFixedDocumentConfigHint,
+                    unavailable: this.i18n.homeFixedDocumentUnavailable,
+                    reconfigure: this.i18n.homeFixedDocumentReconfigureHint,
+                });
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, content, hpath FROM blocks WHERE type='d' AND id='${normalized.docId}' LIMIT 1`,
+            });
+            if (!Array.isArray(json === null || json === void 0 ? void 0 : json.data))
+                throw new Error("invalid_fixed_document");
+            return (0, document_widget_model_1.buildFixedDocumentSnapshot)(json.data, normalized, {
+                configure: this.i18n.homeFixedDocumentConfigHint,
+                unavailable: this.i18n.homeFixedDocumentUnavailable,
+                reconfigure: this.i18n.homeFixedDocumentReconfigureHint,
+            });
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        // 今日待办：默认读取“今日日记”文档中的任务块；开启全库扫描后才扩大到
+        // 最近窗口内的全库任务。旧实现默认扫描当前打开文档，既不代表“今天”，
+        // 也会让日记里的任务在未打开时完全消失。
+        register("today-tasks", this.i18n.homeTodayTasks, "iconCheck", this.i18n.homeDescTasks, ["switch-protyle", "loaded-protyle", "destroy-protyle"], async (config) => {
+            var _a;
+            const normalized = (0, kernel_widget_model_1.normalizeTodayTasksConfig)(config);
+            const scanAll = normalized.allDocuments;
+            const notebookFilter = (0, agent_capabilities_1.normalizeAgentNotebookId)(normalized.notebook);
+            const since = this.taskWindowStart(normalized.days);
+            // 显示已完成时同时匹配未勾选与已勾选（含大写 X）；否则只看未完成任务
+            // 思源任务的规范数据库形态是列表项 type='i' / subtype='t'；
+            // markdown 前缀可能是 "* [ ]"、"- [ ]" 等，SQL 只做宽门槛，
+            // 最终由纯投影模型再次确认 checkbox。
+            const stateCondition = normalized.showCompleted
+                ? `(markdown LIKE '%[ ]%' OR markdown LIKE '%[x]%' OR markdown LIKE '%[X]%')`
+                : `markdown LIKE '%[ ]%'`;
+            const today = new Date();
+            const pad = (value) => String(value).padStart(2, "0");
+            const todayTitle = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+            const todayAttr = `custom-dailynote-${todayTitle.replace(/-/g, "")}`;
+            const escapedNotebook = notebookFilter.split("'").join("''");
+            const notebookScope = notebookFilter ? ` AND d.box='${escapedNotebook}'` : "";
+            // 默认范围优先使用思源今日日记属性，日期标题仅作为旧数据的兼容回退。
+            // 全库模式保留旧的时间窗语义，避免一次性扫描超大工作空间。
+            const scope = scanAll
+                ? `${notebookFilter ? ` AND b.box='${escapedNotebook}'` : ""} AND b.updated >= '${since}'`
+                : ` AND (d.id IN (SELECT block_id FROM attributes WHERE name='${todayAttr}') OR d.content LIKE '${todayTitle}%')${notebookScope}`;
+            const fromClause = "blocks b JOIN blocks d ON d.id=b.root_id AND d.type='d'";
+            const escapedQuery = normalized.query.split("'").join("''");
+            const queryScope = escapedQuery
+                ? ` AND instr(lower(COALESCE(b.content,'') || char(10) || COALESCE(d.content,'') || char(10) || COALESCE(d.hpath,'')), lower('${escapedQuery}')) > 0`
+                : "";
+            const orderBy = normalized.sortBy === "文档名称"
+                ? "d.content COLLATE NOCASE ASC, b.created ASC"
+                : "b.updated DESC";
+            const [json, countJson] = await Promise.all([
+                this.fetchKernelJson("/api/query/sql", {
+                    stmt: `SELECT b.id, b.content, b.markdown, b.updated, d.content AS document_title, d.hpath FROM ${fromClause} WHERE b.type='i' AND b.subtype='t' AND ${stateCondition.replace(/\bmarkdown\b/g, "b.markdown")}${scope}${queryScope} ORDER BY ${orderBy} LIMIT 48`,
+                }),
+                this.fetchKernelJson("/api/query/sql", {
+                    stmt: `SELECT COUNT(*) AS total FROM ${fromClause} WHERE b.type='i' AND b.subtype='t' AND ${stateCondition.replace(/\bmarkdown\b/g, "b.markdown")}${scope}${queryScope}`,
+                }),
+            ]);
+            const total = Math.max(0, Number((_a = ((countJson === null || countJson === void 0 ? void 0 : countJson.data) || [])[0]) === null || _a === void 0 ? void 0 : _a.total) || 0);
+            const snapshot = (0, kernel_widget_model_1.buildTodayTasksSnapshot)({ data: json === null || json === void 0 ? void 0 : json.data, total }, normalized, {
+                title: this.i18n.homeTodayTasks,
+                stat: this.i18n.homeStatTasks,
+                empty: !scanAll ? `今天（${todayTitle}）还没有可显示的待办` : this.i18n.homeTasksEmpty,
+                emptyFiltered: this.i18n.homeTasksFilteredEmpty,
+            });
+            if (!snapshot)
+                throw new Error("invalid_today_tasks");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        // 标签：getTag，点击打开思源标签面板（data 在 3.8.x 内核直接是数组，兼容旧的 data.tags 包装）
+        register("tags", this.i18n.homeTags, "iconTags", this.i18n.homeDescTags, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            var _a;
+            const json = await this.fetchKernelJson("/api/tag/getTag", {});
+            const tags = Array.isArray(json === null || json === void 0 ? void 0 : json.data) ? json.data : Array.isArray((_a = json === null || json === void 0 ? void 0 : json.data) === null || _a === void 0 ? void 0 : _a.tags) ? json.data.tags : null;
+            const snapshot = (0, kernel_widget_model_1.buildTagListSnapshot)(tags, config, {
+                title: this.i18n.homeTags, stat: this.i18n.homeStatTags, blocks: this.i18n.homeUnitBlocks,
+                empty: this.i18n.homeTagsEmpty, emptyFiltered: this.i18n.homeTagsFilteredEmpty,
+            });
+            if (!snapshot)
+                throw new Error("invalid_tags");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 2000 });
+        // 书签：getBookmark，点击打开思源书签面板（data 直接是数组；无 count 时回退 blocks 数）
+        register("bookmarks", this.i18n.homeBookmarks, "iconBookmark", this.i18n.homeDescBookmarks, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            var _a;
+            const json = await this.fetchKernelJson("/api/bookmark/getBookmark", {});
+            const bookmarks = Array.isArray(json === null || json === void 0 ? void 0 : json.data) ? json.data : Array.isArray((_a = json === null || json === void 0 ? void 0 : json.data) === null || _a === void 0 ? void 0 : _a.bookmarks) ? json.data.bookmarks : null;
+            const snapshot = (0, kernel_widget_model_1.buildBookmarkListSnapshot)(bookmarks, config, {
+                title: this.i18n.homeBookmarks, stat: this.i18n.homeStatBookmarks, blocks: this.i18n.homeUnitBlocks,
+                empty: this.i18n.homeBookmarksEmpty, emptyFiltered: this.i18n.homeBookmarksFilteredEmpty,
+                emptyEntry: this.i18n.homeBookmarkEmptyEntry,
+            });
+            if (!snapshot)
+                throw new Error("invalid_bookmarks");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 2000 });
+        // 月度日记：兼容官方日记属性与日期标题，可浏览前后 24 个月；当月保留“打开今日日记”入口。
+        register("journal-monthly", this.i18n.homeJournalMonthly, "iconCalendar", this.i18n.homeDescJournalMonthly, ["switch-protyle", "loaded-protyle"], async (config) => {
+            const normalized = (0, kernel_widget_model_1.normalizeJournalMonthlyConfig)(config);
+            const now = new Date();
+            const target = new Date(now.getFullYear(), now.getMonth() + normalized.monthOffset, 1);
+            const prefix = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}`;
+            const next = new Date(target.getFullYear(), target.getMonth() + 1, 1);
+            const nextPrefix = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+            const attrPrefix = `custom-dailynote-${prefix.replace("-", "")}`;
+            const maxDay = String(new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()).padStart(2, "0");
+            const notebook = (0, agent_capabilities_1.normalizeAgentNotebookId)(normalized.notebook);
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(notebook, "b");
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT b.id, b.root_id, b.content, b.hpath, b.updated, a.name AS daily_attr, COALESCE((SELECT SUM(CASE WHEN c.type<>'d' THEN c.length ELSE 0 END) FROM blocks c WHERE c.root_id=b.id), 0) AS characters, COUNT(*) OVER() AS total_count FROM blocks b LEFT JOIN attributes a ON a.block_id=b.id AND a.name BETWEEN '${attrPrefix}01' AND '${attrPrefix}${maxDay}' WHERE b.type='d'${notebookScope} AND (a.name IS NOT NULL OR (b.content >= '${prefix}-01' AND b.content < '${nextPrefix}-01')) ORDER BY b.updated DESC LIMIT 48`,
+            });
+            const snapshot = (0, kernel_widget_model_1.buildJournalMonthlySnapshot)(json === null || json === void 0 ? void 0 : json.data, Object.assign(Object.assign({}, normalized), { notebook }), {
+                monthTitle: this.i18n.homeCalendarMonthFormat,
+                todayAction: this.i18n.homeTodayJournalOpen,
+                stat: this.i18n.homeStatMonthlyJournals,
+                characters: this.i18n.homeTodayJournalCharacters,
+                streak: this.i18n.homeMonthlyJournalStreak,
+                empty: this.i18n.homeJournalMonthlyEmpty,
+            }, now.getTime());
+            if (!snapshot)
+                throw new Error("invalid_journal_monthly");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1500 });
+        // 笔记统计：单次聚合全库规模与两个相邻时间窗，避免四次查询产生口径漂移。
+        register("note-stats", this.i18n.homeNoteStats, "iconGraph", this.i18n.homeDescNoteStats, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const normalized = (0, kernel_widget_model_1.normalizeNoteStatsConfig)(config);
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook);
+            const current = new Date();
+            current.setHours(0, 0, 0, 0);
+            current.setDate(current.getDate() - (normalized.days - 1));
+            const previous = new Date(current.getFullYear(), current.getMonth(), current.getDate() - normalized.days);
+            const kernelStamp = (date) => `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}000000`;
+            const currentStart = kernelStamp(current);
+            const previousStart = kernelStamp(previous);
+            const json = await this.fetchKernelJson("/api/query/sql", { stmt: `SELECT COUNT(CASE WHEN type='d' THEN 1 END) AS docs, COALESCE(SUM(CASE WHEN type<>'d' THEN length ELSE 0 END), 0) AS chars, COUNT(CASE WHEN type='d' AND created >= '${currentStart}' THEN 1 END) AS created, COUNT(CASE WHEN type='d' AND updated >= '${currentStart}' AND created < '${currentStart}' THEN 1 END) AS updated, COUNT(CASE WHEN type='d' AND created >= '${previousStart}' AND created < '${currentStart}' THEN 1 END) AS previous_created, COUNT(CASE WHEN type='d' AND updated >= '${previousStart}' AND updated < '${currentStart}' AND created < '${previousStart}' THEN 1 END) AS previous_updated FROM blocks WHERE 1=1${notebookScope}` });
+            const row = ((json === null || json === void 0 ? void 0 : json.data) || [])[0];
+            // T-6682 写作强度（opt-in）：仅在启用时追加一条按日有界查询（≤2×窗口行），
+            // 模型层以同一指数平滑口径（半衰期 14 天）计算强度；关闭时零额外请求
+            let daily;
+            if (normalized.showStrength) {
+                const dailyJson = await this.fetchKernelJson("/api/query/sql", { stmt: `SELECT substr(created, 1, 8) AS day, COUNT(CASE WHEN type='d' THEN 1 END) AS created, COUNT(CASE WHEN type<>'d' THEN 1 END) AS updated FROM blocks WHERE created >= '${previousStart}'${notebookScope} GROUP BY substr(created, 1, 8) ORDER BY day LIMIT ${normalized.days * 2}` });
+                daily = ((dailyJson === null || dailyJson === void 0 ? void 0 : dailyJson.data) || []);
+            }
+            const snapshot = (0, kernel_widget_model_1.buildNoteStatsSnapshot)(row ? {
+                docs: row.docs, chars: row.chars, created: row.created, updated: row.updated,
+                previousCreated: row.previous_created, previousUpdated: row.previous_updated,
+                daily,
+            } : null, normalized, {
+                title: this.i18n.homeNoteStats, documents: this.i18n.homeUnitDocs,
+                characters: this.i18n.homeCharEstimate, created: this.i18n.homeWritingNewDocs,
+                updated: this.i18n.homeWritingEditedDocs, trendUp: this.i18n.homeWritingTrendUp,
+                trendDown: this.i18n.homeWritingTrendDown, trendFlat: this.i18n.homeWritingTrendFlat,
+                trendNew: this.i18n.homeWritingTrendNew,
+                strength: this.i18n.homeWritingStrength, strengthHalfLife: this.i18n.homeWritingStrengthHalfLife,
+            });
+            if (!snapshot)
+                throw new Error("invalid_note_stats");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        // 年度进度：纯前端计算（已过天数 / 剩余天数 / 百分比），带进度条；日历日语义在模型内固定
+        register("year-progress", this.i18n.homeYearProgress, "iconRefresh", this.i18n.homeDescYearProgress, [], (config, _device, context) => {
+            const snapshot = (0, local_time_model_1.buildYearProgressSnapshot)(new Date(), config, {
+                elapsed: this.i18n.homeYearElapsed, remaining: this.i18n.homeYearRemaining,
+            });
+            // xs 紧凑密度：只保留主进度，不铺两条明细
+            if (context && context.size === "xs")
+                return Object.assign(Object.assign({}, snapshot), { items: [] });
+            return snapshot;
+        });
+        // 外部服务组件（13 个 external-* 适配器）的注册定义外迁至 home-external-adapters
+        // （R2 重构 D-375）：register 闭包原样传入，宿主经 this 绑定提供 i18n 与内核代理
+        // fetch；新增外部组件改在 home-external-adapters.ts 登记，index.ts 不再随之增长。
+        home_external_adapters_1.registerExternalHomeAdapters.call(this, register);
+        // 近期编辑：全库最近修改的文档列表，点击直达
+        register("recent-edits", this.i18n.homeRecentEdits, "iconEdit", this.i18n.homeDescRecentEdits, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const normalized = (0, kernel_widget_model_1.normalizeRecentEditsConfig)(config);
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook);
+            const since = this.taskWindowStart(normalized.days);
+            const keywordScope = normalized.query ? ` AND (content LIKE '%${normalized.query}%' OR hpath LIKE '%${normalized.query}%')` : "";
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, content, hpath, updated, COUNT(*) OVER() AS total_count FROM blocks WHERE type='d'${notebookScope} AND updated >= '${since}'${keywordScope} ORDER BY updated DESC LIMIT ${normalized.limit}`,
+            });
+            const snapshot = (0, kernel_widget_model_1.buildRecentEditsSnapshot)(json === null || json === void 0 ? void 0 : json.data, normalized, {
+                title: this.i18n.homeRecentEdits, empty: this.i18n.homeRecentEditsEmpty,
+                emptyFiltered: this.i18n.homeRecentEditsFilteredEmpty, stat: this.i18n.homeUnitDocs,
+            });
+            if (!snapshot)
+                throw new Error("invalid_recent_edits");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        // 闪卡待复习：笔记本级到期闪卡（只读）；限定单本显示卡片列表，全部笔记本显示到期数分布
+        register("flashcard-due", this.i18n.homeFlashcardDue, "iconClock", this.i18n.homeDescFlashcardDue, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            var _a, _b, _c, _d;
+            const normalized = (0, kernel_widget_model_1.normalizeFlashcardDueConfig)(config);
+            const notebookFilter = (0, agent_capabilities_1.normalizeAgentNotebookId)(normalized.notebook);
+            if (notebookFilter) {
+                const [json, notebookList] = await Promise.all([
+                    this.fetchKernelJson("/api/riff/getNotebookRiffDueCards", { notebook: notebookFilter }),
+                    this.loadNotebooks(),
+                ]);
+                const due = Number((_a = json === null || json === void 0 ? void 0 : json.data) === null || _a === void 0 ? void 0 : _a.unreviewedCount) || 0;
+                const blockIds = (((_b = json === null || json === void 0 ? void 0 : json.data) === null || _b === void 0 ? void 0 : _b.cards) || [])
+                    .map((card) => String((card === null || card === void 0 ? void 0 : card.blockID) || ""))
+                    .filter((id) => constants_1.BLOCK_ID_RE.test(id))
+                    .slice(0, normalized.limit);
+                const cardRows = blockIds.length > 0 ? (((_c = (await this.fetchKernelJson("/api/query/sql", {
+                    stmt: `SELECT b.id, b.content, b.root_id, d.hpath FROM blocks b LEFT JOIN blocks d ON d.id=b.root_id AND d.type='d' WHERE b.id IN ('${blockIds.join("','")}') LIMIT ${normalized.limit}`,
+                }))) === null || _c === void 0 ? void 0 : _c.data) || []) : [];
+                const order = new Map(blockIds.map((id, index) => [id, index]));
+                cardRows.sort((left, right) => { var _a, _b; return ((_a = order.get(left.id)) !== null && _a !== void 0 ? _a : blockIds.length) - ((_b = order.get(right.id)) !== null && _b !== void 0 ? _b : blockIds.length); });
+                const snapshot = (0, kernel_widget_model_1.buildFlashcardDueSnapshot)({
+                    mode: "cards", data: cardRows, total: due,
+                    notebookName: ((_d = notebookList.find((entry) => entry.id === notebookFilter)) === null || _d === void 0 ? void 0 : _d.name) || "",
+                }, normalized, {
+                    title: this.i18n.homeFlashcardDue, stat: this.i18n.homeStatFlashcards,
+                    reviewAction: this.i18n.homeFlashcardReviewAction,
+                    emptyCards: this.i18n.homeFlashcardEmpty,
+                });
+                if (!snapshot)
+                    throw new Error("invalid_flashcard_due");
+                return snapshot;
+            }
+            const notebooks = (await this.loadNotebooks()).slice(0, 12);
+            const counts = [];
+            // 大型工作区最多读取 12 本且每批并发 4 个，避免瞬时打满 riff 端点。
+            for (let index = 0; index < notebooks.length; index += 4) {
+                const chunk = await Promise.all(notebooks.slice(index, index + 4).map(async (nb) => {
+                    var _a;
+                    const json = await this.fetchKernelJson("/api/riff/getNotebookRiffDueCards", { notebook: nb.id });
+                    return { id: nb.id, label: nb.name, count: Number((_a = json === null || json === void 0 ? void 0 : json.data) === null || _a === void 0 ? void 0 : _a.unreviewedCount) || 0 };
+                }));
+                counts.push(...chunk);
+            }
+            const total = counts.reduce((sum, entry) => sum + entry.count, 0);
+            const snapshot = (0, kernel_widget_model_1.buildFlashcardDueSnapshot)({ mode: "notebooks", data: counts, total }, normalized, {
+                title: this.i18n.homeFlashcardDue, stat: this.i18n.homeStatFlashcards,
+                reviewAction: this.i18n.homeFlashcardReviewAction,
+                emptyNotebooks: this.i18n.homeFlashcardEmpty,
+            });
+            if (!snapshot)
+                throw new Error("invalid_flashcard_due");
+            return snapshot;
+        }, { timeoutMs: 2500, cacheTtlMs: 2000 });
+        // 随机回顾：抽取 N 天未更新的旧文档（SQLite random()，只读）；仅手动刷新重抽，不订阅事件
+        register("random-review", this.i18n.homeRandomReview, "iconDice", this.i18n.homeDescRandomReview, [], async (config) => {
+            const normalized = (0, kernel_widget_model_1.normalizeRandomReviewConfig)(config);
+            const cutoff = this.taskWindowStart(normalized.days);
+            // 精确父文档范围优先于笔记本范围，避免两项配置冲突时产生难以解释的空结果。
+            const notebookScope = normalized.parentDocument ? "" : (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook);
+            const parentId = normalized.parentDocument;
+            const parentScope = parentId ? ` AND path LIKE '%/${parentId}.sy/%'` : "";
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, content, hpath, COUNT(*) OVER() AS total_count FROM blocks WHERE type='d'${notebookScope}${parentScope} AND updated < '${cutoff}' ORDER BY random() LIMIT ${normalized.limit}`,
+            });
+            return (0, kernel_widget_model_1.buildRandomReviewSnapshot)(json, normalized, {
+                title: this.i18n.homeRandomReview,
+                stat: this.i18n.homeRandomReviewCandidates,
+                empty: this.i18n.homeRandomReviewEmpty,
+                emptyScoped: this.i18n.homeRandomReviewScopedEmpty,
+            }) || { items: [], emptyHint: this.i18n.homeRandomReviewEmpty };
+        }, { timeoutMs: 1500, cacheTtlMs: 15000 });
+        // 剪藏待读由剪藏插件通过同一 moduleId 提供；宿主只保留 blocked 占位，避免把普通标签误判为剪藏数据。
+        register("clipped-unread", this.i18n.homeClippedUnread, "iconBookmark", this.i18n.homeDescClippedUnread, ["loaded-protyle", "destroy-protyle"], async () => ({
+            status: "blocked", items: [], emptyHint: this.i18n.homeClippedProviderMissing,
+        }), { timeoutMs: 400, cacheTtlMs: 0 });
+        // 往年今日：同月同日的往年日记/文档（照片"回忆"风格）
+        register("on-this-day", this.i18n.homeOnThisDay, "iconClock", this.i18n.homeDescOnThisDay, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const now = new Date();
+            const mmdd = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+            const thisYear = String(now.getFullYear());
+            const normalized = (0, kernel_widget_model_1.normalizeOnThisDayConfig)(config);
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook);
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, content, hpath FROM blocks WHERE type='d'${notebookScope} AND content GLOB '20[0-9][0-9]-${mmdd}*' AND content NOT GLOB '${thisYear}-${mmdd}*' ORDER BY content DESC LIMIT 64`,
+            });
+            const snapshot = (0, kernel_widget_model_1.buildOnThisDaySnapshot)(json === null || json === void 0 ? void 0 : json.data, normalized, {
+                title: this.i18n.homeOnThisDay, stat: this.i18n.homeStatOnThisDay, empty: this.i18n.homeOnThisDayEmpty,
+            });
+            if (!snapshot)
+                throw new Error("invalid_on_this_day");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1500 });
+        // 今日写作：一次聚合读取新增字符/块和文档变化，并按可配置目标投影进度。
+        register("today-writing", this.i18n.homeTodayWriting, "iconEdit", this.i18n.homeDescTodayWriting, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const normalized = (0, kernel_widget_model_1.normalizeTodayWritingConfig)(config);
+            const now = new Date();
+            const start = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}000000`;
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook);
+            const json = await this.fetchKernelJson("/api/query/sql", { stmt: `SELECT COALESCE(SUM(CASE WHEN type<>'d' AND created >= '${start}' THEN length ELSE 0 END), 0) AS chars, COUNT(CASE WHEN type<>'d' AND created >= '${start}' THEN 1 END) AS blocks, COUNT(CASE WHEN type='d' AND created >= '${start}' THEN 1 END) AS created_docs, COUNT(CASE WHEN type='d' AND updated >= '${start}' AND created < '${start}' THEN 1 END) AS updated_docs FROM blocks WHERE 1=1${notebookScope}` });
+            const row = ((json === null || json === void 0 ? void 0 : json.data) || [])[0];
+            const snapshot = (0, kernel_widget_model_1.buildTodayWritingSnapshot)(row ? {
+                chars: row.chars, blocks: row.blocks, createdDocs: row.created_docs, updatedDocs: row.updated_docs,
+            } : null, normalized, {
+                title: this.i18n.homeTodayWriting, characters: this.i18n.homeWritingNewChars,
+                blocks: this.i18n.homeWritingNewBlocks, createdDocs: this.i18n.homeWritingNewDocs,
+                updatedDocs: this.i18n.homeWritingEditedDocs, zero: this.i18n.homeTodayWritingZero,
+                active: this.i18n.homeTodayWritingActive,
+            });
+            if (!snapshot)
+                throw new Error("invalid_today_writing");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        // 写作打卡：按用户选择的每日阈值计算连续天数、断档提示与可配置周起始日。
+        register("writing-streak", this.i18n.homeWritingStreak, "iconCheck", this.i18n.homeDescWritingStreak, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const normalized = (0, kernel_widget_model_1.normalizeWritingStreakConfig)(config);
+            const since = this.taskWindowStart(normalized.windowDays - 1);
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook);
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT substr(created, 1, 8) AS day, COUNT(*) AS blocks, COALESCE(SUM(length), 0) AS chars FROM blocks WHERE type<>'d' AND created >= '${since}'${notebookScope} GROUP BY substr(created, 1, 8) ORDER BY day DESC LIMIT ${normalized.windowDays}`,
+            });
+            const snapshot = (0, kernel_widget_model_1.buildWritingStreakSnapshot)(json === null || json === void 0 ? void 0 : json.data, normalized, {
+                title: this.i18n.homeWritingStreak, weekdays: this.i18n.homeCalendarWeekdays,
+                streak: this.i18n.homeStatStreakDays, pending: this.i18n.homeStreakPending,
+                gap: this.i18n.homeStreakGap,
+                weeklyStreak: this.i18n.homeStatStreakWeeks, weeklyPending: this.i18n.homeStreakWeeklyPending,
+            });
+            if (!snapshot)
+                throw new Error("invalid_writing_streak");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        // 倒数日：手动设定目标日期（纪念日/DDL），显示剩余或已过天数；支持每年重复与倒数/累计双模式
+        register("countdown", this.i18n.homeCountdown, "iconClock", this.i18n.homeDescCountdown, ["loaded-protyle"], (config) => {
+            return (0, local_time_model_1.buildCountdownSnapshot)(new Date(), config, {
+                hint: this.i18n.homeCountdownHint, untitled: this.i18n.homeCountdown,
+                remaining: this.i18n.homeCountdownRemaining, today: this.i18n.homeCountdownToday,
+                passed: this.i18n.homeCountdownPassed, yearly: this.i18n.homeCountdownYearly,
+                elapsedDays: this.i18n.homeCountdownElapsed,
+            });
+        });
+        // 日历月视图：本月日历网格（周一开头），有日记的日期可点击直达
+        register("journal-calendar", this.i18n.homeJournalCalendar, "iconCalendar", this.i18n.homeDescJournalCalendar, ["loaded-protyle"], async (config, _device, context) => {
+            const normalized = (0, kernel_widget_model_1.normalizeJournalCalendarConfig)(config);
+            const now = new Date();
+            const base = new Date(now.getFullYear(), now.getMonth() + normalized.monthOffset, 1);
+            const year = base.getFullYear();
+            const month = base.getMonth();
+            const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
+            const attrPrefix = `custom-dailynote-${year}${String(month + 1).padStart(2, "0")}`;
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook, "b");
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT b.id, b.content, b.updated, a.name AS daily_attr FROM blocks b LEFT JOIN attributes a ON a.block_id=b.id AND a.name GLOB '${attrPrefix}[0-3][0-9]' WHERE b.type='d'${notebookScope} AND (a.name IS NOT NULL OR b.content LIKE '${prefix}%') ORDER BY b.updated DESC, b.id ASC LIMIT 200`,
+            });
+            // Hoist both matchers: they depend only on the month prefix, so
+            // compiling them per row would rebuild identical regexes up to the query
+            // limit (200) times on every calendar render.
+            const attrRe = new RegExp(`^${attrPrefix}(\\d{2})$`);
+            const titleRe = new RegExp(`^${prefix}(\\d{2})(?:\\D|$)`);
+            const journalByDay = new Map();
+            ((json === null || json === void 0 ? void 0 : json.data) || []).forEach((row) => {
+                const attrMatch = String(row.daily_attr || "").match(attrRe);
+                const titleMatch = String(row.content).match(titleRe);
+                const day = Number((attrMatch === null || attrMatch === void 0 ? void 0 : attrMatch[1]) || (titleMatch === null || titleMatch === void 0 ? void 0 : titleMatch[1]) || 0);
+                if (day >= 1 && day <= 31 && !journalByDay.has(String(day)))
+                    journalByDay.set(String(day), row.id);
+            });
+            const firstWeekday = new Date(year, month, 1).getDay();
+            const leadingBlanks = normalized.weekStart === "周日" ? firstWeekday : (firstWeekday + 6) % 7;
+            const showLunar = normalized.showLunar;
+            const lunarFormatter = showLunar ? (() => {
+                try {
+                    return new Intl.DateTimeFormat("zh-CN-u-ca-chinese", { month: "numeric", day: "numeric" });
+                }
+                catch (_) {
+                    return null;
+                }
+            })() : null;
+            const gridStart = new Date(year, month, 1 - leadingBlanks);
+            const gridDates = Array.from({ length: 42 }, (_unused, index) => new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + index));
+            let holidays = new Map();
+            if (normalized.showHolidays) {
+                // holiday-cn 说明 12 月日期可能由下一年度公告修订，因此网格涉及的每个
+                // 年份同时检查其下一年度文件；最多三个年度请求且均受 24 小时缓存约束。
+                const yearSet = new Set();
+                gridDates.forEach((date) => {
+                    yearSet.add(date.getFullYear());
+                    yearSet.add(date.getFullYear() + 1);
+                });
+                const years = [...yearSet].slice(0, 3);
+                const payloads = await Promise.all(years.map(async (entryYear) => {
+                    try {
+                        return await (0, life_widget_network_1.loadHolidayYear)(entryYear, { signal: context === null || context === void 0 ? void 0 : context.signal });
+                    }
+                    catch (_) {
+                        return null;
+                    }
+                }));
+                holidays = (0, life_widget_model_1.mergeHolidayPayloads)(payloads.filter(Boolean));
+            }
+            const items = [];
+            for (let index = 0; index < 42; index += 1) {
+                const date = gridDates[index];
+                const inMonth = date.getFullYear() === year && date.getMonth() === month;
+                const visible = inMonth || normalized.showAdjacent;
+                const dayKey = String(date.getDate());
+                const lunar = inMonth && lunarFormatter ? lunarFormatter.format(date).slice(0, 16) : "";
+                const isoDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                const holiday = (0, life_widget_model_1.holidayPresentation)(holidays.get(isoDate), { work: this.i18n.homeHolidayWork });
+                const secondary = visible ? [holiday === null || holiday === void 0 ? void 0 : holiday.label, lunar].filter(Boolean).join(" · ").slice(0, 32) : "";
+                const isToday = date.getFullYear() === now.getFullYear()
+                    && date.getMonth() === now.getMonth()
+                    && date.getDate() === now.getDate();
+                items.push(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ label: visible ? dayKey : "", value: inMonth ? journalByDay.get(dayKey) || "" : "" }, (visible && isToday ? { done: true } : {})), (inMonth ? {} : { outside: true })), (secondary ? { secondary } : {})), (visible && holiday ? { holiday: holiday.kind } : {})), { weekend: date.getDay() === 0 || date.getDay() === 6 }));
+            }
+            const title = this.i18n.homeCalendarMonthFormat
+                .replace("{year}", String(year))
+                .replace("{month}", String(month + 1));
+            const weekdays = this.i18n.homeCalendarWeekdays || "一二三四五六日";
+            const calendarWeekdays = normalized.weekStart === "周日"
+                ? `${weekdays.slice(-1)}${weekdays.slice(0, -1)}`
+                : weekdays;
+            return {
+                title, items, calendarWeekdays,
+                calendarOffset: normalized.monthOffset,
+                calendarPeriodOptions: Array.from({ length: 49 }, (_unused, index) => {
+                    const offset = index - 24;
+                    const base = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+                    return { offset, label: `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}` };
+                }),
+                stat: { value: String(journalByDay.size), label: this.i18n.homeStatMonthlyJournals },
+            };
+        }, { timeoutMs: 2000, cacheTtlMs: 1500 });
+        // 快速记录：Flomo 式一键记一句到今日日记（点击后弹输入框，需确认追加）
+        // 近期写作活跃度：补齐零值日期，支持块/字符口径与最多 14 桶的紧凑密度。
+        register("recent-writing-activity", this.i18n.homeRecentWritingActivity, "iconChart", this.i18n.homeDescRecentWritingActivity, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const normalized = (0, kernel_widget_model_1.normalizeRecentWritingActivityConfig)(config);
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook);
+            const since = this.taskWindowStart(normalized.days - 1);
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT substr(created, 1, 8) AS day, COUNT(*) AS blocks, COALESCE(SUM(length), 0) AS chars FROM blocks WHERE type<>'d' AND created >= '${since}'${notebookScope} GROUP BY substr(created, 1, 8) ORDER BY day ASC LIMIT ${normalized.days}`,
+            });
+            const snapshot = (0, kernel_widget_model_1.buildRecentWritingActivitySnapshot)(json === null || json === void 0 ? void 0 : json.data, normalized, {
+                title: this.i18n.homeRecentWritingActivity, blocks: this.i18n.homeStatWritingBlocks,
+                characters: this.i18n.homeUnitChars, average: this.i18n.homeWritingDailyAverage,
+                empty: this.i18n.homeWritingActivityEmpty,
+                strength: this.i18n.homeWritingStrength, strengthHalfLife: this.i18n.homeWritingStrengthHalfLife,
+            });
+            if (!snapshot)
+                throw new Error("invalid_writing_activity");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        // 近期日记：按日期标题探测已存在的日记，绝不创建缺失日期。
+        register("recent-daily-notes", this.i18n.homeRecentDailyNotes, "iconCalendar", this.i18n.homeDescRecentDailyNotes, ["switch-protyle", "loaded-protyle", "destroy-protyle"], async (config) => {
+            const normalized = (0, kernel_widget_model_1.normalizeRecentDailyNotesConfig)(config);
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook);
+            const now = new Date();
+            const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (normalized.days - 1));
+            const from = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(cutoff.getDate()).padStart(2, "0")}`;
+            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, root_id, content, hpath, updated, COALESCE((SELECT SUM(CASE WHEN c.type<>'d' THEN c.length ELSE 0 END) FROM blocks c WHERE c.root_id=blocks.id), 0) AS characters, COUNT(*) OVER() AS total_count FROM blocks WHERE type='d'${notebookScope} AND content GLOB '20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*' AND content >= '${from}' AND content < '${today}~' ORDER BY content DESC LIMIT 48`,
+            });
+            const snapshot = (0, kernel_widget_model_1.buildRecentDailyNotesSnapshot)(json === null || json === void 0 ? void 0 : json.data, normalized, {
+                title: this.i18n.homeRecentDailyNotes, stat: this.i18n.homeStatRecentDaily, empty: this.i18n.homeRecentDailyEmpty,
+            });
+            if (!snapshot)
+                throw new Error("invalid_recent_daily_notes");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1500 });
+        // 文档关系摘要：仅查询活动文档的直接子块与引用它的块，限制数量并保持只读。
+        register("document-relations-summary", this.i18n.homeDocumentRelationsSummary, "iconGraph", this.i18n.homeDescDocumentRelationsSummary, ["switch-protyle", "loaded-protyle"], async (config) => {
+            const active = this.isMobile
+                ? this.getMobileTabs().find((tab) => tab.id === this.getMobileActiveTabId())
+                : this.getActiveTab();
+            const rootId = active ? this.rootIdOf(active) : "";
+            if (!rootId || !constants_1.BLOCK_ID_RE.test(rootId))
+                return { items: [], emptyHint: this.i18n.homeCurrentDocumentMissing };
+            const escaped = rootId.split("'").join("''");
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, content, id AS target_id, 'child' AS relation FROM blocks WHERE root_id='${escaped}' AND parent_id='${escaped}' UNION ALL SELECT id, content, root_id AS target_id, 'reference' AS relation FROM blocks WHERE id<>'${escaped}' AND markdown LIKE '%((${escaped}%' ORDER BY relation ASC, id DESC LIMIT 64`,
+            });
+            const rows = ((json === null || json === void 0 ? void 0 : json.data) || []);
+            const snapshot = (0, kernel_widget_model_1.buildDocumentRelationsSnapshot)(rows, config, {
+                title: this.i18n.homeDocumentRelationsSummary, stat: this.i18n.homeStatRelations,
+                child: this.i18n.homeRelationChild, reference: this.i18n.homeRelationReference,
+                referenceCount: this.i18n.homeRelationReferenceCount,
+                empty: this.i18n.homeRelationsEmpty, emptyFiltered: this.i18n.homeRelationsFilteredEmpty,
+            }, Date.now(), "fresh", active ? this.titleOf(active) : "");
+            if (!snapshot)
+                throw new Error("invalid_document_relations");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        // 当前文档大纲：复用 Agent 大纲扁平化口径，仅读取活动文档且限制标题数量。
+        register("current-document-outline", this.i18n.homeCurrentDocumentOutline, "iconList", this.i18n.homeDescCurrentDocumentOutline, ["switch-protyle", "loaded-protyle"], async (config) => {
+            const active = this.isMobile
+                ? this.getMobileTabs().find((tab) => tab.id === this.getMobileActiveTabId())
+                : this.getActiveTab();
+            const rootId = active ? this.rootIdOf(active) : "";
+            if (!rootId || !constants_1.BLOCK_ID_RE.test(rootId))
+                return { items: [], emptyHint: this.i18n.homeCurrentDocumentMissing };
+            // SiYuan 3.8.x only returns the heading tree when preview is enabled;
+            // preview=false yields an empty response for the same document id.
+            const json = await this.fetchKernelJson("/api/outline/getDocOutline", { id: rootId, preview: true });
+            if (!Array.isArray(json === null || json === void 0 ? void 0 : json.data))
+                throw new Error("invalid_document_outline");
+            const headings = (0, agent_capabilities_1.flattenOutline)(json.data, 64);
+            const snapshot = (0, kernel_widget_model_1.buildOutlineWidgetSnapshot)(headings, config, {
+                title: this.i18n.homeCurrentDocumentOutline, stat: this.i18n.homeStatOutlineHeadings,
+                level: this.i18n.homeOutlineLevel, empty: this.i18n.homeOutlineEmpty,
+                emptyFiltered: this.i18n.homeOutlineFilteredEmpty,
+            }, Date.now(), "fresh", active ? this.titleOf(active) : "");
+            if (!snapshot)
+                throw new Error("invalid_document_outline");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        // 近期预约：复用日记插件确认过的 attributes.custom-reservation 数据契约，只读查询。
+        register("today-reservations", this.i18n.homeTodayReservations, "iconClock", this.i18n.homeDescTodayReservations, ["switch-protyle", "loaded-protyle"], async (config) => {
+            const normalized = (0, kernel_widget_model_1.normalizeTodayReservationsConfig)(config);
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook, "B");
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT B.id, B.content, B.hpath, B.updated, A.value AS date FROM blocks AS B INNER JOIN attributes AS A ON A.block_id=B.id AND A.name='custom-reservation' WHERE A.value >= strftime('%Y%m%d', datetime('now','localtime')) AND A.value <= strftime('%Y%m%d', datetime('now','localtime','+${normalized.days} days'))${notebookScope} ORDER BY A.value, B.updated DESC LIMIT 48`,
+            });
+            if (!Array.isArray(json === null || json === void 0 ? void 0 : json.data))
+                throw new Error("invalid_today_reservations");
+            const snapshot = (0, kernel_widget_model_1.buildTodayReservationsSnapshot)(json.data, normalized, {
+                title: this.i18n.homeTodayReservations, stat: this.i18n.homeStatReservations,
+                today: this.i18n.homeReservationToday, overdue: this.i18n.homeReservationOverdue,
+                empty: this.i18n.homeReservationsEmpty, emptyFiltered: this.i18n.homeReservationsFilteredEmpty,
+            });
+            if (!snapshot)
+                throw new Error("invalid_today_reservations");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        register("quick-capture", this.i18n.homeQuickCapture, "iconAdd", this.i18n.homeDescQuickCapture, [], (config) => ({
+            items: [{ label: this.i18n.quickCaptureAction, value: (0, home_model_2.buildQuickCaptureAction)(config) }],
+        }));
+        // 插件命令启动器：枚举其他插件的命令，任何插件无需适配即可进面板一键触发
+        register("plugin-commands", this.i18n.homePluginCommands, "iconPlugin", this.i18n.homeDescCmds, [], (config) => {
+            const snapshot = (0, home_model_2.buildPluginCommandsSnapshot)(this.getPluginCommands(), config, {
+                stat: this.i18n.homePluginCommandsStat, empty: this.i18n.homePluginCommandsEmpty,
+                emptyFiltered: this.i18n.homePluginCommandsFilteredEmpty,
+            });
+            if (!snapshot)
+                throw new Error("invalid_plugin_commands");
+            return snapshot;
+        });
+        // 内核数据组件群（T-6321~T-6325、T-6328，v3.8.x 只读端点）：投影逻辑在
+        // kernel-widget-model.js，这里只做端点调用与空态归一。
+        register("pinned-docs", this.i18n.homePinnedDocs, "iconBookmark", this.i18n.homeDescPinnedDocs, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const json = await this.fetchKernelJson("/api/filetree/getPinnedDocs", {});
+            if (!Array.isArray(json === null || json === void 0 ? void 0 : json.data))
+                throw new Error("invalid_pinned_docs");
+            const normalized = (0, kernel_widget_model_1.normalizePinnedDocsConfig)(config);
+            let pinnedDocs = json.data;
+            if (normalized.showPath) {
+                const ids = pinnedDocs.slice(0, normalized.limit)
+                    .map((doc) => String((doc === null || doc === void 0 ? void 0 : doc.id) || ""))
+                    .filter((id) => constants_1.BLOCK_ID_RE.test(id));
+                if (ids.length > 0) {
+                    const quoted = [...new Set(ids)].map((id) => `'${id}'`).join(",");
+                    const metadata = await this.fetchKernelJson("/api/query/sql", {
+                        stmt: `SELECT id, hpath FROM blocks WHERE type='d' AND id IN (${quoted}) LIMIT 12`,
+                    });
+                    const pathById = new Map((Array.isArray(metadata === null || metadata === void 0 ? void 0 : metadata.data) ? metadata.data : [])
+                        .map((row) => [String((row === null || row === void 0 ? void 0 : row.id) || ""), String((row === null || row === void 0 ? void 0 : row.hpath) || "")]));
+                    pinnedDocs = pinnedDocs.map((doc) => (Object.assign(Object.assign({}, doc), { hpath: pathById.get(String((doc === null || doc === void 0 ? void 0 : doc.id) || "")) || "" })));
+                }
+            }
+            const snapshot = (0, kernel_widget_model_1.buildPinnedDocsSnapshot)(Object.assign(Object.assign({}, json), { data: pinnedDocs }), normalized, {
+                title: this.i18n.homePinnedDocs,
+                empty: this.i18n.homePinnedDocsEmpty,
+                stat: this.i18n.homePinnedDocsStat,
+                children: this.i18n.homePinnedDocsChildren,
+                unavailable: this.i18n.homePinnedDocsUnavailable,
+                unavailableShort: this.i18n.homePinnedDocsUnavailableShort,
+            });
+            if (!snapshot)
+                throw new Error("invalid_pinned_docs");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        register("inbox-shorthands", this.i18n.homeInbox, "iconInbox", this.i18n.homeDescInbox, [], async (config) => {
+            const normalized = (0, kernel_widget_model_1.normalizeInboxConfig)(config);
+            const json = await this.fetchKernelJson("/api/inbox/getShorthands", { page: normalized.page });
+            const snapshot = (0, kernel_widget_model_1.buildInboxSnapshot)(json, normalized, {
+                title: this.i18n.homeInbox, empty: this.i18n.homeInboxEmpty,
+                emptyFiltered: this.i18n.homeInboxFilteredEmpty, page: this.i18n.homeInboxPage,
+            });
+            if (!snapshot)
+                return { emptyHint: this.i18n.homeInboxUnavailable, items: [] };
+            return snapshot;
+        }, { timeoutMs: 2500, cacheTtlMs: 30000 });
+        register("recent-updates", this.i18n.homeRecentUpdates, "iconRefresh", this.i18n.homeDescRecentUpdates, ["switch-protyle", "loaded-protyle", "destroy-protyle"], async (config) => {
+            const json = await this.fetchKernelJson("/api/block/getRecentUpdatedBlocks", {});
+            const snapshot = (0, kernel_widget_model_1.buildRecentUpdatesSnapshot)(json, config, {
+                title: this.i18n.homeRecentUpdates, empty: this.i18n.homeRecentUpdatesEmpty,
+                statDocuments: this.i18n.homeRecentUpdatesStat, statBlocks: this.i18n.homeRecentUpdatesBlocks,
+                blocks: this.i18n.homeRecentUpdatesBlocks,
+            });
+            if (!snapshot)
+                throw new Error("invalid_recent_updates");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        register("data-health", this.i18n.homeDataHealth, "iconCloud", this.i18n.homeDescDataHealth, ["loaded-protyle"], async (config) => {
+            const json = await this.fetchKernelJson("/api/asset/getMissingAssets", {});
+            const snapshot = (0, kernel_widget_model_1.buildDataHealthSnapshot)(json, config, {
+                title: this.i18n.homeDataHealth, empty: this.i18n.homeDataHealthEmpty, stat: this.i18n.homeDataHealthStat,
+                statMany: this.i18n.homeDataHealthStatMany,
+            });
+            if (!snapshot)
+                throw new Error("invalid_data_health");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        register("database-list", this.i18n.homeDatabaseList, "iconDatabase", this.i18n.homeDescDatabaseList, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            var _a, _b, _c, _d, _e, _f, _g;
+            const normalized = (0, kernel_widget_model_1.normalizeDatabaseListConfig)(config);
+            // T-6850/P8：绑定了具体数据库 → 按数据形态（当前视图的列+行）投影，
+            // 复用 database-table 的两级取数管线（块 ID 0 行 → getAttributeView 解析库 ID 重试）；
+            // 未绑定保持"全库清单"形态。库不可用或无列时回退清单，不渲染空卡。
+            if (normalized.blockId) {
+                const fetchView = (id, extra = {}) => this.fetchKernelJson("/api/av/renderAttributeView", Object.assign({ id, pageSize: 100 }, extra));
+                let json = await fetchView(normalized.blockId);
+                if (!((_c = (_b = (_a = json === null || json === void 0 ? void 0 : json.data) === null || _a === void 0 ? void 0 : _a.view) === null || _b === void 0 ? void 0 : _b.rows) === null || _c === void 0 ? void 0 : _c.length)) {
+                    try {
+                        const full = await this.fetchKernelJson("/api/av/getAttributeView", { id: normalized.blockId });
+                        const dbId = (_e = (_d = full === null || full === void 0 ? void 0 : full.data) === null || _d === void 0 ? void 0 : _d.av) === null || _e === void 0 ? void 0 : _e.id;
+                        const viewID = (_g = (_f = full === null || full === void 0 ? void 0 : full.data) === null || _f === void 0 ? void 0 : _f.av) === null || _g === void 0 ? void 0 : _g.viewID;
+                        if (typeof dbId === "string" && dbId && dbId !== normalized.blockId && typeof viewID === "string" && viewID) {
+                            json = await fetchView(dbId, { viewID });
+                        }
+                    }
+                    catch (_) { /* 保持首呼结果 */ }
+                }
+                const tableSnapshot = (0, kernel_widget_model_1.buildAvTableSnapshot)(json, normalized, {
+                    title: this.i18n.homeDatabaseList, empty: this.i18n.homeAvTableEmpty,
+                    stat: this.i18n.homeAvTableRows,
+                });
+                if (tableSnapshot)
+                    return tableSnapshot;
+            }
+            const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook);
+            const keywordScope = normalized.query ? ` AND (content LIKE '%${normalized.query}%' OR hpath LIKE '%${normalized.query}%')` : "";
+            const orderBy = normalized.sortBy === "名称" ? "content COLLATE NOCASE, updated DESC"
+                : normalized.sortBy === "路径" ? "hpath COLLATE NOCASE, content COLLATE NOCASE" : "updated DESC";
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, content, hpath, updated, COUNT(*) OVER() AS total_count FROM blocks WHERE type = 'av'${notebookScope}${keywordScope} ORDER BY ${orderBy} LIMIT ${normalized.limit}`,
+            });
+            const snapshot = (0, kernel_widget_model_1.buildDatabaseListSnapshot)(json === null || json === void 0 ? void 0 : json.data, normalized, {
+                title: this.i18n.homeDatabaseList, empty: this.i18n.homeDatabaseListEmpty,
+                emptyFiltered: this.i18n.homeDatabaseListFilteredEmpty, stat: this.i18n.homeDatabaseListStat,
+            });
+            if (!snapshot)
+                throw new Error("invalid_database_list");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 1000 });
+        register("saved-searches", this.i18n.homeSavedSearches, "iconSearch", this.i18n.homeDescSavedSearches, ["loaded-protyle"], async (config) => {
+            const json = await this.fetchKernelJson("/api/storage/getCriteria", {});
+            const snapshot = (0, kernel_widget_model_1.buildSavedSearchesSnapshot)(json, config, {
+                title: this.i18n.homeSavedSearches, empty: this.i18n.homeSavedSearchesEmpty, stat: this.i18n.homeSavedSearchesStat,
+                emptyFiltered: this.i18n.homeSavedSearchesFilteredEmpty,
+                methods: [this.i18n.homeCriteriaMethod0, this.i18n.homeCriteriaMethod1, this.i18n.homeCriteriaMethod2, this.i18n.homeCriteriaMethod3, this.i18n.homeCriteriaMethod4],
+            });
+            if (!snapshot)
+                throw new Error("invalid_saved_searches");
+            return snapshot;
+        }, { timeoutMs: 1200, cacheTtlMs: 2000 });
+        // 数据库表格（T-6330 / ADR 0058）：用户绑定一个数据库块，投影其当前视图
+        // （筛选/排序/分页交还内核）；只读，行点击按块 ID 打开。
+        register("database-table", this.i18n.homeAvTable, "iconDatabase", this.i18n.homeDescAvTable, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            var _a, _b, _c, _d, _e, _f, _g;
+            const normalized = (0, kernel_widget_model_1.normalizeAvTableConfig)(config);
+            if (!normalized.blockId)
+                return { emptyHint: this.i18n.homeAvTableConfigHint, items: [] };
+            // T-6470：嵌入/镜像库块 ID≠库 ID，块 ID 调用 rows=0；pageSize 取数，0 行经 getAttributeView 解析库 ID 重试（证据 kernel-api-smoke）。
+            const fetchView = (id, extra = {}) => this.fetchKernelJson("/api/av/renderAttributeView", Object.assign({ id, pageSize: 100 }, extra));
+            let json = await fetchView(normalized.blockId);
+            if (!((_c = (_b = (_a = json === null || json === void 0 ? void 0 : json.data) === null || _a === void 0 ? void 0 : _a.view) === null || _b === void 0 ? void 0 : _b.rows) === null || _c === void 0 ? void 0 : _c.length)) {
+                try {
+                    const full = await this.fetchKernelJson("/api/av/getAttributeView", { id: normalized.blockId });
+                    const dbId = (_e = (_d = full === null || full === void 0 ? void 0 : full.data) === null || _d === void 0 ? void 0 : _d.av) === null || _e === void 0 ? void 0 : _e.id;
+                    const viewID = (_g = (_f = full === null || full === void 0 ? void 0 : full.data) === null || _f === void 0 ? void 0 : _f.av) === null || _g === void 0 ? void 0 : _g.viewID;
+                    if (typeof dbId === "string" && dbId && dbId !== normalized.blockId && typeof viewID === "string" && viewID) {
+                        json = await fetchView(dbId, { viewID });
+                    }
+                }
+                catch (_) { /* 保持首呼结果 */ }
+            }
+            const snapshot = (0, kernel_widget_model_1.buildAvTableSnapshot)(json, normalized, {
+                title: this.i18n.homeAvTable, empty: this.i18n.homeAvTableEmpty,
+                stat: this.i18n.homeAvTableRows,
+            });
+            if (!snapshot)
+                return { emptyHint: this.i18n.homeAvTableUnavailable, items: [] };
+            return snapshot;
+        }, { timeoutMs: 1500, cacheTtlMs: 1000 });
+    }
+    getHomeState() {
+        const raw = this.data[constants_1.HOME_STATE_KEY];
+        // T-7069/T-7070：归一化允许名单 = 运行时注册 + 已持久化的实例 moduleId。
+        // 只用运行时名单会在禁用/重载（unregister 摘除）后清掉用户实例，违背
+        // widget-protocol.md「provider 卸载 ≠ 配置删除 + 商店显式清理」承诺
+        // （ADR 0103）；已持久化 id 只能来自真实注册添加，合法回流。
+        const persisted = new Set(((raw && Array.isArray(raw.instances)) ? raw.instances : [])
+            .map((item) => String((item === null || item === void 0 ? void 0 : item.moduleId) || "")).filter(Boolean));
+        return (0, home_model_1.normalizeHomeState)(raw, new Set([...this.homeThirdPartyIds, ...persisted]));
+    }
+    saveHomeState(state) {
+        // 初始化属于持久化意图，撤销布局/删空都不能让它回退到“从未打开”。
+        this.data[constants_1.HOME_STATE_KEY] = Object.assign(Object.assign({}, state), { defaultsVersion: Math.max(1, state.defaultsVersion || 0, this.getHomeState().defaultsVersion) });
+        this.saveDataDebounced(constants_1.HOME_STATE_KEY);
+    }
+    loadHomeFavoriteGroups() {
+        return this.getFavoriteGroupNames().slice(0, constants_1.FAVORITE_GROUPS_MAX).map((name) => ({ id: name, title: name }));
+    }
+    async loadHomeDatabaseOptions() {
+        const json = await this.fetchKernelJson("/api/query/sql", {
+            stmt: "SELECT id, content, hpath FROM blocks WHERE type = 'av' ORDER BY updated DESC, id ASC LIMIT 200",
+        });
+        const payload = (0, util_1.normalizeSqlResult)(json);
+        if (payload.truncated) {
+            // 选择器被内核截断：目标项可能不在候选里。截断可见化待补 i18n 提示（T-6482）。
+            logger_1.logger.warn("settings picker truncated by kernel limit", payload.limit);
+        }
+        const rows = payload.rows;
+        const seen = new Set();
+        const items = rows.reduce((items, row) => {
+            const id = typeof (row === null || row === void 0 ? void 0 : row.id) === "string" && constants_1.BLOCK_ID_RE.test(row.id) ? row.id : "";
+            if (!id || seen.has(id))
+                return items;
+            seen.add(id);
+            const content = String(row.content || "").trim();
+            const path = String(row.hpath || "").trim();
+            const title = [content, path && path !== content ? path : ""].filter(Boolean).join(" · ");
+            items.push({ id, title: String(title || id).slice(0, 128) });
+            return items;
+        }, []);
+        items.truncated = payload.truncated;
+        items.limit = payload.limit;
+        return items;
+    }
+    async loadHomeDocumentOptions(query = "") {
+        const unsafeQueryChars = new Set(["%", "'", "_", '"', "`", ";", "\\"]);
+        const keyword = Array.from(String(query || ""), (char) => unsafeQueryChars.has(char) ? " " : char)
+            .join("").replace(/\s+/g, " ").trim().slice(0, 48);
+        const filter = keyword
+            ? ` AND (content LIKE '%${keyword}%' OR hpath LIKE '%${keyword}%' OR id LIKE '%${keyword}%')`
+            : "";
+        const json = await this.fetchKernelJson("/api/query/sql", {
+            stmt: `SELECT id, content, hpath FROM blocks WHERE type = 'd'${filter} ORDER BY updated DESC, id ASC LIMIT 200`,
+        });
+        const payload = (0, util_1.normalizeSqlResult)(json);
+        if (payload.truncated) {
+            // 选择器被内核截断：目标项可能不在候选里。截断可见化待补 i18n 提示（T-6482）。
+            logger_1.logger.warn("settings picker truncated by kernel limit", payload.limit);
+        }
+        const rows = payload.rows;
+        const seen = new Set();
+        const items = rows.reduce((items, row) => {
+            const id = typeof (row === null || row === void 0 ? void 0 : row.id) === "string" && constants_1.BLOCK_ID_RE.test(row.id) ? row.id : "";
+            if (!id || seen.has(id))
+                return items;
+            seen.add(id);
+            const content = String(row.content || "").trim();
+            const path = String(row.hpath || "").trim();
+            const title = [content, path && path !== content ? path : ""].filter(Boolean).join(" · ");
+            items.push({ id, title: String(title || id).slice(0, 160) });
+            return items;
+        }, []);
+        items.truncated = payload.truncated;
+        items.limit = payload.limit;
+        return items;
+    }
+    async loadHomeDatabaseColumns(blockId) {
+        var _a, _b;
+        if (!constants_1.BLOCK_ID_RE.test(blockId))
+            return [];
+        const json = await this.fetchKernelJson("/api/av/renderAttributeView", { id: blockId });
+        const view = (_a = json === null || json === void 0 ? void 0 : json.data) === null || _a === void 0 ? void 0 : _a.view;
+        const columns = ((_b = view === null || view === void 0 ? void 0 : view.table) === null || _b === void 0 ? void 0 : _b.columns) || (view === null || view === void 0 ? void 0 : view.columns);
+        if (!Array.isArray(columns))
+            return [];
+        return columns.filter((column) => column && column.hidden !== true && typeof column.id === "string")
+            .slice(0, 32)
+            .map((column) => ({ id: column.id, title: String(column.name || column.label || column.id).slice(0, 64) }));
+    }
+    removeHomeInstance(instanceId) {
+        const next = this.getHomeState();
+        next.instances = next.instances.filter((candidate) => candidate.instanceId !== instanceId);
+        Object.keys(next.layouts).forEach((surface) => {
+            next.layouts[surface] = (next.layouts[surface] || []).filter((candidate) => candidate.instanceId !== instanceId);
+        });
+        this.saveHomeState(next);
+    }
+    // 文档集快速恢复（面板内直达）：复用设置的预检 + 确认 + 可取消执行链路
+    async restoreDocumentSetFromHome(setId) {
+        const item = this.getDocumentSets().find((candidate) => (candidate === null || candidate === void 0 ? void 0 : candidate.setId) === setId);
+        if (!item)
+            return;
+        // T-6800 工作区切换：离开当前集（自动保存开、存在已激活集、目标不同）时，
+        // 先把当前打开现场快照回当前集，再执行目标集恢复。
+        this.snapshotCurrentDocumentSetBeforeSwitch(setId);
+        const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+        const plan = (0, document_sets_1.planDocumentSetRestore)(item, opened, null);
+        if (!plan.pending.length) {
+            (0, siyuan_1.showMessage)(this.i18n.documentSetRestoreNone);
+            return;
+        }
+        const probe = await this.probeDocumentSetEntries(plan.pending);
+        if (this.isUnloading)
+            return;
+        const candidates = [...probe.available, ...probe.unknown];
+        if (!candidates.length) {
+            (0, siyuan_1.showMessage)(this.i18n.documentSetNoAvailable);
+            return;
+        }
+        const confirmations = [];
+        if (probe.missing.length > 0)
+            confirmations.push(`${this.i18n.documentSetMissingConfirm} (${probe.missing.length})`);
+        if (probe.unknown.length > 0)
+            confirmations.push(`${this.i18n.documentSetUnknownConfirm} (${probe.unknown.length})`);
+        const confirmation = confirmations.length > 0 ? confirmations.join("\n") : this.i18n.documentSetRestoreConfirm;
+        if (!confirm(confirmation))
+            return;
+        const execution = await (0, document_sets_1.runDocumentSetRestore)((0, document_sets_1.orderDocumentSetRestoreEntries)(candidates), async (rootId, entry) => {
+            if (this.isUnloading)
+                return false;
+            // T-6826 keepCursor：恢复链批量打开不抢焦点（思源 3.8.5 openTab 官方
+            // 选项，旧版宿主自动忽略），现场就位由当前页签保持，不逐个跳转。
+            // T-6921：布局维度——活动条目排到最后且豁免 keepCursor，恢复完成时聚焦它。
+            const focusOnRestore = (entry === null || entry === void 0 ? void 0 : entry.active) === true;
+            return this.isMobile ? await this.mobileOpenDoc(rootId)
+                : await (0, document_actions_1.openDocumentOnDesktop)({ rootId, app: this.app, openTab: siyuan_1.openTab, logger: logger_1.logger, keepCursor: !focusOnRestore });
+        });
+        const summary = (0, document_sets_1.summarizeDocumentSetRestore)(plan, probe, execution);
+        let essentialsOutcome = null;
+        if (summary.attempted > 0) {
+            this.saveDocumentSet(item);
+            // T-6800：恢复成功即标记当前工作区集（指示器与循环切换的基准）。
+            this.updateSettings({ documentSetsCurrentId: String(item.setId || "").slice(0, 64) });
+            // T-6810/T-6815 场景×文档集联动（分层快照）：优先用集内固化的 presetId，
+            // 回退同名匹配；应用成功后把场景固化回集，双向稳定。
+            const presets = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall).presets;
+            const presetMatch = (item.presetId ? presets.find((preset) => preset.id === item.presetId) : undefined)
+                || presets.find((preset) => preset.name === item.name);
+            if (presetMatch) {
+                const applied = (0, floating_ball_model_1.applyFloatingBallPreset)(this.getSettings().floatingBall, presetMatch.id);
+                if (applied.preset) {
+                    this.updateSettings({ floatingBall: applied.config });
+                    item.presetId = String(applied.preset.id || "").slice(0, 96);
+                }
+            }
+            // T-6815 Essentials 常驻层：带回执打开（opened/failed/skipped），并入统一摘要
+            essentialsOutcome = await this.openDocumentSetEssentials();
+        }
+        const report = (0, document_sets_1.buildDocumentSetRestoreReport)(plan, probe, Object.assign(Object.assign({}, execution), { cancelled: execution.cancelled }), {
+            now: Date.now(),
+            essentials: essentialsOutcome !== null && essentialsOutcome !== void 0 ? essentialsOutcome : undefined,
+        });
+        const counts = report.counts;
+        let message = `${this.i18n.documentSetRestoreDone}: ${counts.succeeded}/${counts.attempted}`;
+        if (counts.failed > 0)
+            message += ` · ${this.i18n.documentSetRestoreFailed}: ${counts.failed}`;
+        if (counts.skipped > 0)
+            message += ` · ${this.i18n.documentSetRestoreSkipped}: ${counts.skipped}`;
+        if (counts.missing > 0)
+            message += ` · ${this.i18n.documentSetRestoreMissing}: ${counts.missing}`;
+        if (counts.unknown > 0)
+            message += ` · ${this.i18n.documentSetRestoreUnknown}: ${counts.unknown}`;
+        if (counts.cancelled)
+            message = `${this.i18n.documentSetRestoreCancelled}: ${message}`;
+        if (essentialsOutcome && essentialsOutcome.opened + essentialsOutcome.failed > 0) {
+            message += ` · ${this.i18n.documentSetEssentialsApplied}: +${essentialsOutcome.opened}`;
+            if (essentialsOutcome.failed > 0)
+                message += ` / ${this.i18n.documentSetRestoreFailed}: ${essentialsOutcome.failed}`;
+        }
+        (0, siyuan_1.showMessage)(message);
+    }
+    // T-6800 工作区切换的"离开即快照"：把当前打开的文档现场写回当前集
+    // （条目上限沿用 DOCUMENT_SET_ENTRY_MAX，超界由 upsertDocumentSet 裁剪）。
+    snapshotCurrentDocumentSetBeforeSwitch(targetSetId) {
+        const settings = this.getSettings();
+        if (settings.documentSetsAutoSave === false)
+            return;
+        const currentId = String(settings.documentSetsCurrentId || "");
+        if (!currentId || currentId === targetSetId)
+            return;
+        const currentSet = this.getDocumentSets().find((candidate) => (candidate === null || candidate === void 0 ? void 0 : candidate.setId) === currentId);
+        if (!currentSet)
+            return;
+        const entries = this.currentDocumentSetEntries();
+        if (!entries.length)
+            return;
+        this.saveDocumentSet({ setId: currentId, name: currentSet.name, entries });
+    }
+    // T-6800 循环切换：按文档集列表顺序切到下一个（环绕）；无集或单集时不动作。
+    async cycleDocumentSet() {
+        const next = (0, document_sets_1.pickNextDocumentSet)(this.getDocumentSets(), this.getSettings().documentSetsCurrentId);
+        if (!next) {
+            (0, siyuan_1.showMessage)(this.i18n.documentSetCycleNone, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        await this.restoreDocumentSetFromHome(next.setId);
+    }
+    // T-6803 循环切换悬浮球场景预设：无预设/单预设时提示；切换后气泡提示场景名。
+    cycleBallPreset() {
+        const current = (0, floating_ball_model_1.normalizeFloatingBallConfig)(this.getSettings().floatingBall);
+        const next = (0, floating_ball_model_1.pickNextFloatingBallPreset)(current.presets, current.currentPresetId);
+        if (!next) {
+            (0, siyuan_1.showMessage)(this.i18n.floatingBallPresetCycleNone, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const applied = (0, floating_ball_model_1.applyFloatingBallPreset)(current, next.id);
+        if (!applied.preset)
+            return;
+        this.updateSettings({ floatingBall: applied.config });
+        (0, siyuan_1.showMessage)(this.i18n.floatingBallPresetApplied.replace("{x}", applied.preset.name), constants_1.MESSAGE_DEFAULT_MS);
+    }
+    // T-6793 抛独立窗口：把当前活动文档送入思源桌面独立小窗（官方 openWindow，
+    // 仅桌面；无活动文档/非桌面时如实不可用）。
+    throwActiveDocToWindow() {
+        var _a, _b;
+        if (this.isMobile)
+            return false;
+        const editor = this.resolveActiveHostEditor();
+        const rootId = ((_b = (_a = editor === null || editor === void 0 ? void 0 : editor.protyle) === null || _a === void 0 ? void 0 : _a.block) === null || _b === void 0 ? void 0 : _b.parentID) || "";
+        if (!rootId || !constants_1.BLOCK_ID_RE.test(rootId))
+            return false;
+        const bridge = this;
+        if (typeof bridge.openWindow !== "function")
+            return false;
+        bridge.openWindow.call(this, { doc: { id: rootId } });
+        return true;
+    }
+    // T-6794 收起键盘：Android 原生桥（思源 keyboardToolbar 同款守卫调用）；
+    // iOS 无对应桥，如实不可用。
+    hideMobileKeyboard() {
+        if (!this.isMobile)
+            return false;
+        const bridge = window;
+        if (bridge.JSAndroid && typeof bridge.JSAndroid.hideKeyboard === "function") {
+            bridge.JSAndroid.hideKeyboard();
+            return true;
+        }
+        return false;
+    }
+    // ==================== T-6806 跳转栈（后退/前进） ====================
+    captureJumpOrigin() {
+        var _a, _b;
+        if (this.suppressJumpCapture)
+            return;
+        const editor = this.resolveActiveHostEditor();
+        const rootId = ((_b = (_a = editor === null || editor === void 0 ? void 0 : editor.protyle) === null || _a === void 0 ? void 0 : _a.block) === null || _b === void 0 ? void 0 : _b.parentID) || "";
+        if (!rootId || !constants_1.BLOCK_ID_RE.test(rootId))
+            return;
+        this.jumpBackStack.push({ rootId });
+        if (this.jumpBackStack.length > 50)
+            this.jumpBackStack.shift();
+        this.jumpForwardStack = [];
+    }
+    async jumpBack() {
+        var _a, _b;
+        const target = this.jumpBackStack.pop();
+        if (!target)
+            return false;
+        const editor = this.resolveActiveHostEditor();
+        const currentRootId = ((_b = (_a = editor === null || editor === void 0 ? void 0 : editor.protyle) === null || _a === void 0 ? void 0 : _a.block) === null || _b === void 0 ? void 0 : _b.parentID) || "";
+        if (currentRootId && constants_1.BLOCK_ID_RE.test(currentRootId)) {
+            this.jumpForwardStack.push({ rootId: currentRootId });
+            if (this.jumpForwardStack.length > 50)
+                this.jumpForwardStack.shift();
+        }
+        this.suppressJumpCapture = true;
+        try {
+            if (this.isMobile)
+                await this.mobileOpenDoc(target.rootId);
+            else
+                await (0, siyuan_1.openTab)({ app: this.app, doc: { id: target.rootId } });
+        }
+        finally {
+            this.suppressJumpCapture = false;
+        }
+        return true;
+    }
+    async jumpForward() {
+        var _a, _b;
+        const target = this.jumpForwardStack.pop();
+        if (!target)
+            return false;
+        const editor = this.resolveActiveHostEditor();
+        const currentRootId = ((_b = (_a = editor === null || editor === void 0 ? void 0 : editor.protyle) === null || _a === void 0 ? void 0 : _a.block) === null || _b === void 0 ? void 0 : _b.parentID) || "";
+        if (currentRootId && constants_1.BLOCK_ID_RE.test(currentRootId)) {
+            this.jumpBackStack.push({ rootId: currentRootId });
+            if (this.jumpBackStack.length > 50)
+                this.jumpBackStack.shift();
+        }
+        this.suppressJumpCapture = true;
+        try {
+            if (this.isMobile)
+                await this.mobileOpenDoc(target.rootId);
+            else
+                await (0, siyuan_1.openTab)({ app: this.app, doc: { id: target.rootId } });
+        }
+        finally {
+            this.suppressJumpCapture = false;
+        }
+        return true;
+    }
+    // 执行 "插件名::命令key"（协议 v2 条目级命令 / 模块级 clickCommand 共用）
+    executeHomeCommand(command, close) {
+        if (!/^[A-Za-z0-9_-]{1,64}::[A-Za-z0-9_-]{1,64}$/.test(command))
+            return false;
+        const action = {
+            id: "home-cmd", label: command, icon: "iconPlugin",
+            kind: "command", value: command, targets: ["desktop"], order: 0, enabled: true,
+        };
+        close();
+        this.executeQuickAction(action, null, () => undefined);
+        return true;
+    }
+    // 面板内直接勾选待办：用户本人操作即确认，免弹窗；写失败给消息反馈
+    // 受控写载荷加固：清除控制字符并钳制 64KB（updateBlock 写入前统一经过）
+    clampTaskWritePayload(markdown) {
+        return String(markdown).replace(/\u0000/g, "").slice(0, 65536);
+    }
+    async toggleHomeTaskBlock(item, desiredDone) {
+        const id = String(item.value || "");
+        if (!constants_1.BLOCK_ID_RE.test(id))
+            return false;
+        const target = typeof desiredDone === "boolean" ? desiredDone : !(item.done === true);
+        const rowJson = await this.fetchKernelJson("/api/query/sql", {
+            stmt: `SELECT markdown FROM blocks WHERE id='${id}' AND type IN ('i','p')`,
+        });
+        const row = ((rowJson === null || rowJson === void 0 ? void 0 : rowJson.data) || [])[0];
+        if (!row)
+            return false;
+        const newMarkdown = (0, agent_capabilities_1.flipTaskMarkdown)(String(row.markdown || ""), target);
+        if (!newMarkdown)
+            return false;
+        const updateJson = await this.fetchKernelJson("/api/block/updateBlock", {
+            dataType: "markdown", data: this.clampTaskWritePayload(newMarkdown), id,
+        });
+        return !!updateJson && updateJson.code === 0;
+    }
+    // 面板条目点击分发：条目命令 / 动作协议 / 文档集 / 收藏键 / 文档 rootId
+    handleHomeItemAction(item, close) {
+        if (item.command && this.executeHomeCommand(item.command, close))
+            return;
+        const value = String(item.value || "");
+        const journalNotebook = value.startsWith("action:journal:") ? (0, agent_capabilities_1.normalizeAgentNotebookId)(value.slice(15)) : "";
+        if (value === "action:journal" || journalNotebook) {
+            close();
+            this.openJournal(journalNotebook);
+            return;
+        }
+        if (value === "action:riffCard") {
+            close();
+            this.executeQuickAction({
+                id: "global-riff-card", label: this.i18n.quickGlobalRiffCard,
+                icon: "iconRiff", kind: "global", value: "riffCard",
+                targets: ["desktop"], order: 80, enabled: true,
+            }, null, () => undefined);
+            return;
+        }
+        const quickCapture = (0, home_model_2.parseQuickCaptureAction)(value);
+        if (quickCapture) {
+            close();
+            this.openQuickCapture(quickCapture.notebook, (0, home_model_2.buildQuickCaptureInitialText)(quickCapture));
+            return;
+        }
+        if (value.startsWith("set:")) {
+            close();
+            void this.restoreDocumentSetFromHome(value.slice(4));
+            return;
+        }
+        const bookmarkBlock = value.match(/^bookmark-block:(\d{14}-[0-9a-z]+):(\d{14}-[0-9a-z]+)$/i);
+        if (bookmarkBlock) {
+            close();
+            if (this.isMobile)
+                void this.mobileOpenDoc(bookmarkBlock[2]);
+            else
+                void (0, document_actions_1.openDocumentOnDesktop)({ rootId: bookmarkBlock[2], hitId: bookmarkBlock[1], app: this.app, openTab: siyuan_1.openTab, logger: logger_1.logger });
+            return;
+        }
+        if (value.startsWith("tag:") || value.startsWith("bookmark:")) {
+            const dockType = value.startsWith("tag:") ? "tag" : "bookmark";
+            const dock = this.getDockByType(dockType);
+            if (dock === null || dock === void 0 ? void 0 : dock.toggleModel) {
+                try {
+                    dock.toggleModel(dockType, true);
+                    close();
+                }
+                catch (e) {
+                    logger_1.logger.warn("open dock fail", dockType, e);
+                }
+            }
+            return;
+        }
+        if (value.startsWith("cmd:")) {
+            const action = {
+                id: "home-cmd", label: item.label || "", icon: "iconPlugin",
+                kind: "command", value: value.slice(4), targets: ["desktop"], order: 0, enabled: true,
+            };
+            close();
+            this.executeQuickAction(action, null, () => undefined);
+            return;
+        }
+        const favorite = this.getFavorites().find((fav) => fav.key === value);
+        if (favorite) {
+            close();
+            void this.jumpToFavorite(favorite, () => undefined);
+            return;
+        }
+        if (constants_1.BLOCK_ID_RE.test(value)) {
+            close();
+            if (this.isMobile) {
+                void this.mobileOpenDoc(value);
+            }
+            else {
+                void (0, siyuan_1.openTab)({ app: this.app, doc: { id: value } });
+            }
+            return;
+        }
+        if (item.href) {
+            window.open(item.href, "_blank", "noopener");
+        }
+    }
+    // 旧宽度档 → 新固定型号就近映射（一次迁移，迁移后 layout.size 非空即视为已迁移）
+    migrateHomeLayoutSize(entry, sizes) {
+        if (entry.size && sizes.includes(entry.size))
+            return entry.size;
+        const w = Number(entry.w) || 6;
+        const fallback = w <= 2 ? "xs" : w <= 4 ? "small" : w <= 6 ? "medium" : w <= 9 ? "wide" : "large";
+        return sizes.includes(fallback) ? fallback : (sizes[0] || "medium");
+    }
+    // 型号选择浮层（与排序浮层同模式：body + fixed + 外点/Esc 关闭），列出该模块支持的全部档位。
+    // T-7180：返回 owner disposer（幂等 cleanup + 焦点回归锚）——面板销毁/表面切换时由宿主释放链调用，
+    // 避免幽灵菜单与 document/window 监听残留（T-7040 排序菜单同模式）。
+    openHomeSizeMenu(anchor, supported, current, onPick) {
+        const panel = document.createElement("div");
+        panel.className = "sw__sort-menu sw-home__size-menu";
+        panel.setAttribute("role", "menu");
+        let cleaned = false;
+        const cleanup = () => {
+            if (cleaned)
+                return;
+            cleaned = true;
+            panel.remove();
+            document.removeEventListener("pointerdown", outside, true);
+            document.removeEventListener("keydown", esc, true);
+            window.removeEventListener("resize", reposition);
+            // T-7180 焦点回归锚：菜单关闭后焦点还给触发按钮（排序菜单同模式）。
+            anchor.focus({ preventScroll: true });
+        };
+        const outside = (event) => {
+            if (!panel.contains(event.target) && !anchor.contains(event.target))
+                cleanup();
+        };
+        const esc = (event) => {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                cleanup();
+            }
+        };
+        const reposition = () => {
+            const rect = anchor.getBoundingClientRect();
+            // 垂直：贴按钮下方，超出视口下缘时向上收
+            panel.style.top = `${Math.round(Math.max(6, Math.min(rect.bottom + 6, window.innerHeight - panel.offsetHeight - 6)))}px`;
+            // 水平：锚定按钮右缘，再钳制左缘避免整块弹出屏外
+            panel.style.right = `${Math.round(Math.max(6, window.innerWidth - rect.right))}px`;
+            const box = panel.getBoundingClientRect();
+            if (box.left < 6) {
+                panel.style.left = "6px";
+                panel.style.right = "auto";
+            }
+        };
+        supported.forEach((key) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__sort-menu-option";
+            item.setAttribute("role", "menuitemradio");
+            item.setAttribute("aria-checked", String(key === current));
+            // 型号预览瓦片：按该型号的 12 列比例绘制小矩形，直观对比大小
+            const preset = constants_1.HOME_WIDGET_SIZES[key] || constants_1.HOME_WIDGET_SIZES.medium;
+            const tile = document.createElement("i");
+            tile.className = "sw__size-tile";
+            tile.style.width = `${Math.max(8, Math.round(preset.w * 2.4))}px`;
+            tile.style.height = `${Math.max(5, Math.round(preset.h * 1.7))}px`;
+            const label = document.createElement("span");
+            label.textContent = constants_1.HOME_WIDGET_SIZE_LABELS[key] || key;
+            item.append(tile, label);
+            if (key === current)
+                item.insertAdjacentHTML("beforeend", '<svg><use xlink:href="#iconCheck"></use></svg>');
+            item.addEventListener("click", () => {
+                cleanup();
+                onPick(key);
+            });
+            panel.appendChild(item);
+        });
+        document.body.appendChild(panel);
+        reposition();
+        document.addEventListener("pointerdown", outside, true);
+        document.addEventListener("keydown", esc, true);
+        window.addEventListener("resize", reposition);
+        return cleanup;
+    }
+    // 协议 v2 声明式配置表单：由 configSchema 渲染，保存写入实例 config 并回调刷新
+    // 主页组件配置表单（openHomeConfigForm）已外迁至 home-config-form.ts
+    // （R3 重构 D-377），经 .call(this) 绑定宿主调用。
+    // 小组件商店（openHomeWidgetStore 与 openStoreWidgetPreview）已外迁至 home-store-ui.ts（R1，D-379）
+    getQuickActionPickerCandidates(actions) {
+        const existing = new Set(actions.map((action) => `${action.kind}:${action.value}`));
+        const targetNames = {
+            desktop: this.i18n.quickDesktop,
+            sidebar: this.i18n.quickSidebar,
+            mobile: this.i18n.quickMobile,
+        };
+        const describe = (kind, value, targets, declared) => {
+            const supported = targets.filter((target) => (0, quick_actions_1.resolveQuickActionSupport)(kind, value, target, declared) !== "unsupported");
+            const parts = supported.map((target) => targetNames[target]);
+            if ((0, quick_actions_1.resolveQuickActionSupport)(kind, value, "mobile", declared) === "unknown" && !supported.includes("mobile")) {
+                parts.push(this.i18n.quickMobileUnknown);
+            }
+            return parts.join(" · ");
+        };
+        const candidates = [];
+        const builtinLabels = {
+            switcher: this.i18n.quickBuiltinSwitcher,
+            search: this.i18n.quickBuiltinSearch,
+            journal: this.i18n.quickBuiltinJournal,
+            settings: this.i18n.quickBuiltinSettings,
+            home: this.i18n.secondPanel,
+            "snippet-studio": this.i18n.platformStudio,
+            "quick-capture": this.i18n.quickBuiltinQuickCapture,
+            "previous-tab": this.i18n.quickBuiltinPreviousTab,
+            "next-tab": this.i18n.quickBuiltinNextTab,
+            "scroll-top": this.i18n.quickBuiltinScrollTop,
+            "scroll-bottom": this.i18n.quickBuiltinScrollBottom,
+            "sync-now": this.i18n.quickBuiltinSyncNow,
+            "insert-template": this.i18n.quickBuiltinInsertTemplate,
+            "cycle-doc-set": this.i18n.quickBuiltinCycleDocSet,
+            "cycle-ball-preset": this.i18n.quickBuiltinCycleBallPreset,
+            "throw-window": this.i18n.quickBuiltinThrowWindow,
+            "hide-keyboard": this.i18n.quickBuiltinHideKeyboard,
+            "jump-back": this.i18n.quickBuiltinJumpBack,
+            "jump-forward": this.i18n.quickBuiltinJumpForward,
+        };
+        (0, quick_actions_1.getBuiltinQuickActions)().forEach((raw) => {
+            const action = raw;
+            if (existing.has(`builtin:${action.value}`))
+                return;
+            action.label = builtinLabels[action.value] || action.label;
+            candidates.push({
+                id: action.id,
+                label: action.label,
+                icon: action.icon,
+                group: this.i18n.quickBuiltin,
+                secondary: describe(action.kind, action.value, action.targets),
+                searchText: `${action.label} ${action.value} ${this.i18n.quickBuiltin}`,
+                action,
+            });
+        });
+        const globalLabels = {
+            outline: this.i18n.quickGlobalOutline,
+            bookmark: this.i18n.quickGlobalBookmark,
+            tag: this.i18n.quickGlobalTag,
+            inbox: this.i18n.quickGlobalInbox,
+            backlinks: this.i18n.quickGlobalBacklinks,
+            recentDocs: this.i18n.quickGlobalRecentDocs,
+            recentClosed: this.i18n.quickGlobalRecentClosed,
+            riffCard: this.i18n.quickGlobalRiffCard,
+            editReadonly: this.i18n.quickGlobalEditReadonly,
+        };
+        (0, quick_actions_1.getGlobalQuickActions)().forEach((raw) => {
+            const action = raw;
+            if (existing.has(`global:${action.value}`))
+                return;
+            action.label = globalLabels[action.value] || action.label;
+            candidates.push({
+                id: action.id,
+                label: action.label,
+                icon: action.icon,
+                group: this.i18n.quickHostCommands,
+                secondary: describe(action.kind, action.value, action.targets, action.targets),
+                searchText: `${action.label} ${action.value} ${this.i18n.quickHostCommands}`,
+                action,
+            });
+        });
+        this.getDockPanels().forEach((panel) => {
+            if (existing.has(`dock:${panel.type}`))
+                return;
+            const targets = (0, quick_actions_1.getDefaultQuickActionTargets)("dock", panel.type);
+            const safeType = panel.type.replace(/[^A-Za-z0-9_-]/g, "-");
+            const dockLabel = (0, util_1.normalizeQuickActionText)(panel.title, 24) || panel.type;
+            const action = {
+                id: `dock-${safeType}`,
+                label: dockLabel,
+                icon: panel.icon || "iconDock",
+                kind: "dock",
+                value: panel.type,
+                targets,
+                order: 0,
+                enabled: true,
+            };
+            candidates.push({
+                id: action.id,
+                label: dockLabel,
+                icon: action.icon,
+                group: this.i18n.quickDock,
+                secondary: describe(action.kind, action.value, targets),
+                searchText: `${dockLabel} ${panel.type} ${this.i18n.quickDock}`,
+                action,
+            });
+        });
+        this.quickActionProviders.forEach((provider) => {
+            if (existing.has(`adapter:${provider.value}`))
+                return;
+            const safeValue = provider.value.replace(/[^A-Za-z0-9_-]/g, "-");
+            const providerLabel = (0, util_1.normalizeQuickActionText)(provider.label, 24) || provider.id;
+            const action = {
+                id: `adapter-${safeValue}`,
+                label: providerLabel,
+                icon: provider.icon,
+                kind: "adapter",
+                value: provider.value,
+                targets: [...provider.targets],
+                order: 0,
+                enabled: true,
+            };
+            candidates.push({
+                id: action.id,
+                label: providerLabel,
+                icon: provider.icon,
+                // T-6811 按来源插件分组：同一插件的动作聚合在以其命名的分组下
+                group: providerLabel || this.i18n.quickPluginActions,
+                fallbackIcon: ["iconPlugin", "iconFile"],
+                secondary: describe(action.kind, action.value, action.targets, provider.declaredTargets),
+                searchText: `${providerLabel} ${provider.id} ${provider.value} ${this.i18n.quickPluginActions}`,
+                action,
+            });
+        });
+        this.getPluginCommands().forEach((command) => {
+            if (existing.has(`command:${command.value}`))
+                return;
+            const targets = (0, quick_actions_1.getDefaultQuickActionTargets)("command", command.value, command.declaredTargets);
+            const displayLabel = (0, util_1.normalizeQuickActionText)(command.label, 24) || (0, util_1.normalizeQuickActionText)(command.value, 24);
+            const pluginTitle = (0, util_1.normalizeQuickActionText)(command.pluginTitle, 32) || command.pluginName;
+            const action = {
+                id: command.id,
+                label: displayLabel,
+                icon: command.icon,
+                kind: "command",
+                value: command.value,
+                targets,
+                order: 0,
+                enabled: true,
+            };
+            candidates.push({
+                id: action.id,
+                label: displayLabel,
+                icon: command.icon,
+                // T-6811 按来源插件分组：同一插件的命令聚合在以其命名的分组下
+                group: pluginTitle || command.pluginName || this.i18n.quickPluginCommands,
+                fallbackIcon: ["iconPlugin", "iconFile"],
+                secondary: `${pluginTitle} · ${describe(action.kind, action.value, targets, command.declaredTargets)}`,
+                searchText: `${displayLabel} ${pluginTitle} ${command.pluginName} ${command.commandKey} ${this.i18n.quickPluginCommands}`,
+                action,
+            });
+        });
+        return candidates;
+    }
+    renderQuickActionIconButton(button, icon) {
+        button.innerHTML = "";
+        const preview = document.createElement("span");
+        preview.className = "sw-setting__quick-icon-preview";
+        this.renderQuickActionIcon(preview, icon, ["iconPlugin", "iconFile"]);
+        const name = document.createElement("span");
+        name.className = "sw-setting__quick-icon-name";
+        name.textContent = (0, util_1.isImageIconReference)(icon) ? this.i18n.quickIconImage : /^icon/.test(icon) ? icon.slice(4) : icon;
+        const arrow = document.createElement("svg");
+        arrow.className = "sw-setting__quick-icon-arrow";
+        arrow.innerHTML = '<use xlink:href="#iconDown"></use>';
+        button.append(preview, name, arrow);
+    }
+    getAvailableQuickActionIcons(current) {
+        const fallback = [
+            "iconLayout", "iconSearch", "iconCalendar", "iconSettings", "iconFile", "iconFolder",
+            "iconDock", "iconPlugin", "iconAdd", "iconClock", "iconTask", "iconBookmark",
+        ];
+        const loaded = Array.from(document.querySelectorAll("symbol[id]"))
+            .map((symbol) => symbol.id)
+            .filter((id) => /^[A-Za-z][A-Za-z0-9_-]*$/.test(id));
+        const emoji = ["⭐", "📅", "🔍", "✅", "⚡"];
+        return Array.from(new Set([current, ...fallback, ...loaded, ...emoji].filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    }
+    openQuickActionIconPicker(action, onPick) {
+        var _a;
+        // T-7178：捕获触发元素，关闭时回焦
+        const ae = document.activeElement;
+        const iconOpener = ae && typeof ae.focus === 'function' ? ae : null;
+        (_a = document.querySelector(".sw-quick-icon-picker-overlay")) === null || _a === void 0 ? void 0 : _a.remove();
+        const overlay = document.createElement("div");
+        overlay.className = "sw-quick-icon-picker-overlay";
+        const sheet = document.createElement("div");
+        sheet.className = "sw-quick-icon-picker";
+        sheet.setAttribute("role", "dialog");
+        sheet.setAttribute("aria-modal", "true");
+        sheet.setAttribute("aria-label", this.i18n.quickChooseIcon);
+        const header = document.createElement("div");
+        header.className = "sw-quick-icon-picker__header";
+        const title = document.createElement("strong");
+        title.textContent = this.i18n.quickChooseIcon;
+        const closeButton = document.createElement("button");
+        closeButton.type = "button";
+        closeButton.className = "b3-button b3-button--text sw-quick-icon-picker__close";
+        closeButton.setAttribute("aria-label", this.i18n.close);
+        closeButton.innerHTML = '<svg><use xlink:href="#iconClose"></use></svg>';
+        header.append(title, closeButton);
+        const search = document.createElement("input");
+        search.type = "search";
+        search.className = "b3-text-field sw-quick-icon-picker__search";
+        search.placeholder = this.i18n.quickIconSearch;
+        search.setAttribute("aria-label", this.i18n.quickIconSearch);
+        const custom = document.createElement("input");
+        custom.type = "text";
+        custom.className = "b3-text-field sw-quick-icon-picker__custom";
+        custom.placeholder = this.i18n.quickIconCustom || "Emoji、短文字、HTTPS 图片或 data URL";
+        custom.setAttribute("aria-label", custom.placeholder);
+        custom.value = /^icon[A-Za-z0-9_-]+$/.test(action.icon || "") ? "" : (action.icon || "");
+        const customApply = document.createElement("button");
+        customApply.type = "button";
+        customApply.className = "b3-button sw-quick-icon-picker__custom-apply";
+        customApply.textContent = this.i18n.quickIconApplyCustom || "使用自定义图标";
+        const customRow = document.createElement("div");
+        customRow.className = "sw-quick-icon-picker__custom-row";
+        const customPreview = document.createElement("span");
+        customPreview.className = "sw-quick-icon-picker__preview";
+        customPreview.setAttribute("aria-label", this.i18n.quickIconPreview);
+        const customHint = document.createElement("small");
+        customHint.className = "sw-quick-icon-picker__hint";
+        customHint.textContent = this.i18n.quickIconCustomHint;
+        const refreshCustomPreview = () => {
+            custom.setCustomValidity("");
+            const candidate = (0, util_1.normalizeCustomIcon)(custom.value);
+            customApply.disabled = !candidate;
+            this.renderQuickActionIcon(customPreview, candidate || "iconPlugin", ["iconPlugin", "iconFile"]);
+        };
+        custom.addEventListener("input", refreshCustomPreview);
+        customRow.append(customPreview, custom, customApply);
+        const grid = document.createElement("div");
+        grid.className = "sw-quick-icon-picker__grid";
+        const icons = this.getAvailableQuickActionIcons(action.icon);
+        // T-6811 图标目录：分类浏览 + 中文/拼音/英文 id 搜索。
+        // 目录里没有的宿主图标归入"其他"，Emoji 归入"表情"。
+        const catalogMap = new Map(constants_1.ICON_CATALOG.map((entry) => [entry[0], { zh: entry[1], en: entry[2], category: entry[3] }]));
+        const categorize = (icon) => {
+            const entry = catalogMap.get(icon);
+            if (entry)
+                return entry;
+            if (/^icon[A-Za-z0-9_-]+$/.test(icon))
+                return { zh: icon, en: icon.toLowerCase(), category: "其他" };
+            return { zh: "表情", en: "emoji", category: "表情" };
+        };
+        const items = icons.map((icon) => ({ icon, meta: categorize(icon) }));
+        const categoryOrder = [...constants_1.ICON_CATEGORIES, "表情", "其他"];
+        const presentCategories = categoryOrder.filter((category) => items.some((item) => item.meta.category === category));
+        let activeCategory = "全部";
+        const cats = document.createElement("div");
+        cats.className = "sw-quick-icon-picker__cats";
+        // Categories filter the same icon grid; they do not switch tabpanels.
+        // Use a labelled pressed-button group so screen readers do not enter a
+        // tab interaction model without matching panels/roving focus.
+        cats.setAttribute("role", "group");
+        cats.setAttribute("aria-label", this.i18n.quickIconCategory || this.i18n.quickIconCategoryAll || "Category");
+        const renderCats = () => {
+            cats.textContent = "";
+            for (const category of [this.i18n.quickIconCategoryAll || "全部", ...presentCategories]) {
+                const chip = document.createElement("button");
+                chip.type = "button";
+                chip.className = "sw-quick-icon-picker__cat" + (category === activeCategory ? " is-active" : "");
+                chip.textContent = category;
+                chip.setAttribute("aria-pressed", String(category === activeCategory));
+                chip.addEventListener("click", () => {
+                    activeCategory = category;
+                    renderCats();
+                    renderIcons();
+                });
+                cats.appendChild(chip);
+            }
+        };
+        renderCats();
+        const renderIcons = () => {
+            const keyword = search.value.trim().toLocaleLowerCase();
+            grid.innerHTML = "";
+            const hit = (icon, meta) => {
+                if (!keyword)
+                    return true;
+                if (icon.toLocaleLowerCase().includes(keyword))
+                    return true;
+                if (meta.zh.toLocaleLowerCase().includes(keyword))
+                    return true;
+                if (meta.en.toLowerCase().includes(keyword))
+                    return true;
+                // 中文拼音首字母/全拼（复用 T-6805 引擎）
+                if ((0, search_model_1.pinyinTitleHit)(meta.zh, keyword))
+                    return true;
+                return false;
+            };
+            const visible = items.filter((item) => (activeCategory === "全部" || item.meta.category === activeCategory)
+                && hit(item.icon, item.meta));
+            if (!visible.length) {
+                const empty = document.createElement("div");
+                empty.className = "sw-quick-icon-picker__hint";
+                empty.textContent = this.i18n.quickIconSearchEmpty || this.i18n.noOpenHistory;
+                grid.appendChild(empty);
+                return;
+            }
+            let lastCategory = "";
+            visible.forEach((item) => {
+                if (item.meta.category !== lastCategory) {
+                    lastCategory = item.meta.category;
+                    const heading = document.createElement("div");
+                    heading.className = "sw-quick-icon-picker__group-title";
+                    heading.textContent = item.meta.category;
+                    grid.appendChild(heading);
+                }
+                const option = document.createElement("button");
+                option.type = "button";
+                option.className = "sw-quick-icon-picker__item";
+                option.classList.toggle("is-selected", item.icon === action.icon);
+                option.title = item.meta.zh === item.icon ? item.icon : `${item.meta.zh} · ${item.icon}`;
+                option.setAttribute("aria-label", option.title);
+                this.renderQuickActionIcon(option, item.icon, ["iconPlugin", "iconFile"]);
+                option.addEventListener("click", () => {
+                    cleanup();
+                    onPick(item.icon);
+                });
+                grid.appendChild(option);
+            });
+        };
+        const onKeyDown = (event) => {
+            if (event.key === "Escape") {
+                cleanup();
+                if (iconOpener)
+                    iconOpener.focus({ preventScroll: true });
+            }
+        };
+        const cleanup = () => {
+            document.removeEventListener("keydown", onKeyDown);
+            overlay.remove();
+            // T-7178：关闭后回焦触发元素
+            if (iconOpener)
+                iconOpener.focus({ preventScroll: true });
+        };
+        closeButton.addEventListener("click", cleanup);
+        customApply.addEventListener("click", () => {
+            var _a;
+            const candidate = (0, util_1.normalizeCustomIcon)(custom.value);
+            if (!candidate) {
+                custom.setCustomValidity(this.i18n.quickIconInvalid || "请输入短文字、Emoji 或安全的 HTTPS/data URL 图标");
+                (_a = custom.reportValidity) === null || _a === void 0 ? void 0 : _a.call(custom);
+                return;
+            }
+            cleanup();
+            onPick(candidate);
+        });
+        overlay.addEventListener("click", (event) => {
+            if (event.target === overlay)
+                cleanup();
+        });
+        search.addEventListener("input", renderIcons);
+        document.addEventListener("keydown", onKeyDown);
+        sheet.append(header, search, cats, customRow, customHint, grid);
+        overlay.appendChild(sheet);
+        document.body.appendChild(overlay);
+        renderIcons();
+        refreshCustomPreview();
+        // T-7178：移动端也入焦搜索框（历史仅桌面入焦）
+        search.focus({ preventScroll: true });
+        // T-7178：Tab 循环约束——首末回绕，焦点不逃逸 overlay
+        overlay.addEventListener("keydown", (event) => {
+            if (event.key !== "Tab")
+                return;
+            const focusables = Array.from(overlay.querySelectorAll("button, input")).filter((el) => !el.hasAttribute("disabled"));
+            if (focusables.length === 0)
+                return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus({ preventScroll: true });
+            }
+            else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus({ preventScroll: true });
+            }
+        });
+    }
+    // 设置页“快捷动作”分节的 UI 构建（含导入/导出传输控件）已外迁至 settings-sections.ts（R4 重构 D-376）。
+    getDocumentSets() {
+        return (0, document_sets_1.normalizeDocumentSets)(this.data[constants_1.DOCUMENT_SETS_KEY]).sets;
+    }
+    currentDocumentSetEntries() {
+        const tabs = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+        const seen = new Set();
+        // T-6921（工作区恢复 2.0）：桌面端记录当前活动文档（快照的布局维度 v1）；
+        // 手机端无可靠活动页签语义，诚实缺省不标。
+        let activeRootId = "";
+        if (!this.isMobile) {
+            try {
+                const activeTab = this.getActiveTab();
+                activeRootId = activeTab ? (this.rootIdOf(activeTab) || "") : "";
+            }
+            catch (_) {
+                activeRootId = "";
+            }
+        }
+        return tabs.map((tab, index) => {
+            const rootId = this.rootIdOf(tab);
+            if (!rootId || !constants_1.BLOCK_ID_RE.test(rootId) || seen.has(rootId))
+                return null;
+            seen.add(rootId);
+            return Object.assign({ rootId, title: this.titleOf(tab) || rootId, index }, (rootId === activeRootId && activeRootId ? { active: true } : {}));
+        }).filter((item) => Boolean(item));
+    }
+    saveDocumentSet(candidate) {
+        const result = (0, document_sets_1.upsertDocumentSet)(this.data[constants_1.DOCUMENT_SETS_KEY], candidate, { now: Date.now() });
+        if (!result.item)
+            return false;
+        this.data[constants_1.DOCUMENT_SETS_KEY] = result.state;
+        this.saveDataDebounced(constants_1.DOCUMENT_SETS_KEY);
+        return true;
+    }
+    async probeDocumentSetEntries(entries, signal) {
+        const queue = entries.slice(0, 40);
+        const results = new Array(queue.length).fill(null);
+        let cursor = 0;
+        const worker = async () => {
+            var _a, _b;
+            while (cursor < queue.length) {
+                const index = cursor++;
+                const entry = queue[index];
+                if (signal === null || signal === void 0 ? void 0 : signal.aborted)
+                    break;
+                let timeoutHandle = null;
+                // 单项超时必须 abort 底层请求归还并发通道：内核慢时挂起连接会拖慢
+                // 后续所有内核调用（僵尸请求模式，R12 审计）。fetch 只接受一个 signal，
+                // 批次取消经 abort 事件桥接进单项 controller。
+                const controller = typeof AbortController === "function" ? new AbortController() : null;
+                const onOuterAbort = () => controller === null || controller === void 0 ? void 0 : controller.abort();
+                if (signal === null || signal === void 0 ? void 0 : signal.aborted)
+                    controller === null || controller === void 0 ? void 0 : controller.abort();
+                (_a = signal === null || signal === void 0 ? void 0 : signal.addEventListener) === null || _a === void 0 ? void 0 : _a.call(signal, "abort", onOuterAbort, { once: true });
+                try {
+                    const request = fetch("/api/filetree/getDoc", Object.assign({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: entry.rootId, mode: 0, size: 1 }) }, (controller ? { signal: controller.signal } : {})));
+                    const timeout = new Promise((resolve) => {
+                        timeoutHandle = window.setTimeout(() => {
+                            controller === null || controller === void 0 ? void 0 : controller.abort();
+                            resolve(null);
+                        }, constants_1.DOCUMENT_SET_PROBE_TIMEOUT_MS);
+                    });
+                    const response = await Promise.race([request, timeout]);
+                    if (!response) {
+                        results[index] = "unknown";
+                        continue;
+                    }
+                    results[index] = response.ok ? "available" : response.status === 404 ? "missing" : "unknown";
+                }
+                catch (error) {
+                    logger_1.logger.warn("probe document set entry fail", error);
+                    results[index] = "unknown";
+                }
+                finally {
+                    if (timeoutHandle !== null)
+                        window.clearTimeout(timeoutHandle);
+                    (_b = signal === null || signal === void 0 ? void 0 : signal.removeEventListener) === null || _b === void 0 ? void 0 : _b.call(signal, "abort", onOuterAbort);
+                }
+            }
+        };
+        const workers = Math.min(constants_1.DOCUMENT_SET_PROBE_CONCURRENCY, queue.length);
+        await Promise.all(Array.from({ length: workers }, () => worker()));
+        return {
+            available: queue.filter((_entry, index) => results[index] === "available"),
+            missing: queue.filter((_entry, index) => results[index] === "missing"),
+            unknown: queue.filter((_entry, index) => results[index] === "unknown"),
+        };
+    }
+    // 查询当前打开文档的更新时间（用于「最近编辑」排序），返回 rootID → updated 映射
+    async loadUpdatedMap(tabs) {
+        // 白名单净化：仅保留标准文档 ID（时间戳-7位）并去重，非法值不进入 SQL（防注入/阻断结构破坏）
+        const ids = (0, util_1.sanitizeDocIds)(tabs.map((tab) => this.rootIdOf(tab)));
+        if (ids.length === 0) {
+            return {};
+        }
+        // 打开的文档集合没变且缓存未过期时直接复用（返回副本防外部误改）
+        const key = [...ids].sort().join(",");
+        if (this.updatedMapCache && this.updatedMapCache.key === key
+            && Date.now() - this.updatedMapCache.ts < constants_1.UPDATED_CACHE_MS) {
+            return Object.assign({}, this.updatedMapCache.map);
+        }
+        try {
+            // T-6478：改走统一分发（同源白名单 + 5s 超时 + 失败归一），并显式给出外层 LIMIT。
+            // 缺外层 LIMIT 时内核按 search.limit（默认 64、下限 32）截断，打开页签多于该数
+            // 会静默缺更新时间、令「最近编辑」排序错乱；ids 已由 sanitizeDocIds 去重净化。
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT root_id, updated, created FROM blocks WHERE type='d' AND root_id IN ('${ids.join("','")}') LIMIT ${ids.length}`,
+            });
+            if (!json) {
+                // 失败不写缓存：下一次重渲染再取，避免把空映射固化 UPDATED_CACHE_MS。
+                return {};
+            }
+            const map = {};
+            (0, util_1.normalizeSqlResult)(json).rows.forEach((row) => {
+                map[row.root_id] = row.updated;
+                // created 顺带回填缓存（YYYYMMDDHHmmss），供按创建月份分组使用
+                if (typeof row.created === "string" && row.created) {
+                    this.createdByIdCache[row.root_id] = row.created;
+                }
+            });
+            this.updatedMapCache = { key, ts: Date.now(), map };
+            return map;
+        }
+        catch (e) {
+            logger_1.logger.warn("query updated fail", e);
+            return {};
+        }
+    }
+    // 获取当前活动页签（可能为 undefined）
+    getActiveTab() {
+        try {
+            // The default `wndActive=true` guard returns undefined whenever the
+            // host window is not OS-focused (headless/remote WebView, a dock
+            // opened from another window, or a background automation run).
+            // Keep that result as the fast path, then ask SiYuan for the
+            // current tab without the focus gate so read-only widgets still
+            // follow the document the user just opened.
+            return (0, siyuan_1.getActiveTab)() || (0, siyuan_1.getActiveTab)(false) || undefined;
+        }
+        catch (e) {
+            logger_1.logger.warn("get active tab fail", e);
+        }
+        return undefined;
+    }
+    /**
+     * Register only bounded, read-only Agent capabilities. The method is
+     * deliberately runtime-gated so the plugin remains compatible with older
+     * SiYuan releases whose Plugin base class predates addAgentCapability.
+     */
+    registerAgentCapabilities() {
+        const pluginWithAgent = this;
+        const readOnlyDefinitions = [
+            {
+                spec: agent_capabilities_1.AGENT_CAPABILITY_SPECS.outline,
+                handler: async (args) => {
+                    try {
+                        const id = (0, agent_capabilities_1.normalizeAgentDocumentId)(args === null || args === void 0 ? void 0 : args.id);
+                        if (!id)
+                            return { error: "invalid document id" };
+                        const limit = Math.min(48, Math.max(1, Math.trunc(Number(args === null || args === void 0 ? void 0 : args.limit) || 40)));
+                        const json = await this.fetchKernelJson("/api/outline/getDocOutline", { id, preview: true });
+                        if (!json || json.code !== 0)
+                            return { error: "outline unavailable" };
+                        const headings = (0, agent_capabilities_1.flattenOutline)(Array.isArray(json.data) ? json.data : [], limit);
+                        const content = { id, headings };
+                        return { structuredContent: content, result: JSON.stringify(content) };
+                    }
+                    catch (error) {
+                        logger_1.logger.warn("Agent document outline unavailable", error);
+                        return { error: "outline unavailable" };
+                    }
+                },
+            },
+            {
+                // v0.17 阶段 2：文档上下文只读接入。仅返回元数据与有界大纲，绝不回传正文。
+                spec: agent_document_context_1.DOCUMENT_CONTEXT_SPEC,
+                handler: async (args) => {
+                    try {
+                        const request = (0, agent_document_context_1.normalizeDocumentContextRequest)(args || {});
+                        const opened = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+                        const active = this.isMobile
+                            ? opened.find((tab) => tab.id === this.getMobileActiveTabId())
+                            : this.getActiveTab();
+                        const activeRoot = active ? this.rootIdOf(active) || active.id : "";
+                        const id = request.id || activeRoot;
+                        if (!id || !constants_1.BLOCK_ID_RE.test(id))
+                            return { error: "document context unavailable" };
+                        const tab = opened.find((candidate) => (this.rootIdOf(candidate) || candidate.id) === id);
+                        const isActiveDocument = Boolean(activeRoot && activeRoot === id);
+                        const contextSource = isActiveDocument ? "active" : (tab ? "opened" : "kernel");
+                        const notebookMap = new Map((this.notebookListCache || []).map((notebook) => [notebook.id, notebook.name]));
+                        const tabNotebookId = tab ? (0, search_model_1.resolveSearchNotebookId)(tab) : "";
+                        const cachedNotebookName = tab ? notebookMap.get(tabNotebookId) || "" : "";
+                        const tabNotebookName = tab
+                            ? cachedNotebookName
+                                || tab.notebookName
+                                || tab.notebook
+                                || tab.boxName || ""
+                            : "";
+                        const tabNotebookNameSource = cachedNotebookName ? "cache" : (tabNotebookName ? "tab" : "none");
+                        let record = tab ? {
+                            id,
+                            title: this.titleOf(tab),
+                            notebookId: tabNotebookId,
+                            notebookName: tabNotebookName,
+                            notebookNameSource: tabNotebookNameSource,
+                            path: tab.path
+                                || tab.hPath || "",
+                            pathSource: "tab",
+                        } : { id };
+                        if (!tab) {
+                            let json;
+                            try {
+                                json = await this.fetchKernelJson("/api/query/sql", {
+                                    stmt: `SELECT id, content, box FROM blocks WHERE id='${id}' LIMIT 1`,
+                                });
+                            }
+                            catch (error) {
+                                logger_1.logger.warn("Agent document context metadata unavailable", error);
+                                return { error: "document context unavailable" };
+                            }
+                            const row = ((json === null || json === void 0 ? void 0 : json.data) || [])[0];
+                            if (!row || !constants_1.BLOCK_ID_RE.test(String(row.id || "")))
+                                return { error: "document context unavailable" };
+                            const kernelNotebookName = notebookMap.get(String(row.box || "")) || "";
+                            record = { id: row.id, title: row.content, notebookId: row.box, notebookName: kernelNotebookName, notebookNameSource: kernelNotebookName ? "cache" : "none", path: "", pathSource: "none" };
+                        }
+                        let outlineAvailable = request.includeOutline;
+                        let outlineJson = null;
+                        if (request.includeOutline) {
+                            try {
+                                outlineJson = await this.fetchKernelJson("/api/outline/getDocOutline", { id, preview: true });
+                                outlineAvailable = Boolean(outlineJson && outlineJson.code === 0 && Array.isArray(outlineJson.data));
+                            }
+                            catch (error) {
+                                outlineAvailable = false;
+                                logger_1.logger.warn("Agent document context outline unavailable", error);
+                            }
+                        }
+                        const content = (0, agent_document_context_1.buildDocumentContext)(Object.assign(Object.assign({}, record), { active: isActiveDocument, source: contextSource, outlineAvailable, outlineStatus: !request.includeOutline ? "not-requested" : (outlineAvailable
+                                ? ((Array.isArray(outlineJson === null || outlineJson === void 0 ? void 0 : outlineJson.data) && outlineJson.data.length > 0) ? "available" : "empty")
+                                : "unavailable"), headings: outlineAvailable ? outlineJson.data : [] }), request);
+                        return { structuredContent: content, result: JSON.stringify(content) };
+                    }
+                    catch (error) {
+                        logger_1.logger.warn("Agent document context unavailable", error);
+                        return { error: "document context unavailable" };
+                    }
+                },
+            },
+            {
+                spec: agent_capabilities_1.AGENT_CAPABILITY_SPECS.navigation,
+                handler: async (args) => {
+                    try {
+                        const limit = (0, agent_capabilities_1.normalizeAgentLimit)(args === null || args === void 0 ? void 0 : args.limit, 12);
+                        const opened = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+                        const active = this.isMobile
+                            ? opened.find((tab) => tab.id === this.getMobileActiveTabId())
+                            : this.getActiveTab();
+                        const activeTabId = (active === null || active === void 0 ? void 0 : active.id) || "";
+                        const activeId = active ? (this.rootIdOf(active) || activeTabId) : null;
+                        const tabs = opened.map((tab) => ({
+                            id: tab.id,
+                            rootId: this.rootIdOf(tab) || undefined,
+                            title: this.titleOf(tab),
+                            path: tab.path
+                                || tab.hPath || undefined,
+                            notebookId: (0, search_model_1.resolveSearchNotebookId)(tab) || undefined,
+                            active: activeTabId ? tab.id === activeTabId : (this.rootIdOf(tab) || tab.id) === activeId,
+                        }));
+                        const recent = this.getOpenHistory().map((entry) => ({
+                            id: entry.key,
+                            rootId: entry.rootId || undefined,
+                            title: entry.title,
+                            ts: entry.ts,
+                            source: "recent",
+                        }));
+                        const closed = this.getClosedHistory().map((entry) => ({
+                            id: entry.rootId,
+                            rootId: entry.rootId,
+                            title: entry.title,
+                            ts: entry.closedAt,
+                            source: "closed",
+                        }));
+                        const favorites = this.getFavorites().map((entry) => ({
+                            id: entry.key,
+                            rootId: (0, util_1.resolveFavoriteRootId)(entry) || undefined,
+                            title: entry.title,
+                            group: entry.group,
+                            source: "favorite",
+                        }));
+                        const content = (0, agent_capabilities_1.buildAgentNavigationResult)({
+                            activeId: activeId || "",
+                            mobile: this.isMobile,
+                            tabs,
+                            recent,
+                            closed,
+                            favorites,
+                            limit,
+                        });
+                        return { structuredContent: content, result: JSON.stringify(content) };
+                    }
+                    catch (error) {
+                        logger_1.logger.warn("Agent navigation unavailable", error);
+                        return { error: "navigation unavailable" };
+                    }
+                },
+            },
+            {
+                spec: agent_capabilities_1.AGENT_CAPABILITY_SPECS.search,
+                handler: async (args) => this.searchAgentDocuments(args),
+            },
+            {
+                spec: agent_capabilities_1.AGENT_CAPABILITY_SPECS.homeWidgets,
+                handler: async (args) => {
+                    const currentDevice = this.isMobile ? "mobile" : "desktop";
+                    const requestedDevice = ["desktop", "sidebar", "mobile"].includes(String((args === null || args === void 0 ? void 0 : args.device) || ""))
+                        ? String(args.device)
+                        : currentDevice;
+                    const device = requestedDevice;
+                    const requested = String((args === null || args === void 0 ? void 0 : args.moduleId) || "");
+                    const limit = (0, agent_capabilities_1.normalizeAgentLimit)(args === null || args === void 0 ? void 0 : args.limit, 12);
+                    try {
+                        const queryable = this.homeRuntime.listModules(device)
+                            .filter((item) => this.homeBuiltinAdapterIds.has(item.moduleId) || this.homeModuleOpens.has(item.moduleId));
+                        // 发现模式：省略 moduleId 时返回全部可查询组件清单
+                        if (!requested) {
+                            const homeState = this.getHomeState();
+                            const configuredModuleIds = (homeState.layouts[device] || []).map((entry) => {
+                                const instance = homeState.instances.find((item) => item.instanceId === entry.instanceId);
+                                return (instance === null || instance === void 0 ? void 0 : instance.moduleId) || "";
+                            }).filter(Boolean);
+                            const configuredState = {};
+                            (homeState.layouts[device] || []).forEach((entry) => {
+                                const instance = homeState.instances.find((item) => item.instanceId === entry.instanceId);
+                                if (instance === null || instance === void 0 ? void 0 : instance.moduleId)
+                                    configuredState[instance.moduleId] = { enabled: instance.enabled !== false, size: entry.size };
+                            });
+                            const content = (0, agent_capabilities_1.buildAgentWidgetCatalog)(queryable, {
+                                device,
+                                readOnly: typeof (args === null || args === void 0 ? void 0 : args.readOnly) === "boolean" ? args.readOnly : undefined,
+                                source: args === null || args === void 0 ? void 0 : args.source,
+                                limit: args === null || args === void 0 ? void 0 : args.limit,
+                                offset: args === null || args === void 0 ? void 0 : args.offset,
+                                includeState: true,
+                                configuredModuleIds,
+                                configuredState,
+                            });
+                            return { structuredContent: content, result: JSON.stringify(content) };
+                        }
+                        const def = queryable.find((item) => item.moduleId === requested);
+                        if (!def) {
+                            const content = (0, agent_capabilities_1.buildAgentWidgetSnapshot)(requested, "", { ok: false, reason: "unregistered" }, { device, limit, offset: args === null || args === void 0 ? void 0 : args.offset });
+                            return { structuredContent: content, result: JSON.stringify(content) };
+                        }
+                        const config = (0, agent_capabilities_1.normalizeAgentWidgetConfig)(args === null || args === void 0 ? void 0 : args.config, def.configSchema);
+                        const result = await this.homeRuntime.read(requested, device, config, { cacheTtlMs: 1500, force: (args === null || args === void 0 ? void 0 : args.refresh) === true });
+                        const content = (0, agent_capabilities_1.buildAgentWidgetSnapshot)(requested, def.title, result, { device, limit, offset: args === null || args === void 0 ? void 0 : args.offset, config });
+                        return { structuredContent: content, result: JSON.stringify(content) };
+                    }
+                    catch (error) {
+                        logger_1.logger.warn("Agent home widget snapshot unavailable", error);
+                        if (requested) {
+                            const content = (0, agent_capabilities_1.buildAgentWidgetSnapshot)(requested, "", { ok: false, reason: "failed" }, { device, limit, offset: args === null || args === void 0 ? void 0 : args.offset });
+                            return { structuredContent: content, result: JSON.stringify(content) };
+                        }
+                        return { error: "widget snapshot unavailable" };
+                    }
+                },
+            },
+            {
+                // 工作区上下文（第三层）：活动文档/页签/文档集/快捷入口/今日日记一次只读汇总
+                spec: agent_capabilities_1.AGENT_CAPABILITY_SPECS.workspaceContext,
+                handler: async (args) => {
+                    var _a;
+                    try {
+                        const limit = (0, agent_capabilities_1.normalizeAgentLimit)(args === null || args === void 0 ? void 0 : args.limit, 12);
+                        const device = this.isMobile ? "mobile" : "desktop";
+                        const opened = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+                        const active = this.isMobile
+                            ? opened.find((tab) => tab.id === this.getMobileActiveTabId())
+                            : this.getActiveTab();
+                        const settings = this.getSettings();
+                        const storedActions = (0, quick_actions_1.sanitizeQuickActions)(settings.quickActions);
+                        const actionItems = (storedActions.items.length > 0 ? storedActions.items : (0, quick_actions_1.getDefaultQuickActions)())
+                            .filter((action) => (0, quick_actions_1.shouldRenderQuickAction)(action, device))
+                            .map((action) => ({ label: action.label, kind: action.kind }));
+                        // 今日日记只读探测：按日期前缀查当日文档（绝不调用 createDailyNote——那会创建）
+                        const journalNotebookId = (0, agent_capabilities_1.normalizeAgentNotebookId)(settings.journalNotebook);
+                        let todayJournal = {
+                            configured: false,
+                            docId: "",
+                            status: "unconfigured",
+                        };
+                        if (journalNotebookId) {
+                            todayJournal.configured = true;
+                            if (this.syncing) {
+                                todayJournal.status = "syncing";
+                            }
+                            else {
+                                const now = new Date();
+                                const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                                const journalJson = await this.fetchKernelJson("/api/query/sql", {
+                                    stmt: `SELECT id FROM blocks WHERE type='d' AND box='${journalNotebookId}' AND content LIKE '${prefix}%' ORDER BY created DESC LIMIT 1`,
+                                });
+                                if (!journalJson) {
+                                    todayJournal.status = "unavailable";
+                                }
+                                else {
+                                    const found = ((_a = (journalJson.data || [])[0]) === null || _a === void 0 ? void 0 : _a.id) || "";
+                                    if (constants_1.BLOCK_ID_RE.test(found)) {
+                                        todayJournal.docId = found;
+                                        todayJournal.status = "found";
+                                    }
+                                    else {
+                                        todayJournal.status = "missing";
+                                    }
+                                }
+                            }
+                        }
+                        todayJournal.status = (0, agent_capabilities_1.normalizeAgentJournalStatus)(todayJournal.status, todayJournal.configured, todayJournal.docId);
+                        const content = (0, agent_capabilities_1.buildAgentWorkspaceContext)({
+                            limit,
+                            generatedAt: Date.now(),
+                            syncing: this.syncing,
+                            device,
+                            // 存储演练健康（v0.20，D-386）：onload 只读快照透传给纯模型归一
+                            storageHealth: this.storageMigrationReport,
+                            activeDocument: { id: active ? (this.rootIdOf(active) || "") : "", title: active ? this.titleOf(active) : "" },
+                            openTabs: opened.map((tab) => ({
+                                id: this.rootIdOf(tab) || tab.id,
+                                title: this.titleOf(tab),
+                                source: "tabs",
+                            })),
+                            closedTabs: this.getClosedHistory().map((entry) => ({
+                                id: entry.rootId,
+                                rootId: entry.rootId,
+                                title: entry.title,
+                                ts: entry.closedAt,
+                                source: "closed",
+                            })),
+                            documentSets: this.getDocumentSets().map((set) => ({
+                                name: String((set === null || set === void 0 ? void 0 : set.name) || ""),
+                                count: Array.isArray(set === null || set === void 0 ? void 0 : set.entries) ? set.entries.length : 0,
+                            })),
+                            quickActions: actionItems,
+                            todayJournal,
+                        });
+                        return { structuredContent: content, result: JSON.stringify(content) };
+                    }
+                    catch (error) {
+                        logger_1.logger.warn("Agent workspace context unavailable", error);
+                        return { error: "workspace context unavailable" };
+                    }
+                },
+            },
+            {
+                spec: agent_capabilities_1.AGENT_CAPABILITY_SPECS.homeDiagnostics,
+                handler: async (args) => {
+                    var _a;
+                    try {
+                        const limit = (0, agent_capabilities_1.normalizeAgentLimit)(args === null || args === void 0 ? void 0 : args.limit, 16);
+                        const diagnostics = typeof this.homeRuntime.diagnostics === "function"
+                            ? this.homeRuntime.diagnostics()
+                            : [];
+                        const windowMinutes = Number.parseInt(String((_a = args === null || args === void 0 ? void 0 : args.windowMinutes) !== null && _a !== void 0 ? _a : ""), 10);
+                        const content = (0, agent_capabilities_1.buildAgentHomeDiagnostics)(diagnostics, limit, windowMinutes);
+                        return { structuredContent: content, result: JSON.stringify(content) };
+                    }
+                    catch (error) {
+                        logger_1.logger.warn("Agent home diagnostics unavailable", error);
+                        return { error: "home diagnostics unavailable" };
+                    }
+                },
+            },
+        ];
+        // v0.17 阶段 1（D-220）：workspace 运行时基础设施只读诊断。
+        // registry/queue/coordinator 生命周期与插件一致，卸载时统一销毁。
+        this.workspaceRuntimeDiagnostics = (0, agent_workspace_diagnostics_1.createWorkspaceRuntimeDiagnostics)();
+        if (this.workspaceRuntimeDiagnostics.validation.ok) {
+            readOnlyDefinitions.push({
+                spec: this.workspaceRuntimeDiagnostics.spec,
+                handler: (args) => {
+                    const runtime = this.workspaceRuntimeDiagnostics;
+                    if (!runtime)
+                        return { error: "workspace diagnostics unavailable" };
+                    return runtime.handler(args || {});
+                },
+            });
+        }
+        else {
+            logger_1.logger.warn("workspace runtime diagnostics definition invalid", this.workspaceRuntimeDiagnostics.validation);
+            this.workspaceRuntimeDiagnostics.dispose();
+            this.workspaceRuntimeDiagnostics = null;
+        }
+        const readonlyAudit = (0, agent_readonly_audit_1.summarizeAgentCapabilityAudit)((0, agent_readonly_audit_1.auditAgentCapabilityDefinitions)(readOnlyDefinitions));
+        if (!readonlyAudit.valid)
+            logger_1.logger.warn("Agent read-only capability audit rejected definitions", readonlyAudit);
+        this.agentReadOnlyAuditHistory.record((0, agent_readonly_audit_1.buildAgentReadOnlyAuditSnapshot)({
+            audit: readonlyAudit,
+            device: this.isMobile ? "mobile" : "desktop",
+            status: readonlyAudit.valid ? "ready" : "failed",
+            reason: readonlyAudit.valid ? "unavailable" : "failed",
+            disposed: false,
+        }));
+        (0, agent_capabilities_1.registerReadOnlyAgentCapabilities)(pluginWithAgent, readOnlyDefinitions, (error, spec) => logger_1.logger.warn(`register Agent capability ${(spec === null || spec === void 0 ? void 0 : spec.name) || "unknown"} fail`, error));
+    }
+    async searchAgentDocuments(args = {}) {
+        const query = (0, agent_capabilities_1.normalizeAgentQuery)(args.query);
+        if (!query) {
+            return { error: "query is required" };
+        }
+        const filters = {};
+        const hasNotebookArgument = args.notebook !== undefined && args.notebook !== null
+            && String(args.notebook).trim() !== "";
+        const notebook = (0, agent_capabilities_1.normalizeAgentNotebook)(args.notebook);
+        if (hasNotebookArgument && !notebook) {
+            return { error: "invalid notebook id" };
+        }
+        if (notebook)
+            filters.notebook = notebook;
+        if (args.paths !== undefined) {
+            if (!Array.isArray(args.paths) || args.paths.length > 8)
+                return { error: "invalid search path" };
+            const rawPaths = args.paths.map((value) => String(value || "").replace(/\\/g, "/").replace(/^\/+|\/+$/g, "")).filter(Boolean);
+            const paths = (0, agent_capabilities_1.normalizeAgentSearchPaths)(args.paths);
+            if (paths.length !== rawPaths.length || new Set(rawPaths).size !== rawPaths.length) {
+                return { error: "invalid search path" };
+            }
+            if (paths.length > 0)
+                filters.paths = paths;
+        }
+        const method = (0, agent_capabilities_1.normalizeAgentSearchMethod)(args.method);
+        const orderBy = (0, agent_capabilities_1.normalizeAgentSearchOrder)(args.orderBy);
+        const type = (0, agent_capabilities_1.normalizeAgentSearchType)(args.type);
+        const subType = (0, agent_capabilities_1.normalizeAgentSearchSubType)(args.subType);
+        if ((args.method !== undefined && !method)
+            || (args.orderBy !== undefined && !orderBy)
+            || (args.type !== undefined && !type)
+            || (args.subType !== undefined && !subType)) {
+            return { error: "invalid search filter" };
+        }
+        if (method !== "keyword")
+            filters.method = method;
+        if (orderBy !== "relevanceDesc")
+            filters.orderBy = orderBy;
+        if (type)
+            filters.types = { [type]: true };
+        if (subType)
+            filters.subTypes = { [subType]: true };
+        const limit = (0, agent_capabilities_1.normalizeAgentLimit)(args.limit, constants_1.DOC_RESULT_LIMIT);
+        const offset = (0, agent_capabilities_1.normalizeAgentSearchOffset)(args.offset);
+        // AbortController is optional in older embedded WebViews. The Agent
+        // request remains bounded by its local result limit and guards even
+        // when native cancellation is unavailable.
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        if (controller)
+            this.activeAgentSearchControllers.add(controller);
+        const signal = controller === null || controller === void 0 ? void 0 : controller.signal;
+        let deadlineExpired = false;
+        let timer = null;
+        const timeoutPromise = new Promise((_, reject) => {
+            timer = window.setTimeout(() => {
+                deadlineExpired = true;
+                controller === null || controller === void 0 ? void 0 : controller.abort();
+                reject(new Error("timeout"));
+            }, constants_1.NOTEBOOK_FETCH_TIMEOUT_MS);
+        });
+        try {
+            const localTabs = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+            const queryLower = query.toLocaleLowerCase();
+            const localItems = (0, search_model_1.canUseTitleSearch)(filters) ? localTabs.map((tab) => {
+                const rootId = this.rootIdOf(tab) || "";
+                const title = this.titleOf(tab);
+                const path = String(tab.path
+                    || tab.hPath || "");
+                const notebookId = (0, search_model_1.resolveSearchNotebookId)(tab);
+                if (notebook && notebookId !== notebook)
+                    return null;
+                if (filters.paths && doc_search_ui_1.filterDocSearchResults.call(this, [{ path, hPath: path, notebookId }], filters).length === 0)
+                    return null;
+                if (!`${title} ${path}`.toLocaleLowerCase().includes(queryLower))
+                    return null;
+                return {
+                    id: rootId || tab.id,
+                    rootId: rootId || undefined,
+                    title,
+                    path: path || undefined,
+                    notebookId: notebookId || undefined,
+                    source: "tabs",
+                };
+            }).filter(Boolean) : [];
+            // A local tab match already satisfies the requested bound. Avoid
+            // waking the file tree or full-text endpoint in that case.
+            if (offset === 0 && localItems.length >= limit) {
+                const content = (0, agent_capabilities_1.buildAgentSearchResult)(query, localItems, { source: "tabs", limit, offset });
+                return { structuredContent: content, result: JSON.stringify(content) };
+            }
+            let docs = [];
+            let titleSearchAvailable = true;
+            try {
+                if (!(0, search_model_1.canUseTitleSearch)(filters)) {
+                    throw new Error("advanced filters require native search");
+                }
+                const response = await Promise.race([fetch("/api/filetree/searchDocs", Object.assign({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ k: query }) }, (signal ? { signal } : {}))), timeoutPromise]);
+                if (!response.ok)
+                    throw new Error(`searchDocs HTTP ${response.status}`);
+                const json = await Promise.race([response.json(), timeoutPromise]);
+                const rawDocs = (0, search_model_1.extractSearchRecords)(json)
+                    .slice(0, agent_capabilities_1.MAX_SEARCH_ITEMS * 2)
+                    .filter((doc) => Boolean(doc) && typeof doc === "object");
+                // Native v3.8.x searchDocs records commonly contain only
+                // {path, hPath, box, boxIcon}. Normalize the root/title
+                // before applying Agent bounds, otherwise valid title hits
+                // would be discarded as unidentifiable objects.
+                docs = (0, search_model_1.normalizeTitleSearchDocuments)(rawDocs);
+                docs = doc_search_ui_1.filterDocSearchResults.call(this, docs, filters);
+            }
+            catch (error) {
+                const reason = (0, agent_capabilities_1.normalizeAgentFailureReason)(error, deadlineExpired);
+                if (reason === "cancelled" || reason === "timeout")
+                    throw error;
+                titleSearchAvailable = false;
+                logger_1.logger.warn("Agent title search unavailable", error);
+            }
+            let source = localItems.length > 0 ? "tabs" : "title";
+            if (docs.length === 0) {
+                const fallback = await Promise.race([
+                    doc_search_ui_1.runFullTextSearchFallback.call(this, query, signal, filters, Math.min(constants_1.DOC_SEARCH_FETCH_LIMIT, offset + limit + 1)),
+                    timeoutPromise,
+                ]);
+                if (fallback !== null) {
+                    docs = fallback;
+                    source = localItems.length > 0 ? "tabs+global" : "global";
+                }
+                else if (localItems.length === 0) {
+                    if (!titleSearchAvailable)
+                        return { error: "search unavailable" };
+                    const content = (0, agent_capabilities_1.buildAgentSearchResult)(query, [], { source: "title", limit, offset });
+                    return { structuredContent: content, result: JSON.stringify(content) };
+                }
+            }
+            else if (localItems.length > 0) {
+                source = "tabs+title";
+            }
+            const items = localItems.concat(docs.map((doc) => {
+                var _a;
+                return ({
+                    id: doc.id || doc.rootId,
+                    rootId: doc.rootId || doc.id,
+                    title: doc.title || doc.name,
+                    path: doc.path || doc.hPath,
+                    notebookId: doc.notebookId || doc.notebookID || doc.box,
+                    source: doc.source || (source.includes("title") ? "title" : source.includes("global") ? "global" : source),
+                    blockIds: doc.blockIds,
+                    snippets: (_a = doc.snippets) === null || _a === void 0 ? void 0 : _a.map((snippet) => (snippet === null || snippet === void 0 ? void 0 : snippet.text) || "").filter(Boolean),
+                });
+            }));
+            const content = (0, agent_capabilities_1.buildAgentSearchResult)(query, items, {
+                source,
+                limit,
+                offset,
+                truncated: docs.length > limit,
+            });
+            return { structuredContent: content, result: JSON.stringify(content) };
+        }
+        catch (error) {
+            const reason = (0, agent_capabilities_1.normalizeAgentFailureReason)(error, deadlineExpired);
+            if (reason === "timeout")
+                return { error: "search timed out" };
+            if (reason === "cancelled")
+                return { error: "search cancelled" };
+            logger_1.logger.warn("Agent search fail", error);
+            return { error: "search unavailable" };
+        }
+        finally {
+            if (timer !== null)
+                window.clearTimeout(timer);
+            if (controller)
+                this.activeAgentSearchControllers.delete(controller);
+        }
+    }
+    // 按关键字过滤卡片，整组无匹配时隐藏分组；返回可见卡片数
+    filterCards(scrollElement, keyword, contentRoots = new Set(), filters = this.docSearchState.filters.get(scrollElement) || {}, parsedQuery) {
+        const kw = keyword.trim().toLowerCase();
+        const parsed = parsedQuery || (0, search_model_1.parseSearchQuery)(keyword);
+        const parsedPositive = parsed.phrases.length + parsed.terms.length;
+        const pinyinOn = this.getSettings().pinyinMatch !== false;
+        const allowLocalTitleMatch = (!filters.method || filters.method === "keyword")
+            && (!filters.types || filters.types.document === true)
+            && !filters.subTypes;
+        const matchesScope = (0, search_model_1.buildSearchDocumentFilterMatcher)(filters);
+        let visible = 0;
+        scrollElement.querySelectorAll(".sw__card").forEach((card) => {
+            var _a;
+            const title = (card.dataset.title || "").toLowerCase();
+            const path = (card.dataset.searchPath || "").toLowerCase();
+            const rootId = card.dataset.rootId || "";
+            const matchesScopeCard = matchesScope({
+                path: card.dataset.searchPath || "",
+                hPath: card.dataset.searchPath || "",
+                notebookId: card.dataset.notebookId || "",
+            });
+            // T-6802：有解析结果时用运算符语义（短语+词 AND、排除项剔除），
+            // 否则维持旧的"原始子串包含"。
+            const titleMatch = parsedPositive > 0 || parsed.excludes.length > 0
+                ? (0, search_model_1.matchesParsedQuery)(title, parsed)
+                    || (pinyinOn && (parsed.terms.concat(parsed.phrases)).some((needle) => (0, search_model_1.pinyinTitleHit)(title, needle)))
+                : (!kw || title.includes(kw));
+            const pathMatch = parsedPositive > 0 || parsed.excludes.length > 0
+                ? (0, search_model_1.matchesParsedQuery)(path, parsed)
+                : (!kw || path.includes(kw));
+            const match = matchesScopeCard
+                && (!kw || (allowLocalTitleMatch && titleMatch) || contentRoots.has(rootId));
+            card.classList.toggle("fn__none", !match);
+            const contentHit = match && contentRoots.has(rootId) && !(allowLocalTitleMatch && (titleMatch || pathMatch));
+            card.dataset.swSearchMatch = contentHit ? "opened-content" : (match ? "title" : "");
+            const meta = card.querySelector(".sw__meta");
+            (_a = meta === null || meta === void 0 ? void 0 : meta.querySelector(".sw__search-match-source")) === null || _a === void 0 ? void 0 : _a.remove();
+            if (contentHit && meta) {
+                const source = document.createElement("span");
+                source.className = "sw__search-match-source";
+                source.textContent = this.i18n.docSearchSourceOpened;
+                source.setAttribute("aria-label", this.i18n.docSearchSourceOpened);
+                meta.appendChild(source);
+            }
+            if (match) {
+                visible++;
+            }
+        });
+        // 只处理页签卡片分组；全库文档结果区（.sw__doc-results）内部无卡片，
+        // 误判为空组会导致继续输入时文档区被 fn__none 永久隐藏
+        scrollElement.querySelectorAll(".sw__group:not(.sw__doc-results)").forEach((group) => {
+            const count = group.querySelectorAll(".sw__card:not(.fn__none)").length;
+            group.classList.toggle("fn__none", count === 0);
+        });
+        // T-6820：筛选改变可见集合后刷新数字角标
+        this.updateDigitBadges(scrollElement);
+        return visible;
+    }
+    // 渲染左侧侧边栏面板列表（文档树/大纲/书签/反链/关系图等，含其他插件注册的面板）
+    // mode：hidden 完全隐藏（保持 fn__none，内容区占满全宽）/ collapsed 折叠图标条 / full 完整列表
+    renderDockList(dockElement, dialog, excludedDocks, mode) {
+        if (!dockElement || mode === "hidden") {
+            return;
+        }
+        const excluded = new Set(excludedDocks);
+        const panels = this.getDockPanels().filter((panel) => !excluded.has(panel.type));
+        if (panels.length === 0) {
+            return;
+        }
+        dockElement.classList.remove("fn__none");
+        dockElement.innerHTML = "";
+        // 折叠 ⇄ 完整 切换按钮：弹窗内即时切换（不写回设置，设置只决定初始形态）
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "sw__dock-toggle b3-tooltips b3-tooltips__e";
+        const setToggleState = (collapsed) => {
+            toggle.setAttribute("aria-label", collapsed ? this.i18n.expandDock : this.i18n.collapseDock);
+            toggle.innerHTML = `<svg><use xlink:href="#${collapsed ? "iconRight" : "iconLeft"}"></use></svg>`;
+            dockElement.classList.toggle("sw__dock--collapsed", collapsed);
+        };
+        toggle.addEventListener("click", () => {
+            setToggleState(!dockElement.classList.contains("sw__dock--collapsed"));
+        });
+        setToggleState(mode === "collapsed");
+        dockElement.appendChild(toggle);
+        const label = document.createElement("div");
+        label.className = "sw__dock-label";
+        label.textContent = this.i18n.panels;
+        dockElement.appendChild(label);
+        panels.forEach((panel) => {
+            dockElement.appendChild(this.createDockItem(panel, dialog));
+        });
+    }
+    // 构建一个面板列表项（图标 + 名称），点击即激活该面板
+    createDockItem(panel, dialog) {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "sw__dock-item";
+        item.dataset.dockType = panel.type;
+        // 面板当前已展开时高亮标识
+        try {
+            if (document.querySelector(`.dock__item[data-type="${panel.type}"].dock__item--active`)) {
+                item.classList.add("sw__active");
+            }
+        }
+        catch (e) {
+            // 蹇界暐楂樹寒妫€娴嬪け璐?
+        }
+        const icon = document.createElement("span");
+        icon.className = "sw__dock-icon";
+        icon.innerHTML = `<svg><use xlink:href="#${panel.icon}"></use></svg>`;
+        const title = document.createElement("span");
+        title.className = "sw__dock-title";
+        title.textContent = panel.title;
+        item.appendChild(icon);
+        item.appendChild(title);
+        // 折叠模式下 hover 浮出的面板名称（完整模式由 CSS 隐藏）
+        const flyout = document.createElement("span");
+        flyout.className = "sw__dock-flyout";
+        flyout.textContent = panel.title;
+        item.appendChild(flyout);
+        item.addEventListener("click", () => this.activateDock(panel.type, dialog));
+        return item;
+    }
+    // 激活侧边栏面板并关闭切换器
+    activateDock(type, dialog) {
+        try {
+            const dock = this.getDockByType(type);
+            if (dock) {
+                // 与思源 Ctrl+Tab 切换面板一致：show=true 表示聚焦/展开该面板
+                dock.toggleModel(type, true);
+            }
+        }
+        catch (e) {
+            logger_1.logger.warn("switch dock fail", e);
+        }
+        dialog.destroy();
+    }
+    // 读取布局配置中的全部面板（左/右/下三侧 dock），只保留当前真实存在的面板
+    getDockPanels() {
+        var _a, _b;
+        const panels = [];
+        const seen = new Set();
+        try {
+            const uiLayout = (_b = (_a = (0, types_1.getSiyuan)()) === null || _a === void 0 ? void 0 : _a.config) === null || _b === void 0 ? void 0 : _b.uiLayout;
+            if (!uiLayout) {
+                return panels;
+            }
+            ["left", "right", "bottom"].forEach((position) => {
+                var _a;
+                const groups = (_a = uiLayout[position]) === null || _a === void 0 ? void 0 : _a.data;
+                if (!Array.isArray(groups)) {
+                    return;
+                }
+                groups.forEach((group) => {
+                    (group || []).forEach((item) => {
+                        if ((item === null || item === void 0 ? void 0 : item.type) && !seen.has(item.type) && this.getDockByType(item.type)) {
+                            seen.add(item.type);
+                            panels.push({
+                                type: item.type,
+                                title: (0, util_1.normalizeQuickActionText)(item.title || item.type, 80) || item.type,
+                                icon: item.icon || "iconDock",
+                            });
+                        }
+                    });
+                });
+            });
+        }
+        catch (e) {
+            logger_1.logger.warn("get dock panels fail", e);
+        }
+        return panels;
+    }
+    // 按 type 查找面板所属的 Dock（左侧/右侧/底部），与思源 getDockByType 行为一致
+    getDockByType(type) {
+        var _a, _b;
+        const layout = (_a = (0, types_1.getSiyuan)()) === null || _a === void 0 ? void 0 : _a.layout;
+        if (!layout) {
+            return undefined;
+        }
+        const sides = [layout.leftDock, layout.rightDock, layout.bottomDock];
+        for (const dock of sides) {
+            if ((_b = dock === null || dock === void 0 ? void 0 : dock.data) === null || _b === void 0 ? void 0 : _b[type]) {
+                return dock;
+            }
+        }
+        return undefined;
+    }
+    // 页签标题（优先取页签头已渲染文本）
+    titleOf(tab) {
+        var _a, _b, _c;
+        return ((_c = (_b = (_a = tab.headElement) === null || _a === void 0 ? void 0 : _a.querySelector(".item__text")) === null || _b === void 0 ? void 0 : _b.textContent) === null || _c === void 0 ? void 0 : _c.trim()) || tab.title || tab.id;
+    }
+    // 每次读取当前模型，避免同一页签导航到新文档后继续使用旧 rootID。
+    rootIdOf(tab) {
+        return (0, util_1.resolveTabRootId)(tab);
+    }
+    // 置顶键：文档页签用其 rootID（跨会话稳定，重开同一文档置顶状态保留），其余退回页签 id
+    pinKeyOf(tab) {
+        return this.rootIdOf(tab) || tab.id;
+    }
+    // 读取置顶列表
+    getPinned() {
+        const data = this.data[constants_1.PINNED_KEY];
+        const result = (0, util_1.sanitizeStringList)(data, constants_1.PINNED_MAX);
+        if (result.changed) {
+            this.data[constants_1.PINNED_KEY] = result.items;
+            this.saveDataDebounced(constants_1.PINNED_KEY);
+        }
+        return result.items;
+    }
+    // 切换置顶状态，返回切换后是否为置顶
+    togglePinned(tab) {
+        const key = this.pinKeyOf(tab);
+        const list = this.getPinned();
+        const index = list.indexOf(key);
+        if (index >= 0) {
+            list.splice(index, 1);
+            this.data[constants_1.PINNED_KEY] = list;
+            this.saveDataDebounced(constants_1.PINNED_KEY);
+            return false;
+        }
+        list.unshift(key);
+        if (list.length > constants_1.PINNED_MAX)
+            list.length = constants_1.PINNED_MAX;
+        this.data[constants_1.PINNED_KEY] = list;
+        this.saveDataDebounced(constants_1.PINNED_KEY);
+        return true;
+    }
+    // ==================== 收藏 ====================
+    // 读取收藏列表（最近收藏在前）
+    getFavorites() {
+        const data = this.data[constants_1.FAV_KEY];
+        const result = (0, util_1.sanitizeFavorites)(data, constants_1.FAVORITES_MAX);
+        if (result.changed) {
+            this.data[constants_1.FAV_KEY] = result.items;
+            this.saveDataDebounced(constants_1.FAV_KEY);
+        }
+        return result.items;
+    }
+    saveFavorites(list) {
+        this.data[constants_1.FAV_KEY] = (0, util_1.sanitizeFavorites)(list, constants_1.FAVORITES_MAX).items;
+        this.saveDataDebounced(constants_1.FAV_KEY);
+    }
+    // 切换收藏状态，返回切换后是否为已收藏
+    toggleFavorite(tab) {
+        const list = this.getFavorites();
+        const rootId = this.rootIdOf(tab);
+        if (!rootId) {
+            // 未解析页签（懒加载未激活）：key 会退化为一次性 tab.id，收藏后必然无法跳转，
+            // 星标还会在页签激活后错乱引发重复收藏。此处仅允许移除同键历史脏数据，拒绝新增
+            const index = list.findIndex((item) => item.key === tab.id);
+            if (index >= 0) {
+                list.splice(index, 1);
+                this.saveFavorites(list);
+                return false;
+            }
+            (0, siyuan_1.showMessage)(this.i18n.favNeedActivate);
+            return false;
+        }
+        if (this.migrateFavoriteKey(list, tab, rootId)) {
+            return true;
+        }
+        const index = list.findIndex((item) => item.key === rootId);
+        if (index >= 0) {
+            list.splice(index, 1);
+            this.saveFavorites(list);
+            return false;
+        }
+        list.unshift({ key: rootId, title: this.titleOf(tab), rootId, group: "" });
+        this.saveFavorites(list);
+        return true;
+    }
+    // 迁移历史脏收藏条目：旧版本曾把未解析页签的 tab.id（UUID）当作收藏 key，
+    // 此类条目 rootId 为空、跳转必然失效。页签激活解析出 rootId 后将其改写为稳定键；
+    // 若同文档已存在正常条目则脏条目属于历史重复，直接移除。返回是否发生了迁移
+    migrateFavoriteKey(list, tab, rootId) {
+        const result = (0, favorite_actions_1.migrateFavoriteEntry)(list, tab.id, rootId);
+        if (!result.migrated)
+            return false;
+        list.splice(0, list.length, ...result.items);
+        this.saveFavorites(list);
+        return true;
+    }
+    removeFavorite(key) {
+        const result = (0, favorite_actions_1.removeFavoriteEntry)(this.getFavorites(), key);
+        if (result.changed)
+            this.saveFavorites(result.items);
+    }
+    // ==================== 收藏分组折叠状态持久化 ====================
+    // 分组折叠偏好此前是会话级的（重启即全部展开）；改为持久化，重启后保持用户上次的展开/折叠习惯
+    // 从持久化数据初始化 favCollapsed 集合
+    initFavCollapsed() {
+        const saved = this.data[constants_1.FAV_COLLAPSED_KEY];
+        // T-7184：以持久化快照重建集合（历史只追加——远端展开/删除分组的折叠项
+        // 残留本地内存，跨设备折叠状态无法收敛）。快照即真相：损坏/缺失 = 全部展开。
+        const next = new Set();
+        if (Array.isArray(saved)) {
+            saved.forEach((name) => {
+                if (typeof name === "string" && name) {
+                    next.add(name);
+                }
+            });
+        }
+        this.favCollapsed = next;
+    }
+    // 鎶樺彔/灞曞紑鐘舵€佸彉鍖栧悗鍘绘姈鍐欏叆鎸佷箙鍖?
+    saveFavCollapsed() {
+        this.data[constants_1.FAV_COLLAPSED_KEY] = Array.from(this.favCollapsed);
+        this.saveDataDebounced(constants_1.FAV_COLLAPSED_KEY);
+    }
+    // 桌面端顶部的最近打开记录。历史与 MRU 分离，保留关闭页签后仍可重开的文档。
+    setupOpenHistoryDropdown(container, onClose) {
+        if (!container)
+            return () => undefined;
+        const previous = this.historyDropdownClosers.get(container);
+        previous === null || previous === void 0 ? void 0 : previous.dispose();
+        container.innerHTML = `<button type="button" class="sw__history-trigger" aria-label="${this.i18n.openHistory}">
+    <svg width="13" height="13"><use xlink:href="#iconClock"></use></svg><span class="sw__history-trigger-text">${this.i18n.openHistory}</span><span class="sw__history-badge"></span>
+</button><div class="sw__history-panel fn__none" role="menu"></div>`;
+        const trigger = container.querySelector(".sw__history-trigger");
+        const panel = container.querySelector(".sw__history-panel");
+        if (!trigger || !panel)
+            return () => undefined;
+        trigger.setAttribute("aria-haspopup", "menu");
+        trigger.setAttribute("aria-expanded", "false");
+        let outsideHandler = null;
+        let resizeHandler = null;
+        const close = () => {
+            const focusInside = panel.contains(document.activeElement);
+            panel.classList.add("fn__none");
+            trigger.setAttribute("aria-expanded", "false");
+            if (outsideHandler)
+                document.removeEventListener("pointerdown", outsideHandler, true);
+            if (resizeHandler)
+                window.removeEventListener("resize", resizeHandler);
+            outsideHandler = null;
+            resizeHandler = null;
+            if (focusInside && trigger.isConnected)
+                trigger.focus({ preventScroll: true });
+        };
+        panel.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape" || panel.classList.contains("fn__none"))
+                return;
+            event.preventDefault();
+            event.stopPropagation();
+            close();
+        });
+        let disposed = false;
+        const dispose = () => {
+            var _a;
+            if (disposed)
+                return;
+            disposed = true;
+            close();
+            if (((_a = this.historyDropdownClosers.get(container)) === null || _a === void 0 ? void 0 : _a.dispose) === dispose)
+                this.historyDropdownClosers.delete(container);
+            this.historyDropdownCloseSet.delete(dispose);
+        };
+        this.historyDropdownClosers.set(container, { close, dispose });
+        this.historyDropdownCloseSet.add(dispose);
+        let historySyncState = "idle";
+        const renderSyncFailure = () => {
+            const failure = document.createElement("div");
+            failure.className = "sw__history-sync-error";
+            failure.setAttribute("role", "alert");
+            failure.textContent = this.i18n.historySyncFailed;
+            const retry = document.createElement("button");
+            retry.type = "button";
+            retry.className = "b3-button b3-button--text sw__history-sync-retry";
+            retry.textContent = this.i18n.homeRetry;
+            retry.setAttribute("aria-label", this.i18n.historySyncRetry);
+            retry.addEventListener("click", (event) => {
+                event.stopPropagation();
+                close();
+                trigger.click();
+            });
+            failure.appendChild(retry);
+            panel.prepend(failure);
+        };
+        trigger.addEventListener("click", async () => {
+            if (!panel.classList.contains("fn__none")) {
+                close();
+                return;
+            }
+            if (trigger.disabled)
+                return;
+            trigger.disabled = true;
+            trigger.setAttribute("aria-busy", "true");
+            historySyncState = "loading";
+            let syncResult = "failed";
+            try {
+                syncResult = await this.syncOfficialRecentHistory();
+            }
+            catch (error) {
+                logger_1.logger.warn("sync recent history fail", error);
+                syncResult = "failed";
+            }
+            finally {
+                trigger.removeAttribute("aria-busy");
+                if (trigger.isConnected)
+                    trigger.disabled = false;
+            }
+            historySyncState = syncResult;
+            if (disposed || !panel.isConnected)
+                return;
+            // T-6799b "只看有改动"：开关状态与内核更新时间缓存在下拉生命周期内保持；
+            // 过滤真值 = 内核 blocks.updated 落在窗口期（默认 7 天）内。
+            let changedOnly = false;
+            let changedUpdatedMap = null;
+            let changedOnlyLoadFailed = false;
+            const toggle = document.createElement("button");
+            toggle.type = "button";
+            toggle.className = "b3-button b3-button--text sw__history-changed-toggle";
+            toggle.textContent = this.i18n.historyChangedOnly;
+            const renderPanel = () => {
+                const windowStart = changedOnly && changedUpdatedMap ? (0, recent_closed_1.formatChangedWindowStart)(Date.now()) : "";
+                const filter = changedOnly && changedUpdatedMap
+                    ? (entry) => (0, recent_closed_1.entryChangedWithin)(entry, changedUpdatedMap, windowStart)
+                    : undefined;
+                this.renderOpenHistoryPanel(panel, (entry) => {
+                    close();
+                    onClose();
+                    void this.openHistoryEntry(entry);
+                }, filter, changedOnly ? () => {
+                    changedOnly = false;
+                    changedOnlyLoadFailed = false;
+                    renderPanel();
+                } : undefined);
+                panel.prepend(toggle);
+                toggle.setAttribute("aria-pressed", String(changedOnly));
+                if (changedOnlyLoadFailed) {
+                    const failure = document.createElement("div");
+                    failure.className = "sw__history-sync-error";
+                    failure.setAttribute("role", "alert");
+                    failure.textContent = this.i18n.historyChangedLoadFailed;
+                    const retry = document.createElement("button");
+                    retry.type = "button";
+                    retry.className = "b3-button b3-button--text sw__history-sync-retry";
+                    retry.textContent = this.i18n.homeRetry;
+                    retry.setAttribute("aria-label", this.i18n.historyChangedRetry);
+                    retry.addEventListener("click", (event) => {
+                        event.stopPropagation();
+                        changedOnlyLoadFailed = false;
+                        toggle.click();
+                    });
+                    failure.appendChild(retry);
+                    panel.insertBefore(failure, toggle.nextSibling);
+                }
+            };
+            toggle.addEventListener("click", async () => {
+                if (toggle.disabled)
+                    return;
+                changedOnly = !changedOnly;
+                toggle.setAttribute("aria-pressed", String(changedOnly));
+                if (changedOnly && !changedUpdatedMap) {
+                    toggle.disabled = true;
+                    toggle.setAttribute("aria-busy", "true");
+                    const ids = [
+                        ...this.getOpenHistory().map((entry) => entry.rootId || ""),
+                        ...this.getClosedHistory().map((entry) => entry.rootId || ""),
+                    ].filter((id) => constants_1.BLOCK_ID_RE.test(id));
+                    try {
+                        changedUpdatedMap = await this.fetchDocUpdatedMap(ids);
+                        changedOnlyLoadFailed = false;
+                    }
+                    catch (error) {
+                        logger_1.logger.warn("load changed history fail", error);
+                        changedOnly = false;
+                        changedOnlyLoadFailed = true;
+                    }
+                    finally {
+                        toggle.removeAttribute("aria-busy");
+                        if (toggle.isConnected)
+                            toggle.disabled = false;
+                    }
+                }
+                if (disposed || !panel.isConnected)
+                    return;
+                renderPanel();
+            });
+            renderPanel();
+            if (historySyncState === "failed")
+                renderSyncFailure();
+            panel.classList.remove("fn__none");
+            trigger.setAttribute("aria-expanded", "true");
+            this.positionOpenHistoryPanel(trigger, panel);
+            outsideHandler = (event) => { if (!container.contains(event.target))
+                close(); };
+            document.addEventListener("pointerdown", outsideHandler, true);
+            resizeHandler = () => {
+                if (!panel.classList.contains("fn__none"))
+                    this.positionOpenHistoryPanel(trigger, panel);
+            };
+            window.addEventListener("resize", resizeHandler);
+        });
+        this.refreshOpenHistoryDropdown(container);
+        return dispose;
+    }
+    // T-6799b：批量取文档根块的 updated（内核 14 位时间戳），32 条/块的有界分批。
+    async fetchDocUpdatedMap(rootIds) {
+        const result = new Map();
+        const valid = Array.from(new Set(rootIds.filter((id) => constants_1.BLOCK_ID_RE.test(id))));
+        for (let index = 0; index < valid.length; index += 32) {
+            const chunk = valid.slice(index, index + 32);
+            const list = chunk.map((id) => `'${id}'`).join(",");
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, updated FROM blocks WHERE id IN (${list})`,
+            });
+            if (json === null || json === undefined || !Array.isArray(json === null || json === void 0 ? void 0 : json.data)) {
+                throw new Error("history-updated-query-unavailable");
+            }
+            json.data.forEach((row) => {
+                if (typeof (row === null || row === void 0 ? void 0 : row.id) !== "string" || !constants_1.BLOCK_ID_RE.test(row.id) || typeof row.updated !== "string") {
+                    throw new Error("history-updated-row-invalid");
+                }
+                result.set(row.id, row.updated);
+            });
+        }
+        return result;
+    }
+    async syncOfficialRecentHistory() {
+        const json = await this.fetchKernelJson("/api/storage/getRecentDocs", {});
+        const result = (0, recent_closed_1.normalizeOfficialRecentHistory)(json, (id) => constants_1.BLOCK_ID_RE.test(id), Date.now(), constants_1.HISTORY_MAX);
+        if (result.status === "success") {
+            this.data[constants_1.HISTORY_KEY] = result.items;
+            this.saveDataDebounced(constants_1.HISTORY_KEY);
+        }
+        return result.status;
+    }
+    positionOpenHistoryPanel(trigger, panel) {
+        const rect = trigger.getBoundingClientRect();
+        const margin = 6;
+        const width = Math.min(300, Math.max(220, window.innerWidth - margin * 2));
+        const left = Math.max(margin, Math.min(rect.right - width, window.innerWidth - width - margin));
+        const top = rect.bottom + margin;
+        panel.style.width = `${Math.round(width)}px`;
+        panel.style.left = `${Math.round(left)}px`;
+        panel.style.top = `${Math.round(Math.min(top, window.innerHeight - 180))}px`;
+        panel.style.maxHeight = `${Math.max(140, window.innerHeight - top - margin)}px`;
+    }
+    renderOpenHistoryPanel(panel, onPick, entryFilter, onShowAll) {
+        panel.innerHTML = "";
+        const opened = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+        const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
+        const openedRoots = new Set(opened.map((tab) => this.rootIdOf(tab)).filter(Boolean));
+        const sections = (0, recent_closed_1.buildRecentHistorySections)(this.getOpenHistory(), this.getClosedHistory(), openedRoots);
+        if (sections.count === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw__history-empty";
+            empty.textContent = entryFilter ? this.i18n.historyChangedEmpty : this.i18n.noOpenHistory;
+            panel.appendChild(empty);
+            if (entryFilter && onShowAll) {
+                const showAll = document.createElement("button");
+                showAll.type = "button";
+                showAll.className = "b3-button b3-button--text sw__history-show-all";
+                showAll.textContent = this.i18n.historyChangedShowAll;
+                showAll.addEventListener("click", onShowAll);
+                panel.appendChild(showAll);
+            }
+            return;
+        }
+        let shown = 0;
+        // P7：每区默认展示前 8 条，保证两个分区首屏均可达
+        const HISTORY_CAP = 8;
+        const appendSection = (title, entries, clearLabel, clearAction) => {
+            const visible = typeof entryFilter === "function" ? entries.filter(entryFilter) : entries;
+            if (visible.length === 0)
+                return;
+            shown += visible.length;
+            const heading = document.createElement("div");
+            heading.className = "sw__history-section-title";
+            heading.textContent = `${title} (${visible.length})`;
+            panel.appendChild(heading);
+            const clear = document.createElement("button");
+            clear.type = "button";
+            clear.className = "sw__history-clear";
+            clear.textContent = clearLabel;
+            clear.addEventListener("click", (event) => {
+                event.stopPropagation();
+                clearAction();
+            });
+            panel.appendChild(clear);
+            const renderItem = (entry) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = `sw__history-item${entry.source === "closed" ? " sw__history-item--closed" : ""}`;
+                item.setAttribute("role", "menuitem");
+                item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span class="sw__history-copy"><span class="sw__history-title"></span><span class="sw__history-meta"></span></span>`;
+                item.querySelector(".sw__history-title").textContent = entry.title;
+                item.querySelector(".sw__history-meta").textContent = entry.source === "closed"
+                    ? this.i18n.historyClosed
+                    : openedKeys.has(entry.key) ? this.i18n.historyOpen : this.i18n.historyClosed;
+                item.title = entry.title;
+                this.bindHistoryItemActions(item, entry, onPick);
+                panel.appendChild(item);
+            };
+            // P7：每区默认前 8 条，超出显示展开按钮
+            const cap = Math.min(visible.length, 8);
+            for (let i = 0; i < cap; i++)
+                renderItem(visible[i]);
+            if (visible.length > cap) {
+                const expand = document.createElement("button");
+                expand.type = "button";
+                expand.className = "sw__history-expand";
+                expand.textContent = `${this.i18n.historyExpand} (${visible.length - cap})`;
+                expand.addEventListener("click", () => {
+                    expand.remove();
+                    for (let i = cap; i < visible.length; i++)
+                        renderItem(visible[i]);
+                });
+                panel.appendChild(expand);
+            }
+        };
+        appendSection(this.i18n.historyOpenSection, sections.open, this.i18n.clearOpenHistory, () => {
+            if (!confirm(this.i18n.clearOpenHistoryConfirm))
+                return;
+            this.data[constants_1.HISTORY_KEY] = [];
+            this.saveDataDebounced(constants_1.HISTORY_KEY);
+            this.refreshOpenHistoryDropdowns();
+        });
+        appendSection(this.i18n.historyClosedSection, sections.closed, this.i18n.clearClosedHistory, () => {
+            if (!confirm(this.i18n.clearClosedHistoryConfirm))
+                return;
+            this.data[constants_1.CLOSED_HISTORY_KEY] = [];
+            this.saveDataDebounced(constants_1.CLOSED_HISTORY_KEY);
+            this.refreshOpenHistoryDropdowns();
+        });
+        if (shown === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw__history-empty";
+            empty.textContent = this.i18n.historyChangedEmpty;
+            panel.appendChild(empty);
+            if (onShowAll) {
+                const showAll = document.createElement("button");
+                showAll.type = "button";
+                showAll.className = "b3-button b3-button--text sw__history-show-all";
+                showAll.textContent = this.i18n.historyChangedShowAll;
+                showAll.addEventListener("click", onShowAll);
+                panel.appendChild(showAll);
+            }
+        }
+    }
+    bindHistoryItemActions(item, entry, onPick) {
+        let timer = null;
+        let longPressed = false;
+        let x = 0;
+        let y = 0;
+        const clearTimer = () => {
+            if (timer !== null)
+                window.clearTimeout(timer);
+            timer = null;
+        };
+        const openMenu = (clientX, clientY) => {
+            this.closeHistoryMenu();
+            const menu = new siyuan_1.Menu("swHistoryItemMenu");
+            this.activeHistoryMenu = menu;
+            menu.addItem({ label: this.i18n.historyOpenAction, icon: "iconOpen", click: () => onPick(entry) });
+            menu.addItem({ label: this.i18n.historyRemove, icon: "iconTrashcan", click: () => {
+                    if (entry.source === "closed")
+                        this.removeClosedHistoryEntry(entry.rootId || entry.key);
+                    else
+                        this.removeOpenHistoryEntry(entry.key);
+                    this.refreshOpenHistoryDropdowns();
+                } });
+            menu.open({ x: clientX, y: clientY });
+        };
+        item.addEventListener("click", (event) => {
+            if (longPressed) {
+                longPressed = false;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
+            onPick(entry);
+        });
+        item.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openMenu(event.clientX, event.clientY);
+        });
+        item.addEventListener("touchstart", (event) => {
+            const touch = event.touches[0];
+            x = (touch === null || touch === void 0 ? void 0 : touch.clientX) || 0;
+            y = (touch === null || touch === void 0 ? void 0 : touch.clientY) || 0;
+            longPressed = false;
+            clearTimer();
+            timer = window.setTimeout(() => {
+                timer = null;
+                longPressed = true;
+                openMenu(x, y);
+            }, 500);
+        }, { passive: true });
+        item.addEventListener("touchmove", clearTimer, { passive: true });
+        item.addEventListener("touchcancel", clearTimer);
+        item.addEventListener("touchend", (event) => {
+            clearTimer();
+            if (longPressed) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        }, { passive: false });
+    }
+    async openHistoryEntry(entry) {
+        const opened = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+        const current = opened.find((tab) => this.pinKeyOf(tab) === entry.key);
+        if (current) {
+            this.activateTab(current);
+            return;
+        }
+        // T-6801：切换离开前记录当前活动文档的滚动现场（若活动编辑器可读）
+        this.captureActiveDocScroll();
+        // T-6806：切换离开前记录跳转原点（后退栈）
+        this.captureJumpOrigin();
+        if (!entry.rootId || !constants_1.BLOCK_ID_RE.test(entry.rootId)) {
+            if (entry.source === "closed")
+                this.removeClosedHistoryEntry(entry.rootId || entry.key);
+            else
+                this.removeOpenHistoryEntry(entry.key);
+            (0, siyuan_1.showMessage)(this.i18n.historyInvalid);
+            return;
+        }
+        if (this.isMobile) {
+            const opened = await this.mobileOpenDoc(entry.rootId);
+            if (!opened) {
+                if (entry.source === "closed")
+                    this.removeClosedHistoryEntry(entry.rootId);
+                (0, siyuan_1.showMessage)(this.i18n.openDocFailed);
+            }
+        }
+        else {
+            const opened = await (0, document_actions_1.openDocumentOnDesktop)({
+                rootId: entry.rootId,
+                app: this.app,
+                openTab: siyuan_1.openTab,
+                logger: logger_1.logger,
+            });
+            if (!opened) {
+                if (entry.source === "closed")
+                    this.removeClosedHistoryEntry(entry.rootId || entry.key);
+                else
+                    this.removeOpenHistoryEntry(entry.key);
+                (0, siyuan_1.showMessage)(this.i18n.openDocFailed);
+            }
+            else {
+                // T-6801 重开现场：会话内有过离开记录的文档按比例回卷滚动位置
+                this.applyDocScrollAfterOpen(entry.rootId);
+            }
+        }
+    }
+    captureDocScrollFromElement(rootId, element) {
+        if (this.getSettings().rememberScrollPosition === false) {
+            this.docScrollMemory.clear();
+            return;
+        }
+        if (!constants_1.BLOCK_ID_RE.test(rootId))
+            return;
+        const container = element.querySelector(".protyle-content");
+        if (!container)
+            return;
+        const ratio = (0, recent_closed_1.computeScrollRatio)(container.scrollTop, container.scrollHeight, container.clientHeight);
+        if (ratio <= 0) {
+            this.docScrollMemory.delete(rootId);
+            return;
+        }
+        this.docScrollMemory.set(rootId, ratio);
+        while (this.docScrollMemory.size > 50) {
+            const oldest = this.docScrollMemory.keys().next().value;
+            if (oldest === undefined)
+                break;
+            this.docScrollMemory.delete(oldest);
+        }
+    }
+    captureActiveDocScroll() {
+        var _a, _b;
+        if (this.getSettings().rememberScrollPosition === false) {
+            this.docScrollMemory.clear();
+            return;
+        }
+        const editor = this.resolveActiveHostEditor();
+        const element = (_a = editor === null || editor === void 0 ? void 0 : editor.protyle) === null || _a === void 0 ? void 0 : _a.element;
+        if (!element)
+            return;
+        const rootId = ((_b = editor.protyle.block) === null || _b === void 0 ? void 0 : _b.parentID) || "";
+        this.captureDocScrollFromElement(rootId, element);
+    }
+    applyDocScrollAfterOpen(rootId) {
+        if (this.getSettings().rememberScrollPosition === false) {
+            this.docScrollMemory.clear();
+            return;
+        }
+        const ratio = this.docScrollMemory.get(rootId);
+        if (typeof ratio !== "number" || !Number.isFinite(ratio))
+            return;
+        let attempts = 0;
+        const tick = () => {
+            var _a;
+            const editor = this.resolveActiveHostEditor();
+            const element = (_a = editor === null || editor === void 0 ? void 0 : editor.protyle) === null || _a === void 0 ? void 0 : _a.element;
+            const container = element === null || element === void 0 ? void 0 : element.querySelector(".protyle-content");
+            if (container && container.scrollHeight > container.clientHeight) {
+                const plan = (0, recent_closed_1.planScrollRestore)({ scrollTop: container.scrollTop, scrollHeight: container.scrollHeight, clientHeight: container.clientHeight }, ratio);
+                if (plan)
+                    container.scrollTop = plan.top;
+                return;
+            }
+            if (attempts++ < 30)
+                window.setTimeout(tick, 50);
+        };
+        tick();
+    }
+    refreshOpenHistoryDropdowns() {
+        this.closeHistoryMenu();
+        document.querySelectorAll(".sw__history-dd").forEach((container) => this.refreshOpenHistoryDropdown(container));
+    }
+    closeHistoryMenu() {
+        if (!this.activeHistoryMenu)
+            return;
+        try {
+            this.activeHistoryMenu.close();
+        }
+        catch (error) {
+            logger_1.logger.warn("close history menu fail", error);
+        }
+        this.activeHistoryMenu = null;
+    }
+    refreshOpenHistoryDropdown(container) {
+        var _a, _b;
+        (_a = this.historyDropdownClosers.get(container)) === null || _a === void 0 ? void 0 : _a.close();
+        const badge = container.querySelector(".sw__history-badge");
+        if (badge) {
+            const openedRoots = new Set((this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)())
+                .map((tab) => this.rootIdOf(tab)).filter(Boolean));
+            const count = (0, recent_closed_1.buildRecentHistorySections)(this.getOpenHistory(), this.getClosedHistory(), openedRoots).count;
+            badge.textContent = String(count);
+            badge.classList.toggle("fn__none", count === 0);
+        }
+        (_b = container.querySelector(".sw__history-panel")) === null || _b === void 0 ? void 0 : _b.classList.add("fn__none");
+    }
+    // ==================== 收藏下拉组件 ====================
+    // 原生 select 的 optgroup 无法折叠且样式简陋，改为自定义下拉：
+    // 触发按钮（星标 + 数量徽标）+ 浮层面板（分组标题可折叠/展开，组内项点击跳转）
+    // 初始化一个收藏下拉组件（弹窗与侧边栏各一份）
+    // onClose：选择收藏项后的收尾（弹窗销毁 / 侧边栏刷新），组件内部还会同时收起面板
+    setupFavDropdown(container, onClose, onChanged = () => undefined) {
+        container.innerHTML = `<button type="button" class="sw__fav-trigger">
+    <svg><use xlink:href="#iconStar"></use></svg>
+    <span class="sw__fav-trigger-text">${this.i18n.favorites}</span>
+    <span class="sw__fav-badge fn__none"></span>
+</button>
+<div class="sw__fav-panel fn__none"></div>`;
+        const trigger = container.querySelector(".sw__fav-trigger");
+        const panel = container.querySelector(".sw__fav-panel");
+        trigger === null || trigger === void 0 ? void 0 : trigger.setAttribute("aria-haspopup", "menu");
+        trigger === null || trigger === void 0 ? void 0 : trigger.setAttribute("aria-expanded", "false");
+        // 面板打开期间才监听 DOM 变化：容器被移除（弹窗销毁/侧边栏重渲染）时解绑全局监听；
+        // 面板关闭即 disconnect，避免 body 级 MutationObserver 随编辑操作全局常驻
+        const observer = typeof MutationObserver === "function" ? new MutationObserver(() => {
+            if (!container.isConnected) {
+                unbindGlobal();
+            }
+        }) : null;
+        let repositionRaf = 0;
+        const unbindGlobal = () => {
+            if (repositionRaf) {
+                window.cancelAnimationFrame(repositionRaf);
+                repositionRaf = 0;
+            }
+            document.removeEventListener("pointerdown", onDocPointerDown, true);
+            window.removeEventListener("resize", onReposition);
+            document.removeEventListener("scroll", onReposition, true);
+            observer === null || observer === void 0 ? void 0 : observer.disconnect();
+        };
+        // 收起面板并停止 DOM 观察（三条收起路径共用：再次点击触发器 / 点击外部 / 选中收藏项）。
+        // T-7181：关闭即释放——pointerdown/resize/scroll 与 body 观察器同步解绑，
+        // 不再等下一次全局点击兜底。
+        const closePanel = () => {
+            var _a;
+            panel.classList.add("fn__none");
+            const focusInside = (_a = panel === null || panel === void 0 ? void 0 : panel.contains(document.activeElement)) !== null && _a !== void 0 ? _a : false;
+            trigger === null || trigger === void 0 ? void 0 : trigger.setAttribute("aria-expanded", "false");
+            // 全局监听仅在面板展开期间存在，关闭后立即释放。
+            unbindGlobal();
+            if (focusInside && (trigger === null || trigger === void 0 ? void 0 : trigger.isConnected))
+                trigger.focus({ preventScroll: true });
+        };
+        panel === null || panel === void 0 ? void 0 : panel.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape" || panel.classList.contains("fn__none"))
+                return;
+            event.preventDefault();
+            event.stopPropagation();
+            closePanel();
+        });
+        // 点击外部收起面板；面板关闭期间 MutationObserver 已停止，
+        // 宿主容器被移除后由这次全局点击兜底解绑全部监听
+        const onDocPointerDown = (event) => {
+            if (!container.isConnected) {
+                unbindGlobal();
+                return;
+            }
+            if (!container.contains(event.target)) {
+                closePanel();
+            }
+        };
+        // 视口尺寸/滚动变化时重新贴位（fixed 定位不随文档流移动，RAF 节流）
+        const onReposition = () => {
+            if (repositionRaf)
+                return;
+            repositionRaf = window.requestAnimationFrame(() => {
+                repositionRaf = 0;
+                if (!panel.classList.contains("fn__none") && container.isConnected) {
+                    this.positionFavPanel(trigger, panel);
+                }
+            });
+        };
+        trigger.addEventListener("click", () => {
+            const willOpen = panel.classList.contains("fn__none");
+            if (willOpen) {
+                this.renderFavPanel(panel, () => {
+                    closePanel();
+                    onClose();
+                }, onChanged);
+                panel.classList.remove("fn__none");
+                trigger.setAttribute("aria-expanded", "true");
+                this.positionFavPanel(trigger, panel);
+                document.addEventListener("pointerdown", onDocPointerDown, true);
+                window.addEventListener("resize", onReposition);
+                document.addEventListener("scroll", onReposition, { capture: true, passive: true });
+                observer === null || observer === void 0 ? void 0 : observer.observe(document.body, { childList: true, subtree: true });
+            }
+            else {
+                closePanel();
+            }
+        });
+        this.refreshFavDropdown(container);
+    }
+    // 计算收藏下拉面板坐标：fixed 定位脱离侧边栏/弹窗的 overflow 裁剪，
+    // 宽度按宿主（切换器弹窗或侧边栏面板）与视口的可用空间收缩，
+    // 优先与触发器右对齐、出现在下方；左侧越界贴宿主左缘，下方空间不足翻转到上方
+    positionFavPanel(trigger, panel) {
+        const rect = trigger.getBoundingClientRect();
+        const margin = 6;
+        let minLeft = margin;
+        let maxRight = window.innerWidth - margin;
+        const host = trigger.closest(".speed-switch");
+        if (host) {
+            const hostRect = host.getBoundingClientRect();
+            minLeft = Math.max(minLeft, hostRect.left + 2);
+            maxRight = Math.min(maxRight, hostRect.right - 2);
+        }
+        // 宽度：理想 FAV_PANEL_WIDTH_PX，按宿主/视口可用空间收缩，确保不超出侧边栏
+        const avail = Math.max(0, maxRight - minLeft);
+        const width = Math.min(constants_1.FAV_PANEL_WIDTH_PX, avail);
+        let left = Math.min(Math.max(rect.right - width, minLeft), maxRight - width);
+        // 垂直：默认在触发器下方，剩余空间不足时翻转到触发器上方
+        let top = rect.bottom + margin;
+        let maxHeight = window.innerHeight - margin - top;
+        if (maxHeight < 180) {
+            const over = Math.min(constants_1.FAV_PANEL_MAX_HEIGHT_PX, rect.top - margin * 2);
+            top = Math.max(margin, rect.top - margin - over);
+            maxHeight = rect.top - margin - top;
+        }
+        panel.style.width = `${width}px`;
+        panel.style.left = `${Math.round(left)}px`;
+        panel.style.top = `${Math.round(top)}px`;
+        panel.style.maxHeight = `${Math.max(constants_1.FAV_PANEL_MIN_HEIGHT_PX, Math.round(maxHeight))}px`;
+    }
+    // 渲染下拉面板内容：分组标题（点击折叠/展开）+ 组内收藏项（点击跳转）
+    renderFavPanel(panel, onPick, onChanged = () => undefined) {
+        panel.innerHTML = "";
+        const favorites = this.getFavorites();
+        const groupNames = this.getFavoriteGroupNames();
+        // 既无收藏也无分组才提示空态；仅有空分组时仍展示分组（数量 0），与设置页保持一致
+        if (favorites.length === 0 && groupNames.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw__fav-empty";
+            empty.setAttribute("role", "status");
+            empty.textContent = this.i18n.noFavorites;
+            panel.appendChild(empty);
+            return;
+        }
+        // 按分组归类（分组顺序 = 注册表新建顺序在前；注册表中的空分组也占位，数量显示 0）
+        const groups = (0, util_1.groupFavoritesByGroup)(favorites, groupNames);
+        // 有分组时未分组的置底显示为「未分组」；无任何分组时平铺不显示组头
+        const groupedNames = Array.from(groups.keys()).filter((name) => name !== "");
+        const ungrouped = groups.get("") || [];
+        if (!groupedNames.length) {
+            this.appendFavFlatList(panel, ungrouped, onPick, onChanged);
+        }
+        else {
+            groupedNames.forEach((name) => this.appendFavGroup(panel, name, groups.get(name) || [], onPick, onChanged));
+            if (ungrouped.length > 0) {
+                this.appendFavGroup(panel, this.i18n.ungrouped, ungrouped, onPick, onChanged);
+            }
+        }
+        // T-6804 标签智能分组：动态分区置于静态分组之后，按需拉取（面板打开时一次）
+        const smartGroups = this.getSettings().favoriteSmartGroups || [];
+        smartGroups.forEach((group) => this.appendFavSmartGroup(panel, group, onPick, onChanged));
+    }
+    // T-6804 智能分组分区：壳体先渲染（加载态），内核按需返回后填充条目。
+    // 条目为只读投影：点击跳转，不提供静态收藏的移动/取消菜单。
+    appendFavSmartGroup(panel, group, onPick, onChanged = () => undefined) {
+        const groupEl = document.createElement("div");
+        groupEl.className = "sw__fav-group sw__fav-group--smart";
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "sw__fav-group-head";
+        head.title = `${group.tag}`;
+        head.innerHTML = `<svg class="sw__fav-arrow"><use xlink:href="#iconRight"></use></svg>
+<span class="sw__fav-group-name"></span>
+<span class="sw__fav-count">#${group.tag}</span>`;
+        head.querySelector(".sw__fav-group-name").textContent = group.name;
+        groupEl.appendChild(head);
+        const list = document.createElement("div");
+        list.className = "sw__fav-items";
+        const status = document.createElement("div");
+        status.className = "sw__history-empty sw__fav-smart-status";
+        status.textContent = this.i18n.favSmartGroupLoading;
+        list.appendChild(status);
+        groupEl.appendChild(list);
+        panel.appendChild(groupEl);
+        const query = (0, favorite_actions_1.buildTagSmartGroupQuery)(group, { nowMs: Date.now() });
+        if (!query) {
+            status.textContent = this.i18n.favSmartGroupLoading;
+            return;
+        }
+        void this.fetchKernelJson("/api/query/sql", query).then((json) => {
+            const entries = (0, favorite_actions_1.projectTagSmartGroupEntries)(json === null || json === void 0 ? void 0 : json.data);
+            status.remove();
+            entries.forEach((entry) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "sw__fav-item";
+                item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span></span>`;
+                item.querySelector("span").textContent = entry.title;
+                item.title = entry.title;
+                item.setAttribute("role", "menuitem");
+                item.addEventListener("click", () => {
+                    onPick();
+                    if (this.isMobile) {
+                        void this.mobileOpenDoc(entry.rootId);
+                    }
+                    else {
+                        void (0, siyuan_1.openTab)({ app: this.app, doc: { id: entry.rootId } });
+                    }
+                });
+                list.appendChild(item);
+            });
+            if (!entries.length) {
+                const emptyItem = document.createElement("div");
+                emptyItem.className = "sw__fav-smart-status";
+                emptyItem.textContent = this.i18n.favSmartGroupEmpty;
+                list.appendChild(emptyItem);
+            }
+            const count = head.querySelector(".sw__fav-count");
+            if (count)
+                count.textContent = `${entries.length} · #${group.tag}`;
+            onChanged();
+        }).catch(() => {
+            status.textContent = this.i18n.favSmartGroupEmpty;
+        });
+    }
+    // ==================== T-6804 智能分组配置（设置页 + 面板共用） ====================
+    getFavoriteSmartGroups() {
+        return this.getSettings().favoriteSmartGroups || [];
+    }
+    addFavoriteSmartGroup(name, tag, notebook = "", updatedWithinDays = 0) {
+        const current = this.getFavoriteSmartGroups();
+        if (current.length >= 4)
+            return false;
+        const next = (0, favorite_actions_1.normalizeFavoriteSmartGroups)([...current, { name, tag, notebook, updatedWithinDays }]);
+        if (next.length === current.length)
+            return false;
+        this.updateSettings({ favoriteSmartGroups: next });
+        return true;
+    }
+    removeFavoriteSmartGroup(name) {
+        const next = (0, favorite_actions_1.normalizeFavoriteSmartGroups)(this.getFavoriteSmartGroups().filter((group) => group.name !== name));
+        this.updateSettings({ favoriteSmartGroups: next });
+    }
+    // ==================== T-6810 Essentials 常驻层 ====================
+    getDocumentSetEssentials() {
+        return this.getSettings().documentSetEssentials || [];
+    }
+    addDocumentSetEssentialsFromCurrentTabs() {
+        const merged = (0, settings_model_1.normalizeEssentials)([
+            ...this.getSettings().documentSetEssentials,
+            ...this.currentDocumentSetEntries().map((entry) => entry.rootId),
+        ]);
+        this.updateSettings({ documentSetEssentials: merged });
+        return merged.length;
+    }
+    removeDocumentSetEssential(rootId) {
+        this.updateSettings({
+            documentSetEssentials: (this.getSettings().documentSetEssentials || []).filter((id) => id !== rootId),
+        });
+    }
+    // T-6841：设置页恢复路径同样调用（对齐 T-6810"每次恢复"语义），故公开
+    async openDocumentSetEssentials() {
+        const essentials = this.getSettings().documentSetEssentials || [];
+        const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+        // T-6815：带回执打开——opened=本次成功、failed=尝试失败、skipped=已打开跳过。
+        // T-6841：逐项明细随回执返回（rootId+status+失败原因），并入恢复报告导出。
+        const outcome = { opened: 0, failed: 0, skipped: 0, results: [] };
+        for (const rootId of essentials) {
+            if (opened.has(rootId)) {
+                outcome.skipped += 1;
+                outcome.results.push({ rootId, status: "skipped" });
+                continue;
+            }
+            try {
+                const ok = this.isMobile ? await this.mobileOpenDoc(rootId)
+                    // T-6826：常驻层同样不抢焦点（跟随恢复链语义）
+                    : await (0, document_actions_1.openDocumentOnDesktop)({ rootId, app: this.app, openTab: siyuan_1.openTab, logger: logger_1.logger, keepCursor: true });
+                if (ok) {
+                    outcome.opened += 1;
+                    outcome.results.push({ rootId, status: "restored" });
+                }
+                else {
+                    outcome.failed += 1;
+                    outcome.results.push({ rootId, status: "failed", error: "open returned false" });
+                }
+            }
+            catch (error) {
+                outcome.failed += 1;
+                outcome.results.push({ rootId, status: "failed", error: error instanceof Error ? error.message : String(error) });
+            }
+        }
+        return outcome;
+    }
+    // T-6810 设置页管理器：把当前打开的页签一键加入常驻，逐条移除或全部清空。
+    // 自含内部重渲染，不依赖外层 render 闭包。
+    buildDocumentSetEssentialsManager() {
+        const section = document.createElement("div");
+        section.className = "sw-document-set-essentials";
+        const title = document.createElement("strong");
+        title.textContent = this.i18n.documentSetEssentialsLabel;
+        const tip = document.createElement("p");
+        tip.className = "sw-settings__hint";
+        tip.textContent = this.i18n.documentSetEssentialsTip;
+        section.append(title, tip);
+        const buildContent = () => {
+            section.querySelectorAll(".sw-document-set-essentials__dynamic").forEach((el) => el.remove());
+            const dynamic = document.createElement("div");
+            dynamic.className = "sw-document-set-essentials__dynamic";
+            const essentials = this.getDocumentSetEssentials();
+            const add = document.createElement("button");
+            add.type = "button";
+            add.className = "b3-button b3-button--outline";
+            add.textContent = this.i18n.documentSetEssentialsAdd;
+            add.addEventListener("click", () => {
+                this.addDocumentSetEssentialsFromCurrentTabs();
+                buildContent();
+            });
+            dynamic.appendChild(add);
+            if (essentials.length) {
+                const clear = document.createElement("button");
+                clear.type = "button";
+                clear.className = "b3-button b3-button--text";
+                clear.textContent = this.i18n.documentSetEssentialsClear;
+                clear.addEventListener("click", () => {
+                    this.updateSettings({ documentSetEssentials: [] });
+                    buildContent();
+                });
+                dynamic.appendChild(clear);
+            }
+            if (!essentials.length) {
+                const empty = document.createElement("p");
+                empty.className = "sw-settings__hint";
+                empty.textContent = this.i18n.documentSetEssentialsEmpty;
+                dynamic.appendChild(empty);
+            }
+            else {
+                const list = document.createElement("div");
+                list.className = "sw-document-set-essentials__list";
+                essentials.forEach((rootId, index) => {
+                    const row = document.createElement("div");
+                    row.className = "sw-document-set-essentials__item";
+                    const label = document.createElement("span");
+                    label.textContent = `#${index + 1} · ${rootId.slice(0, 14)}…`;
+                    const remove = document.createElement("button");
+                    remove.type = "button";
+                    remove.className = "b3-button b3-button--text";
+                    remove.textContent = this.i18n.documentSetEssentialsRemove;
+                    remove.addEventListener("click", () => {
+                        this.removeDocumentSetEssential(rootId);
+                        buildContent();
+                    });
+                    row.append(label, remove);
+                    list.appendChild(row);
+                });
+                dynamic.appendChild(list);
+            }
+            section.appendChild(dynamic);
+        };
+        buildContent();
+        return section;
+    }
+    async getFavoriteTagOptions() {
+        var _a;
+        const json = await this.fetchKernelJson("/api/tag/getTag", {});
+        const rows = Array.isArray(json === null || json === void 0 ? void 0 : json.data) ? json.data : Array.isArray((_a = json === null || json === void 0 ? void 0 : json.data) === null || _a === void 0 ? void 0 : _a.tags) ? json.data.tags : [];
+        return rows
+            .map((row) => ({
+            name: typeof (row === null || row === void 0 ? void 0 : row.name) === "string" ? row.name : "",
+            count: Number(row === null || row === void 0 ? void 0 : row.count) || 0,
+        }))
+            .filter((row) => row.name.length > 0)
+            .slice(0, 200);
+    }
+    // T-6817 动态组：笔记本范围下拉的数据源（有界清单，来自内核 lsNotebooks）
+    async getFavoriteNotebookOptions() {
+        const notebooks = await this.loadNotebooks();
+        return notebooks.slice(0, 100);
+    }
+    // 渲染单个收藏分组：可折叠组头（右键弹出一键开/关菜单）+ 组内项列表
+    appendFavGroup(panel, name, items, onPick, onChanged = () => undefined) {
+        const groupEl = document.createElement("div");
+        groupEl.className = "sw__fav-group" + (this.favCollapsed.has(name) ? " sw__fav-collapsed" : "");
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "sw__fav-group-head";
+        head.title = this.i18n.favGroupTip;
+        // T-7193：读屏合同——aria-expanded 同步折叠状态，aria-controls 指向组体列表
+        const isCollapsed = this.favCollapsed.has(name);
+        head.setAttribute("aria-expanded", String(!isCollapsed));
+        const listId = `sw-fav-group-${name.replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, "-")}`;
+        head.setAttribute("aria-controls", listId);
+        head.innerHTML = `<svg class="sw__fav-arrow"><use xlink:href="#iconRight"></use></svg>
+<span class="sw__fav-group-name"></span>
+<span class="sw__fav-count">${items.length}</span>`;
+        head.querySelector(".sw__fav-group-name").textContent = name;
+        head.addEventListener("click", () => {
+            groupEl.classList.toggle("sw__fav-collapsed");
+            const collapsed = groupEl.classList.contains("sw__fav-collapsed");
+            head.setAttribute("aria-expanded", String(!collapsed));
+            if (this.favCollapsed.has(name)) {
+                this.favCollapsed.delete(name);
+            }
+            else {
+                this.favCollapsed.add(name);
+            }
+            this.saveFavCollapsed();
+        });
+        // 右键弹出「一键开启/关闭组内页签」菜单，与 v0.14.0 changelog 描述对齐
+        head.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.openFavGroupMenu(items, event, onChanged);
+        });
+        groupEl.appendChild(head);
+        const list = document.createElement("div");
+        list.className = "sw__fav-items";
+        list.id = listId;
+        items.forEach((fav) => {
+            list.appendChild(this.makeFavItem(panel, fav, onPick, onChanged));
+        });
+        groupEl.appendChild(list);
+        panel.appendChild(groupEl);
+    }
+    // 无任何分组时的平铺列表（不显示组头）
+    appendFavFlatList(panel, items, onPick, onChanged = () => undefined) {
+        const list = document.createElement("div");
+        list.className = "sw__fav-items sw__fav-items--flat";
+        items.forEach((fav) => {
+            list.appendChild(this.makeFavItem(panel, fav, onPick, onChanged));
+        });
+        panel.appendChild(list);
+    }
+    // 生成单个收藏项按钮：点击跳转；右键弹出操作菜单（移动至分组 / 取消收藏）
+    makeFavItem(panel, fav, onPick, onChanged = () => undefined) {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "sw__fav-item";
+        item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span></span>`;
+        item.querySelector("span").textContent = fav.title;
+        item.title = fav.title;
+        item.addEventListener("click", () => {
+            this.jumpToFavorite(fav, onPick);
+        });
+        item.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.openFavItemMenu(panel, fav, onPick, event, onChanged);
+        });
+        return item;
+    }
+    // 刷新单个下拉组件的触发按钮徽标；面板展开中则收起（内容在下次打开时重建）
+    refreshFavDropdown(container) {
+        var _a;
+        const count = this.getFavorites().length;
+        const badge = container.querySelector(".sw__fav-badge");
+        if (badge) {
+            badge.textContent = String(count);
+            badge.classList.toggle("fn__none", count === 0);
+        }
+        (_a = container.querySelector(".sw__fav-panel")) === null || _a === void 0 ? void 0 : _a.classList.add("fn__none");
+    }
+    // 刷新所有收藏下拉组件（弹窗与侧边栏）的角标与面板
+    refreshFavSelects() {
+        document.querySelectorAll(".sw__fav-dd").forEach((container) => {
+            this.refreshFavDropdown(container);
+        });
+    }
+    // 修改收藏项的分组（group 为空表示移出分组）
+    setFavoriteGroup(key, group) {
+        const list = this.getFavorites();
+        const result = (0, favorite_actions_1.setFavoriteEntryGroup)(list, key, group);
+        if (!result.changed)
+            return;
+        list.splice(0, list.length, ...result.items);
+        this.saveFavorites(list);
+        this.refreshFavSelects();
+    }
+    // 收藏页签到指定分组（已收藏则仅调整分组），用于菜单快速收藏到组
+    addFavoriteToGroup(tab, group) {
+        const list = this.getFavorites();
+        const rootId = this.rootIdOf(tab);
+        if (!rootId) {
+            // 与 toggleFavorite 一致：未解析页签拒绝入组，避免产生无法跳转的脏条目
+            (0, siyuan_1.showMessage)(this.i18n.favNeedActivate);
+            return;
+        }
+        this.migrateFavoriteKey(list, tab, rootId);
+        const item = list.find((fav) => fav.key === rootId);
+        if (item) {
+            item.group = group.trim();
+        }
+        else {
+            list.unshift({ key: rootId, title: this.titleOf(tab), rootId, group: group.trim() });
+        }
+        this.saveFavorites(list);
+        this.refreshFavSelects();
+    }
+    // 分组注册表（允许存在空分组：设置页新建后尚未收藏任何页签的分组）
+    getFavGroupRegistry() {
+        const data = this.data[constants_1.FAV_GROUPS_KEY];
+        const result = (0, util_1.sanitizeStringList)(data, constants_1.FAVORITE_GROUPS_MAX);
+        if (result.changed) {
+            this.data[constants_1.FAV_GROUPS_KEY] = result.items;
+            this.saveDataDebounced(constants_1.FAV_GROUPS_KEY);
+        }
+        return result.items;
+    }
+    saveFavGroupRegistry(names) {
+        this.data[constants_1.FAV_GROUPS_KEY] = (0, util_1.sanitizeStringList)(names, constants_1.FAVORITE_GROUPS_MAX).items;
+        this.saveDataDebounced(constants_1.FAV_GROUPS_KEY);
+    }
+    // 全部分组名：注册表在前保持新建顺序，再并入收藏项上出现过的分组名，去重
+    getFavoriteGroupNames() {
+        const merged = [];
+        this.getFavGroupRegistry()
+            .concat(this.getFavorites().map((item) => item.group || ""))
+            .forEach((name) => {
+            if (name && !merged.includes(name)) {
+                merged.push(name);
+            }
+        });
+        return merged;
+    }
+    // 新建分组（重名直接忽略，返回是否创建成功）
+    createFavoriteGroup(name) {
+        const trimmed = name.trim();
+        if (!trimmed || this.getFavoriteGroupNames().includes(trimmed)) {
+            return false;
+        }
+        this.saveFavGroupRegistry(this.getFavGroupRegistry().concat(trimmed));
+        return true;
+    }
+    // 删除分组：注册表移除，组内收藏项移出到未分组
+    deleteFavoriteGroup(name) {
+        this.saveFavGroupRegistry(this.getFavGroupRegistry().filter((item) => item !== name));
+        const list = this.getFavorites();
+        let dirty = false;
+        list.forEach((item) => {
+            if (item.group === name) {
+                item.group = "";
+                dirty = true;
+            }
+        });
+        if (dirty) {
+            this.saveFavorites(list);
+        }
+        // 分组被删后清理其折叠状态
+        if (this.favCollapsed.delete(name)) {
+            this.saveFavCollapsed();
+        }
+        this.refreshFavSelects();
+    }
+    // 重命名分组：该组全部收藏项迁移到新名称，注册表同步改名（空分组也可重命名）
+    renameFavoriteGroup(from, to) {
+        const list = this.getFavorites();
+        let dirty = false;
+        list.forEach((item) => {
+            if (item.group === from) {
+                item.group = to;
+                dirty = true;
+            }
+        });
+        if (dirty) {
+            this.saveFavorites(list);
+        }
+        const registry = this.getFavGroupRegistry();
+        const index = registry.indexOf(from);
+        if (index >= 0) {
+            registry[index] = to;
+            this.saveFavGroupRegistry(registry);
+        }
+        // 分组重命名后同步迁移其折叠状态
+        if (this.favCollapsed.delete(from)) {
+            this.favCollapsed.add(to);
+            this.saveFavCollapsed();
+        }
+        this.refreshFavSelects();
+    }
+    // 刷新卡片收藏状态标识（实心/空心星与提示文案）
+    refreshCardFavState(tab, card) {
+        const isFaved = this.getFavorites().some((item) => item.key === this.pinKeyOf(tab));
+        card.classList.toggle("sw__faved", isFaved);
+        const favoriteButton = card.querySelector(".sw__fav-btn");
+        const label = isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab;
+        favoriteButton === null || favoriteButton === void 0 ? void 0 : favoriteButton.setAttribute("aria-label", label);
+        favoriteButton === null || favoriteButton === void 0 ? void 0 : favoriteButton.setAttribute("title", label);
+    }
+    // 星标点击菜单：未收藏时选择收藏方式（快速收藏 / 收藏到分组 / 新建分组收藏），
+    // 已收藏时管理分组（切换分组 / 移出分组 / 取消收藏）
+    openFavMenu(tab, card, event) {
+        const key = this.pinKeyOf(tab);
+        const favorite = this.getFavorites().find((item) => item.key === key);
+        const groupNames = this.getFavoriteGroupNames();
+        const menu = new siyuan_1.Menu("swFavMenu");
+        // 未收藏 / 已收藏两套菜单项，分支差异很大故拆开各自构建
+        if (!favorite) {
+            this.buildFavMenuUnfavorited(menu, tab, card, groupNames);
+        }
+        else {
+            this.buildFavMenuFavorited(menu, tab, card, key, favorite, groupNames);
+        }
+        menu.open({ x: event.clientX, y: event.clientY });
+    }
+    // 未收藏菜单：先收藏（无分组），再列已有分组可直接归入，最后新建分组
+    buildFavMenuUnfavorited(menu, tab, card, groupNames) {
+        menu.addItem({
+            label: this.i18n.favoriteTab,
+            icon: "iconStar",
+            click: () => {
+                this.toggleFavorite(tab);
+                this.refreshCardFavState(tab, card);
+                this.refreshFavSelects();
+            },
+        });
+        if (groupNames.length > 0) {
+            menu.addSeparator();
+            groupNames.forEach((name) => {
+                menu.addItem({
+                    label: this.escapeAttr(name),
+                    icon: "iconFolder",
+                    click: () => {
+                        this.addFavoriteToGroup(tab, name);
+                        this.refreshCardFavState(tab, card);
+                    },
+                });
+            });
+        }
+        menu.addSeparator();
+        menu.addItem({
+            label: this.i18n.newGroupFav,
+            icon: "iconAdd",
+            click: () => this.openGroupDialog(tab, card),
+        });
+    }
+    // 已收藏菜单：分组列表（当前分组打勾）+ 移出分组 + 新建分组 + 取消收藏
+    buildFavMenuFavorited(menu, tab, card, key, favorite, groupNames) {
+        if (groupNames.length > 0) {
+            groupNames.forEach((name) => {
+                menu.addItem({
+                    label: this.escapeAttr(name),
+                    icon: favorite.group === name ? "iconSelect" : "iconFolder",
+                    click: () => this.setFavoriteGroup(key, name),
+                });
+            });
+            if (favorite.group) {
+                menu.addItem({
+                    label: this.i18n.removeFromGroup,
+                    icon: "iconUnpin",
+                    click: () => this.setFavoriteGroup(key, ""),
+                });
+            }
+            menu.addSeparator();
+        }
+        menu.addItem({
+            label: this.i18n.newGroupFav,
+            icon: "iconAdd",
+            click: () => this.openGroupDialog(tab, card),
+        });
+        menu.addSeparator();
+        menu.addItem({
+            label: this.i18n.unfavoriteTab,
+            icon: "iconClose",
+            click: () => {
+                this.toggleFavorite(tab);
+                this.refreshCardFavState(tab, card);
+                this.refreshFavSelects();
+            },
+        });
+    }
+    // 收藏分组右键菜单：一键开启/关闭组内页签
+    openFavGroupMenu(items, event, onChanged = () => undefined) {
+        const menu = new siyuan_1.Menu("swFavGroupMenu");
+        menu.addItem({
+            label: this.i18n.openGroupTabs,
+            icon: "iconAdd",
+            click: async () => {
+                const count = await this.openGroupTabs(items);
+                if (count > 0) {
+                    onChanged();
+                }
+            },
+        });
+        menu.addItem({
+            label: this.i18n.closeGroupTabs,
+            icon: "iconClose",
+            click: async () => {
+                const count = await this.closeGroupTabs(items);
+                if (count > 0) {
+                    onChanged();
+                }
+            },
+        });
+        menu.open({ x: event.clientX, y: event.clientY });
+    }
+    // 收藏下拉项右键菜单：移动到既有分组（子菜单，当前分组勾选）/ 取消收藏。
+    // 操作后保持面板展开并就地重建，方便连续处理多个收藏项。
+    openFavItemMenu(panel, fav, onPick, event, onChanged = () => undefined) {
+        const menu = new siyuan_1.Menu("swFavItemMenu");
+        const moveSub = [{ checked: !fav.group, label: this.escapeAttr(this.i18n.ungrouped),
+                click: () => this.applyFavItemChange(() => this.setFavoriteGroup(fav.key, ""), panel, onPick, onChanged) }];
+        this.getFavoriteGroupNames().forEach((name) => {
+            moveSub.push({ checked: fav.group === name, label: this.escapeAttr(name),
+                click: () => this.applyFavItemChange(() => this.setFavoriteGroup(fav.key, name), panel, onPick, onChanged) });
+        });
+        menu.addItem({ type: "submenu", label: this.i18n.moveToGroup, icon: "iconFolder", submenu: moveSub });
+        // 新建分组并移动：弹窗输入分组名（新名称自动新建，留空移出分组）
+        menu.addItem({
+            label: this.i18n.newGroupFav,
+            icon: "iconAdd",
+            click: () => this.openFavoriteGroupDialog(panel, fav, onPick, onChanged),
+        });
+        menu.addSeparator();
+        menu.addItem({
+            label: this.i18n.unfavoriteTab,
+            icon: "iconClose",
+            click: () => this.applyFavItemChange(() => this.removeFavorite(fav.key), panel, onPick, onChanged),
+        });
+        menu.open({ x: event.clientX, y: event.clientY });
+    }
+    // 执行收藏项变更：先落盘并同步所有下拉的徽标（refreshFavSelects 会收起展开中的面板），
+    // 再让当前面板保持展开并就地重建，最后按新内容高度重新贴位
+    applyFavItemChange(mutate, panel, onPick, onChanged = () => undefined) {
+        mutate();
+        this.refreshFavSelects();
+        panel.classList.remove("fn__none");
+        this.renderFavPanel(panel, onPick, onChanged);
+        const dd = panel.closest(".sw__fav-dd");
+        const trigger = dd === null || dd === void 0 ? void 0 : dd.querySelector(".sw__fav-trigger");
+        if (dd && trigger) {
+            this.positionFavPanel(trigger, panel);
+        }
+    }
+    // 转义 HTML 属性值（分组名等用户输入拼入模板时防注入；Menu label 为 innerHTML 亦需转义）
+    escapeAttr(text) {
+        return text.replace(/&/g, "&amp;").split('"').join("&quot;").split("'").join("&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    // 弹窗设置收藏项的分组：输入分组名（留空移出分组），datalist 列出已有分组便于快速选择；
+    // 未收藏的页签确认后自动收藏到该分组
+    openGroupDialog(tab, card) {
+        var _a, _b;
+        const key = this.pinKeyOf(tab);
+        const favorite = this.getFavorites().find((item) => item.key === key);
+        const groupNames = this.getFavoriteGroupNames();
+        const dialog = new siyuan_1.Dialog({
+            // Dialog title is text, not an HTML attribute. Escaping here would
+            // visibly turn an ampersand or quote in a document title into
+            // entities; the content template below remains escaped separately.
+            title: `${this.i18n.setGroup} · ${this.titleOf(tab)}`,
+            content: `<div class="b3-dialog__content">
+    <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" aria-label="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr((favorite === null || favorite === void 0 ? void 0 : favorite.group) || "")}" />
+    <datalist id="sw__group-list">${groupNames.map((name) => `<option value="${this.escapeAttr(name)}"></option>`).join("")}</datalist>
+    <div class="fn__hr"></div>
+    <div class="b3-label__text">${this.i18n.groupTip}</div>
+</div>
+<div class="b3-dialog__action">
+    <button class="b3-button b3-button--cancel">${this.i18n.cancel}</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--text sw__group-confirm">${this.i18n.confirm}</button>
+</div>`,
+            width: "420px",
+        });
+        (0, platform_dom_3.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "to close");
+        const input = dialog.element.querySelector(".sw__group-input");
+        if (!input) {
+            dialog.destroy();
+            return;
+        }
+        const confirm = () => {
+            // 未收藏时一并收藏；已收藏时仅调整分组（留空移出分组）
+            this.addFavoriteToGroup(tab, input.value);
+            if (card) {
+                this.refreshCardFavState(tab, card);
+            }
+            dialog.destroy();
+        };
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                confirm();
+            }
+        });
+        (_a = dialog.element.querySelector(".sw__group-confirm")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", confirm);
+        (_b = dialog.element.querySelector(".b3-button--cancel")) === null || _b === void 0 ? void 0 : _b.addEventListener("click", () => dialog.destroy());
+        input.focus();
+        input.select();
+    }
+    // 收藏下拉项：新建分组并移动。弹窗输入分组名（新名称自动新建，留空移出分组），
+    // datalist 列出既有分组便于快速选择；确认后就地刷新下拉面板
+    openFavoriteGroupDialog(panel, fav, onPick, onChanged = () => undefined) {
+        var _a, _b;
+        const groupNames = this.getFavoriteGroupNames();
+        const dialog = new siyuan_1.Dialog({
+            title: `${this.i18n.setGroup} · ${fav.title}`,
+            content: `<div class="b3-dialog__content">
+    <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" aria-label="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(fav.group || "")}" />
+    <datalist id="sw__group-list">${groupNames.map((name) => `<option value="${this.escapeAttr(name)}"></option>`).join("")}</datalist>
+    <div class="fn__hr"></div>
+    <div class="b3-label__text">${this.i18n.groupTip}</div>
+</div>
+<div class="b3-dialog__action">
+    <button class="b3-button b3-button--cancel">${this.i18n.cancel}</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--text sw__group-confirm">${this.i18n.confirm}</button>
+</div>`,
+            width: "420px",
+        });
+        (0, platform_dom_3.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "to close");
+        const input = dialog.element.querySelector(".sw__group-input");
+        if (!input) {
+            dialog.destroy();
+            return;
+        }
+        const confirm = () => {
+            this.applyFavItemChange(() => this.setFavoriteGroup(fav.key, input.value), panel, onPick, onChanged);
+            dialog.destroy();
+        };
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                confirm();
+            }
+        });
+        (_a = dialog.element.querySelector(".sw__group-confirm")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", confirm);
+        (_b = dialog.element.querySelector(".b3-button--cancel")) === null || _b === void 0 ? void 0 : _b.addEventListener("click", () => dialog.destroy());
+        input.focus();
+        input.select();
+    }
+    // 收藏条目的可跳转 rootId：优先取 rootId 字段，缺失时回退 key；两者都必须是
+    // 块 ID 格式——历史脏条目的 key 是一次性 tab.id（UUID），openTab 无法解析只会静默失败
+    // 跳转到收藏项：页签已开则切换过去；页签已关闭则按 rootId 重开。
+    // 收藏项永久留存（直到用户主动删除）：无法定位文档的历史脏条目仅提示、不自动清理，
+    // 用户打开对应页签后星标操作会自动将其迁移修复
+    async jumpToFavorite(favorite, onClose) {
+        // 手机端 getAllTabs() 恒为空，需用 MobileTabs 数据源
+        const opened = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+        const tab = opened.find((item) => this.pinKeyOf(item) === favorite.key);
+        if (tab) {
+            this.activateTab(tab, onClose);
+            return;
+        }
+        // T-6806：跳转离开前记录当前现场（后退栈）
+        this.captureJumpOrigin();
+        const rootId = (0, util_1.resolveFavoriteRootId)(favorite);
+        if (!rootId) {
+            (0, siyuan_1.showMessage)(this.i18n.favInvalidEntry);
+            return;
+        }
+        onClose();
+        if (this.isMobile) {
+            // openTab 在手机端是空实现，走 MobileTabs.open
+            const ok = await this.mobileOpenDoc(rootId);
+            if (!ok) {
+                (0, siyuan_1.showMessage)(this.i18n.openDocFailed);
+            }
+        }
+        else {
+            const opened = await (0, document_actions_1.openDocumentOnDesktop)({
+                rootId,
+                app: this.app,
+                openTab: siyuan_1.openTab,
+                logger: logger_1.logger,
+            });
+            if (!opened)
+                (0, siyuan_1.showMessage)(this.i18n.openDocFailed);
+        }
+    }
+    // 一键开启组内全部页签：打开未打开的收藏（rootId 校验与 jumpToFavorite 一致，
+    // 无效历史条目跳过），返回实际打开数
+    async openGroupTabs(items) {
+        if (this.groupOperationBusy) {
+            (0, siyuan_1.showMessage)(this.i18n.groupTabsInProgress);
+            return 0;
+        }
+        this.groupOperationBusy = true;
+        try {
+            return await this.openGroupTabsInternal(items);
+        }
+        finally {
+            this.groupOperationBusy = false;
+        }
+    }
+    async openGroupTabsInternal(items) {
+        const opened = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+        const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
+        const plan = (0, util_1.planGroupOpenFavorites)(items, openedKeys, util_1.resolveFavoriteRootId);
+        let failed = plan.invalid;
+        const attempted = [];
+        for (const { favorite: fav, rootId } of plan.targets) {
+            if (this.isMobile) {
+                // openTab 在手机端是空实现，串行等待 mobileOpenDoc 完成，避免并发丢调用；
+                // 按返回结果计数（文档已删除等失败不计入，不虚报提示）
+                if (!(await this.mobileOpenDoc(rootId))) {
+                    failed++;
+                    continue;
+                }
+            }
+            else {
+                try {
+                    await (0, siyuan_1.openTab)({
+                        app: this.app,
+                        doc: { id: rootId },
+                    });
+                }
+                catch (e) {
+                    logger_1.logger.warn("desktop open tab fail", e);
+                    failed++;
+                    continue;
+                }
+                // 桌面端连续 openTab 时稍作等待，让思源完成页签创建与状态更新
+                await this.sleep(constants_1.TAB_SETTLE_MS);
+            }
+            attempted.push(rootId);
+            openedKeys.add(rootId);
+            openedKeys.add(fav.key);
+        }
+        const verified = await this.waitForTabStates(attempted, true);
+        const count = verified.size;
+        failed += attempted.length - count;
+        if (count > 0) {
+            const message = failed > 0
+                ? this.i18n.groupTabsOpenedPartial.replace("{x}", String(count)).replace("{y}", String(failed))
+                : this.i18n.groupTabsOpened.replace("{x}", String(count));
+            (0, siyuan_1.showMessage)(message, constants_1.MESSAGE_DEFAULT_MS, failed > 0 ? "error" : "info");
+        }
+        else if (failed > 0) {
+            (0, siyuan_1.showMessage)(this.i18n.groupTabsPartial.replace("{x}", String(failed)), constants_1.MESSAGE_DEFAULT_MS, "error");
+        }
+        else {
+            (0, siyuan_1.showMessage)(this.i18n.groupTabsNoChanges);
+        }
+        return count;
+    }
+    // 一键关闭组内已打开的页签：按 pinKey 匹配当前打开页签，返回实际关闭数
+    async closeGroupTabs(items) {
+        if (this.groupOperationBusy) {
+            (0, siyuan_1.showMessage)(this.i18n.groupTabsInProgress);
+            return 0;
+        }
+        this.groupOperationBusy = true;
+        try {
+            return await this.closeGroupTabsInternal(items);
+        }
+        finally {
+            this.groupOperationBusy = false;
+        }
+    }
+    async closeGroupTabsInternal(items) {
+        const keys = new Set(items.map((fav) => (0, util_1.resolveFavoriteRootId)(fav)).filter(Boolean));
+        const opened = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+        const targets = opened.filter((tab) => keys.has(this.pinKeyOf(tab)));
+        let failed = 0;
+        const attempted = [];
+        for (const tab of targets) {
+            // 仅统计真正关闭成功的页签，失败不计入提示数
+            const rootId = this.rootIdOf(tab);
+            if (rootId && await this.closeTabQuietly(tab)) {
+                attempted.push(tab.id);
+            }
+            else {
+                failed++;
+            }
+        }
+        const verified = await this.waitForTabStates(attempted, false, true);
+        const closed = verified.size;
+        failed += attempted.length - closed;
+        if (closed > 0) {
+            const message = failed > 0
+                ? this.i18n.groupTabsClosedPartial.replace("{x}", String(closed)).replace("{y}", String(failed))
+                : this.i18n.groupTabsClosed.replace("{x}", String(closed));
+            (0, siyuan_1.showMessage)(message, constants_1.MESSAGE_DEFAULT_MS, failed > 0 ? "error" : "info");
+        }
+        else if (failed > 0) {
+            (0, siyuan_1.showMessage)(this.i18n.groupTabsPartial.replace("{x}", String(failed)), constants_1.MESSAGE_DEFAULT_MS, "error");
+        }
+        else {
+            (0, siyuan_1.showMessage)(this.i18n.groupTabsNoChanges);
+        }
+        return closed;
+    }
+    // 排序领域逻辑位于 util.js；这里仅注入宿主 Tab 适配器，避免 UI 层持有排序细节。
+    sortItems(items, sortBy, mru, updatedMap) {
+        return (0, util_1.sortItems)(items, sortBy, mru, {
+            titleOf: (item) => this.titleOf(item.tab),
+            rootIdOf: (item) => this.rootIdOf(item.tab) || "",
+            pinKeyOf: (item) => this.pinKeyOf(item.tab),
+            updatedMap,
+        });
+    }
+    // 按窗口分组并渲染全部页签
+    // onOverlayClose：激活页签/打开文档后的收尾（弹窗销毁；侧边栏刷新）
+    // onTabsChanged：关闭页签后的收尾（弹窗保持打开；侧边栏刷新）
+    renderList(scrollElement, tabs, activeTab, opts, sortBy, updatedMap = {}) {
+        var _a, _b, _c;
+        // 清空前收集旧卡片：排序切换/列表刷新时同页签卡片直接复用（移动 DOM 而非重建），
+        // 已渲染的缩略图原样保留，重排瞬时完成
+        (0, doc_search_ui_1.cancelDocPreview)(scrollElement);
+        // T-7009：异步重绘/排序切换的现场保持——innerHTML 清空前捕获滚动与焦点；
+        // 焦点卡片按 tabId 在新列表找回（DOM 复用移动的是同一元素，可重新聚焦；
+        // 焦点回归经 T-7007 的 focusin 委托联动预览，现场完整），找不到诚实放弃。
+        const scenePrevScrollTop = scrollElement.scrollTop;
+        const sceneActive = document.activeElement instanceof HTMLElement && scrollElement.contains(document.activeElement)
+            ? document.activeElement : null;
+        const sceneFocusTabId = ((_a = sceneActive === null || sceneActive === void 0 ? void 0 : sceneActive.closest(".sw__card[data-tab-id]")) === null || _a === void 0 ? void 0 : _a.dataset.tabId) || "";
+        // 焦点是否已在本表面内（含搜索框等列表外控件）：在则重绘不得抢默认焦点；
+        // 不在（首次打开无焦点）才落默认首卡。
+        const surfaceRoot = scrollElement.closest(".sw-platform-surface") || scrollElement.parentElement;
+        const sceneFocusInSurface = !!(document.activeElement instanceof HTMLElement
+            && surfaceRoot && surfaceRoot.contains(document.activeElement));
+        const restoreListScene = () => {
+            scrollElement.scrollTop = Math.min(scenePrevScrollTop, Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight));
+            if (sceneFocusTabId) {
+                const restored = Array.from(scrollElement.querySelectorAll(".sw__card"))
+                    .find((card) => card.dataset.tabId === sceneFocusTabId);
+                restored === null || restored === void 0 ? void 0 : restored.focus({ preventScroll: true });
+            }
+        };
+        const reusable = new Map();
+        scrollElement.querySelectorAll(".sw__card").forEach((card) => {
+            if (card.dataset.tabId) {
+                reusable.set(card.dataset.tabId, card);
+            }
+        });
+        scrollElement.innerHTML = "";
+        const settings = this.getSettings();
+        scrollElement.style.setProperty("--sw-thumb-height", `${settings.thumbHeight}px`);
+        (_b = this.groupFlowObserver) === null || _b === void 0 ? void 0 : _b.disconnect();
+        this.groupFlowObserver = null;
+        const activeTabId = activeTab === null || activeTab === void 0 ? void 0 : activeTab.id;
+        const mru = this.getMru();
+        const pinned = new Set(this.getPinned());
+        const favorites = new Set(this.getFavorites().map((item) => item.key));
+        const ctx = { reusable, activeTabId, pinned, favorites, mru, settings, updatedMap, opts };
+        const all = [];
+        const focusState = { defaultFocusIndex: 0 };
+        const groupMode = settings.groupBy;
+        if (groupMode === "none") {
+            // 按 parent（Wnd）分栏分组，保持 getAllTabs 的布局树顺序
+            const groups = (0, util_1.buildTabGroupsByParent)(tabs, scrollElement);
+            groups.forEach((group) => {
+                const ordered = this.sortGroupItems(group, sortBy, mru, pinned, updatedMap);
+                this.renderTabGroup(scrollElement, ordered, ctx, all, focusState);
+            });
+        }
+        else {
+            this.renderGroupedList(scrollElement, tabs, activeTab, groupMode, ctx, all, focusState, opts, sortBy, updatedMap);
+        }
+        if (all.length === 0) {
+            scrollElement.appendChild(this.buildEmptyState(scrollElement));
+            // T-7009：空态同样恢复滚动现场（钳制后通常归零）
+            restoreListScene();
+            return;
+        }
+        // 页签区与文档结果区共用一个预览窗格；移动端/窄容器降级。
+        if (!this.isMobile && !scrollElement.closest(".sw--sidebar") && scrollElement.clientWidth >= 680) {
+            const layout = document.createElement("div");
+            layout.className = "sw__tab-preview";
+            const content = document.createElement("div");
+            content.className = "sw__tab-content";
+            while (scrollElement.firstChild)
+                content.appendChild(scrollElement.firstChild);
+            layout.appendChild(content);
+            scrollElement.appendChild(layout);
+            doc_search_ui_1.mountDocPreviewPane.call(this, layout, scrollElement);
+        }
+        // 初始焦点：打开面板时键盘用户直接落在默认卡片本体上（T-7007 主焦点模型）
+        // T-7009：默认首卡焦点只服务首次打开（本表面内尚无焦点）；异步重绘/排序
+        // 切换时焦点已在表面内（搜索框或某张卡片），不得被默认焦点抢走。
+        if (!sceneFocusInSurface) {
+            this.focusCard((_c = all[focusState.defaultFocusIndex]) === null || _c === void 0 ? void 0 : _c.card, true);
+        }
+        // 视口懒渲染缩略图：复用卡片跳过，新卡片滚入可视区时才生成
+        this.renderThumbnails(all, scrollElement, constants_1.THUMB_BATCH);
+        // T-6820 数字直达角标：渲染后刷新前 9 个可见卡片的数字标记
+        this.updateDigitBadges(scrollElement);
+        // T-7009：恢复重绘前的滚动位置与焦点卡片
+        restoreListScene();
+    }
+    // T-6820 数字直达可发现性：为前 9 个可见卡片写入 1-9 角标（CSS ::after 渲染），
+    // 与 bindKeydown 的数字直达一一对应；第 9 个之后的卡片移除标记。
+    updateDigitBadges(scrollElement) {
+        const visible = Array.from(scrollElement.querySelectorAll(".sw__card"))
+            .filter((card) => !card.classList.contains("fn__none"));
+        visible.forEach((card, index) => {
+            const digit = index < 9 ? String(index + 1) : "";
+            if (digit)
+                card.dataset.swDigit = digit;
+            else
+                delete card.dataset.swDigit;
+        });
+    }
+    // 单一分组排序：置顶页签固定在前，其余按 sortBy 排列（restItems 内部 sort 走 stable 排序）
+    sortGroupItems(group, sortBy, mru, pinned, updatedMap) {
+        return (0, util_1.sortGroupItems)(group, sortBy, mru, pinned, updatedMap, {
+            titleOf: (item) => this.titleOf(item.tab),
+            rootIdOf: (item) => this.rootIdOf(item.tab) || "",
+            pinKeyOf: (item) => this.pinKeyOf(item.tab),
+        });
+    }
+    // 渲染单一分组：label + grid + 各卡片；卡片获取委托 acquireGroupCard；累积 defaultFocusIndex
+    renderTabGroup(scrollElement, ordered, ctx, all, focusState) {
+        const groupEl = document.createElement("div");
+        groupEl.className = "sw__group";
+        const label = document.createElement("div");
+        label.className = "sw__window-label";
+        label.textContent = `${this.i18n.currentWindow} · ${ordered.length}`;
+        groupEl.appendChild(label);
+        const grid = this.buildTabGroupGrid(scrollElement, ordered.length, ctx.settings);
+        ordered.forEach((item) => {
+            const card = this.acquireGroupCard(item, ctx, false);
+            grid.appendChild(card);
+            item.card = card;
+            all.push(item);
+            // 默认聚焦 MRU 里最近使用的（非当前活动）页签，更贴近 win+tab 体验
+            // MRU 按 pinKey（文档页签为 rootID）记录，需同键匹配
+            if (item.tab.id !== ctx.activeTabId && ctx.mru.indexOf(this.pinKeyOf(item.tab)) === 0) {
+                focusState.defaultFocusIndex = all.length - 1;
+            }
+        });
+        groupEl.appendChild(grid);
+        scrollElement.appendChild(groupEl);
+    }
+    // 分组流式布局度量：用标准网格自己的公式反推列数与 1fr 实际像素宽，
+    // 保证组块内卡片与不分组时逐像素一致；显式列数设置优先
+    computeGroupFlowLayout(scrollElement, settings) {
+        const cs = window.getComputedStyle(scrollElement);
+        const contentWidth = Math.max(0, scrollElement.clientWidth - parseFloat(cs.paddingLeft || "0") - parseFloat(cs.paddingRight || "0"));
+        const gap = constants_1.GROUP_FLOW_GAP_PX;
+        const minCard = constants_1.GROUP_FLOW_MIN_CARD_PX;
+        let cols = 1;
+        if (!scrollElement.closest(".sw--sidebar") && settings.columns >= 2) {
+            cols = settings.columns;
+        }
+        else {
+            cols = Math.max(1, Math.floor((contentWidth + gap) / (minCard + gap)));
+        }
+        const cellWidth = (contentWidth - (cols - 1) * gap) / cols;
+        return { cols: Math.max(1, cols), cellWidth: Math.max(0, cellWidth) };
+    }
+    // 容器宽度变化时才重排（rAF 去抖）；不重建数据，仅走既有整列表刷新链路
+    watchGroupFlowResize(scrollElement, tabs, activeTab, groupMode, listOpts, sortBy, updatedMap) {
+        var _a;
+        (_a = this.groupFlowObserver) === null || _a === void 0 ? void 0 : _a.disconnect();
+        this.groupFlowObserver = null;
+        this.groupFlowLastWidth = scrollElement.clientWidth;
+        if (typeof ResizeObserver !== "function")
+            return;
+        let frame = 0;
+        const observer = new ResizeObserver(() => {
+            if (frame)
+                cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => {
+                frame = 0;
+                if (!scrollElement.isConnected)
+                    return;
+                const width = scrollElement.clientWidth;
+                if (width === this.groupFlowLastWidth)
+                    return;
+                this.groupFlowLastWidth = width;
+                this.renderList(scrollElement, tabs, activeTab, listOpts, sortBy, updatedMap);
+            });
+        });
+        observer.observe(scrollElement);
+        this.groupFlowObserver = observer;
+    }
+    // 分组渲染主路径：解析分组上下文（收藏分组/笔记本/创建时间）→ groupTabsByMode →
+    // 稀疏组流式布局（组块宽度=内容卡片数，上限满宽）；异步数据（创建时间/笔记本名）
+    // 就绪后若有关键新数据则重排一次
+    renderGroupedList(scrollElement, tabs, activeTab, groupMode, ctx, all, focusState, listOpts, sortBy, updatedMap) {
+        const favoriteGroupByKey = new Map();
+        this.getFavorites().forEach((fav) => favoriteGroupByKey.set(fav.key, fav.group || ""));
+        const notebookMap = new Map((this.notebookListCache || []).map((nb) => [nb.id, nb.name]));
+        const notebookOrder = (this.notebookListCache || []).map((nb) => nb.id);
+        const rootIdOf = (tab) => this.rootIdOf(tab) || "";
+        const defs = (0, util_1.groupTabsByMode)(tabs, groupMode, {
+            pinKeyOf: (tab) => this.pinKeyOf(tab),
+            isFavorite: (key) => ctx.favorites.has(key),
+            favoriteGroupOf: (key) => favoriteGroupByKey.get(key) || "",
+            favoriteGroupOrder: this.getFavGroupRegistry(),
+            notebookIdOf: (tab) => {
+                const resolved = (0, search_model_1.resolveSearchNotebookId)(tab) || "";
+                // T-6475：路径回退会产出幻影笔记本 ID（思源文档路径首段是根文档 ID 而
+                // 非笔记本 ID，真机实证 id≠box）。凡不在真实笔记本清单里的结果，用
+                // rootId→box 缓存纠正（异步富化按需填充）。
+                if (!notebookMap.has(resolved)) {
+                    const fromRoot = this.rootNotebookCache[rootIdOf(tab)];
+                    if (fromRoot)
+                        return fromRoot;
+                }
+                return resolved;
+            },
+            pathOf: (tab) => tab.path
+                || tab.hPath || "",
+            notebookNameOf: (id) => {
+                const fromCache = notebookMap.get(id) || "";
+                if (fromCache)
+                    return fromCache;
+                // T-6473 分组识别修复：笔记本缓存缺失（未就绪/已关闭/旧数据残留的 ID）时，
+                // 从该组页签自带的笔记本名元数据恢复，避免组标签退化成裸 ID
+                for (const tab of tabs) {
+                    if ((0, search_model_1.resolveSearchNotebookId)(tab) !== id)
+                        continue;
+                    const t = tab;
+                    const name = t.notebookName || t.notebook || t.boxName || "";
+                    if (name)
+                        return String(name).trim();
+                }
+                return "";
+            },
+            notebookOrder,
+            createdOf: (key) => this.createdByIdCache[key] || "",
+            labels: {
+                unknownNotebook: this.i18n.groupUnknownNotebook,
+                ungroupedFavorite: this.i18n.groupUngroupedFavorite,
+                unfavorited: this.i18n.groupUnfavorited,
+                unknownMonth: this.i18n.groupUnknownMonth,
+                rootPath: this.i18n.groupRootPath,
+            },
+        });
+        defs.forEach((def) => {
+            const ordered = this.sortGroupItems(def.items.map((tab) => ({ tab })), sortBy, ctx.mru, ctx.pinned, updatedMap);
+            this.renderNamedTabGroup(scrollElement, def, ordered, ctx, all, focusState);
+        });
+        if (groupMode === "createdMonth") {
+            const missing = tabs.some((tab) => {
+                const rootId = rootIdOf(tab);
+                return !!rootId && !(rootId in this.createdByIdCache);
+            });
+            if (missing) {
+                void this.loadUpdatedMap(tabs).then(() => {
+                    // 请求过的 rootId 无论查到与否都落键（未命中记 ""），保证只重排一次不循环
+                    tabs.forEach((tab) => {
+                        const rootId = rootIdOf(tab);
+                        if (rootId && !(rootId in this.createdByIdCache))
+                            this.createdByIdCache[rootId] = "";
+                    });
+                    if (!scrollElement.isConnected)
+                        return;
+                    this.renderList(scrollElement, tabs, activeTab, listOpts, sortBy, updatedMap);
+                });
+            }
+        }
+        else if (groupMode === "notebook" && this.notebookListCache === null) {
+            void this.loadNotebooks().then((notebooks) => {
+                this.notebookListCache = notebooks;
+                if (!scrollElement.isConnected || notebooks.length === 0)
+                    return;
+                this.renderList(scrollElement, tabs, activeTab, listOpts, sortBy, updatedMap);
+            });
+        }
+        // T-6475：笔记本分组富化——路径回退产生的幻影笔记本 ID（或完全缺失）在真实
+        // 笔记本清单就绪后，用一次有界 SQL（blocks.box）按 rootId 恢复真实归属并重排；
+        // 请求过的 rootId 无论查到与否都落键，保证只富化一次不循环。
+        if (groupMode === "notebook") {
+            const notebookReady = this.notebookListCache !== null
+                ? Promise.resolve(this.notebookListCache)
+                : this.loadNotebooks().then((notebooks) => {
+                    this.notebookListCache = notebooks;
+                    return notebooks;
+                });
+            void notebookReady.then((notebooks) => {
+                if (!scrollElement.isConnected || notebooks.length === 0)
+                    return;
+                const known = new Set(notebooks.map((nb) => nb.id));
+                const unknownRoots = [];
+                for (const tab of tabs) {
+                    const rootId = rootIdOf(tab);
+                    if (!rootId || rootId in this.rootNotebookCache)
+                        continue;
+                    const resolved = (0, search_model_1.resolveSearchNotebookId)(tab) || "";
+                    if (resolved && known.has(resolved))
+                        continue;
+                    unknownRoots.push(rootId);
+                }
+                const enrich = unknownRoots.length > 0
+                    ? this.loadRootNotebookMap(unknownRoots).then(() => {
+                        tabs.forEach((tab) => {
+                            const rootId = rootIdOf(tab);
+                            if (rootId && !(rootId in this.rootNotebookCache))
+                                this.rootNotebookCache[rootId] = "";
+                        });
+                    })
+                    : null;
+                if (!enrich)
+                    return;
+                void enrich.then(() => {
+                    if (!scrollElement.isConnected)
+                        return;
+                    this.renderList(scrollElement, tabs, activeTab, listOpts, sortBy, updatedMap);
+                });
+            });
+        }
+    }
+    // T-6475：按 rootId 批量恢复真实笔记本 ID（blocks.box），有界 32 个/请求；
+    // 非法 ID 过滤，响应字段校验后落缓存。
+    async loadRootNotebookMap(rootIds) {
+        const valid = rootIds.filter((id) => constants_1.BLOCK_ID_RE.test(id)).slice(0, 32);
+        if (valid.length === 0)
+            return;
+        const list = valid.map((id) => `'${id}'`).join(",");
+        const json = await this.fetchKernelJson("/api/query/sql", {
+            stmt: `SELECT id, box FROM blocks WHERE type='d' AND id IN (${list}) LIMIT 64`,
+        });
+        const rows = Array.isArray(json === null || json === void 0 ? void 0 : json.data) ? json.data : [];
+        rows.forEach((row) => {
+            const id = typeof (row === null || row === void 0 ? void 0 : row.id) === "string" ? row.id : "";
+            const box = typeof (row === null || row === void 0 ? void 0 : row.box) === "string" ? row.box : "";
+            if (id && constants_1.BLOCK_ID_RE.test(id))
+                this.rootNotebookCache[id] = constants_1.BLOCK_ID_RE.test(box) ? box : "";
+        });
+    }
+    // 命名分组块：可折叠组头（图标+名称+计数）+ 内容网格；块宽 = span 列（上限满宽），
+    // 多个组块在 .sw--grouped-flow 下横向流动换行，小分组不再各占一整排
+    renderNamedTabGroup(scrollElement, def, ordered, ctx, all, focusState, span = 0, cellWidth = 0) {
+        const collapsed = this.groupCollapseState.has(def.key);
+        const groupEl = document.createElement("div");
+        groupEl.className = "sw__group sw__group--named" + (collapsed ? " sw__group--collapsed" : "");
+        const header = document.createElement("button");
+        header.type = "button";
+        header.className = "sw__group-header";
+        header.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        header.innerHTML = '<svg class="sw__group-chevron"><use xlink:href="#' + (collapsed ? "iconRight" : "iconDown") + '"></use></svg>'
+            + '<svg class="sw__group-icon"><use xlink:href="#' + (def.icon || "iconFile") + '"></use></svg>'
+            + '<span class="sw__group-title"></span>'
+            + '<span class="sw__group-count">' + ordered.length + '</span>';
+        header.querySelector(".sw__group-title").textContent = def.label;
+        header.setAttribute("aria-label", def.label + " (" + ordered.length + ")");
+        header.addEventListener("click", () => {
+            var _a;
+            const nextCollapsed = !this.groupCollapseState.has(def.key);
+            if (nextCollapsed) {
+                this.groupCollapseState.add(def.key);
+            }
+            else {
+                this.groupCollapseState.delete(def.key);
+            }
+            groupEl.classList.toggle("sw__group--collapsed", nextCollapsed);
+            header.setAttribute("aria-expanded", nextCollapsed ? "false" : "true");
+            (_a = header.querySelector(".sw__group-chevron use")) === null || _a === void 0 ? void 0 : _a.setAttribute("xlink:href", "#" + (nextCollapsed ? "iconRight" : "iconDown"));
+        });
+        groupEl.appendChild(header);
+        const grid = this.buildTabGroupGrid(scrollElement, ordered.length, ctx.settings);
+        if (span > 0 && cellWidth > 0) {
+            // 组块宽度 = span 张标准卡片 + 块间距；内部 repeat(span, 1fr) 在确定宽度下每列
+            // 恰好等于标准网格的 1fr 宽——卡片尺寸与不分组时逐像素一致
+            groupEl.style.width = `${Math.round(span * cellWidth + (span - 1) * constants_1.GROUP_FLOW_GAP_PX)}px`;
+            grid.style.gridTemplateColumns = `repeat(${span}, 1fr)`;
+        }
+        ordered.forEach((item) => {
+            const card = this.acquireGroupCard(item, ctx, false);
+            grid.appendChild(card);
+            item.card = card;
+            all.push(item);
+            if (item.tab.id !== ctx.activeTabId && ctx.mru.indexOf(this.pinKeyOf(item.tab)) === 0) {
+                focusState.defaultFocusIndex = all.length - 1;
+            }
+        });
+        groupEl.appendChild(grid);
+        scrollElement.appendChild(groupEl);
+    }
+    // 取得分组内单张卡片：优先复用旧卡片（同步状态类/图标/标题，缩略图不动，事件沿旧闭包），否则新建；
+    // 双端分组渲染共用（renderTabGroup/renderMobileCardsInGroup），手机端追加 sw__mobile-card 修饰类
+    acquireGroupCard(item, ctx, mobile) {
+        const isPinned = ctx.pinned.has(this.pinKeyOf(item.tab));
+        const isFaved = ctx.favorites.has(this.pinKeyOf(item.tab));
+        let card = ctx.reusable.get(item.tab.id);
+        if (card) {
+            this.syncCardState(card, item.tab, item.tab.id === ctx.activeTabId, isPinned, isFaved, ctx);
+            ctx.reusable.delete(item.tab.id);
+        }
+        else {
+            card = this.createCard(item, item.tab.id === ctx.activeTabId, isPinned, isFaved, ctx, {
+                onActivate: (tab) => this.activateTab(tab, ctx.opts.onOverlayClose),
+                onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
+                onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
+                onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, ctx.opts.onTabsChanged),
+            });
+        }
+        if (mobile) {
+            card.classList.add("sw__mobile-card");
+        }
+        return card;
+    }
+    // 构造分组卡片网格；侧边栏由专用设置 sidebarLayout 控制列数（CSS 自动响应宽度），弹窗仍用全局 columns
+    buildTabGroupGrid(scrollElement, count, settings) {
+        const grid = document.createElement("div");
+        grid.className = "sw__grid";
+        const isSidebar = !!scrollElement.closest(".sw--sidebar");
+        if (!isSidebar && settings.columns >= 2) {
+            grid.style.gridTemplateColumns = `repeat(${settings.columns}, 1fr)`;
+        }
+        return grid;
+    }
+    // 复用旧卡片时同步状态：置顶/收藏/激活类名与图标、标题文本
+    syncCardState(card, tab, isActive, isPinned, isFaved, ctx) {
+        var _a, _b, _c;
+        this.cardTabs.set(card, tab);
+        // Keep surface-specific modifiers when a card is reused during a
+        // mobile list refresh.  `renderMobileList` deliberately reuses DOM
+        // nodes to preserve thumbnails, but resetting className below used
+        // to drop `sw__mobile-card`, making refreshed cards fall back to the
+        // desktop layout until the next full dialog rebuild.
+        const isMobileCard = card.classList.contains("sw__mobile-card");
+        const previousRootId = card.dataset.rootId || "";
+        const rootId = this.rootIdOf(tab) || "";
+        card.className = "sw__card"
+            + (isActive ? " sw__active" : "")
+            + (isPinned ? " sw__pinned" : "")
+            + (isFaved ? " sw__faved" : "");
+        if (isMobileCard) {
+            card.classList.add("sw__mobile-card");
+        }
+        const title = this.titleOf(tab);
+        card.dataset.title = title;
+        // T-7007：复用卡片跨页签重挂时同步可访问名称，读屏不读出旧标题。
+        card.setAttribute("aria-label", title);
+        card.dataset.rootId = rootId;
+        card.dataset.notebookId = (0, search_model_1.resolveSearchNotebookId)(tab);
+        card.dataset.searchPath = ((_a = (0, search_model_1.buildOpenedDocumentScope)(tab)) === null || _a === void 0 ? void 0 : _a.path) || "";
+        (_b = card.querySelector(".sw__meta")) === null || _b === void 0 ? void 0 : _b.replaceWith(this.buildCardMeta(tab, ctx));
+        if (previousRootId !== rootId) {
+            (_c = card.querySelector(".sw__thumb")) === null || _c === void 0 ? void 0 : _c.replaceWith(this.buildCardThumb());
+        }
+        const iconUse = card.querySelector(".sw__pin use");
+        if (iconUse) {
+            iconUse.setAttribute("xlink:href", isPinned ? "#iconPin" : "#iconUnpin");
+        }
+        const pinButton = card.querySelector(".sw__pin");
+        const pinLabel = isPinned ? this.i18n.unpinTab : this.i18n.pinTab;
+        pinButton === null || pinButton === void 0 ? void 0 : pinButton.setAttribute("aria-label", pinLabel);
+        pinButton === null || pinButton === void 0 ? void 0 : pinButton.setAttribute("title", pinLabel);
+        const favButton = card.querySelector(".sw__fav-btn");
+        const favLabel = isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab;
+        favButton === null || favButton === void 0 ? void 0 : favButton.setAttribute("aria-label", favLabel);
+        favButton === null || favButton === void 0 ? void 0 : favButton.setAttribute("title", favLabel);
+    }
+    // 空态：主文案 + 引导副文案（提示可搜索全库文档）
+    buildEmptyState(surfaceRoot) {
+        const empty = document.createElement("div");
+        empty.className = "sw__empty";
+        empty.innerHTML = `<div class="sw__empty-message" role="status" aria-live="polite"><div class="sw__empty-title"></div><div class="sw__empty-sub"></div></div>`;
+        empty.querySelector(".sw__empty-title").textContent = this.i18n.noOpenedTabs;
+        empty.querySelector(".sw__empty-sub").textContent = this.i18n.emptyHint;
+        const actions = document.createElement("div");
+        actions.className = "sw__empty-actions";
+        const searchSurface = empty.closest(".sw-platform-surface")
+            || (surfaceRoot === null || surfaceRoot === void 0 ? void 0 : surfaceRoot.closest(".sw-platform-surface"))
+            || surfaceRoot
+            || this.sidebarElement
+            || document.querySelector(".sw__mobile[data-sw-surface='switcher']");
+        const addAction = (action, label, callback) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "b3-button b3-button--outline sw__empty-action";
+            button.dataset.action = action;
+            button.textContent = label;
+            button.setAttribute("aria-label", label);
+            button.addEventListener("click", callback);
+            actions.appendChild(button);
+        };
+        const closeSwitcherDialog = () => {
+            var _a, _b;
+            if ((_a = this.platformSwitcherDialog) === null || _a === void 0 ? void 0 : _a.element.contains(empty))
+                this.platformSwitcherDialog.destroy();
+            if ((_b = this.mobileSwitcherDialog) === null || _b === void 0 ? void 0 : _b.element.contains(empty))
+                this.mobileSwitcherDialog.destroy();
+        };
+        addAction("focus-search", this.i18n.platformGuideSearchAction || "开始搜索", () => {
+            var _a;
+            (_a = searchSurface === null || searchSurface === void 0 ? void 0 : searchSurface.querySelector(".sw__search")) === null || _a === void 0 ? void 0 : _a.focus({ preventScroll: true });
+        });
+        const available = this.getAvailablePlatformSurfaces();
+        if (available.includes("workbench")) {
+            addAction("open-workbench", this.i18n.platformGuideWorkbenchAction || "打开工作台", () => {
+                closeSwitcherDialog();
+                this.openPlatformSurface("workbench", "switcher", { entry: "surface-nav" });
+            });
+        }
+        if (available.includes("studio")) {
+            addAction("open-studio", this.i18n.platformGuideStudioAction || "打开片段实验室", () => {
+                closeSwitcherDialog();
+                this.openPlatformSurface("studio", "switcher", { entry: "surface-nav" });
+            });
+        }
+        addAction("open-guide", this.i18n.platformGuideButton || "快速开始", () => this.openPlatformGuide("switcher"));
+        empty.appendChild(actions);
+        return empty;
+    }
+    // 置顶/取消置顶：更新状态、图标与提示文案，并调整卡片位置（置顶移动到本组最前）
+    handleTogglePin(tab, card) {
+        var _a;
+        const isPinned = this.togglePinned(tab);
+        const iconUse = card.querySelector(".sw__pin use");
+        if (iconUse) {
+            iconUse.setAttribute("xlink:href", isPinned ? "#iconPin" : "#iconUnpin");
+        }
+        const pinButton = card.querySelector(".sw__pin");
+        const pinLabel = isPinned ? this.i18n.unpinTab : this.i18n.pinTab;
+        pinButton === null || pinButton === void 0 ? void 0 : pinButton.setAttribute("aria-label", pinLabel);
+        pinButton === null || pinButton === void 0 ? void 0 : pinButton.setAttribute("title", pinLabel);
+        card.classList.toggle("sw__pinned", isPinned);
+        if (isPinned) {
+            (_a = card.parentElement) === null || _a === void 0 ? void 0 : _a.prepend(card);
+            this.focusCard(card);
+        }
+    }
+    // 收藏/取消收藏（右键菜单入口）：更新卡片标识与提示文案，并刷新顶栏收藏下拉
+    handleToggleFav(tab, card) {
+        this.toggleFavorite(tab);
+        this.refreshCardFavState(tab, card);
+        this.refreshFavSelects();
+    }
+    // 按双端适配关闭单个页签（仅关闭动作本身，不含卡片移除/列表刷新等收尾）；
+    // 返回是否真正关闭成功，供批量关闭准确计数
+    // T-6856 close-tab 动作：关闭活动页签。无活动页签或关闭失败时给出明确
+    // 回执（返回 false → executor 报 unavailable）；手机端复用 MobileTabs 分支。
+    async closeActiveTabForAction() {
+        const active = this.getActiveTab();
+        if (!active) {
+            (0, siyuan_1.showMessage)(this.i18n.sessionMarkNoDoc, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return false;
+        }
+        const closed = await this.closeTabQuietly(active);
+        if (!closed)
+            (0, siyuan_1.showMessage)(this.i18n.closeTabFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+        return closed;
+    }
+    async closeTabQuietly(tab) {
+        var _a, _b;
+        if (this.isMobile) {
+            // 手机端：MobileTabs.close 关闭页签；必须保持宿主对象调用（裸调用丢 this），
+            // await 返回值以便批量关闭时串行等待，完成后给状态一小段沉降时间
+            try {
+                const tabs = (_b = (_a = (0, types_1.getSiyuan)()) === null || _a === void 0 ? void 0 : _a.mobile) === null || _b === void 0 ? void 0 : _b.tabs;
+                if (typeof (tabs === null || tabs === void 0 ? void 0 : tabs.close) !== "function") {
+                    return false;
+                }
+                const result = await tabs.close(tab.id);
+                if (!(0, util_1.isSuccessfulMobileTabsResult)(result)) {
+                    logger_1.logger.warn("mobile close tab non-success result", result);
+                }
+                await this.sleep(constants_1.TAB_SETTLE_MS);
+                // T-6925（真机反馈）：宿主 close 的副作用会把我们的切换器压到原生
+                // 浮层之下（关非活动页签弹页签总览、关活动页签走 closeModel），
+                // 统一在沉降后恢复前置。
+                this.restoreMobileSwitcherAboveHostPanels();
+                return (0, util_1.isSuccessfulMobileTabsResult)(result);
+            }
+            catch (e) {
+                logger_1.logger.warn("mobile close tab fail", e);
+                return false;
+            }
+        }
+        try {
+            tab.parent.removeTab(tab.id);
+            // 杩炵画 removeTab 鏃剁粰鎬濇簮 DOM/鐘舵€佷竴甯ф矇闄嶆椂闂达紝闄嶄綆婕忓叧姒傜巼
+            await this.sleep(constants_1.TAB_SETTLE_MS);
+            return true;
+        }
+        catch (e) {
+            logger_1.logger.warn("close tab fail", e);
+            return false;
+        }
+    }
+    // 在统一时间窗内核对整组结果，避免逐项等待导致批量操作随页签数线性变慢。
+    async waitForTabStates(ids, shouldBeOpen, matchTabId = false) {
+        const pending = new Set(ids);
+        const verified = new Set();
+        if (pending.size === 0) {
+            return verified;
+        }
+        const deadline = Date.now() + constants_1.TAB_VERIFY_TIMEOUT_MS;
+        do {
+            const tabs = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+            const opened = new Set(tabs.map((tab) => matchTabId ? tab.id : this.pinKeyOf(tab)));
+            pending.forEach((id) => {
+                if (opened.has(id) === shouldBeOpen) {
+                    verified.add(id);
+                    pending.delete(id);
+                }
+            });
+            if (pending.size === 0) {
+                return verified;
+            }
+            await this.sleep(constants_1.TAB_SETTLE_MS);
+        } while (Date.now() < deadline);
+        return verified;
+    }
+    // 小驴工具：批量开/关页签时避免竞态
+    sleep(ms) {
+        return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+    // T-6925（真机反馈修复）：手机端宿主 MobileTabs.close 的副作用会把我们的切换器
+    // 压到原生浮层之下——关非活动页签后宿主 openOverview 弹出页签总览（openModel 给
+    // #model 分配递增 zIndex 顶层），关活动页签走 closeModel。此处按用户等价操作点
+    // 宿主自己的 #modelClose 关掉总览，并把仍连接的切换器弹窗重新置顶，
+    // 使"在插件里关页签"继续停留在插件内（弹窗本身从不主动关闭）。
+    restoreMobileSwitcherAboveHostPanels() {
+        var _a;
+        const dialog = this.mobileSwitcherDialog;
+        if (!(dialog === null || dialog === void 0 ? void 0 : dialog.element.isConnected))
+            return;
+        const model = document.getElementById("model");
+        if (model && model.style.transform === "translateX(0px)" && model.querySelector(".mobile-tabs")) {
+            // #modelClose 非 HTMLElement（无 .click()），须以事件触发宿主自己的关闭路径
+            (_a = model.querySelector("#modelClose")) === null || _a === void 0 ? void 0 : _a.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        }
+        const siyuan = (0, types_1.getSiyuan)();
+        if (siyuan && Number.isFinite(Number(siyuan.zIndex))) {
+            siyuan.zIndex = Number(siyuan.zIndex) + 1;
+            dialog.element.style.zIndex = String(siyuan.zIndex);
+        }
+    }
+    // 关闭页签：移除页签与卡片；侧边栏模式下整列表刷新（弹窗保持打开）
+    async handleCloseTab(tab, card, onTabsChanged) {
+        // 等待页签真正关闭后再移除卡片，保证 onTabsChanged（侧边栏刷新）触发时读到最新列表
+        const closed = await this.closeTabQuietly(tab);
+        if (!closed) {
+            (0, siyuan_1.showMessage)(this.i18n.closeTabFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        // 先取引用再移除卡片（remove 后 closest 返回 null）
+        const group = card.closest(".sw__group");
+        const scroll = card.closest(".sw__scroll");
+        card.remove();
+        // 同步所在分组：更新计数，组内清空则移除分组容器（弹窗模式不整列表重建）
+        if (group) {
+            const count = group.querySelectorAll(".sw__card").length;
+            if (count === 0) {
+                group.remove();
+            }
+            else {
+                const label = group.querySelector(".sw__window-label");
+                if (label) {
+                    label.textContent = `${this.i18n.currentWindow} · ${count}`;
+                }
+            }
+        }
+        // 全部页签关闭后展示空态（弹窗保持打开，用户可搜索全库文档打开新的）
+        if (scroll && scroll.querySelectorAll(".sw__card").length === 0 && !scroll.querySelector(".sw__doc-results")) {
+            scroll.appendChild(this.buildEmptyState(scroll));
+        }
+        onTabsChanged();
+    }
+    // 构建一张页签卡片（缩略图区域 + 底部信息 + 置顶/收藏/关闭按钮 + 右键菜单）
+    createCard(item, isActive, isPinned, isFaved, ctx, handlers) {
+        var _a;
+        const tab = item.tab;
+        const card = document.createElement("div");
+        this.cardTabs.set(card, tab);
+        card.className = "sw__card"
+            + (isActive ? " sw__active" : "")
+            + (isPinned ? " sw__pinned" : "")
+            + (isFaved ? " sw__faved" : "");
+        // T-7007：卡片是真实 DOM 焦点目标（主焦点模型）——键盘用户 Tab/方向键
+        // 直接落在卡片上，读屏读出标题；附属动作按钮（pin/fav/close）在卡片
+        // 获得焦点后经 :focus-within 可见。点击激活与右键菜单行为不变。
+        card.tabIndex = 0;
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", this.titleOf(tab));
+        card.dataset.tabId = tab.id;
+        card.dataset.title = this.titleOf(tab);
+        card.dataset.rootId = this.rootIdOf(tab) || "";
+        card.dataset.notebookId = (0, search_model_1.resolveSearchNotebookId)(tab);
+        card.dataset.searchPath = ((_a = (0, search_model_1.buildOpenedDocumentScope)(tab)) === null || _a === void 0 ? void 0 : _a.path) || "";
+        card.appendChild(this.buildCardThumb());
+        card.appendChild(this.buildCardMeta(tab, ctx));
+        card.appendChild(this.buildCardActions(tab, card, isPinned, isFaved, handlers));
+        item.card = card;
+        // 桌面右键 / 手机长按：均弹同一操作菜单（pin / fav / 分组 / close）
+        card.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.openCardMenu(this.cardTabs.get(card) || tab, card, handlers, event.clientX, event.clientY);
+        });
+        this.cardMenuHandlers.set(card, handlers);
+        if (this.isMobile) {
+            this.bindCardLongPress(card, tab, handlers);
+        }
+        // 点击整卡切换到该页签；mouseenter 用于键盘导航的悬浮聚焦
+        card.addEventListener("click", () => handlers.onActivate(this.cardTabs.get(card) || tab));
+        card.addEventListener("mouseenter", () => this.focusCard(card));
+        return card;
+    }
+    // 缩略图占位（内容由 renderThumbnails 分批填入）
+    buildCardThumb() {
+        const thumb = document.createElement("div");
+        thumb.className = "sw__thumb";
+        const loading = document.createElement("div");
+        loading.className = "sw__thumb-loading";
+        loading.setAttribute("role", "status");
+        loading.setAttribute("aria-live", "polite");
+        loading.innerHTML = `<svg class="sw__spin"><use xlink:href="#iconRefresh"></use></svg><span>${this.i18n.loadingThumbnail}</span>`;
+        thumb.appendChild(loading);
+        return thumb;
+    }
+    // 底部：图标 + 标题 + 可选改动信息；图标复用真实页签头内容。
+    buildCardMeta(tab, ctx) {
+        const meta = document.createElement("div");
+        meta.className = "sw__meta";
+        meta.appendChild(this.buildCardIcon(tab));
+        const titleEl = document.createElement("span");
+        titleEl.className = "sw__title";
+        titleEl.textContent = this.titleOf(tab);
+        meta.appendChild(titleEl);
+        // T-6848：更新时间和改动标记只消费内核 blocks.updated，同最近列表的 7 天判定。
+        if ((ctx === null || ctx === void 0 ? void 0 : ctx.settings.showCardUpdatedBadge) === true) {
+            const rootId = this.rootIdOf(tab);
+            const updated = rootId ? ctx.updatedMap[rootId] : undefined;
+            const badge = (0, search_model_1.formatUpdatedBadge)(updated, Date.now());
+            if (badge) {
+                const badgeEl = document.createElement("span");
+                badgeEl.className = "sw__updated-badge" + (badge.fresh ? " is-fresh" : "");
+                badgeEl.textContent = badge.text;
+                badgeEl.setAttribute("aria-hidden", "true");
+                meta.appendChild(badgeEl);
+                if ((0, recent_closed_1.updatedChangedWithin)(updated, (0, recent_closed_1.formatChangedWindowStart)(Date.now()))) {
+                    const changedEl = document.createElement("span");
+                    changedEl.className = "sw__changed-badge";
+                    changedEl.textContent = this.i18n.cardChangedBadge;
+                    changedEl.title = this.i18n.cardChangedBadgeTip;
+                    meta.appendChild(changedEl);
+                }
+            }
+        }
+        return meta;
+    }
+    refreshCardUpdatedBadges(scrollElement, updatedMap) {
+        const ctx = { settings: this.getSettings(), updatedMap };
+        scrollElement.querySelectorAll(".sw__card").forEach((card) => {
+            var _a;
+            const tab = this.cardTabs.get(card);
+            if (tab)
+                (_a = card.querySelector(".sw__meta")) === null || _a === void 0 ? void 0 : _a.replaceWith(this.buildCardMeta(tab, ctx));
+        });
+    }
+    // 卡片图标：思源 svg sprite > emoji 字符 > tab.icon 兜底
+    buildCardIcon(tab) {
+        var _a, _b;
+        const iconBox = document.createElement("span");
+        iconBox.className = "sw__icon";
+        const graphic = (_a = tab.headElement) === null || _a === void 0 ? void 0 : _a.querySelector(".item__graphic use");
+        const emoji = (_b = tab.headElement) === null || _b === void 0 ? void 0 : _b.querySelector(".item__icon");
+        if (graphic) {
+            const href = graphic.getAttribute("xlink:href");
+            iconBox.innerHTML = href ? `<svg aria-hidden="true"><use xlink:href="${href}"></use></svg>` : "";
+        }
+        else if (emoji) {
+            iconBox.textContent = emoji.textContent || "";
+            iconBox.classList.add("sw__icon-emoji");
+        }
+        else {
+            // 兜底：思源图标名走 svg use；emoji 字符（手机端文档自定义图标）按文本渲染
+            const fallback = (0, util_1.resolveIconFallback)(tab.icon || "");
+            if (fallback.type === "emoji") {
+                iconBox.textContent = fallback.value;
+                iconBox.classList.add("sw__icon-emoji");
+            }
+            else {
+                iconBox.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${fallback.value}"></use></svg>`;
+            }
+        }
+        return iconBox;
+    }
+    // 角标按钮（置顶 + 收藏 + 关闭），统一返回 Fragment 便于一次性插入
+    buildCardActions(tab, card, isPinned, isFaved, handlers) {
+        const frag = document.createDocumentFragment();
+        // 置顶按钮（左上角）：已置顶显示实心图钉，tooltip 提示当前可执行的操作
+        const pinBtn = document.createElement("button");
+        pinBtn.type = "button";
+        pinBtn.className = "sw__pin";
+        pinBtn.setAttribute("aria-label", isPinned ? this.i18n.unpinTab : this.i18n.pinTab);
+        pinBtn.title = isPinned ? this.i18n.unpinTab : this.i18n.pinTab;
+        pinBtn.innerHTML = `<svg><use xlink:href="${isPinned ? "#iconPin" : "#iconUnpin"}"></use></svg>`;
+        pinBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            handlers.onTogglePin(this.cardTabs.get(card) || tab, card);
+        });
+        frag.appendChild(pinBtn);
+        // 收藏按钮（左上角，紧邻置顶）：未收藏空心星、已收藏实心星（CSS 变量 --b3-icon-star-fill 切换填充）
+        const favBtn = document.createElement("button");
+        favBtn.type = "button";
+        favBtn.className = "sw__fav-btn";
+        favBtn.setAttribute("aria-label", isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab);
+        favBtn.title = isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab;
+        favBtn.innerHTML = '<svg><use xlink:href="#iconStar"></use></svg>';
+        favBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            // 点击星标弹出分组菜单：收藏时可直接选分组/新建分组，已收藏时可切换分组或取消收藏
+            this.openFavMenu(this.cardTabs.get(card) || tab, card, event);
+        });
+        frag.appendChild(favBtn);
+        // 关闭按钮（右上角）
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "sw__close";
+        closeBtn.setAttribute("aria-label", this.i18n.close);
+        closeBtn.title = this.i18n.close;
+        closeBtn.innerHTML = '<svg><use xlink:href="#iconClose"></use></svg>';
+        closeBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            handlers.onCloseTab(this.cardTabs.get(card) || tab, card);
+        });
+        frag.appendChild(closeBtn);
+        return frag;
+    }
+    // 手机端长按（≈500ms）弹出与桌面右键一致的操作菜单；
+    // 拦截 click 必须注册在 activate 之前（目标节点按注册顺序触发）
+    bindCardLongPress(card, tab, handlers) {
+        let timer;
+        let longPressed = false;
+        let menuX = 0;
+        let menuY = 0;
+        const start = (event) => {
+            const touch = event.touches[0];
+            if (touch) {
+                menuX = touch.clientX;
+                menuY = touch.clientY;
+            }
+            longPressed = false;
+            timer = window.setTimeout(() => {
+                longPressed = true;
+                this.openCardMenu(this.cardTabs.get(card) || tab, card, handlers, menuX, menuY);
+            }, 500);
+        };
+        const cancel = () => {
+            if (timer !== undefined) {
+                window.clearTimeout(timer);
+                timer = undefined;
+            }
+        };
+        const end = (event) => {
+            cancel();
+            if (longPressed) {
+                // 阻止长按结束后合成 click 触发页签切换
+                event.preventDefault();
+            }
+        };
+        card.addEventListener("click", (event) => {
+            if (longPressed) {
+                longPressed = false;
+                event.stopImmediatePropagation();
+                event.preventDefault();
+            }
+        }, true);
+        card.addEventListener("touchstart", start, { passive: true });
+        card.addEventListener("touchmove", cancel, { passive: true });
+        card.addEventListener("touchend", end, { passive: false });
+        card.addEventListener("touchcancel", cancel);
+    }
+    // 卡片操作菜单（桌面右键 / 手机长按共用）：置顶 / 收藏 / 分组 / 关闭
+    openCardMenu(tab, card, handlers, x, y) {
+        const menu = new siyuan_1.Menu("swCardMenu");
+        const nowPinned = card.classList.contains("sw__pinned");
+        const nowFaved = card.classList.contains("sw__faved");
+        menu.addItem({
+            label: nowPinned ? this.i18n.unpinTab : this.i18n.pinTab,
+            icon: nowPinned ? "iconUnpin" : "iconPin",
+            click: () => handlers.onTogglePin(tab, card),
+        });
+        menu.addItem({
+            label: nowFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab,
+            icon: "iconStar",
+            click: () => handlers.onToggleFav(tab, card),
+        });
+        // 分组管理：已收藏时快速移动至分组（子菜单，当前分组勾选）+ 新建分组并移动；
+        // 未收藏时收进收藏并选择分组
+        if (nowFaved) {
+            const key = this.pinKeyOf(tab);
+            const favorite = this.getFavorites().find((item) => item.key === key);
+            const moveSub = [{ checked: !(favorite === null || favorite === void 0 ? void 0 : favorite.group), label: this.escapeAttr(this.i18n.ungrouped),
+                    click: () => { this.setFavoriteGroup(key, ""); this.refreshCardFavState(tab, card); } }];
+            this.getFavoriteGroupNames().forEach((name) => {
+                moveSub.push({ checked: (favorite === null || favorite === void 0 ? void 0 : favorite.group) === name, label: this.escapeAttr(name),
+                    click: () => { this.setFavoriteGroup(key, name); this.refreshCardFavState(tab, card); } });
+            });
+            menu.addItem({ type: "submenu", label: this.i18n.moveToGroup, icon: "iconFolder", submenu: moveSub });
+            menu.addItem({
+                label: this.i18n.newGroupFav,
+                icon: "iconAdd",
+                click: () => this.openGroupDialog(tab, card),
+            });
+        }
+        else {
+            menu.addItem({
+                label: this.i18n.newGroupFav,
+                icon: "iconFolder",
+                click: () => this.openGroupDialog(tab, card),
+            });
+        }
+        menu.addItem({
+            label: this.i18n.close,
+            icon: "iconClose",
+            click: () => handlers.onCloseTab(tab, card),
+        });
+        menu.open({ x, y });
+    }
+    // ==================== 缂╃暐鍥剧紦瀛?====================
+    // 缓存按文档 rootID 索引：只要该文档页签还开着（哪怕重启/重置布局后重新恢复），
+    // 缓存就保留并在页签 DOM 未就绪时直接渲染；页签关闭后由 pruneThumbCache 清除。
+    getThumbCache() {
+        const data = this.data[constants_1.THUMB_CACHE_KEY];
+        // 与 normalizeThumbCache 的容器判据一致：数组同样是 object，旧判据会把
+        // 数组当缓存返回，后续 cache[rootId] = {...} 会往数组上挂具名属性。
+        // 加载期归一化已把这类值重置为空对象，这里是运行期的第二道防线。
+        return data && typeof data === "object" && !Array.isArray(data) ? data : {};
+    }
+    saveThumbCache(cache) {
+        this.data[constants_1.THUMB_CACHE_KEY] = cache;
+        this.saveDataDebounced(constants_1.THUMB_CACHE_KEY);
+    }
+    // 写入一条缓存（实时 DOM 优先更新），超过上限时按最旧淘汰；不立即写盘，由调用方批量 flush
+    setThumbCache(cache, rootId, title, html) {
+        // 手机端使用更保守的缓存上限（存储/内存更紧张）
+        const htmlMax = this.isMobile ? constants_1.THUMB_HTML_MAX_MOBILE : constants_1.THUMB_HTML_MAX;
+        const cacheMax = this.isMobile ? constants_1.THUMB_CACHE_MAX_MOBILE : constants_1.THUMB_CACHE_MAX;
+        if (html.length > htmlMax) {
+            return;
+        }
+        cache[rootId] = { title, html, ts: Date.now() };
+        // 容量控制：超出上限时删最旧的条目；用稳定排序让 ts 相同时按插入顺序淘汰，行为可预测
+        const keys = Object.keys(cache);
+        if (keys.length > cacheMax) {
+            const sorted = (0, util_1.stableSortBy)(keys, (k) => cache[k].ts);
+            sorted.slice(0, sorted.length - cacheMax).forEach((key) => delete cache[key]);
+        }
+    }
+    // 清理缓存中已无对应打开页签的孤儿条目（页签关闭即失效）
+    pruneThumbCache(tabs) {
+        const openIds = new Set();
+        tabs.forEach((tab) => {
+            const rootId = this.rootIdOf(tab);
+            if (rootId) {
+                openIds.add(rootId);
+            }
+        });
+        const cache = this.getThumbCache();
+        let dirty = false;
+        Object.keys(cache).forEach((key) => {
+            if (!openIds.has(key)) {
+                delete cache[key];
+                dirty = true;
+            }
+        });
+        if (dirty) {
+            this.saveThumbCache(cache);
+        }
+    }
+    // ==================== 缩略图渲染 ====================
+    // 渲染单个页签缩略图：实时 DOM 克隆 → 持久化缓存 → 内核 API 回源（带并发闸门）
+    renderThumbItem(item) {
+        var _a;
+        const thumb = (_a = item.card) === null || _a === void 0 ? void 0 : _a.querySelector(".sw__thumb");
+        if (!thumb || !thumb.isConnected) {
+            return;
+        }
+        const title = item.tab.title || "";
+        const rootId = this.rootIdOf(item.tab);
+        const source = this.getThumbSource(item.tab);
+        thumb.innerHTML = "";
+        if (source) {
+            // 视觉空白的实时克隆不进缓存，回退 API 回源（T-6970 缩略图空框防护）
+            if (this.applyThumbContent(thumb, source, title)) {
+                // 实时 DOM 可用：刷新该文档的缓存快照（下次重启/后台未渲染时直接命中）
+                if (rootId) {
+                    const cache = this.getThumbCache();
+                    this.setThumbCache(cache, rootId, title, source.innerHTML);
+                    this.saveThumbCache(cache);
+                }
+                return;
+            }
+            this.fillThumbByApi(item.tab, thumb);
+            return;
+        }
+        // 无实时 DOM：尝试命中持久化缓存（跨重启/重置保留）
+        const cache = this.getThumbCache();
+        const cached = rootId ? cache[rootId] : undefined;
+        if (cached) {
+            const wrap = document.createElement("div");
+            wrap.className = "protyle-wysiwyg";
+            // T-7173：持久化缓存是弱信任存储——读取必经有界净化
+            const fragment = this.sanitizeThumbHtml(cached.html);
+            if (!fragment)
+                return;
+            wrap.appendChild(fragment);
+            this.applyThumbContent(thumb, wrap, title);
+            return;
+        }
+        // 缓存也未命中：先占位，再通过内核 API 读取文档内容（成功后写入缓存）
+        const placeholder = document.createElement("div");
+        placeholder.className = "sw__thumb-placeholder";
+        placeholder.textContent = title || item.tab.id;
+        thumb.appendChild(placeholder);
+        this.fillThumbByApi(item.tab, thumb);
+    }
+    // 视口懒渲染：只给滚动到可视区（含 240px 预载边距）的卡片生成缩略图，
+    // 视野外保持加载占位。打开切换器从"全量克隆"降为"首屏克隆"，大列表秒开
+    renderThumbnails(list, scrollElement, batch) {
+        // 同一容器重复渲染时（排序切换/列表刷新）先断开旧观察器，防止泄漏与重复渲染
+        // 用 WeakMap 把 IntersectionObserver 绑在元素上，替代 (el as any).__swThumbObserver 的自挂私有属性写法
+        const prev = thumbObserverCache.get(scrollElement);
+        if (prev) {
+            prev.disconnect();
+            thumbObserverCache.delete(scrollElement);
+        }
+        // 环境不支持 IntersectionObserver 时退回原分批全量渲染（思源内核均为 Chromium，仅防御）
+        if (typeof IntersectionObserver !== "function") {
+            this.renderThumbBatch(list, batch);
+            return;
+        }
+        const thumbItems = new Map();
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) {
+                    return;
+                }
+                observer.unobserve(entry.target);
+                const item = thumbItems.get(entry.target);
+                if (item) {
+                    thumbItems.delete(entry.target);
+                    this.renderThumbItem(item);
+                }
+            });
+        }, { root: scrollElement, rootMargin: "240px 0px" });
+        thumbObserverCache.set(scrollElement, observer);
+        list.forEach((item) => {
+            var _a;
+            const thumb = (_a = item.card) === null || _a === void 0 ? void 0 : _a.querySelector(".sw__thumb");
+            if (!thumb) {
+                return;
+            }
+            // 复用的旧卡片已渲染过（无加载占位）：跳过观察，避免重克隆
+            if (!thumb.querySelector(".sw__thumb-loading")) {
+                return;
+            }
+            thumbItems.set(thumb, item);
+            observer.observe(thumb);
+        });
+    }
+    // 分批全量渲染（IntersectionObserver 不可用时的兜底路径）
+    renderThumbBatch(list, batch) {
+        const cache = this.getThumbCache();
+        let dirty = false;
+        let index = 0;
+        const runBatch = () => {
+            var _a;
+            const end = Math.min(index + batch, list.length);
+            for (; index < end; index++) {
+                const item = list[index];
+                const thumb = (_a = item.card) === null || _a === void 0 ? void 0 : _a.querySelector(".sw__thumb");
+                if (!thumb) {
+                    continue;
+                }
+                const title = item.tab.title || "";
+                const rootId = this.rootIdOf(item.tab);
+                const source = this.getThumbSource(item.tab);
+                thumb.innerHTML = "";
+                if (source && this.applyThumbContent(thumb, source, title)) {
+                    if (rootId) {
+                        this.setThumbCache(cache, rootId, title, source.innerHTML);
+                        dirty = true;
+                    }
+                    continue;
+                }
+                if (source) {
+                    // 空白克隆：回退缓存/API 路径（applyThumbContent 已就地放标题占位）
+                    this.fillThumbByApi(item.tab, thumb);
+                    continue;
+                }
+                const cached = rootId ? cache[rootId] : undefined;
+                if (cached) {
+                    const wrap = document.createElement("div");
+                    wrap.className = "protyle-wysiwyg";
+                    // T-7173：持久化缓存是弱信任存储——读取必经有界净化
+                    const fragment = this.sanitizeThumbHtml(cached.html);
+                    if (!fragment) {
+                        this.fillThumbByApi(item.tab, thumb);
+                        continue;
+                    }
+                    wrap.appendChild(fragment);
+                    this.applyThumbContent(thumb, wrap, title);
+                    continue;
+                }
+                const placeholder = document.createElement("div");
+                placeholder.className = "sw__thumb-placeholder";
+                placeholder.textContent = title || item.tab.id;
+                thumb.appendChild(placeholder);
+                this.fillThumbByApi(item.tab, thumb);
+            }
+            if (index < list.length) {
+                this.scheduleAnimationFrame(runBatch);
+            }
+            else if (dirty) {
+                this.saveThumbCache(cache);
+            }
+        };
+        this.scheduleAnimationFrame(runBatch);
+    }
+    // 将克隆内容装进缩略图框并按宽度缩放。返回 false 表示内容视觉空白（如整篇空段落），
+    // 已就地回退为标题占位——调用方应继续走 API 回源且不得把空白内容写入缓存（T-6970）。
+    // T-7173：缩略图 HTML 有界净化——三来源（实时克隆/持久化缓存/内核 getDoc）中，
+    // 后两者经 innerHTML 解析（历史缺陷：弱信任存储与内核响应未净化即挂载）。
+    // DOMParser 产出 inert 文档（不跑脚本、不加载资源、不触发事件），再按白名单
+    // 搬运节点：剥全部事件属性/style/srcset/javascript: 与 data:text 源，剔除
+    // script/iframe 等活动标签；缩略图只需视觉骨架，交互标签一并剔除。
+    sanitizeThumbHtml(html) {
+        if (typeof DOMParser !== "function")
+            return null; // 极旧 WebView：调用方降级为占位
+        const parsed = new DOMParser().parseFromString(html, "text/html");
+        const fragment = parsed.createDocumentFragment();
+        const stripTags = new Set(["script", "style", "iframe", "object", "embed", "link", "meta", "base", "template", "form", "input", "button", "textarea", "select", "audio", "video", "source", "track"]);
+        const walk = (src, dest) => {
+            var _a, _b, _c, _d, _e, _f;
+            for (const node of Array.from(src.childNodes)) {
+                if (node.nodeType === ((_c = (_b = (_a = parsed.defaultView) === null || _a === void 0 ? void 0 : _a.Node) === null || _b === void 0 ? void 0 : _b.TEXT_NODE) !== null && _c !== void 0 ? _c : 3)) {
+                    dest.appendChild(parsed.createTextNode(node.textContent || ""));
+                    continue;
+                }
+                if (node.nodeType !== ((_f = (_e = (_d = parsed.defaultView) === null || _d === void 0 ? void 0 : _d.Node) === null || _e === void 0 ? void 0 : _e.ELEMENT_NODE) !== null && _f !== void 0 ? _f : 1))
+                    continue;
+                const el = node;
+                const tag = el.tagName.toLowerCase();
+                if (stripTags.has(tag))
+                    continue;
+                const clone = parsed.createElement(tag);
+                for (const attr of Array.from(el.attributes)) {
+                    const name = attr.name.toLowerCase();
+                    if (name.startsWith("on") || name === "style" || name === "srcset")
+                        continue;
+                    if (name === "src" || name === "href" || name === "xlink:href") {
+                        const value = attr.value.trim().toLowerCase();
+                        if (value.startsWith("javascript:") || value.startsWith("data:text"))
+                            continue;
+                    }
+                    clone.setAttribute(attr.name, attr.value);
+                }
+                walk(el, clone);
+                dest.appendChild(clone);
+            }
+        };
+        walk(parsed.body, fragment);
+        return fragment;
+    }
+    applyThumbContent(thumb, source, title) {
+        var _a;
+        // 真机反馈：日记等文档开头常见空段落，缩放后整框只剩空白；先裁掉前导空白块
+        (0, util_1.trimLeadingBlankThumbNodes)(source);
+        if (!(0, util_1.hasVisibleThumbContent)(source)) {
+            const placeholder = document.createElement("div");
+            placeholder.className = "sw__thumb-placeholder";
+            placeholder.textContent = title || ((_a = thumb.parentElement) === null || _a === void 0 ? void 0 : _a.getAttribute("data-tab-id")) || "";
+            thumb.appendChild(placeholder);
+            return false;
+        }
+        const content = document.createElement("div");
+        content.className = "sw__thumb-content";
+        content.appendChild(source);
+        thumb.appendChild(content);
+        // 依据盒子实际宽度计算缩放比例；容器尚未完成布局（宽度为 0）时等下一帧重算，
+        // 后续尺寸变化由侧边栏的 ResizeObserver 兜底重算
+        content.style.visibility = "hidden";
+        const syncScale = (attempt) => {
+            if (!thumb.isConnected)
+                return;
+            const width = thumb.clientWidth || thumb.getBoundingClientRect().width;
+            if (width > 0) {
+                content.style.transform = `scale(${(width / constants_1.CONTENT_WIDTH_PX).toFixed(3)})`;
+                content.style.visibility = "visible";
+                return;
+            }
+            if (attempt < 5)
+                this.scheduleAnimationFrame(() => syncScale(attempt + 1));
+            else
+                content.style.visibility = "visible";
+        };
+        syncScale(0);
+        content.setAttribute("aria-label", title);
+        return true;
+    }
+    // 关闭切换器/重渲染时批量取消在途回源：等待项拿到槽位后因失连检查自动离队
+    cancelThumbFetches() {
+        this.thumbApiControllers.forEach((controller) => {
+            try {
+                controller.abort();
+            }
+            catch ( /* 无 AbortController 环境忽略 */_a) { /* 无 AbortController 环境忽略 */ }
+        });
+        this.thumbApiControllers.clear();
+    }
+    async acquireThumbApi() {
+        const max = this.isMobile ? constants_1.THUMB_API_MAX_MOBILE : constants_1.THUMB_API_MAX;
+        if (this.thumbApiActive < max) {
+            this.thumbApiActive++;
+            return;
+        }
+        await new Promise((resolve) => {
+            this.thumbApiQueue.push(() => {
+                this.thumbApiActive++;
+                resolve();
+            });
+        });
+    }
+    releaseThumbApi() {
+        this.thumbApiActive--;
+        const next = this.thumbApiQueue.shift();
+        if (next) {
+            next();
+        }
+    }
+    // 页签 DOM 中暂无内容（如后台未渲染完）时，通过内核 API 读取文档 HTML 作为缩略内容，并写入缓存
+    async fillThumbByApi(tab, thumb) {
+        var _a;
+        const rootId = this.rootIdOf(tab);
+        if (!rootId) {
+            return; // 闈炴枃妗ｉ〉绛撅紝淇濇寔鍗犱綅
+        }
+        await this.acquireThumbApi();
+        // T-7172：拿到槽位后先验失连——卡片已被重绘移除则立即离队，不发请求
+        if (!thumb.isConnected) {
+            this.releaseThumbApi();
+            return;
+        }
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        if (controller)
+            this.thumbApiControllers.set(thumb, controller);
+        try {
+            // size=32：缩略图只需首屏内容，减小响应体与解析开销
+            const timer = controller
+                ? window.setTimeout(() => controller.abort(), constants_1.THUMB_API_TIMEOUT_MS)
+                : null;
+            const response = await fetch("/api/filetree/getDoc", Object.assign({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: rootId, mode: 0, size: 32 }) }, (controller ? { signal: controller.signal } : {})));
+            if (timer !== null)
+                window.clearTimeout(timer);
+            if (!response.ok) {
+                throw new Error(`getDoc HTTP ${response.status}`);
+            }
+            const json = await response.json();
+            const html = (_a = json === null || json === void 0 ? void 0 : json.data) === null || _a === void 0 ? void 0 : _a.content;
+            // 弹窗已关闭或内容无效时放弃
+            if (!thumb.isConnected || !html) {
+                return;
+            }
+            const wrap = document.createElement("div");
+            wrap.className = "protyle-wysiwyg";
+            // T-7173：内核响应可含用户嵌入 HTML 块——挂载前有界净化
+            const fragment = this.sanitizeThumbHtml(html);
+            if (!fragment)
+                return;
+            thumb.innerHTML = "";
+            wrap.appendChild(fragment);
+            // 空白内容不进缓存（保留占位），下次打开仍会尝试回源（T-6970）
+            if (!this.applyThumbContent(thumb, wrap, tab.title || "")) {
+                return;
+            }
+            // API 读取成功：写入缓存，下次（含重启后）直接命中
+            const cache = this.getThumbCache();
+            this.setThumbCache(cache, rootId, tab.title || "", html);
+            this.saveThumbCache(cache);
+        }
+        catch (e) {
+            // 璇诲彇澶辫触淇濇寔鍗犱綅鍗冲彲
+            logger_1.logger.warn("fetch doc content fail", e);
+        }
+        finally {
+            if (this.thumbApiControllers.get(thumb) === controller)
+                this.thumbApiControllers.delete(thumb);
+            this.releaseThumbApi();
+        }
+    }
+    // 裁剪克隆内容：只保留前 max 个子块。缩略图仅显示文档首屏，
+    // 大文档整篇 cloneNode 是切换器打开卡顿的主因，裁剪后克隆量与文档大小解耦
+    limitCloneChildren(clone, max) {
+        while (clone.children.length > max) {
+            clone.removeChild(clone.lastChild);
+        }
+    }
+    // 获取可克隆的缩略图内容源；文档页签优先取其 WYSIWYG 内容
+    // 注意：每次打开切换器都会重新调用本方法克隆实时 DOM，保证缩略图展示的是页签当前最新状态
+    getThumbSource(tab) {
+        var _a, _b, _c;
+        try {
+            // Editor 模型的 .editor 即 Protyle 实例，其 wysiwyg.element 为实时文档 DOM
+            const model = tab.model;
+            const wysiwyg = (_b = (_a = model === null || model === void 0 ? void 0 : model.editor) === null || _a === void 0 ? void 0 : _a.wysiwyg) === null || _b === void 0 ? void 0 : _b.element;
+            if (wysiwyg && wysiwyg.childElementCount > 0) {
+                const clone = wysiwyg.cloneNode(true);
+                this.limitCloneChildren(clone, constants_1.THUMB_CLONE_MAX);
+                return clone;
+            }
+            // 兜底：从面板容器里直接找 WYSIWYG 内容（不依赖 model 内部结构）
+            const panelWysiwyg = (_c = tab.panelElement) === null || _c === void 0 ? void 0 : _c.querySelector(".protyle-wysiwyg");
+            if (panelWysiwyg && panelWysiwyg.childElementCount > 0) {
+                const clone = panelWysiwyg.cloneNode(true);
+                this.limitCloneChildren(clone, constants_1.THUMB_CLONE_MAX);
+                return clone;
+            }
+            // 最后再退回整个面板内容
+            if (tab.panelElement && tab.panelElement.childElementCount > 0) {
+                const clone = tab.panelElement.cloneNode(true);
+                this.limitCloneChildren(clone, constants_1.THUMB_CLONE_MAX);
+                return clone;
+            }
+        }
+        catch (e) {
+            logger_1.logger.warn("build thumbnail fail", e);
+        }
+        return null;
+    }
+    // 方向键移动卡片，Tab 保留原生控件顺序，Enter 切换，Esc 关闭。
+    bindKeydown(scrollElement, closeOverlay) {
+        scrollElement.addEventListener("keydown", (event) => {
+            const target = event.target;
+            const key = event.key;
+            if (event.isComposing || event.keyCode === 229) {
+                event.stopPropagation();
+                return;
+            }
+            if (target.closest("input, select, textarea, [contenteditable]:not([contenteditable='false']), .sw__doc-preview-body"))
+                return;
+            // 修饰键路径先于普通方向和空卡片分支；输入控件保留原生光标移动。
+            if ((key === "ArrowLeft" || key === "ArrowRight") && event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+                if (scrollElement.querySelector(".sw__search-chips")) {
+                    event.preventDefault();
+                    this.cycleSearchChip(scrollElement, key === "ArrowRight" ? 1 : -1);
+                }
+                return;
+            }
+            if (key === "Tab")
+                return;
+            if (target.closest("button, input, select, textarea, .sw__doc-preview-body")) {
+                // T-6837/T-6838：焦点经 Tab 落在文档结果行（button）时数字直达与
+                // ↑/↓ 行导航仍须可用；其余控件（输入框/下拉等）照旧让路，不劫持按键
+                const plain = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
+                const navKey = plain && (/^[1-9]$/.test(key) || key === "ArrowDown" || key === "ArrowUp");
+                if (!target.closest(".sw__doc-item") || !navKey) {
+                    return;
+                }
+                // T-6838：结果行 ↑/↓ 移动行焦点（仅全库文档网格内生效；未接管时
+                // 不 preventDefault，保留列表原生滚动）
+                if (key === "ArrowDown" || key === "ArrowUp") {
+                    if (this.moveDocItemFocus(scrollElement, target, key === "ArrowDown" ? 1 : -1)) {
+                        event.preventDefault();
+                    }
+                    return;
+                }
+            }
+            const cards = Array.from(scrollElement.querySelectorAll(".sw__card"))
+                .filter((card) => !card.closest(".fn__none"));
+            if (cards.length === 0) {
+                // T-6837：搜索态页签卡隐藏时，数字直达转投文档结果行（不静默丢失）
+                if (/^[1-9]$/.test(key) && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+                    event.preventDefault();
+                    this.activateDocItemByDigit(scrollElement, key, closeOverlay);
+                }
+                return;
+            }
+            const current = cards.findIndex((el) => el.classList.contains("sw__focused"));
+            const focusIndex = current >= 0 ? current : 0;
+            // 读取网格真实列数用于上下导航（设置列数或自动时均准确）
+            const grid = scrollElement.querySelector(".sw__grid");
+            let colCount = 1;
+            if (grid) {
+                const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").filter((c) => c && c !== "none");
+                if (cols.length > 0) {
+                    colCount = cols.length;
+                }
+            }
+            // 流式分组下组块宽度不等，方向键按屏幕坐标就近移动。
+            const flowNav = scrollElement.classList.contains("sw--grouped-flow");
+            const flowNeighbor = (dir) => {
+                const neighbor = this.pickCardByPosition(cards, cards[focusIndex], dir);
+                return neighbor ? cards.indexOf(neighbor) : -1;
+            };
+            let next = -1;
+            const plain = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
+            if (key === "ArrowRight" && plain) {
+                event.preventDefault();
+                next = key === "ArrowRight" && flowNav && flowNeighbor(key) >= 0
+                    ? flowNeighbor(key)
+                    : (focusIndex + 1) % cards.length;
+            }
+            else if (key === "ArrowLeft" && plain) {
+                event.preventDefault();
+                next = key === "ArrowLeft" && flowNav && flowNeighbor(key) >= 0
+                    ? flowNeighbor(key)
+                    : (focusIndex - 1 + cards.length) % cards.length;
+            }
+            else if (key === "ArrowDown" && plain) {
+                event.preventDefault();
+                next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.min(focusIndex + colCount, cards.length - 1);
+            }
+            else if (key === "ArrowUp" && plain) {
+                event.preventDefault();
+                next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.max(focusIndex - colCount, 0);
+            }
+            else if (key === "Enter" && plain) {
+                event.preventDefault();
+                this.activateCardByElement(cards[focusIndex], closeOverlay);
+                return;
+            }
+            else if (/^[1-9]$/.test(key) && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+                // T-6820 数字直达：1-9 打开第 n 个可见卡片（与 R3 面板数字快选同构；
+                // 输入框在滚动容器外，输入数字不会误触此分支）
+                event.preventDefault();
+                // T-6837：查询词非空且结果行可见时优先直达文档结果（搜索态心智）
+                if (!this.activateDocItemByDigit(scrollElement, key, closeOverlay)) {
+                    this.activateCardByElement(cards[Number(key) - 1], closeOverlay);
+                }
+                return;
+            }
+            else if (key === "ContextMenu" || (key === "F10" && event.shiftKey)) {
+                // T-6461 动作面板键：键盘呼出聚焦卡片的动作菜单（Shift+F10 / ContextMenu
+                // 为标准上下文菜单键，不与输入框快捷键冲突；Raycast Action Panel 心智）
+                event.preventDefault();
+                const target = cards[focusIndex];
+                if (!target)
+                    return;
+                const tab = this.cardTabs.get(target);
+                const menuHandlers = this.cardMenuHandlers.get(target);
+                if (tab && menuHandlers) {
+                    const rect = target.getBoundingClientRect();
+                    this.openCardMenu(tab, target, menuHandlers, rect.left + 16, rect.top + 16);
+                }
+                return;
+            }
+            else if (key === "Escape") {
+                event.stopPropagation();
+                closeOverlay();
+                return;
+            }
+            if (next >= 0 && cards[next]) {
+                this.focusCard(cards[next], true);
+                this.scrollIntoView(cards[next], scrollElement);
+            }
+        });
+        // T-7007：焦点进入卡片（Tab 进入、附属动作按钮聚焦、方向键 focus()）时
+        // 同步视觉焦点与预览，保证 DOM 焦点与 sw__focused 单一真源。
+        scrollElement.addEventListener("focusin", (event) => {
+            const target = event.target;
+            const card = target === null || target === void 0 ? void 0 : target.closest(".sw__card");
+            if (card && scrollElement.contains(card)) {
+                this.focusCard(card);
+            }
+        });
+    }
+    // T-6837 键序直达第二片：数字直达文档结果行——查询词非空且第 n 条可见时
+    // 优先于页签卡（搜索态用户心智在结果行）；未接管返回 false 回退卡片直达
+    activateDocItemByDigit(scrollElement, key, closeOverlay) {
+        const queryKey = String(scrollElement.dataset.swDocSearchQuery || "").trim().toLowerCase();
+        if (!queryKey)
+            return false;
+        const items = Array.from(scrollElement.querySelectorAll(".sw__doc-grid .sw__doc-item"))
+            .filter((element) => !element.closest(".fn__none"));
+        const item = items[Number(key) - 1];
+        if (!item)
+            return false;
+        doc_search_ui_1.activateDocResultItem.call(this, item, closeOverlay, { query: queryKey });
+        return true;
+    }
+    // T-6838 结果行 ↑/↓ 行导航：在全库文档网格的可见行间移动焦点并滚动跟随；
+    // 焦点行不在网格内（工作台/统一分区行）返回 false，按键交还原生滚动
+    moveDocItemFocus(scrollElement, current, delta) {
+        const items = Array.from(scrollElement.querySelectorAll(".sw__doc-grid .sw__doc-item"))
+            .filter((element) => !element.closest(".fn__none"));
+        const at = items.indexOf(current);
+        if (at < 0)
+            return false;
+        const next = items[Math.max(0, Math.min(items.length - 1, at + delta))];
+        if (next) {
+            next.focus();
+            this.scrollIntoView(next, scrollElement);
+        }
+        return true;
+    }
+    // 流式布局下的方向键导航：按屏幕坐标就近移动（组块宽度不等，固定列数换算会跳错位）
+    // T-6820：按元素激活页签卡（Enter 与数字直达共用；卡上无对应页签时静默）
+    activateCardByElement(card, closeOverlay) {
+        const tabId = card === null || card === void 0 ? void 0 : card.dataset.tabId;
+        const tab = (card && this.cardTabs.get(card)) || (this.isMobile
+            ? this.getMobileTabs().find((item) => item.id === tabId)
+            : (0, siyuan_1.getAllTabs)().find((item) => item.id === tabId));
+        if (tab) {
+            this.activateTab(tab, closeOverlay);
+        }
+    }
+    // T-6820 结果类型快捷键：Ctrl+←/→ 循环过滤条（all→tabs→unified→docs）。
+    // 空查询时无过滤条，快捷键静默不生效。
+    cycleSearchChip(scrollElement, delta) {
+        const order = ["all", "tabs", "unified", "docs"];
+        const row = scrollElement.querySelector(".sw__search-chips");
+        if (!row)
+            return;
+        const current = this.docSearchState.chipFilters.get(scrollElement) || "all";
+        const index = order.indexOf(current);
+        const next = order[(index + delta + order.length) % order.length];
+        this.docSearchState.chipFilters.set(scrollElement, next);
+        scrollElement.dataset.swChip = next;
+        row.querySelectorAll(".sw__search-chip").forEach((el) => {
+            const active = el.dataset.chip === next;
+            el.classList.toggle("is-active", active);
+            // T-7042：键盘路径与点击路径同语义——chips 是按钮组（aria-pressed），
+            // aria-selected 是 tablist 专属属性，普通按钮上读屏会忽略
+            el.setAttribute("aria-pressed", String(active));
+        });
+    }
+    pickCardByPosition(cards, current, key) {
+        const base = current.getBoundingClientRect();
+        let best = null;
+        let bestScore = Number.POSITIVE_INFINITY;
+        cards.forEach((card) => {
+            if (card === current)
+                return;
+            const rect = card.getBoundingClientRect();
+            const dx = rect.left - base.left;
+            const dy = rect.top - base.top;
+            let primary = 0;
+            let cross = 0;
+            if (key === "ArrowRight") {
+                primary = dx;
+                cross = Math.abs(dy);
+                if (primary <= 1)
+                    return;
+            }
+            else if (key === "ArrowLeft") {
+                primary = -dx;
+                cross = Math.abs(dy);
+                if (primary <= 1)
+                    return;
+            }
+            else if (key === "ArrowDown") {
+                primary = dy;
+                cross = Math.abs(dx);
+                if (primary <= 1)
+                    return;
+            }
+            else if (key === "ArrowUp") {
+                primary = -dy;
+                cross = Math.abs(dx);
+                if (primary <= 1)
+                    return;
+            }
+            else {
+                return;
+            }
+            const score = Math.abs(primary) + cross * 2.5;
+            if (score < bestScore) {
+                bestScore = score;
+                best = card;
+            }
+        });
+        return best;
+    }
+    focusCard(card, domFocus = false) {
+        if (!card) {
+            return;
+        }
+        // T-7007：键盘导航路径把 DOM 焦点移到卡片本体（Tab 顺序与读屏跟随）；
+        // mouseenter 悬浮聚焦保持纯视觉，不抢 DOM 焦点。
+        if (domFocus && card.isConnected) {
+            try {
+                card.focus({ preventScroll: true });
+            }
+            catch (_) {
+                card.focus();
+            }
+        }
+        if (card.classList.contains("sw__focused")) {
+            return;
+        }
+        const container = card.closest(".sw__scroll") || card.parentElement;
+        if (container) {
+            container.querySelectorAll(".sw__card").forEach((el) => {
+                el.classList.remove("sw__focused");
+                el.removeAttribute("aria-current");
+            });
+        }
+        card.classList.add("sw__focused");
+        card.setAttribute("aria-current", "true");
+        const scrollElement = card.closest(".sw__scroll");
+        if (scrollElement === null || scrollElement === void 0 ? void 0 : scrollElement.querySelector(".sw__tab-preview")) {
+            doc_search_ui_1.previewTabOrDoc.call(this, scrollElement, card);
+        }
+    }
+    scrollIntoView(card, container) {
+        const cardTop = card.offsetTop;
+        const cardBottom = cardTop + card.offsetHeight;
+        if (cardTop < container.scrollTop) {
+            container.scrollTop = cardTop;
+        }
+        else if (cardBottom > container.scrollTop + container.clientHeight) {
+            container.scrollTop = cardBottom - container.clientHeight;
+        }
+    }
+    // 切换到目标页签；弹窗模式随后销毁弹窗，侧边栏模式随后刷新列表
+    activateTab(tab, onClose) {
+        var _a, _b, _c, _d;
+        // 记录 MRU：按 pinKey（文档页签为 rootID）记录，手机端与桌面端使用同一份 MRU 数据，
+        // 通过插件数据同步后两端「最近使用」保持一致
+        const key = this.pinKeyOf(tab);
+        const mru = this.getMru();
+        const list = mru.filter((id) => id !== key);
+        list.unshift(key);
+        // 上限收敛：超出 MRU_MAX 从尾部丢弃最旧条目，防止插件数据随使用无限膨胀
+        this.data[constants_1.MRU_KEY] = (0, util_1.capMru)(list, constants_1.MRU_MAX);
+        this.saveDataDebounced(constants_1.MRU_KEY);
+        this.recordOpenHistory(tab);
+        if (this.isMobile) {
+            // 手机端：MobileTabs.switchTo 切换页签
+            try {
+                (_d = (_c = (_b = (_a = (0, types_1.getSiyuan)()) === null || _a === void 0 ? void 0 : _a.mobile) === null || _b === void 0 ? void 0 : _b.tabs) === null || _c === void 0 ? void 0 : _c.switchTo) === null || _d === void 0 ? void 0 : _d.call(_c, tab.id);
+            }
+            catch (e) {
+                logger_1.logger.warn("mobile switch tab fail", e);
+            }
+            onClose === null || onClose === void 0 ? void 0 : onClose();
+            return;
+        }
+        // 等价于点击该页签：内部会切到目标页签，并通过 setPanelFocus 激活其所在窗口（支持分栏）
+        try {
+            tab.parent.switchTab(tab.headElement, true);
+            // 偶发场景下 showHeading 不是必暴露的方法，思源历史版本不一定存在，做能力检测
+            const parentWithHeading = tab.parent;
+            if (typeof parentWithHeading.showHeading === "function") {
+                parentWithHeading.showHeading();
+            }
+        }
+        catch (e) {
+            logger_1.logger.warn("switch tab fail", e);
+        }
+        onClose === null || onClose === void 0 ? void 0 : onClose();
+    }
+    // ==================== 鎵嬫満绔?====================
+    // 手机端数据源适配：思源 getAllTabs() 在手机端（MOBILE 构建）恒返回空数组，
+    // 页签数据需从 window.siyuan.mobile.tabs（思源 3.8+ MobileTabs）读取，
+    // 包装成与桌面端 Tab 兼容的伪 Tab，使 rootIdOf/titleOf/pinKeyOf/createCard 等直接复用
+    getMobileTabs() {
+        var _a, _b, _c;
+        const state = (_c = (_b = (_a = (0, types_1.getSiyuan)()) === null || _a === void 0 ? void 0 : _a.mobile) === null || _b === void 0 ? void 0 : _b.tabs) === null || _c === void 0 ? void 0 : _c.state;
+        if (!(state === null || state === void 0 ? void 0 : state.tabs)) {
+            return [];
+        }
+        return state.tabs
+            .filter((t) => { var _a; return (_a = t.current) === null || _a === void 0 ? void 0 : _a.rootID; })
+            .map((t) => ({
+            id: t.id, // MobileTabs 页签 id（switchTo/close 使用）
+            title: t.current.title,
+            notebookId: t.current.notebookID,
+            path: t.current.path,
+            // 手机端页签图标可能在 t.icon 或 t.current.icon，优先 t.icon（思源不同版本字段不同）
+            icon: t.icon || t.current.icon || "",
+            // 兼容 rootIdOf()：直接命中 model.editor.block.rootID 分支
+            model: { editor: { block: { rootID: t.current.rootID } } },
+        }));
+    }
+    // 手机端当前激活页签 id（无激活时返回 undefined）
+    getMobileActiveTabId() {
+        var _a, _b, _c, _d;
+        return (_d = (_c = (_b = (_a = (0, types_1.getSiyuan)()) === null || _a === void 0 ? void 0 : _a.mobile) === null || _b === void 0 ? void 0 : _b.tabs) === null || _c === void 0 ? void 0 : _c.state) === null || _d === void 0 ? void 0 : _d.activeTabID;
+    }
+    // 手机端打开文档（思源 plugin API openTab 在移动端是空实现），返回是否成功：
+    // 1) 优先 MobileTabs.open(rootID)（思源 3.8+）：必须保持宿主对象调用（抽成裸函数调用会丢 this）
+    //    内部 abortController/navigationEpoch 访问直接抛错），await 返回值判断结果而非固定延时轮询；
+    //    open 明确返回失败（invalid/cancelled/failed）时不降级——openTab 在移动端是空实现，降级无意义；
+    // 2) 仅当 MobileTabs API 不存在（思源 <3.8）才降级到 plugin.openTab 兜底通道
+    async mobileOpenDoc(rootId) {
+        var _a, _b;
+        return (0, document_actions_1.openDocumentOnMobile)({
+            rootId,
+            tabs: (_b = (_a = (0, types_1.getSiyuan)()) === null || _a === void 0 ? void 0 : _a.mobile) === null || _b === void 0 ? void 0 : _b.tabs,
+            app: this.app,
+            openTab: siyuan_1.openTab,
+            logger: logger_1.logger,
+            onFailure: () => (0, siyuan_1.showMessage)(this.i18n.openDocFailed),
+        });
+    }
+    // 手机端切换器：全屏覆盖弹窗，简化工具栏，单列/双列卡片，纯触摸操作。
+    // （T-6679：minAppVersion 已抬到 3.8.0，"旧版无 MobileTabs API 需提示升级"的
+    // 运行时门成为死代码，随 ADR 0064 首批兼容层简化移除）
+    showMobileSwitcher(focusSearch = false, returnTo = "switcher", context) {
+        const tabs = this.getMobileTabs();
+        mobile_switcher_ui_1.openMobileSwitcherDialog.call(this, tabs, focusSearch, returnTo, context);
+    }
+    // 打开手机端切换器 Dialog：装配顶栏、列表、搜索、FAB 隐藏等
+    createMobileSwitcherDialog(release) {
+        const holder = { dialog: null };
+        const dialog = new siyuan_1.Dialog({
+            title: this.i18n.dialogSwitcherTitle || "页签切换器",
+            content: this.buildMobileSwitcherHtml(),
+            width: "92vw",
+            height: "85vh",
+            disableAnimation: true,
+            destroyCallback: () => {
+                if (this.mobileSwitcherDialog === holder.dialog)
+                    this.mobileSwitcherDialog = null;
+                release.fn();
+            },
+        });
+        holder.dialog = dialog;
+        this.mobileSwitcherDialog = dialog;
+        return dialog;
+    }
+    // 手机端弹窗骨架。
+    // 所有 <svg> 都显式写出 width/height 作为**固有尺寸兜底**：手机 WebView 首次打开时，
+    // 插件 index.css 可能尚未作用到这批新插入的节点，此时裸 <svg> 会退回浏览器默认尺寸
+    // （300×150），把顶栏撑成"巨大图标 + 控件竖排"的错乱首帧——即用户反馈的
+    // "刚进去出现大图标"。带 b3-button 类的图标有思源基础样式兜底所以看起来正常，
+    // 裸图标（放大镜/筛选/关闭/星标/齿轮/时钟）才会失控，故这里逐个补齐。
+    // 注意：HTML 属性优先级低于任何作者样式，CSS 就绪后仍由 .sw__search-icon 等
+    // 规则接管，正常路径视觉零变化。
+    buildMobileSwitcherHtml() {
+        return `<div class="speed-switch sw__body sw__mobile sw__mobile--initializing sw-platform-surface sw-platform-surface--switcher" data-sw-surface="switcher" style="visibility:hidden;opacity:0;pointer-events:none">
+    <div class="sw__toolbar sw__mobile-toolbar">
+        <div class="sw__search-wrap">
+            <svg class="sw__search-icon" width="14" height="14"><use xlink:href="#iconSearch"></use></svg>
+            <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" aria-label="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
+            <button type="button" class="sw__search-filter-btn" aria-label="${this.i18n.searchFilters}" title="${this.i18n.searchFilters}">
+                <svg width="15" height="15"><use xlink:href="#iconFilter"></use></svg>
+            </button>
+        </div>
+        <button type="button" class="b3-button b3-button--text sw__sort-btn" aria-label="${this.i18n.setSortBy}"></button>
+        <select class="b3-select sw__sort fn__none" aria-label="${this.i18n.setSortBy}">
+            <option value="mru">${this.i18n.sortMru}</option>
+            <option value="layout">${this.i18n.sortLayout}</option>
+            <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
+            <option value="updatedDesc">${this.i18n.sortUpdatedDesc}</option>
+            <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
+            <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
+        </select>
+        <button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-close-btn" aria-label="${this.i18n.close}">
+            <svg width="16" height="16"><use xlink:href="#iconClose"></use></svg>
+        </button>
+        <div class="sw__toolbar-row2">
+            <button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn" aria-label="${this.i18n.favorites}">
+                <svg width="16" height="16"><use xlink:href="#iconStar"></use></svg><span class="sw__mobile-chip-label">${this.i18n.favorites}</span>
+            </button>
+            <div class="sw__history-dd"></div>
+            <button type="button" class="b3-button b3-button--text sw__icon-btn sw__journal-btn" aria-label="${this.i18n.journalBtn}" title="${this.i18n.journalBtn}">
+                <svg width="16" height="16"><use xlink:href="#iconCalendar"></use></svg><span class="sw__mobile-chip-label">${this.i18n.journalBtn}</span>
+            </button>
+            <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}">
+                <svg width="16" height="16"><use xlink:href="#iconSettings"></use></svg><span class="sw__mobile-chip-label">${this.i18n.settingsShort}</span>
+            </button>
+        </div>
+            </div>
+    <div class="sw__scroll" tabindex="0"></div>
+    <div class="sw__quick-actions" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
+</div>`;
+    }
+    // 手机端顶栏按钮：设置 / 日记 + 排序切换（排序切换复用装配期 renderMobileList 与 updatedMap）
+    renderMobileSwitcherList(dialog, scrollElement, sortSelect, settings) {
+        const listOpts = {
+            onOverlayClose: () => dialog.destroy(),
+            onTabsChanged: () => {
+                refreshMobileList();
+                const searchInput = dialog.element.querySelector(".sw__search");
+                if (searchInput && (searchInput.value.trim() !== "" || doc_search_ui_1.hasDocSearchFilter.call(this, scrollElement))) {
+                    this.applySearch(scrollElement, searchInput, () => dialog.destroy());
+                }
+            },
+        };
+        let updatedMap = {};
+        const refreshMobileList = () => {
+            mobile_switcher_ui_1.renderMobileList.call(this, scrollElement, this.getMobileTabs(), { id: this.getMobileActiveTabId() }, listOpts, sortSelect.value, updatedMap);
+        };
+        refreshMobileList();
+        // 移动端沿用同一更新时间映射；默认 MRU 且未显示改动标记时跳过首屏 SQL。
+        const mergedMap = updatedMap;
+        if (settings.sortBy === "updatedDesc" || settings.showCardUpdatedBadge === true) {
+            this.loadUpdatedMap(this.getMobileTabs()).then((map) => {
+                Object.assign(mergedMap, map);
+                if (dialog.element.isConnected && sortSelect.value === "updatedDesc") {
+                    refreshMobileList();
+                    const searchInput = dialog.element.querySelector(".sw__search");
+                    if (searchInput && (searchInput.value.trim() !== "" || doc_search_ui_1.hasDocSearchFilter.call(this, scrollElement))) {
+                        this.applySearch(scrollElement, searchInput, () => dialog.destroy());
+                    }
+                }
+                else if (dialog.element.isConnected && this.getSettings().showCardUpdatedBadge === true) {
+                    this.refreshCardUpdatedBadges(scrollElement, mergedMap);
+                }
+            });
+        }
+        return { renderMobileList: refreshMobileList };
+    }
+    // 手机端渲染页签卡片列表
+    buildMobileGroupGrid(settings) {
+        const grid = document.createElement("div");
+        grid.className = "sw__grid sw__mobile-grid";
+        if (settings.mobileColumns === constants_1.MOBILE_COLUMNS_DOUBLE) {
+            grid.classList.add("sw__mobile-grid--double");
+        }
+        else if (settings.mobileColumns === constants_1.MOBILE_COLUMNS_AUTO) {
+            // auto: portrait=single, landscape=double (handled by CSS media query)
+            grid.classList.add("sw__mobile-grid--auto");
+        }
+        return grid;
+    }
+    // 手机端分组卡片渲染：委托 acquireGroupCard（mobile=true 附带 sw__mobile-card）；返回 all 列表供缩略图懒渲染
+    renderMobileCardsInGroup(grid, ordered, ctx) {
+        const all = [];
+        ordered.forEach((item) => {
+            const card = this.acquireGroupCard(item, ctx, true);
+            grid.appendChild(card);
+            item.card = card;
+            all.push(item);
+        });
+        return all;
+    }
+    // 手机端收藏底部弹窗；onTabsChanged：组内页签批量开/关后刷新背后的切换器列表
+    showMobileFavSheet(dialog, closeOverlay, onTabsChanged, returnFocus) {
+        var _a, _b;
+        const favorites = this.getFavorites();
+        const groupNames = this.getFavoriteGroupNames();
+        if (favorites.length === 0 && groupNames.length === 0) {
+            // 无任何收藏时给出反馈而非静默无响应
+            (0, siyuan_1.showMessage)(this.i18n.mobileNoFav);
+            return;
+        }
+        // 鏋勫缓搴曢儴寮圭獥
+        const overlay = document.createElement("div");
+        overlay.className = "sw__mobile-sheet-overlay";
+        overlay.innerHTML = this.buildMobileFavSheetHtml();
+        document.body.appendChild(overlay);
+        const sheet = overlay.querySelector(".sw__mobile-sheet");
+        const body = overlay.querySelector(".sw__mobile-sheet-body");
+        if (!sheet || !body) {
+            // 骨架异常时不能把空遮罩留在 body 上拖住全屏交互
+            overlay.remove();
+            return;
+        }
+        overlay.tabIndex = -1;
+        const closeSheet = () => this.closeMobileFavSheetOverlay(overlay, sheet, returnFocus);
+        // 渲染分组/单列列表 空态
+        this.renderMobileFavSheetBody(body, favorites, groupNames, closeOverlay, onTabsChanged, overlay, closeSheet);
+        // 动画：下一帧滑入
+        this.scheduleAnimationFrame(() => { if (sheet.isConnected)
+            sheet.classList.add("sw__mobile-sheet--open"); });
+        // 点击背景关闭
+        (_a = overlay.querySelector(".sw__mobile-sheet-close")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", closeSheet);
+        overlay.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape")
+                return;
+            event.preventDefault();
+            event.stopPropagation();
+            closeSheet();
+        });
+        this.bindMobileFavSheetBackdropClose(overlay, sheet, returnFocus);
+        (_b = overlay.querySelector(".sw__mobile-sheet-close")) === null || _b === void 0 ? void 0 : _b.focus({ preventScroll: true });
+    }
+    // 收藏底部弹窗 DOM 骨架：抽屉 + 拖把柄 + 标题 + 内容容器
+    buildMobileFavSheetHtml() {
+        return `<div class="sw__mobile-sheet" role="dialog" aria-modal="true" aria-label="${this.escapeAttr(this.i18n.mobileFavTitle)}">
+    <div class="sw__mobile-sheet-handle"></div>
+    <div class="sw__mobile-sheet-title">
+        <span>${this.i18n.mobileFavTitle}</span>
+        <span class="sw__mobile-sheet-close-hint" aria-label="Esc ${this.i18n.platformCloseHint || "退出"}"><kbd>Esc</kbd><span>${this.i18n.platformCloseHint || "退出"}</span></span>
+        <button type="button" class="b3-button b3-button--text sw__mobile-sheet-close" aria-label="${this.i18n.close}" title="${this.i18n.close}">
+            <svg><use xlink:href="#iconClose"></use></svg>
+        </button>
+    </div>
+    <div class="sw__mobile-sheet-body"></div>
+</div>`;
+    }
+    // 渲染收藏内容：分组（带 ⋯ 批量按钮）/ 单列表（无分组命名空间时）/ 空态
+    renderMobileFavSheetBody(body, favorites, groupNames, closeOverlay, onTabsChanged, overlay, closeSheet) {
+        const groups = (0, util_1.groupFavoritesByGroup)(favorites, groupNames);
+        const groupedNames = Array.from(groups.keys()).filter((name) => name !== "");
+        const ungrouped = groups.get("") || [];
+        if (groupedNames.length === 0) {
+            body.appendChild(this.buildMobileFavSheetList(ungrouped, overlay, closeOverlay, closeSheet));
+        }
+        else {
+            groupedNames.forEach((name) => {
+                this.appendMobileFavSheetSection(body, name, groups.get(name) || [], false, overlay, closeOverlay, onTabsChanged, closeSheet);
+            });
+            if (ungrouped.length > 0) {
+                this.appendMobileFavSheetSection(body, this.i18n.ungrouped, ungrouped, true, overlay, closeOverlay, onTabsChanged, closeSheet);
+            }
+        }
+        // favorites 为空（仅有空分组注册）时追加空态
+        if (favorites.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw__mobile-sheet-empty";
+            empty.setAttribute("role", "status");
+            empty.textContent = this.i18n.mobileNoFav;
+            body.appendChild(empty);
+        }
+    }
+    // 渲染单个分组区块：标题（组名 + 数量 + ⋯）+ 项列表
+    appendMobileFavSheetSection(body, name, items, isUngrouped, overlay, closeOverlay, onTabsChanged, closeSheet) {
+        const section = document.createElement("div");
+        section.className = "sw__mobile-sheet-section";
+        const header = document.createElement("div");
+        header.className = "sw__mobile-sheet-section-header";
+        // ⋯ 按钮：触发组内批量开/关（嵌套底部弹窗）
+        header.innerHTML = `<span>${this.escapeAttr(name)}</span>
+<span class="sw__mobile-sheet-count">${items.length}</span>
+<button type="button" class="sw__mobile-sheet-more" aria-label="${this.escapeAttr(this.i18n.favGroupTip)}">
+    <svg><use xlink:href="#iconMore"></use></svg>
+</button>`;
+        const moreBtn = header.querySelector(".sw__mobile-sheet-more");
+        moreBtn === null || moreBtn === void 0 ? void 0 : moreBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            // 批量操作完成后：关闭嵌套弹窗 → 关闭收藏弹窗 → 刷新背后切换器列表
+            const onNestedClosed = () => {
+                document.querySelectorAll(".sw__mobile-sheet-overlay--nested").forEach((el) => el.remove());
+                closeSheet();
+                onTabsChanged === null || onTabsChanged === void 0 ? void 0 : onTabsChanged();
+            };
+            mobile_switcher_ui_1.openMobileGroupActions.call(this, name, items, onNestedClosed, moreBtn);
+        });
+        section.appendChild(header);
+        section.appendChild(this.buildMobileFavSheetList(items, overlay, closeOverlay, closeSheet));
+        body.appendChild(section);
+    }
+    // 单列表：每项是文件图标 + 标题，点击关闭弹窗并跳转
+    buildMobileFavSheetList(favorites, overlay, closeOverlay, closeSheet) {
+        const list = document.createElement("div");
+        list.className = "sw__mobile-sheet-list";
+        favorites.forEach((fav) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__mobile-sheet-item";
+            item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span>${this.escapeAttr(fav.title)}</span>`;
+            item.addEventListener("click", () => {
+                closeSheet === null || closeSheet === void 0 ? void 0 : closeSheet();
+                this.jumpToFavorite(fav, closeOverlay);
+            });
+            list.appendChild(item);
+        });
+        return list;
+    }
+    // 点击背景关闭：抽屉下滑 + 遮罩淡出，250ms 后移除
+    closeMobileFavSheetOverlay(overlay, sheet, returnFocus) {
+        if (!overlay.isConnected || overlay.dataset.closing === "true")
+            return;
+        overlay.dataset.closing = "true";
+        sheet.classList.remove("sw__mobile-sheet--open");
+        overlay.style.opacity = "0";
+        setTimeout(() => {
+            overlay.remove();
+            if (returnFocus === null || returnFocus === void 0 ? void 0 : returnFocus.isConnected)
+                returnFocus.focus({ preventScroll: true });
+        }, constants_1.FAB_HIDE_DELAY_MS);
+    }
+    bindMobileFavSheetBackdropClose(overlay, sheet, returnFocus) {
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) {
+                this.closeMobileFavSheetOverlay(overlay, sheet, returnFocus);
+            }
+        });
+    }
+    // 手机端分组批量操作单（嵌套于收藏弹窗之上、层级更高）：一键开启/关闭组内页签
+    createFAB() {
+        const controller = this.createFloatingBallSurface("mobile");
+        this.floatingBallUi = controller;
+        this.fabElement = (controller === null || controller === void 0 ? void 0 : controller.getElement()) || null;
+    }
+    /** Build the floating-ball catalogue from the shared quick-action model.
+     * Persisted actions remain authoritative; picker candidates fill in
+     * registered builtins, docks, providers and commands without copying a
+     * second action definition into the floating-ball layer.
+     */
+    getFloatingBallActions() {
+        const saved = this.getQuickActions();
+        const seen = new Set(saved.map((action) => `${action.kind}:${action.value}`));
+        // T-6845：标签经宿主 i18n 解析（catalog 中文兜底），球面板与底栏同语言
+        const result = saved.map((action) => (Object.assign(Object.assign({}, action), { label: (0, quick_actions_1.resolveQuickActionLabel)(action, this.i18n) })));
+        this.getQuickActionPickerCandidates(saved).forEach((candidate) => {
+            const action = candidate.action;
+            const key = `${action.kind}:${action.value}`;
+            if (seen.has(key))
+                return;
+            seen.add(key);
+            result.push(Object.assign(Object.assign({}, action), { label: (0, quick_actions_1.resolveQuickActionLabel)(action, this.i18n) }));
+        });
+        const providers = this.quickActionRegistry.snapshot();
+        return result.map((action) => {
+            var _a, _b;
+            let available = true;
+            let providerId = "";
+            let source = "";
+            if (action.kind === "adapter") {
+                providerId = action.value.split("/")[0];
+                const provider = providers.find((item) => item.id === providerId);
+                available = this.quickActionAdapters.has(providerId) || Boolean(provider);
+                source = (provider === null || provider === void 0 ? void 0 : provider.name) || providerId;
+            }
+            else if (action.kind === "command") {
+                const [pluginId, commandKey] = action.value.split("::");
+                const plugin = (_a = this.app.plugins) === null || _a === void 0 ? void 0 : _a.find((item) => item.name === pluginId);
+                const command = (_b = plugin === null || plugin === void 0 ? void 0 : plugin.commands) === null || _b === void 0 ? void 0 : _b.find((item) => item.langKey === commandKey);
+                available = typeof ((command === null || command === void 0 ? void 0 : command.callback) || (command === null || command === void 0 ? void 0 : command.globalCallback)) === "function";
+                providerId = pluginId;
+                source = pluginId;
+            }
+            else if (action.kind === "global") {
+                available = this.hostCommandsAvailable();
+                providerId = "siyuan";
+                source = this.i18n.quickHostSource;
+            }
+            else if (action.kind === "dock") {
+                available = Boolean(this.getDockByType(action.value));
+            }
+            return Object.assign(Object.assign(Object.assign({}, action), { available, providerId, source, providerName: source, declaredTargets: this.getQuickActionDeclaredTargets(action) }), (available ? {} : { providerMissing: true, reason: "provider-missing" }));
+        });
+    }
+    executeFloatingBallBoundAction(surface, reference) {
+        var _a, _b, _c;
+        const ref = reference;
+        const actionId = [ref === null || ref === void 0 ? void 0 : ref.actionId, ref === null || ref === void 0 ? void 0 : ref.id, ref === null || ref === void 0 ? void 0 : ref.value].find((value) => typeof value === "string" && value.trim());
+        const id = typeof actionId === "string" ? actionId.trim() : "";
+        const catalog = this.getFloatingBallActions();
+        const candidate = id ? (0, floating_ball_model_1.findFloatingAction)(catalog, id) : null;
+        const descriptor = (_c = (_b = (_a = this.getSettings().floatingBall) === null || _a === void 0 ? void 0 : _a.actions) === null || _b === void 0 ? void 0 : _b[surface]) === null || _c === void 0 ? void 0 : _c.find((entry) => [entry.actionId, entry.id, entry.value].some((value) => value === id));
+        const action = candidate && (descriptor === null || descriptor === void 0 ? void 0 : descriptor.mobileOverride) === true
+            ? Object.assign(Object.assign({}, candidate), { mobileOverride: true }) : candidate;
+        const availability = (0, floating_ball_model_1.resolveFloatingActionAvailability)(action, surface, {
+            resolveSupport: (item, target) => this.getQuickActionSupport(item, target),
+        });
+        if ((descriptor === null || descriptor === void 0 ? void 0 : descriptor.enabled) === false || availability.status !== "supported") {
+            (0, siyuan_1.showMessage)(this.i18n.quickActionUnavailable, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        this.executeFloatingBallSurfaceAction(surface, action);
+    }
+    // T-6919（悬浮球手势纵深第一批）：双击/长按绑定值的统一路由——词汇表与四向
+    // 快滑一致（""=未绑定静默返回，"more"=更多面板，动作 id 查目录后走执行器，
+    // 未知值不可用回执）。不并入 onFlickAction 以保持 T-6886 契约切片稳定。
+    executeFloatingBallBoundGesture(surface, bound) {
+        var _a;
+        const actionId = typeof bound === "string" ? bound.trim() : "";
+        if (!actionId)
+            return;
+        if (actionId === "more") {
+            this.refreshFloatingBallPanels();
+            (_a = this.floatingBallPanels.get(surface)) === null || _a === void 0 ? void 0 : _a.openMore();
+            return;
+        }
+        const action = (0, floating_ball_model_1.findFloatingAction)(this.getFloatingBallActions(), actionId);
+        if (!action) {
+            (0, siyuan_1.showMessage)(this.i18n.quickActionUnavailable, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const availability = (0, floating_ball_model_1.resolveFloatingActionAvailability)(action, surface, {
+            resolveSupport: (item, target) => this.getQuickActionSupport(item, target),
+        });
+        if (availability.status === "unsupported" || availability.status === "unavailable") {
+            (0, siyuan_1.showMessage)(this.i18n.quickActionUnavailable, constants_1.MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        this.executeFloatingBallSurfaceAction(surface, action);
+    }
+    executeFloatingBallSurfaceAction(surface, action) {
+        const controller = this.floatingBallUis.get(surface);
+        const panel = this.floatingBallPanels.get(surface);
+        if (!controller)
+            return;
+        panel === null || panel === void 0 ? void 0 : panel.closeMore({ restoreFocus: false });
+        const restoreControllerState = (controller === null || controller === void 0 ? void 0 : controller.beginExecution()) || (() => undefined);
+        const executor = (0, floating_ball_actions_1.createFloatingBallActionExecutor)({
+            adapters: this.quickActionAdapters,
+            registry: this.quickActionRegistry,
+            context: { surface: `floating-ball:${surface}` },
+            plugins: this.app.plugins,
+            getDockByType: (type) => this.getDockByType(type),
+            close: () => panel === null || panel === void 0 ? void 0 : panel.closeMore({ restoreFocus: false }),
+            // T-6869（ADR 0079 §7）：悬浮球=全局触发器，轻触恢复上次表面；失效回退切换器。
+            onSwitcher: () => this.openPlatformFromBall(),
+            onSearch: () => {
+                var _a, _b;
+                if (surface === "sidebar") {
+                    (_b = (_a = this.sidebarElement) === null || _a === void 0 ? void 0 : _a.querySelector(".sw__search")) === null || _b === void 0 ? void 0 : _b.focus();
+                }
+                else {
+                    this.showSwitcher(true);
+                }
+            },
+            onJournal: () => this.openJournal(),
+            onSettings: () => this.openSetting(),
+            onHome: () => this.openPlatformSurface("workbench", "switcher", { entry: "floating-ball" }),
+            onSnippetStudio: () => this.openPlatformSurface("studio", "switcher", { entry: "floating-ball" }),
+            onQuickCapture: () => this.openQuickCapture(),
+            onPreviousTab: () => this.cycleFloatingBallTab(-1),
+            onNextTab: () => this.cycleFloatingBallTab(1),
+            onScrollTop: () => this.scrollFloatingBallSurface(surface, "top"),
+            onScrollBottom: () => this.scrollFloatingBallSurface(surface, "bottom"),
+            onSyncNow: () => this.syncNow(),
+            onInsertTemplate: () => this.openTemplatePicker(),
+            onCycleDocSet: () => this.cycleDocumentSet(),
+            onCycleBallPreset: () => this.cycleBallPreset(),
+            onThrowToWindow: () => this.throwActiveDocToWindow()
+                ? undefined : { ok: false, reason: "unavailable" },
+            onHideKeyboard: () => this.hideMobileKeyboard()
+                ? undefined : { ok: false, reason: "unavailable" },
+            onJumpBack: () => this.jumpBack().then((ok) => {
+                if (!ok)
+                    (0, siyuan_1.showMessage)(this.i18n.jumpStackEmpty, constants_1.MESSAGE_DEFAULT_MS, "error");
+            }),
+            onJumpForward: () => this.jumpForward().then((ok) => {
+                if (!ok)
+                    (0, siyuan_1.showMessage)(this.i18n.jumpStackEmpty, constants_1.MESSAGE_DEFAULT_MS, "error");
+            }),
+            // T-6856 目录扩充：marks/剪贴板/关闭页签复用既有命令实现
+            onMarkSet: () => this.setSessionMark(),
+            onMarkJump: () => this.jumpToSessionMark(),
+            onClipboard: () => this.openClipboardEntry(),
+            onCloseTab: () => this.closeActiveTabForAction()
+                ? undefined : { ok: false, reason: "unavailable" },
+            onGlobalCommand: (action) => this.runHostCommand(action.value)
+                ? undefined : { ok: false, reason: "unavailable" },
+        });
+        void executor(action).then((result) => {
+            if (this.floatingBallUis.get(surface) !== controller)
+                return;
+            if (!result.ok) {
+                const message = result.reason === "failed"
+                    ? this.i18n.quickActionFailed
+                    : this.i18n.quickActionUnavailable;
+                (0, siyuan_1.showMessage)(message, constants_1.MESSAGE_DEFAULT_MS, "error");
+            }
+            restoreControllerState();
+        }).catch((error) => {
+            if (this.floatingBallUis.get(surface) !== controller)
+                return;
+            logger_1.logger.warn("floating-ball action failed", error);
+            (0, siyuan_1.showMessage)(this.i18n.quickActionFailed, constants_1.MESSAGE_DEFAULT_MS, "error");
+            restoreControllerState();
+        });
+    }
+    /**
+     * Mount one portal with independent click and drag actions per surface.
+     * Sidebar resolves its host lazily because SiYuan
+     * creates and replaces dock content on demand.
+     */
+    createFloatingBallSurface(surface) {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w;
+        const settings = this.getSettings();
+        const config = settings.floatingBall || {};
+        const position = ((_a = config.position) === null || _a === void 0 ? void 0 : _a[surface]) || { edge: "right", yRatio: 0.72 };
+        const isSidebar = surface === "sidebar";
+        let controller = this.floatingBallUis.get(surface);
+        if (!controller) {
+            controller = (0, floating_ball_ui_1.createFloatingBallUi)({
+                surface,
+                document,
+                host: isSidebar ? (this.sidebarElement || document.body) : document.body,
+                resolveHost: isSidebar
+                    ? () => { var _a; return ((_a = this.sidebarElement) === null || _a === void 0 ? void 0 : _a.isConnected) ? this.sidebarElement : null; }
+                    : () => document.body,
+                resolveBounds: isSidebar
+                    ? () => {
+                        const host = this.sidebarElement;
+                        if (!(host === null || host === void 0 ? void 0 : host.isConnected))
+                            return null;
+                        const rect = host.getBoundingClientRect();
+                        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+                    }
+                    : undefined,
+                position,
+                touchSlopPx: (_b = config.behavior) === null || _b === void 0 ? void 0 : _b.touchSlopPx,
+                idleOpacity: (_c = config.appearance) === null || _c === void 0 ? void 0 : _c.idleOpacity,
+                idleDelayMs: (_d = config.appearance) === null || _d === void 0 ? void 0 : _d.idleDelayMs,
+                halfHide: (_e = config.appearance) === null || _e === void 0 ? void 0 : _e.halfHide,
+                hideOnFullscreen: (_f = config.behavior) === null || _f === void 0 ? void 0 : _f.hideOnFullscreen,
+                hideOnScroll: (_g = config.behavior) === null || _g === void 0 ? void 0 : _g.hideOnScroll,
+                resolveScrollTarget: isSidebar ? () => this.sidebarElement : undefined,
+                excludeScrollTarget: !isSidebar ? (target) => { var _a; return Boolean(target.nodeType && ((_a = this.sidebarElement) === null || _a === void 0 ? void 0 : _a.contains(target))); } : undefined,
+                recoveryLabel: this.i18n.floatingBallRestoreVisible,
+                resolveLayer: () => { var _a; return Number((_a = window.siyuan) === null || _a === void 0 ? void 0 : _a.zIndex); },
+                size: isSidebar ? undefined : (_h = config.appearance) === null || _h === void 0 ? void 0 : _h.size,
+                snap: (_j = config.behavior) === null || _j === void 0 ? void 0 : _j.snap,
+                marginPx: (_k = config.appearance) === null || _k === void 0 ? void 0 : _k.marginPx,
+                edgeAvoidPx: surface === "mobile" && ((_l = config.behavior) === null || _l === void 0 ? void 0 : _l.edgeAvoidMobile) ? 12 : 0,
+                ariaLabel: this.i18n.switchTabs,
+                onOpenSwitcher: () => {
+                    var _a, _b, _c, _d, _e;
+                    const current = this.getSettings().floatingBall || {};
+                    if (!(this.fabModalDepth === 0 || ((_a = current.behavior) === null || _a === void 0 ? void 0 : _a.yieldToModals) === false))
+                        return;
+                    const requested = ((_b = current.clickAction) === null || _b === void 0 ? void 0 : _b[surface]) || "switcher";
+                    const moreActionId = "__floating-ball-more__";
+                    if (requested === moreActionId || requested === "more") {
+                        this.refreshFloatingBallPanels();
+                        (_c = this.floatingBallPanels.get(surface)) === null || _c === void 0 ? void 0 : _c.openMore();
+                        return;
+                    }
+                    const descriptor = (_e = (_d = current.actions) === null || _d === void 0 ? void 0 : _d[surface]) === null || _e === void 0 ? void 0 : _e.find((entry) => entry.actionId === requested);
+                    const resolved = (0, floating_ball_model_1.resolveFloatingBallClickAction)(requested, this.getFloatingBallActions(), surface, {
+                        descriptor,
+                        resolveSupport: (action, target) => this.getQuickActionSupport(action, target),
+                    });
+                    this.executeFloatingBallSurfaceAction(surface, resolved.action);
+                },
+                onOpenMore: () => {
+                    var _a;
+                    this.refreshFloatingBallPanels();
+                    (_a = this.floatingBallPanels.get(surface)) === null || _a === void 0 ? void 0 : _a.openMore();
+                },
+                // T-6886（T-6858 第一批）：四向快滑动作分发——按方向读取绑定值
+                // （more=更多面板；其余按动作值在目录中查找后走既有执行器）。
+                onFlickAction: (direction) => {
+                    var _a, _b, _c;
+                    const current = this.getSettings().floatingBall || {};
+                    const bound = direction === "up" ? "more" : (_b = (_a = current.behavior) === null || _a === void 0 ? void 0 : _a.flickActions) === null || _b === void 0 ? void 0 : _b[direction];
+                    if (!bound)
+                        return;
+                    if (bound === "more") {
+                        this.refreshFloatingBallPanels();
+                        (_c = this.floatingBallPanels.get(surface)) === null || _c === void 0 ? void 0 : _c.openMore();
+                        return;
+                    }
+                    const action = (0, floating_ball_model_1.findFloatingAction)(this.getFloatingBallActions(), bound);
+                    if (!action) {
+                        (0, siyuan_1.showMessage)(this.i18n.quickActionUnavailable, constants_1.MESSAGE_DEFAULT_MS, "error");
+                        return;
+                    }
+                    const availability = (0, floating_ball_model_1.resolveFloatingActionAvailability)(action, surface, {
+                        resolveSupport: (item, target) => this.getQuickActionSupport(item, target),
+                    });
+                    if (availability.status === "unsupported" || availability.status === "unavailable") {
+                        (0, siyuan_1.showMessage)(this.i18n.quickActionUnavailable, constants_1.MESSAGE_DEFAULT_MS, "error");
+                        return;
+                    }
+                    this.executeFloatingBallSurfaceAction(surface, action);
+                },
+                onBeforeTargeting: () => this.refreshFloatingBallPanels(),
+                onDismissOverlays: () => { var _a; return (_a = this.floatingBallPanels.get(surface)) === null || _a === void 0 ? void 0 : _a.closeMore({ restoreFocus: false }); },
+                // T-6919（悬浮球手势纵深第一批）：双击/长按——绑定实时读取，路由走
+                // executeFloatingBallBoundGesture（""=未绑定，UI 侧也不会触发回调）。
+                isDoubleTapBound: () => { var _a, _b; return !!((_b = (_a = this.getSettings().floatingBall) === null || _a === void 0 ? void 0 : _a.behavior) === null || _b === void 0 ? void 0 : _b.doubleTapAction); },
+                isLongPressBound: () => { var _a, _b; return !!((_b = (_a = this.getSettings().floatingBall) === null || _a === void 0 ? void 0 : _a.behavior) === null || _b === void 0 ? void 0 : _b.longPressAction); },
+                onDoubleTap: () => { var _a, _b; return this.executeFloatingBallBoundGesture(surface, (_b = (_a = this.getSettings().floatingBall) === null || _a === void 0 ? void 0 : _a.behavior) === null || _b === void 0 ? void 0 : _b.doubleTapAction); },
+                onLongPress: () => { var _a, _b; return this.executeFloatingBallBoundGesture(surface, (_b = (_a = this.getSettings().floatingBall) === null || _a === void 0 ? void 0 : _a.behavior) === null || _b === void 0 ? void 0 : _b.longPressAction); },
+                onActionTarget: (target) => {
+                    const actionButton = target.closest("[data-action-id]");
+                    actionButton === null || actionButton === void 0 ? void 0 : actionButton.click();
+                },
+                onPositionChange: (next) => this.persistFloatingBallPosition(surface, next),
+            });
+            this.floatingBallUis.set(surface, controller);
+        }
+        controller.update({
+            position,
+            touchSlopPx: (_m = config.behavior) === null || _m === void 0 ? void 0 : _m.touchSlopPx,
+            idleOpacity: (_o = config.appearance) === null || _o === void 0 ? void 0 : _o.idleOpacity,
+            idleDelayMs: (_p = config.appearance) === null || _p === void 0 ? void 0 : _p.idleDelayMs,
+            halfHide: (_q = config.appearance) === null || _q === void 0 ? void 0 : _q.halfHide,
+            hideOnFullscreen: (_r = config.behavior) === null || _r === void 0 ? void 0 : _r.hideOnFullscreen,
+            hideOnScroll: (_s = config.behavior) === null || _s === void 0 ? void 0 : _s.hideOnScroll,
+            size: isSidebar ? undefined : (_t = config.appearance) === null || _t === void 0 ? void 0 : _t.size,
+            snap: (_u = config.behavior) === null || _u === void 0 ? void 0 : _u.snap,
+            marginPx: (_v = config.appearance) === null || _v === void 0 ? void 0 : _v.marginPx,
+            edgeAvoidPx: surface === "mobile" && ((_w = config.behavior) === null || _w === void 0 ? void 0 : _w.edgeAvoidMobile) ? 12 : 0,
+            ariaLabel: this.i18n.switchTabs,
+        });
+        controller.mount();
+        const container = controller.getElement();
+        if (container) {
+            const panelOptions = {
+                document,
+                container,
+                surface,
+                config,
+                actions: this.getFloatingBallActions(),
+                savedSearches: this.getSavedSearches(),
+                includeBuiltins: false,
+                labels: {
+                    more: this.i18n.floatingBallMore,
+                    close: this.i18n.close,
+                    unavailable: this.i18n.quickActionUnavailable,
+                    empty: this.i18n.quickActionUnavailable,
+                    search: this.i18n.floatingBallActionSearch,
+                    noResults: this.i18n.quickPickerEmpty,
+                    builtin: this.i18n.quickBuiltin,
+                    component: this.i18n.secondPanel,
+                    plugin: this.i18n.floatingBallPluginActions,
+                    other: this.i18n.floatingBallOtherActions,
+                    unknown: this.i18n.quickSupportUnknown,
+                    mobileTry: this.i18n.floatingBallMobileTryStatus,
+                    providerMissing: this.i18n.floatingBallProviderMissing,
+                    disabled: this.i18n.floatingBallActionDisabled,
+                    enabled: this.i18n.floatingBallEnabled,
+                    manage: this.i18n.floatingBallManageActions,
+                    savedSearches: this.i18n.floatingBallSavedSearches,
+                    savedSearch: this.i18n.floatingBallDigitSlotSearch,
+                    savedSearchUnavailable: this.i18n.floatingBallDigitSlotUnavailable,
+                    configureDigitSlot: this.i18n.floatingBallConfigureDigitSlot,
+                    toggleFailed: this.i18n.quickActionFailed,
+                    builtins: {
+                        switcher: this.i18n.switchTabs, search: this.i18n.quickBuiltinSearch,
+                        journal: this.i18n.quickBuiltinJournal, settings: this.i18n.quickBuiltinSettings,
+                        home: this.i18n.secondPanel,
+                    },
+                },
+                onAction: (action) => (action === null || action === void 0 ? void 0 : action.digitSlotBound)
+                    ? this.executeFloatingBallBoundAction(surface, action)
+                    : this.executeFloatingBallSurfaceAction(surface, action),
+                onSavedSearch: (saved) => this.executeFloatingBallSavedSearch(surface, saved),
+                onConfigureDigitSlot: (index, _reference, targetSurface) => {
+                    var _a;
+                    this.openSetting("floatingBall");
+                    const settings = Array.from(document.querySelectorAll(".sw-settings-dialog .sw-floating-ball-settings")).pop();
+                    if (!settings)
+                        return;
+                    const surfaceSelect = settings.querySelector(".sw-floating-ball-settings__surface select");
+                    if (surfaceSelect && Array.from(surfaceSelect.options).some((item) => item.value === targetSurface)) {
+                        surfaceSelect.value = targetSurface;
+                        surfaceSelect.dispatchEvent(new window.Event("change", { bubbles: true }));
+                    }
+                    const slots = Array.from(settings.querySelectorAll("[data-digit-slot]"));
+                    const slot = Number.isInteger(index) && index !== null && index >= 0 && index < slots.length
+                        ? slots[index] : slots.find((item) => !item.value) || slots[0];
+                    (_a = slot === null || slot === void 0 ? void 0 : slot.scrollIntoView) === null || _a === void 0 ? void 0 : _a.call(slot, { block: "center" });
+                    slot === null || slot === void 0 ? void 0 : slot.focus({ preventScroll: true });
+                },
+                onUnavailable: () => (0, siyuan_1.showMessage)(this.i18n.quickActionUnavailable, constants_1.MESSAGE_DEFAULT_MS, "error"),
+                resolveSupport: (action, target) => this.getQuickActionSupport(action, target),
+                onManageSettings: () => this.openSetting("floatingBall"),
+                onToggleAction: (actionId, enabled) => {
+                    const current = this.getSettings().floatingBall;
+                    this.updateSettings({ floatingBall: Object.assign(Object.assign({}, current), { actions: Object.assign(Object.assign({}, current.actions), { [surface]: current.actions[surface].map((entry) => entry.actionId === actionId ? Object.assign(Object.assign({}, entry), { enabled }) : entry) }) }) });
+                },
+                onOpenMore: () => controller === null || controller === void 0 ? void 0 : controller.setState("more"),
+                onCloseMore: () => {
+                    if ((controller === null || controller === void 0 ? void 0 : controller.getState()) === "more")
+                        controller.setState("docked");
+                },
+            };
+            let panel = this.floatingBallPanels.get(surface);
+            if (!panel) {
+                panel = (0, floating_ball_panel_1.createFloatingBallPanelController)(panelOptions);
+                if (panel) {
+                    this.floatingBallPanels.set(surface, panel);
+                    panel.mount();
+                }
+            }
+            else {
+                panel.update(panelOptions);
+            }
+        }
+        return controller;
+    }
+    destroyFloatingBallSurface(surface) {
+        var _a;
+        (_a = this.floatingBallPanels.get(surface)) === null || _a === void 0 ? void 0 : _a.destroy();
+        this.floatingBallPanels.delete(surface);
+        const controller = this.floatingBallUis.get(surface);
+        controller === null || controller === void 0 ? void 0 : controller.destroy();
+        this.floatingBallUis.delete(surface);
+        if (surface === "mobile") {
+            this.floatingBallUi = null;
+            this.fabElement = null;
+        }
+    }
+    persistFloatingBallPosition(surface, position) {
+        const current = this.getSettings();
+        const currentBall = current.floatingBall || {};
+        this.updateSettings({
+            floatingBall: Object.assign(Object.assign({}, currentBall), { position: Object.assign(Object.assign({}, (currentBall.position || {})), { [surface]: Object.assign({}, position) }) }),
+        });
+    }
+    suspendFABForDialog(onDestroy) {
+        var _a, _b, _c;
+        // T-6481：不再覆写 dialog.destroy——宿主 Dialog 的 destroyCallback 才是契约，
+        // 且 Escape / 遮罩关闭也会走到它。这里返回释放函数，由调用方接进 destroyCallback。
+        // T-6487：原实现在非移动端直接 return，onDestroy 永不触发——桌面端用 Escape 关掉
+        // 日记笔记本选择弹窗时，调用方 Promise 会永久挂起。
+        const modalControllers = [...this.floatingBallUis.values()];
+        const shouldYield = ((_b = (_a = this.getSettings().floatingBall) === null || _a === void 0 ? void 0 : _a.behavior) === null || _b === void 0 ? void 0 : _b.yieldToModals) !== false;
+        // T-7014（T-7012 留账收口）：宿主来源焦点恢复——弹窗打开前记录来源控件
+        // （悬浮球本体/顶栏按钮/面包屑等），关闭释放时若焦点已回落 body 且来源
+        // 仍在文档中，把焦点送回来源控件，不再丢给 body。鸭子类型判断
+        // （isConnected + focus），不依赖 HTMLElement 全局（宿主测试沙箱无此全局）。
+        const activeCandidate = document.activeElement;
+        const focusOrigin = activeCandidate && typeof activeCandidate.focus === "function" && activeCandidate.isConnected
+            ? activeCandidate
+            : null;
+        // Count dialogs even when no ball exists yet: enabling a surface from
+        // Settings must not put a newly mounted ball above that dialog.
+        this.fabModalDepth += 1;
+        this.floatingBallPanels.forEach((panel) => panel === null || panel === void 0 ? void 0 : panel.closeMore({ restoreFocus: false }));
+        if (shouldYield) {
+            modalControllers.forEach((controller) => controller.setSuspended(true));
+            (_c = this.fabElement) === null || _c === void 0 ? void 0 : _c.classList.add("sw__fab--hidden");
+        }
+        let released = false;
+        return () => {
+            var _a;
+            if (released)
+                return;
+            released = true;
+            this.fabModalDepth = Math.max(0, this.fabModalDepth - 1);
+            onDestroy === null || onDestroy === void 0 ? void 0 : onDestroy();
+            if (this.fabModalDepth === 0) {
+                this.floatingBallUis.forEach((controller) => controller.setSuspended(false));
+                (_a = this.fabElement) === null || _a === void 0 ? void 0 : _a.classList.remove("sw__fab--hidden");
+            }
+            // 焦点已回落 body（弹窗收走了焦点又被移除）且来源仍连接时才恢复；
+            // 用户已自行聚焦别处或来源随弹窗销毁时诚实放弃。
+            if ((focusOrigin === null || focusOrigin === void 0 ? void 0 : focusOrigin.isConnected)
+                && (document.activeElement === document.body || document.activeElement == null)) {
+                try {
+                    focusOrigin.focus({ preventScroll: true });
+                }
+                catch (_) {
+                    focusOrigin.focus();
+                }
+            }
+        };
+    }
+    updateFABVisibility() {
+        this.updateFloatingBallVisibility();
+    }
+    /** Refresh all spatial entries after settings/data or host layout changes. */
+    updateFloatingBallVisibility() {
+        var _a;
+        const settings = this.getSettings();
+        // T-7026（ADR 0099）D6：模块级关闭则任何端都不挂载（叠加既有 per-surface 开关）；
+        // 已挂载的控制器幂等销毁，重新开启后经 updateFloatingBallVisibility 恢复。
+        if (((_a = settings.moduleVisibility) === null || _a === void 0 ? void 0 : _a.floatingBall) === false) {
+            Object.freeze(["desktop", "sidebar", "mobile"])
+                .forEach((surface) => this.destroyFloatingBallSurface(surface));
+            return;
+        }
+        const config = settings.floatingBall || {};
+        const enabled = (surface) => { var _a; return Boolean((_a = config.enabled) === null || _a === void 0 ? void 0 : _a[surface]); };
+        // ADR 0072: the sidebar portal is withdrawn (it duplicated the
+        // desktop-window ball inside the same host window). The sweep below
+        // still destroys a stale sidebar controller left by an earlier release.
+        const surfaces = this.isMobile ? ["mobile"] : ["desktop"];
+        // A frontend switch/hot reload must not leave a controller from the
+        // previous surface alive.  The controller's destroy is idempotent.
+        Object.freeze(["desktop", "sidebar", "mobile"])
+            .filter((surface) => !surfaces.includes(surface))
+            .forEach((surface) => this.destroyFloatingBallSurface(surface));
+        surfaces.forEach((surface) => {
+            var _a, _b;
+            if (!enabled(surface)) {
+                this.destroyFloatingBallSurface(surface);
+                return;
+            }
+            const controller = this.createFloatingBallSurface(surface);
+            const suspended = this.fabModalDepth > 0 && ((_a = config.behavior) === null || _a === void 0 ? void 0 : _a.yieldToModals) !== false;
+            controller.setSuspended(suspended);
+            if (surface === "mobile") {
+                this.floatingBallUi = controller;
+                this.fabElement = controller.getElement();
+                (_b = this.fabElement) === null || _b === void 0 ? void 0 : _b.classList.toggle("sw__fab--hidden", suspended);
+            }
+        });
+    }
+    // 手机端顶栏入口按钮：思源 3.8.x 手机端 addTopBar 只会进右侧菜单"扩展"分组，
+    // 这里直接插入 mobileTopBar（旧版无此元素时静默跳过，不影响其他入口）。
+    // 切换器入口 + 日记入口各自独立注入，常规运行每个在首次时插入一次即可。
+    ensureMobileTopBarButton() {
+        var _a, _b;
+        const topBar = document.getElementById("mobileTopBar") || document.getElementById("toolbar");
+        if (!topBar) {
+            return;
+        }
+        // 切换器入口（外部只有一个六边形按钮；日记按钮位于切换器弹窗顶栏内）
+        if (!((_a = this.mobileTopBarButton) === null || _a === void 0 ? void 0 : _a.isConnected) && !topBar.querySelector("#swMobileTopBarBtn")) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.id = "swMobileTopBarBtn";
+            btn.className = "toolbar__button";
+            btn.setAttribute("aria-label", this.i18n.switchTabs);
+            btn.innerHTML = `<svg><use xlink:href="#iconLayout"></use></svg>`;
+            btn.addEventListener("click", () => {
+                this.showSwitcher();
+            });
+            topBar.appendChild(btn);
+            this.mobileTopBarButton = btn;
+        }
+        // Keep our entry off the very end of the bar: the host's trailing
+        // controls (close/more) own that spot, and appending used to overlap
+        // them. Also repositions buttons appended by older releases.
+        const existing = ((_b = this.mobileTopBarButton) === null || _b === void 0 ? void 0 : _b.isConnected)
+            ? this.mobileTopBarButton
+            : topBar.querySelector("#swMobileTopBarBtn");
+        if (existing && existing.nextElementSibling !== null) {
+            const topBarChildren = Array.from(topBar.children).filter((child) => child instanceof HTMLElement);
+            const insertAnchor = topBarChildren[topBarChildren.length - 1];
+            if (insertAnchor && insertAnchor !== existing) {
+                topBar.insertBefore(existing, insertAnchor);
+            }
+        }
+    }
+    // ==================== 渚ц竟鏍忔ā寮?====================
+    // 在 dock 面板内渲染紧凑版切换器（单列卡片，常驻侧边栏便于快速切换）
+    renderSidebarPanel(element) {
+        var _a, _b, _c, _d, _e;
+        if (!element) {
+            return;
+        }
+        const previousScrollElement = element.querySelector(".sw__scroll");
+        const previousSearchFilters = previousScrollElement
+            ? this.docSearchState.filters.get(previousScrollElement)
+            : undefined;
+        const previousSearchQuery = ((_a = element.querySelector(".sw__search")) === null || _a === void 0 ? void 0 : _a.value) || "";
+        // T-7038：重绘现场事务——全量重建前捕获滚动与焦点卡片。浮层由
+        // sidebarHistoryDropdownDispose 统一关闭（T-7040 已并入排序浮层），
+        // 分组折叠状态存宿主级 Set 天然存活；此处补滚动与焦点两要素。
+        const previousScrollTop = (_b = previousScrollElement === null || previousScrollElement === void 0 ? void 0 : previousScrollElement.scrollTop) !== null && _b !== void 0 ? _b : 0;
+        const sidebarActive = element.ownerDocument.activeElement;
+        const sidebarFocus = sidebarActive && typeof sidebarActive.closest === "function"
+            ? sidebarActive : null;
+        const focusInSidebar = !!previousScrollElement && !!sidebarFocus && previousScrollElement.contains(sidebarFocus);
+        const previousFocusCardId = focusInSidebar
+            ? ((_c = sidebarFocus.closest(".sw__card")) === null || _c === void 0 ? void 0 : _c.getAttribute("data-tab-id")) || null
+            : null;
+        if (previousScrollElement) {
+            doc_search_ui_1.disposeDocSearchSession.call(this, previousScrollElement);
+        }
+        (_d = this.sidebarHistoryDropdownDispose) === null || _d === void 0 ? void 0 : _d.call(this);
+        this.sidebarHistoryDropdownDispose = null;
+        (_e = this.sidebarSearchFilterDispose) === null || _e === void 0 ? void 0 : _e.call(this);
+        this.sidebarSearchFilterDispose = null;
+        this.sidebarElement = element;
+        element.classList.add("speed-switch", "sw__body", "sw--sidebar", "sw-platform-surface", "sw-platform-surface--switcher");
+        element.dataset.swSurface = "switcher";
+        this.setSyncPresentation(this.syncing);
+        // 侧边栏缩略图布局：enlarge（默认）放大填满栏宽；columns 按宽度自动增加列数
+        element.classList.toggle("sw--sidebar-columns", this.getSettings().sidebarLayout === "columns");
+        element.innerHTML = this.buildSidebarHtml();
+        mountPlatformChrome(element, {
+            surface: "switcher",
+            labels: this.getPlatformSurfaceLabels(),
+            // Keep the sidebar surface navigation in lockstep with the
+            // persisted module switches.  A hard-coded list here made the
+            // Studio/Workbench entry remain visible after being disabled in
+            // settings (the route guard rejected it only after a click).
+            available: this.getAvailablePlatformSurfaces(),
+            onNavigate: (surface) => {
+                if (this.isUnloading || !element.isConnected)
+                    return;
+                this.openPlatformSurface(surface, "switcher", { entry: "surface-nav" });
+            },
+            onHelp: () => this.openPlatformGuide("switcher"),
+            helpLabel: this.i18n.platformGuideButton,
+            // 侧栏没有可依赖的 Dialog 外壳；把平台头部的关闭动作接回
+            // SiYuan dock 模型，保证与弹窗/移动面板使用同一退出语义。
+            onClose: () => {
+                var _a, _b;
+                if (!element.isConnected)
+                    return;
+                const type = this.name + constants_1.SIDEBAR_DOCK_TYPE;
+                try {
+                    (_b = (_a = this.getDockByType(type)) === null || _a === void 0 ? void 0 : _a.toggleModel) === null || _b === void 0 ? void 0 : _b.call(_a, type, false);
+                }
+                catch (error) {
+                    logger_1.logger.warn("close sidebar fail", error);
+                }
+            },
+            closeHint: this.i18n.platformCloseHint,
+            closeLabel: this.i18n.close,
+        });
+        // 侧栏没有 Dialog 的宿主 Escape 处理，平台头部仍提示 Esc 退出，
+        // 因此在 dock 根节点补同一条关闭语义。监听采用冒泡阶段，
+        // 让排序浮层、拖拽取消等内部 Escape 处理优先完成。
+        if (element.dataset.swSidebarEscapeBound !== "true") {
+            element.dataset.swSidebarEscapeBound = "true";
+            element.addEventListener("keydown", (event) => {
+                var _a, _b;
+                if (event.key !== "Escape" || event.defaultPrevented)
+                    return;
+                event.preventDefault();
+                event.stopPropagation();
+                const type = this.name + constants_1.SIDEBAR_DOCK_TYPE;
+                try {
+                    (_b = (_a = this.getDockByType(type)) === null || _a === void 0 ? void 0 : _a.toggleModel) === null || _b === void 0 ? void 0 : _b.call(_a, type, false);
+                }
+                catch (error) {
+                    logger_1.logger.warn("escape close sidebar fail", error);
+                }
+            });
+        }
+        // T-6758: the sidebar host is created/replaced by SiYuan lazily.  Run
+        // reconciliation after the host's own markup is ready so mounting the
+        // portal cannot be lost to this render's innerHTML replacement.
+        this.updateFloatingBallVisibility();
+        this.observeSidebarIcons(element);
+        const tabs = (0, siyuan_1.getAllTabs)();
+        this.pruneThumbCache(tabs);
+        const activeTab = this.getActiveTab();
+        const refresh = () => this.refreshSidebar();
+        const listOpts = { onOverlayClose: refresh, onTabsChanged: refresh };
+        const updatedMap = {};
+        const scrollElement = element.querySelector(".sw__scroll");
+        if (!scrollElement) {
+            return;
+        }
+        if (previousSearchFilters) {
+            this.docSearchState.filters.set(scrollElement, Object.freeze(Object.assign({}, previousSearchFilters)));
+        }
+        this.renderList(scrollElement, tabs, activeTab, listOpts, this.getSettings().sortBy, updatedMap);
+        // T-7038：恢复现场——滚动按内容高度钳制复位（首帧 previousScrollTop 为 0 属无操作）；
+        // 焦点卡片按 tabId 找回，找不到诚实放弃；焦点原在滚动区外（搜索框/浮层）不抢焦点。
+        if (previousScrollTop > 0) {
+            scrollElement.scrollTop = Math.min(previousScrollTop, Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight));
+        }
+        if (focusInSidebar && previousFocusCardId) {
+            const sceneCards = scrollElement.querySelectorAll(".sw__card[data-tab-id]");
+            for (const card of sceneCards) {
+                if (card.dataset.tabId === previousFocusCardId) {
+                    card.focus({ preventScroll: true });
+                    break;
+                }
+            }
+        }
+        // 侧栏共用 blocks.updated；无排序/标记需求时跳过首屏 SQL，避免侧栏打开等待内核。
+        const sidebarSettings = this.getSettings();
+        if (sidebarSettings.sortBy === "updatedDesc" || sidebarSettings.showCardUpdatedBadge === true) {
+            this.loadUpdatedMap(tabs).then((map) => {
+                Object.assign(updatedMap, map);
+                const searchInput = element.querySelector(".sw__search");
+                if (element.isConnected && this.getSettings().sortBy === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
+                    this.renderList(scrollElement, (0, siyuan_1.getAllTabs)(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
+                }
+                else if (element.isConnected && this.getSettings().showCardUpdatedBadge === true) {
+                    this.refreshCardUpdatedBadges(scrollElement, updatedMap);
+                }
+            });
+        }
+        // 面板尺寸变化时仅重算缩略图缩放比例（ResizeObserver 覆盖拖动分隔条等所有场景）
+        this.observeSidebarResize(element);
+        // 顶栏交互：搜索 / 收藏下拉 / 排序 / 设置 / 回到顶部
+        this.sidebarHistoryDropdownDispose = this.bindSidebarToolbarEvents(element, scrollElement, refresh);
+        const searchInput = element.querySelector(".sw__search");
+        if (searchInput && (previousSearchQuery || doc_search_ui_1.hasDocSearchFilter.call(this, scrollElement))) {
+            searchInput.value = previousSearchQuery;
+            this.applySearch(scrollElement, searchInput, refresh);
+        }
+        this.renderQuickActions(element, "sidebar", element.querySelector(".sw__search"), refresh);
+    }
+    // 侧边栏 DOM 骨架：搜索 + 收藏下拉 + 排序 + 设置 + 滚动区 + 回到顶部
+    buildSidebarHtml() {
+        return `<div class="sw__content">
+    <div class="sw__toolbar">
+        <div class="sw__search-wrap">
+            <svg class="sw__search-icon" width="14" height="14"><use xlink:href="#iconSearch"></use></svg>
+            <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" aria-label="${this.i18n.searchTabs}" />
+            <button type="button" class="sw__search-filter-btn" aria-label="${this.i18n.searchFilters}" title="${this.i18n.searchFilters}">
+                <svg width="15" height="15"><use xlink:href="#iconFilter"></use></svg>
+            </button>
+        </div>
+        <div class="sw__select-wrap">
+            <div class="sw__fav-dd"></div>
+        </div>
+        <div class="sw__select-wrap">
+            <button type="button" class="b3-button b3-button--text sw__sort-trigger" aria-label="${this.i18n.setSortBy}">
+                <svg width="18" height="18"><use xlink:href="#iconSort"></use></svg>
+                <span class="sw__sort-trigger-label"></span>
+            </button>
+        </div>
+        <div class="sw__history-dd sw__history-dd--icon"></div>
+        <button type="button" class="b3-button b3-button--text sw__icon-btn sw__journal-btn" aria-label="${this.i18n.journalBtn}" title="${this.i18n.journalBtn}">
+            <svg width="16" height="16"><use xlink:href="#iconCalendar"></use></svg>
+        </button>
+        <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}" title="${this.i18n.settings}">
+            <svg width="16" height="16"><use xlink:href="#iconSettings"></use></svg>
+        </button>
+    </div>
+    <div class="sw__scroll" tabindex="0"></div>
+    <div class="sw__quick-actions" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
+    <button type="button" class="sw__back-top b3-tooltips b3-tooltips__n" aria-label="${this.i18n.backTop}">
+        <svg><use xlink:href="#iconUp"></use></svg>
+    </button>
+</div>`;
+    }
+    // 侧边栏尺寸监听：拖动分隔条等场景只重算缩略图缩放，不重建 DOM
+    observeSidebarResize(element) {
+        if (this.sidebarResizeObserver) {
+            this.sidebarResizeObserver.disconnect();
+        }
+        if (typeof ResizeObserver !== "function") {
+            this.sidebarResizeObserver = null;
+            return;
+        }
+        this.sidebarResizeObserver = new ResizeObserver(() => {
+            var _a;
+            this.rescaleThumbs(element);
+            // T-6762/B5: the divider can resize the dock without a viewport
+            // resize. Ask the existing controller to re-read host bounds;
+            // this is one event-driven style update, with no polling.
+            (_a = this.floatingBallUis.get("sidebar")) === null || _a === void 0 ? void 0 : _a.update({});
+        });
+        this.sidebarResizeObserver.observe(element);
+    }
+    // 常驻 dock 会经历宿主重绘与插件内容增量替换；与弹窗相同地按帧合并 SVG
+    // 尺寸钳制，避免样式短暂失效时浏览器 300×150 默认尺寸把工具栏撑开。
+    observeSidebarIcons(element) {
+        var _a, _b, _c;
+        (_a = this.sidebarIconObserver) === null || _a === void 0 ? void 0 : _a.disconnect();
+        (_b = this.sidebarIconFrameCancel) === null || _b === void 0 ? void 0 : _b.call(this);
+        this.sidebarIconFrameCancel = null;
+        const schedule = () => {
+            if (this.sidebarIconFrameCancel)
+                return;
+            const run = () => {
+                this.sidebarIconFrameCancel = null;
+                if (element.isConnected)
+                    (0, util_1.clampOversizedIcons)(element);
+            };
+            if (typeof requestAnimationFrame === "function") {
+                const frame = requestAnimationFrame(run);
+                this.sidebarIconFrameCancel = () => cancelAnimationFrame(frame);
+            }
+            else {
+                const timer = window.setTimeout(run, 16);
+                this.sidebarIconFrameCancel = () => window.clearTimeout(timer);
+            }
+        };
+        this.sidebarIconObserver = typeof MutationObserver === "function"
+            ? new MutationObserver(schedule) : null;
+        (_c = this.sidebarIconObserver) === null || _c === void 0 ? void 0 : _c.observe(element, { childList: true, subtree: true });
+        schedule();
+    }
+    // 侧边栏顶栏事件：搜索 / 收藏下拉 / 排序切换 / 设置 / 回到顶部
+    bindSidebarToolbarEvents(element, scrollElement, refresh) {
+        var _a, _b;
+        // 搜索：与弹窗一致，页签匹配在上、全库文档在下
+        const searchInput = element.querySelector(".sw__search");
+        const disposeHistoryDropdown = this.setupOpenHistoryDropdown(element.querySelector(".sw__history-dd"), refresh);
+        this.sidebarSearchFilterDispose = searchInput
+            ? doc_search_ui_1.bindDocSearchFilter.call(this, element, scrollElement, searchInput, refresh)
+            : null;
+        this.bindSearchInputComposition(searchInput, () => {
+            this.applySearch(scrollElement, searchInput, refresh);
+        });
+        // 收藏下拉组件：星标触发 + 分组面板（侧边栏跳转后仅刷新列表）
+        const favDd = element.querySelector(".sw__fav-dd");
+        this.setupFavDropdown(favDd, refresh, refresh);
+        // 分组·排序一体化浮层（与弹窗同款，浮层挂 body 不受 dock 层级影响）；
+        // T-7040：disposer 与历史下拉一起并入返回值，由侧栏卸载链统一释放
+        const disposeSortMenu = this.bindSortTriggerMenu(element, () => this.refreshSidebar(), () => this.refreshSidebar());
+        (_a = element.querySelector(".sw__settings-btn")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", () => {
+            this.openSetting();
+        });
+        // T-7041：侧栏独立日记入口（ROADMAP §2.2 三端必备）——复用桌面同一命令
+        // openJournal，不新增第二套实现；侧栏是 dock 面板无需先销毁
+        (_b = element.querySelector(".sw__journal-btn")) === null || _b === void 0 ? void 0 : _b.addEventListener("click", () => {
+            this.openJournal();
+        });
+        const backTopBtn = element.querySelector(".sw__back-top");
+        let backTopRaf = 0;
+        const onBackTopScroll = () => {
+            if (backTopRaf)
+                return;
+            backTopRaf = window.requestAnimationFrame(() => {
+                backTopRaf = 0;
+                backTopBtn === null || backTopBtn === void 0 ? void 0 : backTopBtn.classList.toggle("sw__show", scrollElement.scrollTop >= constants_1.BACK_TOP_THRESHOLD_PX);
+            });
+        };
+        const onBackTopClick = () => {
+            if (backTopRaf) {
+                window.cancelAnimationFrame(backTopRaf);
+                backTopRaf = 0;
+            }
+            scrollElement.scrollTo({ top: 0, behavior: "smooth" });
+        };
+        scrollElement.addEventListener("scroll", onBackTopScroll, { passive: true });
+        backTopBtn === null || backTopBtn === void 0 ? void 0 : backTopBtn.addEventListener("click", onBackTopClick);
+        // T-7040：排序浮层与历史下拉共用侧栏释放通道
+        return () => {
+            disposeHistoryDropdown();
+            disposeSortMenu();
+        };
+    }
+    // 重算容器内全部缩略图的缩放比例（侧边栏尺寸变化时调用，内容随面板宽度自动伸缩）
+    // 侧栏刷新合并：loaded/destroy 事件连发（如批量打开/关闭）时合并为一次重建，
+    // 避免逐事件全量重建侧栏 DOM；150ms 尾沿触发
+    scheduleSidebarRefresh() {
+        if (this.sidebarRefreshTimer)
+            return;
+        this.sidebarRefreshTimer = window.setTimeout(() => {
+            var _a;
+            this.sidebarRefreshTimer = 0;
+            if (!this.syncing && ((_a = this.sidebarElement) === null || _a === void 0 ? void 0 : _a.isConnected))
+                this.refreshSidebar();
+        }, 150);
+    }
+    rescaleThumbs(container) {
+        container.querySelectorAll(".sw__thumb").forEach((thumb) => {
+            const content = thumb.querySelector(".sw__thumb-content");
+            const width = thumb.clientWidth;
+            if (content && width > 0) {
+                content.style.transform = `scale(${(width / constants_1.CONTENT_WIDTH_PX).toFixed(3)})`;
+                content.style.visibility = "visible";
+            }
+        });
+    }
+    // 刷新侧边栏列表（面板仍连接在 DOM 上时）
+    refreshSidebar() {
+        var _a;
+        if (this.syncing)
+            return;
+        if ((_a = this.sidebarElement) === null || _a === void 0 ? void 0 : _a.isConnected) {
+            this.renderSidebarPanel(this.sidebarElement);
+        }
+    }
+    // 轻量刷新：仅更新侧边栏卡片的当前页签高亮（switch-protyle 高频触发，避免重建列表）
+    refreshSidebarActive() {
+        var _a;
+        const element = this.sidebarElement;
+        if (!(element === null || element === void 0 ? void 0 : element.isConnected)) {
+            return;
+        }
+        const activeId = (_a = this.getActiveTab()) === null || _a === void 0 ? void 0 : _a.id;
+        element.querySelectorAll(".sw__card").forEach((card) => {
+            card.classList.toggle("sw__active", card.dataset.tabId === activeId);
+        });
+    }
+    // 打开（或聚焦已打开的）侧边栏面板
+    toggleSidebar() {
+        const type = this.name + constants_1.SIDEBAR_DOCK_TYPE;
+        try {
+            const dock = this.getDockByType(type);
+            if (dock) {
+                dock.toggleModel(type, true);
+                this.refreshSidebar();
+            }
+        }
+        catch (e) {
+            logger_1.logger.warn("toggle sidebar fail", e);
+        }
+    }
+    // 读取 MRU 记录；防御性收敛（过滤非字符串/去重/截断），兼容历史已膨胀的存量数据
+    getMru() {
+        const data = this.data[constants_1.MRU_KEY];
+        return (0, util_1.capMru)(Array.isArray(data) ? data : [], constants_1.MRU_MAX);
+    }
+    getOpenHistory() {
+        return (0, util_1.sanitizeOpenHistory)(this.data[constants_1.HISTORY_KEY], constants_1.HISTORY_MAX).items;
+    }
+    removeOpenHistoryEntry(key) {
+        if (typeof key !== "string" || !key)
+            return;
+        const history = this.getOpenHistory();
+        const result = (0, recent_closed_1.removeRecentEntry)(history, key, "key");
+        if (!result.changed)
+            return;
+        this.data[constants_1.HISTORY_KEY] = result.items;
+        this.saveDataDebounced(constants_1.HISTORY_KEY);
+        this.refreshOpenHistoryDropdowns();
+    }
+    removeClosedHistoryEntry(rootId) {
+        const history = this.getClosedHistory();
+        const result = (0, recent_closed_1.removeRecentEntry)(history, rootId, "rootId");
+        if (!result.changed)
+            return;
+        this.data[constants_1.CLOSED_HISTORY_KEY] = result.items;
+        this.saveDataDebounced(constants_1.CLOSED_HISTORY_KEY);
+        this.refreshOpenHistoryDropdowns();
+    }
+    recordOpenHistory(tab) {
+        const key = this.pinKeyOf(tab);
+        if (!key)
+            return;
+        const rootId = this.rootIdOf(tab);
+        const title = this.titleOf(tab) || key;
+        const result = (0, recent_closed_1.recordRecentOpen)(this.getOpenHistory(), this.getClosedHistory(), { key, rootId, title, ts: Date.now() }, constants_1.HISTORY_MAX);
+        this.data[constants_1.HISTORY_KEY] = result.open;
+        this.saveDataDebounced(constants_1.HISTORY_KEY);
+        if (result.closed.length !== this.getClosedHistory().length) {
+            this.data[constants_1.CLOSED_HISTORY_KEY] = result.closed;
+            this.saveDataDebounced(constants_1.CLOSED_HISTORY_KEY);
+        }
+        this.refreshOpenHistoryDropdowns();
+    }
+    getClosedHistory() {
+        return (0, recent_closed_1.normalizeClosedEntries)(this.data[constants_1.CLOSED_HISTORY_KEY], constants_1.HISTORY_MAX).items;
+    }
+    captureRecentOpenSnapshot() {
+        const tabs = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+        const next = new Map();
+        tabs.forEach((tab) => {
+            const rootId = this.rootIdOf(tab);
+            if (rootId && constants_1.BLOCK_ID_RE.test(rootId)) {
+                next.set(rootId, this.titleOf(tab) || rootId);
+            }
+        });
+        this.recentOpenSnapshot = next;
+    }
+    scheduleRecentClosedSync() {
+        if (this.recentClosedSyncTimer !== null) {
+            window.clearTimeout(this.recentClosedSyncTimer);
+        }
+        const generation = this.lifecycleGeneration;
+        this.recentClosedSyncTimer = window.setTimeout(() => {
+            this.recentClosedSyncTimer = null;
+            if (generation !== this.lifecycleGeneration)
+                return;
+            this.syncRecentClosedFromSnapshot(generation);
+        }, Math.max(constants_1.TAB_SETTLE_MS, 30));
+    }
+    syncRecentClosedFromSnapshot(generation = this.lifecycleGeneration) {
+        if (generation !== this.lifecycleGeneration)
+            return;
+        if (this.recentOpenSnapshot.size === 0)
+            return;
+        const tabs = this.isMobile ? this.getMobileTabs() : (0, siyuan_1.getAllTabs)();
+        const current = new Set();
+        tabs.forEach((tab) => {
+            const rootId = this.rootIdOf(tab);
+            if (rootId && constants_1.BLOCK_ID_RE.test(rootId))
+                current.add(rootId);
+        });
+        let state = {
+            open: [],
+            closed: this.getClosedHistory(),
+        };
+        this.recentOpenSnapshot.forEach((title, rootId) => {
+            if (!current.has(rootId)) {
+                state = (0, recent_closed_1.applyRecentEvent)(state, { type: "close", rootId, title, closedAt: Date.now() });
+            }
+        });
+        const closed = (0, recent_closed_1.normalizeClosedEntries)(state.closed, constants_1.HISTORY_MAX).items;
+        const previousClosed = this.getClosedHistory();
+        if (closed.length !== previousClosed.length
+            || closed.some((item, index) => { var _a; return item.rootId !== ((_a = previousClosed[index]) === null || _a === void 0 ? void 0 : _a.rootId); })) {
+            this.data[constants_1.CLOSED_HISTORY_KEY] = closed;
+            this.saveDataDebounced(constants_1.CLOSED_HISTORY_KEY);
+            this.refreshOpenHistoryDropdowns();
+        }
+        this.recentOpenSnapshot = new Map(tabs.map((tab) => {
+            const rootId = this.rootIdOf(tab);
+            return rootId ? [rootId, this.titleOf(tab) || rootId] : null;
+        }).filter((item) => Boolean(item)));
+    }
+}
+SpeedSwitchPlugin.HOME_ACCENTS = ["#7c6cf2", "#4f8ef7", "#35b8a8", "#f2a03d", "#e8637c", "#59b96f", "#e05fd0", "#8a93a6"];
+// 内核 HTTP POST 共用逻辑：端点白名单 + 5s 超时 + 非 2xx 抛错 + 失败返回 null
+SpeedSwitchPlugin.KERNEL_ENDPOINTS = new Set([
+    "/api/query/sql", "/api/tag/getTag", "/api/bookmark/getBookmark",
+    "/api/filetree/getDoc", "/api/filetree/createDocWithMd", "/api/filetree/createDailyNote",
+    "/api/filetree/searchDocs", "/api/search/semanticSearchBlock", "/api/search/fullTextSearchBlock",
+    "/api/block/updateBlock", "/api/block/insertBlock", "/api/block/appendBlock",
+    "/api/outline/getDocOutline", "/api/riff/getNotebookRiffDueCards",
+    // v0.18 路径筛选（T-103）：只读列目录，用于搜索筛选选择路径前缀。
+    // 真实宿主证据见 docs/path-filter-host-evidence.md（D-365）。
+    "/api/filetree/listDocsByPath",
+    // v3.8.x 内核数据组件群（T-6321~T-6325）：全部只读端点。
+    "/api/filetree/getPinnedDocs",
+    "/api/inbox/getShorthands",
+    "/api/block/getRecentUpdatedBlocks",
+    "/api/asset/getMissingAssets",
+    // T-6814 关联内容（D3）：官方反链/提及一次性查询，只读。
+    "/api/ref/getBacklink2",
+    "/api/storage/getRecentDocs",
+    "/api/storage/getCriteria",
+    // v3.8.x 数据库只读渲染（T-6330 / ADR 0058）。
+    "/api/av/renderAttributeView",
+    // T-6470：数据库表格两级取数——renderAttributeView 0 行时经 getAttributeView
+    // 解析真实库 ID（data.av.id）重试（嵌入/镜像库块 ID ≠ 库 ID）。
+    "/api/av/getAttributeView",
+    // T-6791 一键同步：写端点，CheckAdminRole+CheckReadonly（只读/发布模式）
+    // 由内核侧拒绝；同步进行中的互斥也由内核处理。
+    "/api/sync/performSync",
+    // T-6792 插入模板：manage 列清单，render 渲染为 HTML 后经 protyle.insert
+    // 写入光标处；render 的 path 校验（必须在 <data>/templates/ 内）由内核负责。
+    "/api/template/manage",
+    "/api/template/render",
+    // T-6878 跨表面对象第一批：原生片段清单只读查询（零态工作台的片段对象投影）。
+    "/api/snippet/getSnippet",
+]);
+SpeedSwitchPlugin.KERNEL_READ_ENDPOINTS = new Set([
+    "/api/tag/getTag", "/api/bookmark/getBookmark", "/api/filetree/getDoc",
+    "/api/filetree/searchDocs", "/api/search/semanticSearchBlock", "/api/search/fullTextSearchBlock",
+    "/api/outline/getDocOutline", "/api/riff/getNotebookRiffDueCards",
+    "/api/filetree/listDocsByPath", "/api/filetree/getPinnedDocs",
+    "/api/inbox/getShorthands", "/api/block/getRecentUpdatedBlocks",
+    "/api/asset/getMissingAssets", "/api/ref/getBacklink2",
+    "/api/storage/getRecentDocs", "/api/storage/getCriteria",
+    "/api/av/renderAttributeView", "/api/av/getAttributeView", "/api/snippet/getSnippet",
+]);
+exports.default = SpeedSwitchPlugin;

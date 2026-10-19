@@ -316,7 +316,6 @@
   "homeStoreTabAdded": "Added",
   "homeStoreSearch": "Search widgets…",
   "homeStoreSortLabel": "Widget sorting",
-
   "homeStoreMetaSource": "Data source",
   "homeStoreMetaRefresh": "Refresh",
   "homeStoreMetaPrivacy": "Privacy",
@@ -326,7 +325,8 @@
   "homeStoreCacheBounded": "Keeps the last good data on failure (bounded cache)",
   "homeStoreCacheNone": "Computed locally; no network cache",
   "homeStoreCatalogFailTitle": "Widget catalog is temporarily unavailable",
-  "homeStoreCatalogFailHint": "Built-in widgets are not loaded yet or the source plugin is not ready; widgets already added to panels are unaffected.",  "homeStoreSortRelevance": "Relevance",
+  "homeStoreCatalogFailHint": "Built-in widgets are not loaded yet or the source plugin is not ready; widgets already added to panels are unaffected.",
+  "homeStoreSortRelevance": "Relevance",
   "homeStoreSortTitle": "Name",
   "homeStoreSortStatus": "Status",
   "homeStoreSortCategory": "Category",
@@ -371,11 +371,8 @@
   "homeWorldClockLocal": "Local",
   "homeWorldClockTwoDaysAgo": "2 days ago",
   "homeWorldClockYesterday": "yesterday",
-
   "homeWorldClockToday": "today",
-
   "homeWorldClockTomorrow": "tomorrow",
-
   "homeWorldClockInTwoDays": "in 2 days",
   "homeConfigWorldClockCitiesPlaceholder": "Asia/Shanghai, America/New_York",
   "homeConfigDailyQuotesPlaceholder": "Learning without thought is labour lost\nA journey of a thousand miles begins with a single step",
@@ -483,14 +480,14 @@
   "homeIcalConfigHint": "Enter an iCal subscription URL first (.ics link or webcal:// share link); HTTPS public or local addresses are supported, no API key required",
   "homeIcalEmpty": "No events in the window",
   "homeIcalAllDay": "all-day",
-
   "homeIcalOngoing": "ongoing",
   "homeRss": "RSS feed",
   "homeDescRss": "Reads the latest articles from a user-provided RSS/Atom subscription URL; no credentials or server required, the URL is only used to fetch article titles and links, 30-minute cache",
   "homeRssConfigHint": "Enter an RSS / Atom subscription URL first; HTTPS public or local addresses are supported, no server or API key required",
   "homeRssEmpty": "No articles available",
   "homeRssRead": "read",
-  "homeRssUnread": "unread",  "homeAir": "Air quality",
+  "homeRssUnread": "unread",
+  "homeAir": "Air quality",
   "homeDescAir": "Reads the European AQI and PM2.5/PM10 concentrations for the selected city; geocoding is shared with weather and only the city name is sent, 30-minute cache",
   "homeAirConfigHint": "Enter a city name first; public geocoding is supported, no API key required",
   "homeAirEmpty": "No air quality data available",
@@ -738,7 +735,6 @@
   "setHomeSizeModeAdaptive": "Fit to screen (90%)",
   "setHomeSizeModeCustom": "Fixed size",
   "setHomeSizeModeFullscreen": "Fullscreen",
-
   "setStudioSizeMode": "Size mode",
   "setStudioSizeModeTip": "Window size for the snippet lab (desktop); the settings window itself stays adaptive",
   "setStudioWidth": "Lab width",
@@ -748,7 +744,8 @@
   "settingsGroupPanelWindows": "Panel windows",
   "panelSizeDefaultHint": "Default: fullscreen (content first; adaptive and fixed sizes remain available). The settings window itself is not affected by panel sizes.",
   "panelSizePreview": "Preview panel",
-  "panelSizePreviewTip": "Open this panel to check the current size; closing returns to settings",  "setHomePalette": "Card palette",
+  "panelSizePreviewTip": "Open this panel to check the current size; closing returns to settings",
+  "setHomePalette": "Card palette",
   "setHomePaletteTip": "Auto uses varied accents; soft lowers saturation; mono follows the current theme color",
   "setHomePaletteAuto": "Auto colors",
   "setHomePaletteSoft": "Soft",
@@ -846,965 +843,983 @@
   "quickActions": "Quick actions",
   "quickActionsTip": "Manage each action's name, icon, surfaces, order, and enabled state",
   "secQuickActions": "Quick actions",
-  "noQuickActions": "No quick actions available"
-  ,"addQuickAction": "Add action"
-  ,"quickDesktop": "Desktop"
-  ,"quickSidebar": "Sidebar"
-  ,"quickMobile": "Mobile"
-  ,"quickMoveUp": "Move up"
-  ,"quickMoveDown": "Move down"
-  ,"quickRemove": "Remove"
-  ,"quickExport": "Export config"
-  ,"quickImport": "Import config"
-  ,"quickImportDone": "Quick action config imported"
-  ,"quickImportFailed": "Invalid config file; import failed"
-  ,"quickColumnLabel": "Name"
-  ,"quickColumnIcon": "Icon"
-  ,"quickColumnTargets": "Surface"
-  ,"quickColumnEnabled": "On"
-  ,"quickAddTip": "Restore built-ins, add a Dock panel, or call another plugin command"
-  ,"quickBuiltin": "Built-in"
-  ,"quickDock": "Panel"
-  ,"quickTransfer": "Config transfer"
-  ,"quickTransferTip": "Export shared quick actions to back them up or move them to another device. Import replaces the current action list; legacy action-only files remain supported."
-  ,"quickDisplayDesktop": "Desktop display"
-  ,"quickDisplaySidebar": "Sidebar display"
-  ,"quickDisplayMobile": "Mobile display"
-  ,"quickDisplayTip": "Show icon and label, use icons only to save space, or hide the action bar completely"
-  ,"quickDisplayFull": "Full"
-  ,"quickDisplayIcons": "Icons only"
-  ,"quickDisplayHidden": "Hidden"
-  ,"quickPosition": "Desktop position"
-  ,"quickPositionTip": "Actions stay at the bottom by default, or can use a compact right rail"
-  ,"quickPositionBottom": "Bottom"
-  ,"quickPositionRight": "Right"
-  ,"quickCollapse": "Collapse quick actions"
-  ,"quickExpand": "Expand quick actions"
-  ,"quickColumnActions": "Actions"
-  ,"quickPluginCommands": "Plugin commands"
-  ,"quickPluginActions": "Plugin actions"
-  ,"quickPickerSearch": "Search available actions…"
-  ,"quickPickerEmpty": "No matching actions"
-  ,"quickChooseIcon": "Choose icon"
-  ,"quickIconSearch": "Search SiYuan and plugin icons…"
-  ,"quickIconCustom": "Enter emoji, short text, HTTPS image, or data URL"
-  ,"quickIconApplyCustom": "Use custom icon"
-  ,"quickIconInvalid": "Enter short text, emoji, or a safe HTTPS/data URL icon"
-  ,"quickIconImage": "Custom image"
-  ,"quickIconPreview": "Icon preview"
-  ,"quickIconCustomHint": "Up to 4 text characters, 500 characters for HTTPS URLs, or 240 KB for image data URLs. URLs with credentials are not accepted."
-  ,"quickSupportUnsupported": "This action is not supported on this surface"
-  ,"quickSupportUnknown": "The plugin does not declare mobile support; verify it on a real device after enabling"
-  ,"quickMobileUnknown": "Mobile unverified"
-  ,"quickActionUnavailable": "This action is unavailable; its plugin or panel may not be loaded"
-  ,"quickActionFailed": "The action failed; check the corresponding plugin"
-  ,"quickActionLimit": "The quick action limit has been reached"
-  ,"quickActionDuplicate": "This action has already been added"
-  ,"quickBuiltinSwitcher": "Switcher"
-  ,"quickBuiltinSearch": "Search"
-  ,"quickBuiltinJournal": "Journal"
-  ,"quickBuiltinSettings": "Settings"
-  ,"quickBuiltinQuickCapture": "Quick capture"
-  ,"quickBuiltinPreviousTab": "Previous tab"
-  ,"quickBuiltinNextTab": "Next tab"
-  ,"quickBuiltinScrollTop": "Scroll to top"
-  ,"quickBuiltinScrollBottom": "Scroll to bottom"
-  ,"quickHostCommands": "SiYuan commands"
-  ,"quickHostSource": "SiYuan command"
-  ,"quickGlobalOutline": "Outline"
-  ,"quickGlobalBookmark": "Bookmarks"
-  ,"quickGlobalTag": "Tags"
-  ,"quickGlobalInbox": "Inbox"
-  ,"quickGlobalBacklinks": "Backlinks"
-  ,"quickGlobalRecentDocs": "Recent documents"
-  ,"quickGlobalRecentClosed": "Recently closed"
-  ,"quickGlobalRiffCard": "Flashcard review"
-  ,"quickGlobalEditReadonly": "Read-only editing"
-  ,"quickBuiltinSyncNow": "Sync"
-  ,"quickBuiltinInsertTemplate": "Insert template"
-  ,"templatePickerTitle": "Choose a template"
-  ,"templatePickerEmpty": "No templates yet: create one in the SiYuan templates directory"
-  ,"templatePickerNoEditor": "Open a document before inserting a template"
-  ,"templateInsertFailed": "Template insert failed: empty render or unusable template"
-  ,"quickBuiltinCycleDocSet": "Next document set"
-  ,"quickBuiltinCycleBallPreset": "Next ball preset"
-  ,"quickBuiltinThrowWindow": "Open in new window"
-  ,"quickBuiltinHideKeyboard": "Dismiss keyboard"
-  ,"quickBuiltinJumpBack": "Jump back"
-  ,"quickBuiltinJumpForward": "Jump forward"
-  ,"jumpStackEmpty": "No more jumps to navigate"
-  ,"documentSetCycleNone": "No document sets to switch (need at least two)"
-  ,"floatingBallPresets": "Ball presets"
-  ,"floatingBallPresetsTip": "Save the current action layout and primary click as a named scene; apply or cycle anytime."
-  ,"floatingBallPresetName": "Preset name"
-  ,"floatingBallPresetSave": "Save current as preset"
-  ,"floatingBallPresetApply": "Apply"
-  ,"floatingBallPresetCurrent": "Current"
-  ,"floatingBallPresetDelete": "Delete"
-  ,"floatingBallPresetEmpty": "No presets yet"
-  ,"floatingBallPresetApplied": "Preset applied: {x}"
-  ,"floatingBallPresetCycleNone": "No presets to cycle (save one first)"
-  ,"favSmartGroups": "Smart groups"
-  ,"favSmartGroupsTip": "Auto-collect documents by tag; the group follows your notes (read-only projection, up to 4 groups)."
-  ,"favSmartGroupName": "Group name"
-  ,"favSmartGroupTagPick": "Pick a tag"
-  ,"favSmartGroupNotebookAny": "Any notebook"
-  ,"favSmartGroupUpdatedAny": "Any time"
-  ,"favSmartGroupUpdated7": "Updated in 7 days"
-  ,"favSmartGroupUpdated30": "Updated in 30 days"
-  ,"favSmartGroupUpdated90": "Updated in 90 days"
-  ,"favSmartGroupAdd": "Add"
-  ,"favSmartGroupRemove": "Remove"
-  ,"favSmartGroupEmpty": "No smart groups"
-  ,"favSmartGroupLoading": "Collecting…"
-  ,"reuseTabsLabel": "Reuse open tabs"
-  ,"reuseTabsTip": "When a search result is already open, focus the existing tab instead of opening a duplicate."
-  ,"rememberScrollPositionLabel": "Remember document scroll position"
-  ,"rememberScrollPositionTip": "During this SiYuan session, try to return to the last position when reopening or restoring a document."
-  ,"settingsControlSlider": "Slider"
-  ,"settingsControlNumber": "Number"
-  ,"shortcutBindingsLabel": "Shortcut bindings"
-  ,"shortcutBindingsTip": "Shows the active shortcut; the plugin default is used until you customize it in SiYuan Settings → Shortcuts."
-  ,"shortcutDefaultPrefix": "Default"
-  ,"shortcutSwitcher": "Open switcher"
-  ,"shortcutWorkbench": "Open workbench"
-  ,"breadcrumbEntry": "Open switcher"
-  ,"densityLabel": "List density"
-  ,"densityComfortable": "Comfortable"
-  ,"densityCompact": "Compact"
-  ,"densityCompactTip": "Tighter card and list spacing in the switcher; off = comfortable."
-  ,"pinyinMatchLabel": "Pinyin matching"
-  ,"pinyinMatchTip": "Match document titles by full pinyin or initials (e.g. cp → 产品). When off, substring only."
-  ,"documentSetEssentialsLabel": "Essentials documents"
-  ,"documentSetEssentialsTip": "Auto-open these documents after every set restore (cross-set, up to 10). Open the tabs you want first, then add."
-  ,"documentSetEssentialsAdd": "Add current tabs"
-  ,"documentSetEssentialsRemove": "Remove"
-  ,"documentSetEssentialsClear": "Clear all"
-  ,"documentSetEssentialsEmpty": "No essentials yet"
-  ,"quickIconSearchEmpty": "No matching icons"
-  ,"quickIconCategory": "Icon category"
-  ,"quickIconCategoryAll": "All"
-  ,"workbenchLabel": "Workbench"
-  ,"workbenchPresets": "Scenes"
-  ,"workbenchDocSets": "Sets"
-  ,"workbenchRelated": "Related to current doc"
-  ,"workbenchRelatedCached": "cached"
-  ,"actionSwitcher": "Switcher"
-  ,"actionSearch": "Search"
-  ,"actionJournal": "Journal"
-  ,"actionSettings": "Settings"
-  ,"actionHome": "Widgets"
-  ,"actionQuickCapture": "Quick capture"
-  ,"actionPreviousTab": "Previous tab"
-  ,"actionNextTab": "Next tab"
-  ,"actionScrollTop": "Scroll to top"
-  ,"actionScrollBottom": "Scroll to bottom"
-  ,"actionSyncNow": "Sync"
-  ,"actionInsertTemplate": "Insert template"
-  ,"actionCycleDocSet": "Cycle doc set"
-  ,"actionCycleBallPreset": "Cycle ball preset"
-  ,"actionThrowWindow": "Throw to window"
-  ,"actionHideKeyboard": "Hide keyboard"
-  ,"actionJumpBack": "Jump back"
-  ,"actionJumpForward": "Jump forward"
-  ,"actionMarkSet": "Mark position"
-  ,"actionMarkJump": "Jump to mark"
-  ,"actionClipboard": "Clipboard entry"
-  ,"actionCloseTab": "Close current tab"
-  ,"actionOutline": "Outline"
-  ,"actionBookmark": "Bookmarks"
-  ,"actionTag": "Tags"
-  ,"actionInbox": "Inbox"
-  ,"actionBacklinks": "Backlinks"
-  ,"actionRecentDocs": "Recent docs"
-  ,"actionRecentClosed": "Recently closed"
-  ,"actionRiffCard": "Flashcards"
-  ,"actionEditReadonly": "Read-only edit"
-  ,"actionFileTree": "File tree"
-  ,"actionMainMenu": "Main menu"
-  ,"actionGlobalSearch": "Global search"
-  ,"workbenchSaved": "Saved searches"
-  ,"workbenchSnippets": "Snippet lab"
-  ,"searchSaveCurrent": "Save current search"
-  ,"searchSavedDeleteConfirm": "Delete saved search \"{x}\"?"
-  ,"searchSavedDone": "Search saved"
-  ,"searchSavedApply": "Apply"
-  ,"searchSavedEdit": "Edit"
-  ,"searchSavedDelete": "Delete"
-  ,"searchSavedEditTitle": "Edit saved search"
-  ,"searchSavedEditName": "Name"
-  ,"searchSavedEditQuery": "Query"
-  ,"searchSavedEditNotebook": "Notebook filter"
-  ,"searchSavedEditNotebookAny": "Any notebook"
-  ,"searchSavedEditEmptyQuery": "Query must not be empty"
-  ,"searchSavedEditTruncated": "Truncated to {x} chars"
-  ,"searchSavedUpdated": "Saved search updated"
-  ,"searchSavedUpdateFailed": "Saved search missing or query empty"
-  ,"searchSavedSave": "Save"
-  ,"documentSetDiff": "View diff"
-  ,"documentSetDiffTitle": "Version diff"
-  ,"documentSetDiffRestore": "Restored by rollback"
-  ,"documentSetDiffRemove": "Removed by rollback"
-  ,"documentSetDiffChanged": "Changed entries"
-  ,"documentSetDiffOrder": "Reordered"
-  ,"documentSetDiffTitleChange": "Title changed"
-  ,"documentSetDiffActive": "Active marker changed"
-  ,"documentSetDiffUnchanged": "{x} entries unchanged"
-  ,"documentSetDiffEmpty": "No difference from the current set"
-  ,"documentSetDiffUnrecorded": "Not recorded"
-  ,"documentSetRollbackTo": "Roll back to this version"
-  ,"workbenchSmart": "Smart groups"
-  ,"docSearchPreviewHint": "Alt+click: open in preview"
-  ,"workbenchRelatedEmpty": "No related content yet"
-  ,"docSearchPreview": "Document preview"
-  ,"docSearchPreviewContent": "Excerpt"
-  ,"docSearchPreviewOutline": "Outline"
-  ,"docSearchPreviewLoading": "Loading preview…"
-  ,"docSearchPreviewEmpty": "Focus a row with ↑/↓ to preview its outline and excerpt"
-  ,"docSearchPreviewStatusLoading": "Loading"
-  ,"docSearchPreviewStatusReady": "Ready"
-  ,"docSearchPreviewPin": "Pin"
-  ,"docSearchPreviewUnpin": "Unpin"
-  ,"docSearchPreviewPinned": "Pinned · {x}"
-  ,"docSearchPreviewFind": "Find"
-  ,"docSearchPreviewFindScope": "this preview only"
-  ,"docSearchPreviewFindNext": "Next match"
-  ,"docSearchPreviewFindPrevious": "Previous match"
-  ,"docSearchPreviewFindClose": "Close find"
-  ,"docSearchPreviewFindNoResults": "No matches"
-  ,"settingsSearch": "Search settings…"
-  ,"settingsSearchClear": "Clear search"
-  ,"settingsSearchFilter": "Filter by group"
-  ,"settingsSearchFilterAll": "All"
-  ,"settingsSavePending": "Pending save…"
-  ,"settingsSaveOk": "Saved"
-  ,"settingsSaveFailed": "Settings save failed; local values kept"
-  ,"settingsSaveRetry": "Retry"
-  ,"settingsUndo": "Undo last change"
-  ,"settingsUndoDone": "Last change undone"
-  ,"settingGroupReset": "Reset to defaults"
-  ,"settingGroupResetDone": "Group defaults restored; undo is available"
-  ,"settingsSearchNoResults": "No matching settings"
-  ,"settingsSearchMore": "{x} more not shown"
-  ,"snippetEnabledShort": "enabled"
-  ,"unitLines": "lines"
-  ,"floatingBallFlickTitle": "Flick actions (mobile)"
-  ,"floatingBallGestureTitle": "Gesture actions"
-  ,"floatingBallGestureTip": "Actions triggered by double-clicking or long-pressing the ball; options follow the selected surface while the behavior is shared by desktop and mobile. A bound double-click adds a short single-click delay"
-  ,"floatingBallGestureDouble": "Double click"
-  ,"floatingBallGestureLong": "Long press"
-  ,"floatingBallFlickTip": "Mobile ball flick actions; flicking up always opens More, while the other directions can be bound to actions"
-  ,"floatingBallFlickUp": "Flick up"
-  ,"floatingBallFlickDown": "Flick down"
-  ,"floatingBallFlickLeft": "Flick left"
-  ,"floatingBallFlickRight": "Flick right"
-  ,"floatingBallFlickNone": "No action"
-  ,"floatingBallFlickMore": "More panel"
-  ,"homeReceiptSummary": "{ok}/{total} widgets healthy"
-  ,"homeReceiptFailed": "{x} failed"
-  ,"homeReceiptUnavailable": "{x} unavailable"
-  ,"homeReceiptDetails": "Details"
-  ,"homeHealthDetailsTitle": "Widget health details"
-  ,"homeHealthGroupFailed": "Failed"
-  ,"homeHealthGroupLoading": "Loading"
-  ,"homeHealthGroupOk": "Healthy"
-  ,"homeHealthCached": "Cached"
-  ,"homeHealthCachedShown": "Stale content shown"
-  ,"homeHealthStale": "Refresh failed; stale content shown"
-  ,"homeReceiptStale": "{x} stale"
-  ,"homeHealthLastAttempt": "Last attempt"
-  ,"homeHealthLastOk": "Last success"
-  ,"homeHealthUnknown": "Unknown"
-  ,"homeHealthLocate": "Locate"
-  ,"homeHealthRetryOne": "Retry"
-  ,"homeHealthCopySummary": "Copy diagnostics"
-  ,"homeHealthCopied": "Diagnostics copied"
-  ,"homeHealthCopyFailed": "Copy failed. Select the summary to copy it manually."
-  ,"homeHealthPreview": "Diagnostics preview"
-  ,"homeHealthBack": "Back to details"
-  ,"homeHealthCopyConfirm": "Copy summary"
-  ,"homeHealthEvidenceHint": "Include reproduction steps and expected behavior in your report. Hide sensitive content in screenshots."
-  ,"homeHealthRefreshList": "Refresh list"
-  ,"homeHealthInstance": "Instance"
-  ,"homeHealthStatus": "Status"
-  ,"homeHealthFailed": "Failed"
-  ,"homeHealthOk": "OK"
-  ,"homeObjectTitle": "Widget"
-  ,"cardUpdatedBadgeLabel": "Tab card changes"
-  ,"cardUpdatedBadgeTip": "Show the last edit time and a marker for changes in the past 7 days (time for today, date otherwise)"
-  ,"cardChangedBadge": "Changed"
-  ,"cardChangedBadgeTip": "Content changed in the past 7 days"
-  ,"docSearchSplitHint": "Right-click or Ctrl+click: open in right split"
-  ,"chipsLabel": "Result type filter"
-  ,"chipsAll": "All"
-  ,"chipsTabs": "Tabs"
-  ,"chipsCollections": "Collections"
-  ,"chipsDocs": "Documents"
-  ,"skinLabel": "UI skin"
-  ,"skinTip": "Fusion follows the SiYuan theme; standalone skins apply only to Speed Switch surfaces and never touch SiYuan or other plugins."
-  ,"skinFusion": "Fusion (default)"
-  ,"skinApple": "Apple · Liquid glass"
-  ,"skinMidnight": "Midnight glass"
-  ,"skinPaper": "Paper ink"
-  ,"unifiedFavorites": "Favorites"
-  ,"unifiedClosed": "Recently closed"
-  ,"unifiedDocSets": "Document sets"
-  ,"unifiedDocSetDocs": "docs"
-  ,"historyChangedOnly": "Show changed only"
-  ,"historyChangedEmpty": "No documents changed within the window"
-  ,"historyChangedLoadFailed": "Changed records could not be loaded. The filter was turned off."
-  ,"historyChangedRetry": "Retry loading changed records"
-  ,"historyChangedShowAll": "Show all recent records"
-  ,"syncNowCompleted": "Sync completed"
-  ,"syncNowFailed": "Sync failed: kernel unreachable, cloud sync not configured, or read-only mode"
-  ,"secFloatingBall": "Floating ball"
-  ,"floatingBallSettingsTip": "Enable the floating ball independently on desktop and mobile, then configure first-layer actions. Positions are stored per surface and are not included in exports."
-  ,"floatingBallFirstUseTitle": "Setting up the floating ball"
-  ,"floatingBallFirstUseTip": "Enable a surface to show the ball in that SiYuan window. Tap to open the switcher and drag to reveal actions; mobile also supports configurable flick, double-tap and long-press gestures. Then use the preview below to adjust its position and add more actions from the catalog."
-  ,"floatingBallEnableDesktop": "Enable desktop ball"
-  ,"floatingBallEnableMobile": "Enable mobile ball"
-  ,"floatingBallLegacySidebarHint": "The sidebar floating-ball entry is retired; legacy sidebar fields remain tolerated for compatibility and will not recreate a sidebar entry."
-  ,"floatingBallSurfaceTip": "Show or hide the floating ball on this surface"
-  ,"floatingBallDesktop": "Desktop floating ball"
-  ,"floatingBallSidebar": "Sidebar floating ball"
-  ,"floatingBallMobile": "Mobile floating ball"
-  ,"floatingBallEditSurface": "Edit surface"
-  ,"floatingBallClickAction": "Floating-ball click action"
-  ,"floatingBallClickActionTip": "Configure it per surface. Unavailable actions fall back to the switcher."
-  ,"floatingBallClickSwitcher": "Open switcher"
-  ,"floatingBallClickMore": "Open more actions"
-  ,"floatingBallAppearance": "Appearance and behavior"
-  ,"floatingBallAppearanceTip": "Docking edge and position are saved per surface. Other appearance and behavior settings are shared. Sliders preview while dragging and save on release."
-  ,"floatingBallEdge": "Docking edge"
-  ,"floatingBallEdgeLeft": "Left"
-  ,"floatingBallEdgeRight": "Right"
-  ,"floatingBallVertical": "Vertical position"
-  ,"floatingBallSize": "Ball size"
-  ,"floatingBallSizeTip": "Desktop and mobile support 44–64 px. The sidebar stays at 44 px."
-  ,"floatingBallMargin": "Safe margin"
-  ,"floatingBallMarginTip": "Extra spacing inside the device safe area keeps edge content clear."
-  ,"floatingBallIdleOpacity": "Idle opacity"
-  ,"floatingBallIdleDelay": "Idle delay"
-  ,"floatingBallSeconds": "s"
-  ,"floatingBallEdgeAvoid": "Off-edge docking (mobile)"
-  ,"floatingBallEdgeAvoidTip": "Keeps the mobile ball and its drag range away from the 12px edge-swipe strip so dragging never opens the sidebar; half-hide is disabled while active."
-  ,"floatingBallHalfHide": "Half-hide at the edge when idle"
-  ,"floatingBallSnap": "Snap to an edge after dragging"
-  ,"floatingBallSnapTip": "Turn off to place the ball freely in the visible area. Selecting an edge docks it again."
-  ,"floatingBallHideOnScroll": "Hide on upward scroll, restore on downward scroll"
-  ,"floatingBallHideOnFullscreen": "Hide in fullscreen"
-  ,"floatingBallYieldToModals": "Yield to dialogs"
-  ,"floatingBallAdvanced": "Advanced settings"
-  ,"floatingBallTouchSlop": "Drag threshold"
-  ,"floatingBallRestoreAppearance": "Restore default appearance and behavior"
-  ,"floatingBallRestoreAppearanceConfirm": "Restore shared appearance and behavior defaults for all surfaces? Surface switches, positions, and actions are kept."
-  ,"floatingBallActions": "Action order and first layer"
-  ,"floatingBallActionsTip": "Choose up to 5 first-layer actions plus More. Remaining enabled actions appear in More; unavailable providers keep their saved configuration."
-  ,"floatingBallDigitSlots": "Digit slot bindings"
-  ,"floatingBallDigitSlotsTip": "Bind 1–9 in the floating-ball More panel to an action or saved search. Empty slots follow the visible-row order."
-  ,"floatingBallDigitSlot": "Digit slot"
-  ,"floatingBallDigitSlotNone": "None (visible-row fallback)"
-  ,"floatingBallDigitSlotAction": "Action catalog"
-  ,"floatingBallDigitSlotSearch": "Saved searches"
-  ,"floatingBallDigitSlotUnavailable": "Object unavailable"
-  ,"floatingBallSavedSearches": "Saved searches"
-  ,"floatingBallConfigureDigitSlot": "Configure digit slot"
-  ,"floatingBallNoActions": "No actions are configured for this surface. Add one below."
-  ,"floatingBallStatusReady": "Ready"
-  ,"floatingBallStatusUnknown": "Unverified"
-  ,"floatingBallStatusUnavailable": "Unavailable"
-  ,"floatingBallEnabled": "Enabled"
-  ,"floatingBallFirstLayer": "First layer"
-  ,"floatingBallCustomLabel": "Custom action label"
-  ,"floatingBallCustomIcon": "Custom action icon"
-  ,"floatingBallMobileTry": "Try on mobile (unverified)"
-  ,"floatingBallMobileTryStatus": "Mobile try; result unverified"
-  ,"floatingBallEnableAction": "Enable action"
-  ,"floatingBallMoveUp": "Move action up"
-  ,"floatingBallMoveDown": "Move action down"
-  ,"floatingBallAddAction": "Add action…"
-  ,"floatingBallRestoreDefaults": "Restore default actions for this surface"
-  ,"floatingBallExport": "Export floating-ball config"
-  ,"floatingBallImport": "Import floating-ball config"
-  ,"floatingBallImportDone": "Floating-ball config imported"
-  ,"floatingBallImportFailed": "Invalid or oversized config file; import failed"
-  ,"floatingBallImportConfirm": "Replace shared quick actions and floating-ball configuration from this file? Current positions are kept. Legacy action-only files leave the floating ball unchanged."
-  ,"floatingBallRestoreConfirm": "Restore the default actions for this surface? Other surfaces, switches, and positions will not change."
-  ,"floatingBallPreview": "Live floating-ball preview"
-  ,"floatingBallPreviewTip": "The preview shows the idle ball and action direction. Click to simulate without opening or writing documents. A dimmed stage means this surface is disabled."
-  ,"floatingBallPreviewResult": "Simulated: {x}. No action was executed."
-  ,"floatingBallMore": "More actions"
-  ,"floatingBallActionSearch": "Search name, action ID or source"
-  ,"floatingBallPluginActions": "Plugin actions"
-  ,"floatingBallOtherActions": "Other"
-  ,"floatingBallProviderMissing": "The action provider is not loaded"
-  ,"floatingBallActionDisabled": "Disabled"
-  ,"floatingBallManageActions": "Manage actions"
-  ,"floatingBallRestoreVisible": "Restore floating ball"
-  ,"floatingBallMoreCount": "More actions: {x}"
-  ,"floatingBallStatusUnsupported": "Unsupported"
-  ,"secDocumentSets": "Document sets"
-  ,"documentSetsTip": "Save currently opened documents for a later restore preview; transient tabs without stable roots are skipped."
-  ,"documentSetNamePlaceholder": "Document set name"
-  ,"documentSetSave": "Save current documents"
-  ,"documentSetExport": "Export"
-  ,"documentSetImport": "Import"
-  ,"documentSetImportDone": "Document sets imported"
-  ,"documentSetImportFailed": "Document-set import failed"
-  ,"documentSetImportConfirm": "Import and merge these document sets? {x} total."
-  ,"documentSetEmpty": "No document sets yet"
-  ,"documentSetItems": "documents"
-  ,"documentSetPreview": "Preview restore"
-  ,"documentSetRestore": "Restore"
-  ,"documentSetCancel": "Cancel restore"
-  ,"documentSetRestoreConfirm": "Open the pending documents in this set in order?"
-  ,"documentSetMissingConfirm": "Some documents are missing from the current workspace. Continue with the remaining documents?"
-  ,"documentSetUnknownConfirm": "Some documents could not be verified. Try restoring the remaining documents?"
-  ,"documentSetNoAvailable": "No documents are available to restore"
-  ,"documentSetRestoreNone": "This set has no pending documents"
-  ,"documentSetRestoreDone": "Restored"
-  ,"documentSetRestoreFailed": "failed"
-  ,"documentSetRestoreSkipped": "skipped"
-  ,"documentSetRestoreMissing": "missing"
-  ,"documentSetRestoreUnknown": "unverified"
-  ,"documentSetRestoreCancelled": "Restore cancelled"
-  ,"documentSetRestoreReport": "Export restore report"
-  ,"documentSetRestoreReportNone": "No restore report yet — run a restore first"
-  ,"documentSetRestoreReportExported": "Restore report exported"
-  ,"documentSetRestoreReportMd": "Export MD"
-  ,"documentSetEssentialsApplied": "Essentials opened"
-  ,"documentSetRollback": "Rollback"
-  ,"documentSetRollbackConfirm": "Roll back to the latest version? Current content is kept as a version and can be rolled back again."
-  ,"documentSetRollbackDone": "Rolled back \"{x}\""
-  ,"documentSetRollbackNone": "No version to roll back"
-  ,"documentSetDelete": "Delete"
-  ,"documentSetRename": "Rename"
-  ,"documentSetDeleteConfirm": "Delete this document set?"
-  ,"documentSetSaved": "Document set saved"
-  ,"documentSetNoTabs": "No opened documents can be saved"
-  ,"documentSetVisitor": "outside set · kept open"
-  ,"documentSetOpened": "opened"
-  ,"documentSetsGuideTitle": "What is a document set?"
-  ,"documentSetsGuidePurpose": "A document set is a named snapshot of the documents currently open. Restore it later in the saved order when switching between projects or tasks."
-  ,"documentSetsGuideStep1": "Open the documents needed for the task, enter a name below, then choose Save current documents."
-  ,"documentSetsGuideStep2": "When returning, use Preview restore to review pending and already-open counts, then choose Restore."
-  ,"documentSetsGuideStep3": "Export and import document sets for backup or migration. Saving with the same name updates the existing set."
-  ,"documentSetsGuideNote": "Note: document sets store stable root-document references only. They do not save cursor positions, transient tabs, or document content. Deleted or unavailable documents are marked missing before restore."
-  ,"secondPanel": "Widgets"
-  ,"platformName": "LvSpeed Switch"
-  ,"platformSubtitle": "Work context platform"
-  ,"platformContext": "Work context"
-  ,"platformSwitcher": "Switcher"
-  ,"platformWorkbench": "Workbench"
-  ,"platformStudio": "Snippet lab"
-  ,"platformSwitcherHint": "Find, preview and open content"
-  ,"platformWorkbenchHint": "Arrange widgets and the current workspace"
-  ,"platformStudioHint": "Edit, preview and manage snippets safely"
-  ,"platformConnected": "Kernel connected"
-  ,"platformCloseHint": "to close"
-  ,"settingsGroupTheme": "Theme & skin"
-  ,"moduleDisabledReceipt": "{x} is disabled: open windows stay until closed; new invocations are declined"
-  ,"moduleDisabled": "Disabled"
-  ,"moduleFloatingBall": "Floating ball"
-  ,"moduleStudio": "Snippet studio (panel 3)"
-  ,"moduleVisibilityHint": "Disabled modules hide their entries and decline route calls with an honest receipt; open windows stay until closed. The switcher is the platform root and cannot be disabled."
-  ,"moduleVisibilityLabel": "Enabled modules"
-  ,"moduleWorkbench": "Workbench (panel 2)"
-  ,"settingsGroupModules": "Modules"
-  ,"settingsGroupWindow": "Switcher window"
-  ,"settingsGroupThumbnails": "Thumbnails"
-  ,"settingsGroupSortDensity": "Sort & density"
-  ,"settingsGroupSearchOpen": "Search & open"
-  ,"settingsGroupShortcuts": "Shortcuts"
-  ,"settingsGroupAgent": "Controlled abilities"
-  ,"settingsGroupListSidebar": "List & sidebar"
-  ,"settingsGroupDocks": "Dock panels"
-  ,"settingsGroupComponents": "Widget cards"
-  ,"settingsGroupWorkbenchWindow": "Workbench window"
-  ,"settingsGroupMobileLayout": "Card layout"
-  ,"settingsGroupCompatibility": "Compatibility"
-  ,"settingsGroupWorkbenchBehavior": "Workbench behavior"
-  ,"settingsGroupJournal": "Journal strategy"
-  ,"platformKbdPreview": "Alt Preview"
-  ,"platformGuideButton": "Quick start"
-  ,"platformGuideTitle": "LvSpeed Switch quick start"
-  ,"platformGuideIntro": "Use this local guide to learn the three work surfaces. You can reopen it whenever you need it."
-  ,"platformGuideClose": "Got it"
-  ,"platformGuideSwitcherTitle": "Panel 1 · Switcher"
-  ,"platformGuideSwitcherStep1": "Type in the search box to filter open tabs first, then search the whole workspace when needed."
-  ,"platformGuideSwitcherStep2": "Click a workspace result to open or locate it; hold Alt while clicking to preview a matching excerpt."
-  ,"platformGuideSwitcherStep3": "Use Favorites, Recent and Journal to return to frequent work."
-  ,"platformGuideWorkbenchTitle": "Panel 2 · Workbench"
-  ,"platformGuideWorkbenchStep1": "Open the widget store and choose the information components for your workbench."
-  ,"platformGuideWorkbenchStep2": "Choose Edit layout to drag, resize or remove widgets; changes are saved as you work."
-  ,"platformGuideWorkbenchStep3": "Use refresh/retry on a widget when data is stale or unavailable; settings control modules and window size."
-  ,"platformGuideStudioTitle": "Panel 3 · Snippet lab"
-  ,"platformGuideStudioStep1": "Choose an existing snippet or create a CSS/JS draft; store snippets start disabled."
-  ,"platformGuideStudioStep2": "Edit and preview the draft; Save is required before it is written to the snippet library."
-  ,"platformGuideStudioStep3": "Enable a snippet only after reviewing it; JavaScript snippets are not executed in the lab."
-  ,"platformGuideFloatingBallTitle": "Floating ball · Global entry"
-  ,"platformGuideFloatingBallStep1": "Enable the desktop or mobile ball separately in Settings; tap the ball to run its primary action, which opens the switcher by default."
-  ,"platformGuideFloatingBallStep2": "Drag beyond 8 px to choose a first-layer action; release on empty space to save the position or on an action to run it."
-  ,"platformGuideFloatingBallStep3": "On mobile you can bind flicks, double-click and long-press; use the edge restore handle after half-hide or dialog handoff."
-  ,"platformGuideSettings": "Current shortcuts: Switcher {switcher}, Workbench {workbench}. Open Settings to adjust window size, shortcuts and visible modules."
-  ,"platformGuideSearchAction": "Start searching"
-  ,"platformGuideWorkbenchAction": "Open workbench"
-  ,"platformGuideStudioAction": "Open snippet lab"
-  ,"mobileLayoutFailed": "The switcher failed to initialize. Close it and try again."
-  ,"openHistory": "Recent"
-  ,"noOpenHistory": "No recent documents"
-  ,"historyExpand": "Show all"
-  ,"clearOpenHistory": "Clear history"
-  ,"clearClosedHistory": "Clear recently closed"
-  ,"clearOpenHistoryConfirm": "Clear all recent documents?"
-  ,"clearClosedHistoryConfirm": "Clear recently closed records? They cannot be restored from here afterward."
-  ,"historyOpen": "Open"
-  ,"historyClosed": "Closed · click to reopen"
-  ,"historyOpenSection": "Recently opened"
-  ,"historyClosedSection": "Recently closed"
-  ,"historyOpenAction": "Open"
-  ,"historyRemove": "Remove record"
-  ,"historyInvalid": "This history entry is no longer available"
- ,"historySyncFailed": "Recent records could not be synced. Showing local records."
- ,"historySyncRetry": "Retry syncing recent records"
-  ,"snippetStudioOpen": "Open snippet studio"
-  ,"snippetStudioTitle": "Code snippet studio"
-  ,"snippetExperimental": "Experimental"
-  ,"snippetBack": "Back to switcher"
-  ,"snippetAbout": "Snippet details"
-  ,"snippetDescription": "Native SiYuan snippets remain the saved source. Imported and AI-generated code stays disabled until you review it."
-  ,"snippetDiffSummary": "Change summary: {hunks} hunks · +{added} / −{removed} lines"
-  ,"snippetDiffFindings": "{n} review findings"
-  ,"snippetDiffHunkToggle": "Toggle whether this hunk is applied"
-  ,"snippetDiffMore": "{n} more lines not shown"
-  ,"snippetDiffRoundBase": "This round's changes vs the previous candidate"
-  ,"snippetDiffDegraded": "Snippet too long for a line diff; applying replaces the whole block."
-  ,"snippetPaneDraft": "Draft"
-  ,"homeCellUnavailable": "Module uninstalled; layout kept and restored in place after reinstall."
-  ,"homeCellUnavailableTitle": "Module unavailable"
-  ,"homeConfigSaveFailed": "Saving the config failed: kept locally — retry or cancel."
-  ,"homeConfigSaveMissed": "This module was removed from another entry; the edit was not saved — cancel or reopen."
-  ,"homeEmptyNoSource": "No widget sources available: install widgets or enable providers to compose here."
-  ,"homeEmptyRecommended": "Recommended widgets"
-  ,"homeEmptyRestoreDefault": "Add selected defaults"
-  ,"homeRestoreDefaultHint": "Add only missing selected widgets and keep the current layout."
-  ,"homeEmptyTierHint": "Default material and size per widget come from its catalog declaration; adjust size and position in edit mode."
-  ,"homeEmptyRecommendedConfirm": "Add “{x}” ({availability}) to the end of this workbench while keeping the existing layout?"
-  ,"homeEmptyRestoreConfirm": "Add {count} selected default widgets while keeping the current {existing} layout items?"
-  ,"homeEmptyRestoreNothing": "The selected default widgets are already in this workbench."
-  ,"homeCalendarJumpNext": "Next month with journals"
-  ,"homeCalendarJumpNone": "No month with journals found within ±24 months."
-  ,"homeCalendarJumpPrev": "Previous month with journals"
-  ,"homeCalendarPeriodPicker": "Pick a month"
-  ,"homeMilestoneImminent": "Coming soon"
-  ,"homeMilestoneMonth": "Within 30 days"
-  ,"homeMilestoneHundred": "Within 100 days"
-  ,"homeDragMove": "Drag to reorder"
-  ,"snippetPendingConfirm": "The write may have landed; verifying read-only…"
-  ,"snippetPendingUnverified": "The write may have landed but could not be confirmed: refresh the snippet list to verify before retrying."
-  ,"snippetPaneSaved": "Saved"
-  ,"snippetPaneSavedEmpty": "No saved version yet; it appears here as the baseline after saving"
-  ,"snippetRecycle": "Recycle bin"
-  ,"snippetRecycleClear": "Empty recycle bin"
-  ,"snippetRecycleClearConfirm": "Empty the recycle bin? All snapshots will be permanently deleted and cannot be recovered."
-  ,"snippetRecycleEmpty": "Recycle bin is empty"
-  ,"snippetRecycleOriginConflict": "Discarded on conflict"
-  ,"snippetRecycleOriginDelete": "Pre-delete snapshot"
-  ,"snippetRecycleOriginOverwrite": "Pre-save version"
-  ,"snippetRecyclePurge": "Delete forever"
-  ,"snippetRecyclePurgeConfirm": "Delete this snapshot forever? This cannot be undone."
-  ,"snippetRecycleRestore": "Restore as draft"
-  ,"snippetRecycleRestored": "Restored as a new draft (kept disabled; enable after saving)"
-  ,"snippetRestore": "Restore backup"
-  ,"snippetRestoreAdd": "Add"
-  ,"snippetRestoreCancel": "Cancel"
-  ,"snippetRestoreConfirm": "Restore selected"
-  ,"snippetRestoreConflict": "The native snippets changed before restore; reload and try again."
-  ,"snippetRestoreDelete": "Delete"
-  ,"snippetRestoreDone": "Backup restored; undo is available once for this session."
-  ,"snippetRestoreEmpty": "The backup has no differences from the current native snippets."
-  ,"snippetRestoreInvalid": "The backup is invalid, unsupported, or exceeds the safety limit."
-  ,"snippetRestoreKeep": "Keep"
-  ,"snippetRestoreNoSelection": "Select at least one snippet or the master switches."
-  ,"snippetRestoreOneShot": "The pre-restore state is kept for one session-only undo; no new persistent backup is written."
-  ,"snippetRestorePending": "Restore may have landed, but read-back verification is incomplete; refresh before retrying."
-  ,"snippetRestorePreview": "Restore preview"
-  ,"snippetRestoreReplace": "Replace"
-  ,"snippetRestoreSettings": "Also restore the CSS/JavaScript master switches"
-  ,"snippetRestoreUndo": "Undo restore"
-  ,"snippetRefreshExternal": "Another window updated snippets; native snippets refreshed."
-  ,"snippetPreview": "Preview"
-  ,"snippetPreviewHint": "Preview runs in an isolated document and never changes your notes."
-  ,"snippetCapabilitySceneLabel": "Scene"
-  ,"snippetCapabilityWidthLabel": "Width"
-  ,"snippetCapabilityThemeLabel": "Theme"
-  ,"snippetCapabilityProbeOn": "Probe: {n} hit(s)"
-  ,"snippetCapabilityProbeOff": "Probe: off (baseline)"
-  ,"snippetCapabilityScriptCss": "Scripts: blocked"
-  ,"snippetCapabilityNetwork": "Network: none"
-  ,"snippetCapabilitySemantics": "Semantic approximation; not your actual notes"
-  ,"snippetCapabilitySingleView": "Container too narrow; single view"
-  ,"snippetDiagnostics": "CSS coverage diagnostics"
-  ,"snippetDiagnosticsHit": "hit"
-  ,"snippetDiagnosticsMiss": "may miss"
-  ,"snippetDiagnosticsUnknown": "unknown"
-  ,"snippetDiagnosticsError": "errors"
-  ,"snippetDiagnosticsEmpty": "No selectors found"
-  ,"snippetDiagnosticsTruncated": "Large snippet; diagnostics truncated at the cap (preview unaffected)"
-  ,"snippetProbeDocTitle": "Journal title probe (document-level heading)"
-  ,"snippetProbeCallout": "Callout block probe"
-  ,"snippetProbeColumnA": "Column layout probe · first column"
-  ,"snippetProbeColumnB": "Column layout probe · second column"
-  ,"snippetProbeFormula": "Formula placeholder E=mc² (static sample, not rendered)"
-  ,"snippetProbeAttrsLead": "Block-with-attributes probe"
-  ,"snippetProbeAttrsValue": "Alias · #tag · custom attributes"
-  ,"snippetProbeDbColA": "Name"
-  ,"snippetProbeDbColB": "Status"
-  ,"snippetProbeDbRowA": "Static row one"
-  ,"snippetProbeDbRowB": "Static row two"
-  ,"snippetProbeMediaBlocked": "Media placeholder: audio/video/embeds never load in preview"
-  ,"snippetCapabilityTokenProfile": "Theme tokens: builtin snapshot (read-only)"
-  ,"snippetCapabilityTokenBaseline": "Theme tokens: baseline (no override)"
-  ,"snippetPreviewLoading": "Loading isolated preview…"
-  ,"snippetPreviewReady": "Preview ready"
-  ,"snippetPreviewLang": "en-US"
-  ,"snippetCompare": "Compare saved"
-  ,"snippetCompareUnavailable": "Save this snippet before comparing versions."
-  ,"snippetDarkPreview": "Toggle dark preview"
-  ,"snippetResetPreview": "Reset preview"
-  ,"snippetPreviewError": "Preview error:"
-  ,"snippetJSPreviewUnavailable": "JavaScript preview execution is deferred until it can be terminated safely."
-  ,"snippetName": "Name"
-  ,"snippetType": "Type"
-  ,"snippetCSS": "CSS"
-  ,"snippetJS": "JavaScript"
-  ,"snippetCode": "Code"
-  ,"snippetBytes": "bytes"
-  ,"snippetLines": "lines"
-  ,"snippetTypeLocked": "The type of a saved native snippet is locked. Create a new draft to change it."
-  ,"snippetSave": "Save"
-  ,"snippetSaveDisabled": "Save draft"
-  ,"snippetSaveFirst": "Save the draft before enabling it."
-  ,"snippetSaved": "Saved"
-  ,"snippetJSReload": "Saved. Reload the host to apply JavaScript."
-  ,"snippetEnable": "Enable"
-  ,"snippetDisable": "Disable"
-  ,"snippetEnabled": "Enabled"
-  ,"snippetDisabled": "Disabled"
-  ,"snippetDraft": "Draft"
-  ,"snippetUnsaved": "Unsaved changes"
-  ,"snippetMasterOff": "The host master switch is off"
-   ,"snippetMasterTitle": "Snippet master switches"
-   ,"snippetMasterCSS": "CSS master switch"
-   ,"snippetMasterJS": "JavaScript master switch"
-   ,"snippetMasterEnabled": "On"
-   ,"snippetMasterDisabled": "Off"
-   ,"snippetMasterUnavailable": "The host did not expose this master switch"
-   ,"snippetMasterSaved": "Master switch updated"
-   ,"snippetMasterFailed": "Master switch update failed; refresh and verify it."
-   ,"snippetDisabledInPublish": "Disable in publish"
-   ,"snippetDisabledInPublishHint": "When enabled, this snippet is omitted from published content while its editor state remains unchanged."
-   ,"snippetOrderHint": "Native list order"
-   ,"snippetCascadeHint": "CSS participates in the native list cascade; later rules of the same kind usually have higher override priority."
-   ,"snippetJSCascadeHint": "JavaScript snippets load in native list order; the studio never executes them in preview."
-  ,"snippetDelete": "Delete"
-  ,"snippetExport": "Export"
-  ,"snippetBackup": "Back up snippets"
-  ,"snippetBackupHint": "Native snippets and master switches exported."
-  ,"snippetSubmission": "Create submission package"
-  ,"snippetSubmissionHint": "Created a local, unreviewed submission package."
-  ,"snippetChoose": "Choose snippet"
-  ,"snippetRecent": "Recent snippets"
-  ,"snippetClose": "Close"
-  ,"snippetImport": "Import file"
-  ,"snippetImportPackage": "Import snippet package"
-  ,"snippetImportPackageHint": "Confirmation writes directly to the native snippet list. Merge preserves existing enabled states and uses imported states for new entries; Fork creates disabled copies; Overwrite replaces the entire list using imported states."
-  ,"snippetPackageImported": "Snippet package imported into the native list."
-  ,"snippetImportInvalid": "Invalid snippet package. Check the JSON format and snippet fields."
-  ,"snippetNew": "New"
-  ,"snippetCopy": "Copy"
-  ,"snippetCopied": "Snippet content copied to clipboard."
-  ,"snippetCopyEmpty": "Nothing to copy — the draft is empty."
-  ,"snippetCopyFailed": "Copy failed — please select the code and copy manually."
-  ,"snippetRefresh": "Refresh"
-  ,"snippetSearch": "Search snippets"
-  ,"snippetSource": "Source"
-  ,"snippetAllSources": "All sources"
-  ,"snippetBuiltins": "Built-in"
-  ,"snippetMine": "My snippets"
-  ,"snippetGroupNew": "New group"
-  ,"snippetMetadata": "Catalog metadata (local to this plugin; drafts saved with snippet)"
-  ,"snippetStore": "Snippet store"
-  ,"snippetStoreDraft": "Create a disabled draft from this"
-  ,"snippetStoreBuiltinInfo": "Bundled · MIT · CSS applicable to desktop/sidebar/mobile (theme-dependent, appearance unverified) · sample preview only; network and scripts blocked"
-  ,"snippetStoreNativeInfo": "Native local snippet · source/license undeclared · devices unverified · original unchanged; preview network and scripts blocked"
-  ,"snippetStoreCommunity": "A community catalog is not established. Import local submission packs or preview Gists manually. Nothing uploads or enables automatically."
-  ,"snippetAlias": "Alias"
-  ,"snippetTags": "Tags (comma-separated, up to 8)"
-  ,"snippetSummary": "Summary"
-  ,"snippetPinned": "Pinned"
-  ,"snippetCatalogSort": "Catalog sort"
-  ,"snippetCatalogNativeOrder": "Native order"
-  ,"snippetCatalogModified": "Recently changed in this plugin"
-  ,"snippetGroupRename": "Rename"
-  ,"snippetGroupDelete": "Delete group"
-  ,"snippetGroupView": "Group view"
-  ,"snippetGroupTree": "Tree"
-  ,"snippetGroupFlat": "Flat"
-  ,"snippetGroupUngrouped": "Ungrouped"
-  ,"snippetGroupNamePrompt": "Enter a group name"
-  ,"snippetGroupNameInvalid": "The name is empty, duplicated, or the group limit has been reached"
-  ,"snippetGroupDeleteConfirm": "Delete this group? Its snippets return to Ungrouped; native snippets are not deleted."
-  ,"snippetGroupDropHint": "Drag snippets here to assign them to this group"
-  ,"snippetGist": "Gist publish & import"
-  ,"snippetGistHint": "Gists are unlisted; anyone with the link can access them. The token is stored as plain text in plugin settings and sent only in request headers. Imports create new disabled drafts."
-  ,"snippetGistToken": "GitHub token"
-  ,"snippetGistTokenSet": "Configured (last four characters only)"
-  ,"snippetGistTokenPlaceholder": "Enter a GitHub token"
-  ,"snippetGistSaveToken": "Save token"
-  ,"snippetGistClearToken": "Clear token"
-  ,"snippetGistDescription": "Gist description"
-  ,"snippetGistUrl": "Full Gist URL"
-  ,"snippetGistPublish": "Publish new Gist"
-  ,"snippetGistPublishUpdate": "Update current Gist"
-  ,"snippetGistImportPreview": "Read Gist"
-  ,"snippetGistImport": "Import as disabled draft"
-  ,"snippetGistPreviewLoading": "Reading Gist…"
-  ,"snippetGistPreviewEmpty": "No parseable CSS/JS files found."
-  ,"snippetGistParseable": "Parseable"
-  ,"snippetGistUnparseable": "Not parseable"
-  ,"snippetGistDiff": "Diff vs local same ID: {added} added · {removed} removed"
-  ,"snippetGistLink": "Gist preview ready"
-  ,"snippetGistPublished": "Gist published; the link was remembered."
-  ,"snippetGistImported": "Imported as a disabled draft; review it before saving."
-  ,"snippetGistTokenRequired": "Configure a GitHub token first."
-  ,"snippetGistReplaceToken": "Replace token"
-  ,"snippetGistPrepareUpdate": "Read before updating"
-  ,"snippetGistStale": "The snippet or Gist changed; read it again and review."
-  ,"snippetGistFailed": "Gist request failed. Check the URL, token gist permission, and network before retrying."
-  ,"snippetGistPending": "The remote write may have landed; check GitHub before publishing again."
-  ,"snippetGistUnknownNotice": "The previous Gist write has an unknown result. Your draft is preserved, and create/update are locked until you verify it on GitHub."
-  ,"snippetGistRecovery": "Unlock after checking"
-  ,"snippetGistRecoveryTitle": "Verify the Gist write"
-  ,"snippetGistRecoveryMessage": "Check the previous operation on GitHub first. Unlock only after confirming it did not create or update the Gist. If it actually succeeded, submitting again may create a duplicate Gist or overwrite content again."
-  ,"snippetGistRecoveryConfirm": "Checked: it did not succeed; unlock"
-  ,"snippetGistRecoveryCancel": "Keep locked"
-  ,"snippetGistRecoveryUnlocked": "Unlocked. Before submitting again, make sure the previous operation did not take effect, or you may create a duplicate Gist or overwrite content."
-  ,"snippetAllTypes": "All types"
-  ,"snippetAllCategories": "All categories"
-  ,"snippetCategory": "Category"
-  ,"snippetCapabilities": "Capabilities and safety boundaries"
-  ,"snippetCapabilityCSS": "CSS preview always runs in an isolated sandbox document and never writes to your notes."
-  ,"snippetCapabilityJS": "JS snippets support management and export only; preview execution stays disabled until scripts can be terminated safely."
-  ,"snippetCapabilityScope": "AI sees only the current snippet and your instruction; it never reads or understands your whole vault."
-  ,"snippetCapabilityStorage": "Saved snippets live only in SiYuan's native snippet storage; the studio keeps session drafts and no second persistent copy."
-  ,"snippetCapabilityAI": "AI results are always drafts that need your manual acceptance and are never saved or enabled automatically."
-  ,"snippetCategoryTypography": "Typography"
-  ,"snippetCategoryTable": "Tables"
-  ,"snippetCategoryFocus": "Focus"
-  ,"snippetCategoryCode": "Code"
-  ,"snippetCategoryFont": "Fonts"
-  ,"snippetCategoryQuote": "Quotes"
-  ,"snippetCategoryImage": "Images"
-  ,"snippetCategoryHeading": "Headings"
-  ,"snippetCategoryList": "Lists"
-  ,"snippetCategoryDivider": "Dividers"
-  ,"snippetCategoryTag": "Tags"
-  ,"snippetCategoryTheme": "Themes"
-  ,"snippetCategoryLayout": "Layout"
-  ,"snippetCategoryCustom": "Custom"
-  ,"snippetMore": "Show more"
-  ,"snippetSelect": "Select"
-  ,"snippetNoResults": "No matching snippets."
-  ,"snippetLoading": "Loading snippets…"
-  ,"snippetLoaded": "Loaded snippets:"
-  ,"snippetImported": "Imported as a disabled draft."
-  ,"snippetDiscard": "Discard this draft?"
-  ,"snippetLeaveTitle": "Unsaved changes"
-  ,"snippetLeaveMessage": "This snippet has unsaved changes. What should happen before leaving?"
-  ,"snippetLeaveSave": "Save and continue"
-  ,"snippetLeaveDiscard": "Discard changes"
-  ,"snippetLeaveSaveFailed": "Save did not complete; staying on the draft"
-  ,"snippetUndo": "Undo"
-  ,"snippetRedo": "Redo"
-  ,"snippetFormat": "Format"
-  ,"snippetFormatOnlyCss": "Formatting currently only supports CSS snippets"
-  ,"snippetFormatted": "Code formatted with standard indentation"
-  ,"snippetAlreadyFormatted": "Code is already well-formatted"
-  ,"snippetImportMerge": "Merge (Keep Enabled)"
-  ,"snippetImportFork": "Fork (New Copies)"
-  ,"snippetImportOverwrite": "Overwrite (Mirror)"
-  ,"snippetFindBar": "Find"
-  ,"snippetFindQuery": "Find text"
-  ,"snippetFindReplaceTo": "Replace with"
-  ,"snippetFindPrev": "Previous match"
-  ,"snippetFindNext": "Next match"
-  ,"snippetFindReplaceAll": "Replace all"
-  ,"snippetFindConfirm": "Confirm replacing {x}"
-  ,"snippetFindNone": "No matches"
-  ,"snippetFindDone": "Replaced {x}"
-  ,"configPackDiffTitle": "Import config pack"
-  ,"configPackGroupSettings": "Settings"
-  ,"configPackGroupDocumentSets": "Document sets"
-  ,"configPackActionAdd": "Add"
-  ,"configPackActionReplace": "Replace"
-  ,"configPackActionKeep": "Keep"
-  ,"configPackDiffNotice": "These groups will be merged into your current config (arrays replace as whole groups, no per-item merge). Confirm per group."
-  ,"configPackDiffStale": "Current state changed; the diff has been refreshed. Please confirm again."
-  ,"configPackApplySelected": "Apply selected groups"
-  ,"configPackApplyFailed": "Apply failed; current config preserved"
-  ,"snippetScene": "Scene"
-  ,"snippetSceneReading": "Reading document"
-  ,"snippetSceneTable": "Tables & code"
-  ,"snippetSceneControls": "Interface controls"
-  ,"snippetPreviewWidth": "Width"
-  ,"snippetWidthAuto": "Fit"
-  ,"snippetWidthNarrow": "Narrow 420"
-  ,"snippetWidthMedium": "Medium 768"
-  ,"snippetWidthWide": "Wide 1024"
-  ,"snippetConflictTitle": "Save conflict"
-  ,"snippetConflictMessage": "This snippet was changed externally; the local draft differs from the latest version."
-  ,"snippetConflictContinue": "Continue editing"
-  ,"snippetConflictCopy": "Keep as disabled copy"
-  ,"snippetConflictReload": "Discard and reload latest"
-  ,"snippetConflictGone": "The original snippet was deleted; no diff available"
-  ,"snippetConflictAdded": "{x} lines added locally"
-  ,"snippetConflictRemoved": "{x} lines removed in latest"
-  ,"snippetConfirmDelete": "Delete this native snippet?"
-  ,"snippetConfirmJS": "Enabling JavaScript can have lasting side effects. Continue?"
-  ,"snippetConflict": "The native list changed elsewhere. Reload and review it before saving."
-  ,"snippetUnavailable": "This SiYuan host does not provide the snippet endpoint."
-  ,"snippetUsercssVars": "{n} variable defaults applied"
-  ,"snippetCancelled": "Cancelled"
-  ,"snippetTimeout": "The AI request timed out."
-  ,"snippetTooLarge": "The snippet exceeds the 64 KiB limit."
-  ,"snippetInvalid": "The host returned an invalid snippet result."
-  ,"snippetFailed": "The operation failed."
-  ,"snippetAI": "SiYuan AI"
-  ,"snippetAIHint": "AI receives your instruction and checked snippet context only. Documents, search results, attachments and the library are not read. Results stay drafts and are never enabled automatically."
-  ,"snippetAIIncludeCode": "Send current snippet code (previous candidate when iterating)"
-  ,"snippetAIIncludeHistory": "Send recent conversation (iterate only, up to 6 messages)"
-  ,"snippetAIProviderInfo": "Uses SiYuan AI configuration. Provider, model and billing are managed by the host; this plugin cannot confirm costs or quota. Consent covers snippet requests only."
-  ,"snippetAIContextSummary": "Sending: code {bytes} · {messages} conversation messages · your instruction"
-  ,"snippetAIContextTooLarge": "Context exceeds 64 KiB. Reduce code or uncheck conversation context and retry."
-  ,"snippetAIPermissionDenied": "AI request was not authorized. Check SiYuan permissions and AI configuration. Your draft is unchanged."
-  ,"snippetAIRetry": "Retry generation"
-  ,"snippetAICopyCandidate": "Copy candidate"
-  ,"snippetAIExportCandidate": "Export candidate"
-  ,"snippetAICandidateStale": "The draft changed after generation. Accepting requires another replacement confirmation."
-  ,"snippetAIMode": "AI mode"
-  ,"snippetAIGenerate": "Generate"
-  ,"snippetAIOptimize": "Optimize"
-  ,"snippetAIPrompt": "Describe the change you want…"
-  ,"snippetAIConsent": "Allow checked context and instruction to be sent to the configured SiYuan AI provider."
-  ,"snippetAISend": "Generate draft"
-  ,"snippetAICancel": "Cancel"
-  ,"snippetAIIdle": "AI is idle."
-  ,"snippetAIReady": "Ready after consent"
-  ,"snippetAIConsentRequired": "Consent and an instruction are required."
-  ,"snippetAIGenerating": "Generating…"
-  ,"snippetAIDone": "Draft ready for review."
-  ,"snippetAIDiscarded": "AI candidate discarded; the draft is unchanged."
-  ,"snippetAIExplain": "Explain"
-  ,"snippetAIIterate": "Iterate"
-  ,"snippetAICandidate": "AI draft"
-  ,"snippetAIAccept": "Apply selected changes"
-  ,"snippetAIAccepted": "Draft copied into the editor. Save it manually."
-  ,"snippetAIStale": "The editor changed while AI was working. Replace the current code with this draft?"
-  ,"snippetAIGenerateHint": "Start a new snippet from a short visual or behavior goal."
-  ,"snippetAIOptimizeHint": "Keep the current behavior and ask for a safer or cleaner implementation."
-  ,"snippetAIExplainHint": "Ask for a plain-language explanation; the result stays read-only."
-  ,"snippetAIIterateHint": "Continue the latest AI draft with bounded review history."
-  ,"snippetAIResultHint": "The AI result appears here for review. Accepting it only copies code into the editor."
-  ,"snippetSample": "Sample document · no personal notes"
-  ,"snippetSampleTitle": "Give ideas their own shape"
-  ,"snippetSampleParagraph": "中文 and English together, 1234567890. Preview headings, body text, and code."
-  ,"snippetSampleQuote": "See the effect first, then decide whether to enable it."
-  ,"snippetSampleSection": "A clear work record"
-  ,"snippetSampleCode": "Inline code"
-  ,"snippetSampleItem": "Item"
-  ,"snippetSampleState": "State"
-  ,"snippetSampleProgress": "Progress"
-  ,"snippetSampleReading": "Reading"
-  ,"snippetSampleReady": "Ready"
-  ,"snippetSampleWriting": "Writing"
-  ,"snippetSampleDraft": "Draft"
-  ,"snippetSampleButton": "Test interaction"
-  ,"snippetProbeTitle": "Probes matched by this CSS"
-  ,"snippetProbeNote": "These elements are matched by your snippet selectors — watch how your styles land on them."
-  ,"snippetProbeH3": "Heading 3 probe"
-  ,"snippetProbeH4": "Heading 4 probe"
-  ,"snippetProbeH5": "Heading 5 probe"
-  ,"snippetProbeH6": "Heading 6 probe"
-  ,"snippetProbeLinksLead": "Link probe: "
-  ,"snippetProbeLinksAnchor": "Visit the SiYuan website"
-  ,"snippetProbeListItem": "List item probe"
-  ,"snippetProbeListItem2": "Second item for list styling"
-  ,"snippetProbeTaskDone": "Completed task probe"
-  ,"snippetProbeTaskTodo": "Open task probe"
-  ,"snippetProbeImageAlt": "Image probe"
-  ,"snippetProbeStrong": "bold"
-  ,"snippetProbeEm": "italic"
-  ,"snippetProbeMark": "highlight"
-  ,"snippetProbeDel": "strikethrough"
-  ,"snippetProbeU": "underline"
-  ,"snippetProbeKbd": "Ctrl"
-  ,"snippetProbeTagA": "writing"
-  ,"snippetProbeTagB": "reading"
-  ,"snippetProbeTagC": "ideas"
-  ,"snippetBuiltinTypographyName": "Readable typography"
-  ,"snippetBuiltinTypographyDescription": "A calmer line height and heading rhythm for the editor."
-  ,"snippetBuiltinTableName": "Quiet tables"
-  ,"snippetBuiltinTableDescription": "A restrained table grid with alternating rows."
-  ,"snippetBuiltinFocusName": "Focused paragraph"
-  ,"snippetBuiltinQuoteDescription": "Blockquote enhancement: primary left border + tinted bg + nesting fade"
-  ,"snippetBuiltinQuoteName": "Blockquote Enhance"
-  ,"snippetBuiltinImgDescription": "Image rounded corners + shadow + hover deepen"
-  ,"snippetBuiltinImgName": "Image Rounded"
-  ,"snippetBuiltinHeadingDescription": "Heading hierarchy: H1 underline + H2 left border + H3 primary color"
-  ,"snippetBuiltinHeadingName": "Heading Hierarchy"
-  ,"snippetBuiltinListDescription": "List enhancement: ordered primary color + hover scale"
-  ,"snippetBuiltinListName": "List Enhance"
-  ,"snippetBuiltinDividerDescription": "Divider gradient: primary fade transition"
-  ,"snippetBuiltinDividerName": "Divider Gradient"
-  ,"snippetBuiltinEyecareDescription": "Eye care mode: warm background reduces visual fatigue"
-  ,"snippetBuiltinEyecareName": "Eye Care"
-  ,"snippetBuiltinLineheightDescription": "Enhanced line spacing: paragraphs 2.1, lists 1.9 for better readability"
-  ,"snippetBuiltinLineheightName": "Line Spacing"
-  ,"snippetBuiltinHiconDescription": "Add colored icons before headings for visual hierarchy"
-  ,"snippetBuiltinHiconName": "Heading Icons"
-  ,"snippetBuiltinCardparaDescription": "Card-style paragraphs: rounded corners + tinted bg + hover highlight"
-  ,"snippetBuiltinCardparaName": "Card Paragraphs"
-  ,"snippetBuiltinCodeThemeDescription": "Code block theme: rounded corners + subtle primary bg + colored toolbar"
-  ,"snippetBuiltinInlinecodeName": "Inline Code Pill"
-  ,"snippetBuiltinInlinecodeDescription": "Tints inline code with the theme primary, rounded border for instant scanning."
-  ,"snippetBuiltinLinkName": "Link Hover Polish"
-  ,"snippetBuiltinLinkDescription": "Offsets link underlines and lights them up in the primary color on hover."
-  ,"snippetBuiltinTaskName": "Task Checkbox Polish"
-  ,"snippetBuiltinTaskDescription": "Rounds and scales task checkboxes with primary accent and hover feedback."
-  ,"snippetBuiltinZebraName": "Table Zebra Stripes"
-  ,"snippetBuiltinZebraDescription": "Subtle primary tint on alternating table rows for easier scanning."
-  ,"snippetBuiltinMarkName": "Mark Highlight Polish"
-  ,"snippetBuiltinMarkDescription": "Rounds text marks with a primary tint that deepens on hover."
-  ,"snippetBuiltinKbdName": "Keyboard Key Caps"
-  ,"snippetBuiltinKbdDescription": "Gives kbd keys a lifted key-cap look so shortcuts read at a glance."
-  ,"snippetBuiltinImgzoomName": "Image Hover Zoom"
-  ,"snippetBuiltinImgzoomDescription": "Gently scales images on hover with a primary glow for a preview feel."
-  ,"snippetBuiltinTaskdoneName": "Completed Task Softening"
-  ,"snippetBuiltinTaskdoneDescription": "Dims and strikes through finished task items to keep focus on what's left."
-  ,"snippetBuiltinTheadName": "Table Header Accent"
-  ,"snippetBuiltinTheadDescription": "Bolds table headers with a primary tint and underline for clearer columns."
-  ,"snippetBuiltinScrollbarName": "Scrollbar Refinement"
-  ,"snippetBuiltinScrollbarDescription": "Slim rounded content scrollbars that light up in the primary color on hover."
-  ,"snippetBuiltinCodeThemeName": "Code Block Theme"
-  ,"snippetBuiltinTagDescription": "Tag pill: primary tint + rounded + hover invert"
-  ,"snippetBuiltinTagName": "Tag Pill"
-  ,"snippetBuiltinFocusDescription": "A subtle accent marks the paragraph receiving focus."
-  ,"snippetBuiltinCodeName": "Comfortable code blocks"
-  ,"snippetBuiltinCodeDescription": "A border, padding, and readable code line height."
-  ,"snippetBuiltinFontName": "Serif reading mix"
-  ,"snippetBuiltinFontDescription": "A conservative serif stack for prose and a system stack for code."
-,"docSearchPreviewFailed": "Preview incomplete. Focus the item again to retry."
-,"docSearchPreviewNoContent": "No outline or excerpt available"
-,"docSearchPreviewUnavailable": "Preview available for documents only"
+  "noQuickActions": "No quick actions available",
+  "addQuickAction": "Add action",
+  "quickDesktop": "Desktop",
+  "quickSidebar": "Sidebar",
+  "quickMobile": "Mobile",
+  "quickMoveUp": "Move up",
+  "quickMoveDown": "Move down",
+  "quickRemove": "Remove",
+  "quickExport": "Export config",
+  "quickImport": "Import config",
+  "quickImportDone": "Quick action config imported",
+  "quickImportFailed": "Invalid config file; import failed",
+  "quickColumnLabel": "Name",
+  "quickColumnIcon": "Icon",
+  "quickColumnTargets": "Surface",
+  "quickColumnEnabled": "On",
+  "quickAddTip": "Restore built-ins, add a Dock panel, or call another plugin command",
+  "quickBuiltin": "Built-in",
+  "quickDock": "Panel",
+  "quickTransfer": "Config transfer",
+  "quickTransferTip": "Export shared quick actions to back them up or move them to another device. Import replaces the current action list; legacy action-only files remain supported.",
+  "quickDisplayDesktop": "Desktop display",
+  "quickDisplaySidebar": "Sidebar display",
+  "quickDisplayMobile": "Mobile display",
+  "quickDisplayTip": "Show icon and label, use icons only to save space, or hide the action bar completely",
+  "quickDisplayFull": "Full",
+  "quickDisplayIcons": "Icons only",
+  "quickDisplayHidden": "Hidden",
+  "quickPosition": "Desktop position",
+  "quickPositionTip": "Actions stay at the bottom by default, or can use a compact right rail",
+  "quickPositionBottom": "Bottom",
+  "quickPositionRight": "Right",
+  "quickCollapse": "Collapse quick actions",
+  "quickExpand": "Expand quick actions",
+  "quickColumnActions": "Actions",
+  "quickPluginCommands": "Plugin commands",
+  "quickPluginActions": "Plugin actions",
+  "quickPickerSearch": "Search available actions…",
+  "quickPickerEmpty": "No matching actions",
+  "quickChooseIcon": "Choose icon",
+  "quickIconSearch": "Search SiYuan and plugin icons…",
+  "quickIconCustom": "Enter emoji, short text, HTTPS image, or data URL",
+  "quickIconApplyCustom": "Use custom icon",
+  "quickIconInvalid": "Enter short text, emoji, or a safe HTTPS/data URL icon",
+  "quickIconImage": "Custom image",
+  "quickIconPreview": "Icon preview",
+  "quickIconCustomHint": "Up to 4 text characters, 500 characters for HTTPS URLs, or 240 KB for image data URLs. URLs with credentials are not accepted.",
+  "quickSupportUnsupported": "This action is not supported on this surface",
+  "quickSupportUnknown": "The plugin does not declare mobile support; verify it on a real device after enabling",
+  "quickMobileUnknown": "Mobile unverified",
+  "quickActionUnavailable": "This action is unavailable; its plugin or panel may not be loaded",
+  "quickActionFailed": "The action failed; check the corresponding plugin",
+  "quickActionLimit": "The quick action limit has been reached",
+  "quickActionDuplicate": "This action has already been added",
+  "quickBuiltinSwitcher": "Switcher",
+  "quickBuiltinSearch": "Search",
+  "quickBuiltinJournal": "Journal",
+  "quickBuiltinSettings": "Settings",
+  "quickBuiltinQuickCapture": "Quick capture",
+  "quickBuiltinPreviousTab": "Previous tab",
+  "quickBuiltinNextTab": "Next tab",
+  "quickBuiltinScrollTop": "Scroll to top",
+  "quickBuiltinScrollBottom": "Scroll to bottom",
+  "quickHostCommands": "SiYuan commands",
+  "quickHostSource": "SiYuan command",
+  "quickGlobalOutline": "Outline",
+  "quickGlobalBookmark": "Bookmarks",
+  "quickGlobalTag": "Tags",
+  "quickGlobalInbox": "Inbox",
+  "quickGlobalBacklinks": "Backlinks",
+  "quickGlobalRecentDocs": "Recent documents",
+  "quickGlobalRecentClosed": "Recently closed",
+  "quickGlobalRiffCard": "Flashcard review",
+  "quickGlobalEditReadonly": "Read-only editing",
+  "quickBuiltinSyncNow": "Sync",
+  "quickBuiltinInsertTemplate": "Insert template",
+  "templatePickerTitle": "Choose a template",
+  "templatePickerEmpty": "No templates yet: create one in the SiYuan templates directory",
+  "templatePickerNoEditor": "Open a document before inserting a template",
+  "templateInsertFailed": "Template insert failed: empty render or unusable template",
+  "quickBuiltinCycleDocSet": "Next document set",
+  "quickBuiltinCycleBallPreset": "Next ball preset",
+  "quickBuiltinThrowWindow": "Open in new window",
+  "quickBuiltinHideKeyboard": "Dismiss keyboard",
+  "quickBuiltinJumpBack": "Jump back",
+  "quickBuiltinJumpForward": "Jump forward",
+  "jumpStackEmpty": "No more jumps to navigate",
+  "documentSetCycleNone": "No document sets to switch (need at least two)",
+  "floatingBallPresets": "Ball presets",
+  "floatingBallPresetsTip": "Save the current action layout and primary click as a named scene; apply or cycle anytime.",
+  "floatingBallPresetName": "Preset name",
+  "floatingBallPresetSave": "Save current as preset",
+  "floatingBallPresetApply": "Apply",
+  "floatingBallPresetCurrent": "Current",
+  "floatingBallPresetDelete": "Delete",
+  "floatingBallPresetEmpty": "No presets yet",
+  "floatingBallPresetApplied": "Preset applied: {x}",
+  "floatingBallPresetCycleNone": "No presets to cycle (save one first)",
+  "favSmartGroups": "Smart groups",
+  "favSmartGroupsTip": "Auto-collect documents by tag; the group follows your notes (read-only projection, up to 4 groups).",
+  "favSmartGroupName": "Group name",
+  "favSmartGroupTagPick": "Pick a tag",
+  "favSmartGroupNotebookAny": "Any notebook",
+  "favSmartGroupUpdatedAny": "Any time",
+  "favSmartGroupUpdated7": "Updated in 7 days",
+  "favSmartGroupUpdated30": "Updated in 30 days",
+  "favSmartGroupUpdated90": "Updated in 90 days",
+  "favSmartGroupAdd": "Add",
+  "favSmartGroupRemove": "Remove",
+  "favSmartGroupEmpty": "No smart groups",
+  "favSmartGroupLoading": "Collecting…",
+  "reuseTabsLabel": "Reuse open tabs",
+  "reuseTabsTip": "When a search result is already open, focus the existing tab instead of opening a duplicate.",
+  "rememberScrollPositionLabel": "Remember document scroll position",
+  "rememberScrollPositionTip": "During this SiYuan session, try to return to the last position when reopening or restoring a document.",
+  "settingsControlSlider": "Slider",
+  "settingsControlNumber": "Number",
+  "shortcutBindingsLabel": "Shortcut bindings",
+  "shortcutBindingsTip": "Shows the active shortcut; the plugin default is used until you customize it in SiYuan Settings → Shortcuts.",
+  "shortcutDefaultPrefix": "Default",
+  "shortcutSwitcher": "Open switcher",
+  "shortcutWorkbench": "Open workbench",
+  "breadcrumbEntry": "Open switcher",
+  "densityLabel": "List density",
+  "densityComfortable": "Comfortable",
+  "densityCompact": "Compact",
+  "densityCompactTip": "Tighter card and list spacing in the switcher; off = comfortable.",
+  "pinyinMatchLabel": "Pinyin matching",
+  "pinyinMatchTip": "Match document titles by full pinyin or initials (e.g. cp → 产品). When off, substring only.",
+  "documentSetEssentialsLabel": "Essentials documents",
+  "documentSetEssentialsTip": "Auto-open these documents after every set restore (cross-set, up to 10). Open the tabs you want first, then add.",
+  "documentSetEssentialsAdd": "Add current tabs",
+  "documentSetEssentialsRemove": "Remove",
+  "documentSetEssentialsClear": "Clear all",
+  "documentSetEssentialsEmpty": "No essentials yet",
+  "quickIconSearchEmpty": "No matching icons",
+  "quickIconCategory": "Icon category",
+  "quickIconCategoryAll": "All",
+  "workbenchLabel": "Workbench",
+  "workbenchPresets": "Scenes",
+  "workbenchDocSets": "Sets",
+  "workbenchRelated": "Related to current doc",
+  "workbenchRelatedCached": "cached",
+  "actionSwitcher": "Switcher",
+  "actionSearch": "Search",
+  "actionJournal": "Journal",
+  "actionSettings": "Settings",
+  "actionHome": "Widgets",
+  "actionQuickCapture": "Quick capture",
+  "actionPreviousTab": "Previous tab",
+  "actionNextTab": "Next tab",
+  "actionScrollTop": "Scroll to top",
+  "actionScrollBottom": "Scroll to bottom",
+  "actionSyncNow": "Sync",
+  "actionInsertTemplate": "Insert template",
+  "actionCycleDocSet": "Cycle doc set",
+  "actionCycleBallPreset": "Cycle ball preset",
+  "actionThrowWindow": "Throw to window",
+  "actionHideKeyboard": "Hide keyboard",
+  "actionJumpBack": "Jump back",
+  "actionJumpForward": "Jump forward",
+  "actionMarkSet": "Mark position",
+  "actionMarkJump": "Jump to mark",
+  "actionClipboard": "Clipboard entry",
+  "actionCloseTab": "Close current tab",
+  "actionOutline": "Outline",
+  "actionBookmark": "Bookmarks",
+  "actionTag": "Tags",
+  "actionInbox": "Inbox",
+  "actionBacklinks": "Backlinks",
+  "actionRecentDocs": "Recent docs",
+  "actionRecentClosed": "Recently closed",
+  "actionRiffCard": "Flashcards",
+  "actionEditReadonly": "Read-only edit",
+  "actionFileTree": "File tree",
+  "actionMainMenu": "Main menu",
+  "actionGlobalSearch": "Global search",
+  "workbenchSaved": "Saved searches",
+  "workbenchSnippets": "Snippet lab",
+  "searchSaveCurrent": "Save current search",
+  "searchSavedDeleteConfirm": "Delete saved search \"{x}\"?",
+  "searchSavedDone": "Search saved",
+  "searchSavedApply": "Apply",
+  "searchSavedEdit": "Edit",
+  "searchSavedDelete": "Delete",
+  "searchSavedEditTitle": "Edit saved search",
+  "searchSavedEditName": "Name",
+  "searchSavedEditQuery": "Query",
+  "searchSavedEditNotebook": "Notebook filter",
+  "searchSavedEditNotebookAny": "Any notebook",
+  "searchSavedEditEmptyQuery": "Query must not be empty",
+  "searchSavedEditTruncated": "Truncated to {x} chars",
+  "searchSavedUpdated": "Saved search updated",
+  "searchSavedUpdateFailed": "Saved search missing or query empty",
+  "searchSavedSave": "Save",
+  "documentSetDiff": "View diff",
+  "documentSetDiffTitle": "Version diff",
+  "documentSetDiffRestore": "Restored by rollback",
+  "documentSetDiffRemove": "Removed by rollback",
+  "documentSetDiffChanged": "Changed entries",
+  "documentSetDiffOrder": "Reordered",
+  "documentSetDiffTitleChange": "Title changed",
+  "documentSetDiffActive": "Active marker changed",
+  "documentSetDiffUnchanged": "{x} entries unchanged",
+  "documentSetDiffEmpty": "No difference from the current set",
+  "documentSetDiffUnrecorded": "Not recorded",
+  "documentSetRollbackTo": "Roll back to this version",
+  "workbenchSmart": "Smart groups",
+  "docSearchPreviewHint": "Alt+click: open in preview",
+  "workbenchRelatedEmpty": "No related content yet",
+  "docSearchPreview": "Document preview",
+  "docSearchPreviewContent": "Excerpt",
+  "docSearchPreviewOutline": "Outline",
+  "docSearchPreviewLoading": "Loading preview…",
+  "docSearchPreviewEmpty": "Focus a row with ↑/↓ to preview its outline and excerpt",
+  "docSearchPreviewStatusLoading": "Loading",
+  "docSearchPreviewStatusReady": "Ready",
+  "docSearchPreviewPin": "Pin",
+  "docSearchPreviewUnpin": "Unpin",
+  "docSearchPreviewPinned": "Pinned · {x}",
+  "docSearchPreviewFind": "Find",
+  "docSearchPreviewFindScope": "this preview only",
+  "docSearchPreviewFindNext": "Next match",
+  "docSearchPreviewFindPrevious": "Previous match",
+  "docSearchPreviewFindClose": "Close find",
+  "docSearchPreviewFindNoResults": "No matches",
+  "settingsSearch": "Search settings…",
+  "settingsSearchClear": "Clear search",
+  "settingsSearchFilter": "Filter by group",
+  "settingsSearchFilterAll": "All",
+  "settingsSavePending": "Pending save…",
+  "settingsSaveOk": "Saved",
+  "settingsSaveFailed": "Settings save failed; local values kept",
+  "settingsSaveRetry": "Retry",
+  "settingsUndo": "Undo last change",
+  "settingsUndoDone": "Last change undone",
+  "settingGroupReset": "Reset to defaults",
+  "settingGroupResetDone": "Group defaults restored; undo is available",
+  "settingsSearchNoResults": "No matching settings",
+  "settingsSearchMore": "{x} more not shown",
+  "snippetEnabledShort": "enabled",
+  "unitLines": "lines",
+  "floatingBallFlickTitle": "Flick actions (mobile)",
+  "floatingBallGestureTitle": "Gesture actions",
+  "floatingBallGestureTip": "Actions triggered by double-clicking or long-pressing the ball; options follow the selected surface while the behavior is shared by desktop and mobile. A bound double-click adds a short single-click delay",
+  "floatingBallGestureDouble": "Double click",
+  "floatingBallGestureLong": "Long press",
+  "floatingBallFlickTip": "Mobile ball flick actions; flicking up always opens More, while the other directions can be bound to actions",
+  "floatingBallFlickUp": "Flick up",
+  "floatingBallFlickDown": "Flick down",
+  "floatingBallFlickLeft": "Flick left",
+  "floatingBallFlickRight": "Flick right",
+  "floatingBallFlickNone": "No action",
+  "floatingBallFlickMore": "More panel",
+  "homeReceiptSummary": "{ok}/{total} widgets healthy",
+  "homeReceiptFailed": "{x} failed",
+  "homeReceiptUnavailable": "{x} unavailable",
+  "homeReceiptDetails": "Details",
+  "homeHealthDetailsTitle": "Widget health details",
+  "homeHealthGroupFailed": "Failed",
+  "homeHealthGroupLoading": "Loading",
+  "homeHealthGroupOk": "Healthy",
+  "homeHealthCached": "Cached",
+  "homeHealthCachedShown": "Stale content shown",
+  "homeHealthStale": "Refresh failed; stale content shown",
+  "homeReceiptStale": "{x} stale",
+  "homeHealthLastAttempt": "Last attempt",
+  "homeHealthLastOk": "Last success",
+  "homeHealthUnknown": "Unknown",
+  "homeHealthLocate": "Locate",
+  "homeHealthRetryOne": "Retry",
+  "homeHealthCopySummary": "Copy diagnostics",
+  "homeHealthCopied": "Diagnostics copied",
+  "homeHealthCopyFailed": "Copy failed. Select the summary to copy it manually.",
+  "homeHealthPreview": "Diagnostics preview",
+  "homeHealthBack": "Back to details",
+  "homeHealthCopyConfirm": "Copy summary",
+  "homeHealthEvidenceHint": "Include reproduction steps and expected behavior in your report. Hide sensitive content in screenshots.",
+  "homeHealthRefreshList": "Refresh list",
+  "homeHealthInstance": "Instance",
+  "homeHealthStatus": "Status",
+  "homeHealthFailed": "Failed",
+  "homeHealthOk": "OK",
+  "homeObjectTitle": "Widget",
+  "cardUpdatedBadgeLabel": "Tab card changes",
+  "cardUpdatedBadgeTip": "Show the last edit time and a marker for changes in the past 7 days (time for today, date otherwise)",
+  "cardChangedBadge": "Changed",
+  "cardChangedBadgeTip": "Content changed in the past 7 days",
+  "docSearchSplitHint": "Right-click or Ctrl+click: open in right split",
+  "chipsLabel": "Result type filter",
+  "chipsAll": "All",
+  "chipsTabs": "Tabs",
+  "chipsCollections": "Collections",
+  "chipsDocs": "Documents",
+  "skinLabel": "UI skin",
+  "skinTip": "Fusion follows the SiYuan theme; standalone skins apply only to Speed Switch surfaces and never touch SiYuan or other plugins.",
+  "skinFusion": "Fusion (default)",
+  "skinApple": "Apple · Liquid glass",
+  "skinMidnight": "Midnight glass",
+  "skinPaper": "Paper ink",
+  "unifiedFavorites": "Favorites",
+  "unifiedClosed": "Recently closed",
+  "unifiedDocSets": "Document sets",
+  "unifiedDocSetDocs": "docs",
+  "historyChangedOnly": "Show changed only",
+  "historyChangedEmpty": "No documents changed within the window",
+  "historyChangedLoadFailed": "Changed records could not be loaded. The filter was turned off.",
+  "historyChangedRetry": "Retry loading changed records",
+  "historyChangedShowAll": "Show all recent records",
+  "syncNowCompleted": "Sync completed",
+  "syncNowFailed": "Sync failed: kernel unreachable, cloud sync not configured, or read-only mode",
+  "secFloatingBall": "Floating ball",
+  "floatingBallSettingsTip": "Enable the floating ball independently on desktop and mobile, then configure first-layer actions. Positions are stored per surface and are not included in exports.",
+  "floatingBallFirstUseTitle": "Setting up the floating ball",
+  "floatingBallFirstUseTip": "Enable a surface to show the ball in that SiYuan window. Tap to open the switcher and drag to reveal actions; mobile also supports configurable flick, double-tap and long-press gestures. Then use the preview below to adjust its position and add more actions from the catalog.",
+  "floatingBallEnableDesktop": "Enable desktop ball",
+  "floatingBallEnableMobile": "Enable mobile ball",
+  "floatingBallLegacySidebarHint": "The sidebar floating-ball entry is retired; legacy sidebar fields remain tolerated for compatibility and will not recreate a sidebar entry.",
+  "floatingBallSurfaceTip": "Show or hide the floating ball on this surface",
+  "floatingBallDesktop": "Desktop floating ball",
+  "floatingBallSidebar": "Sidebar floating ball",
+  "floatingBallMobile": "Mobile floating ball",
+  "floatingBallEditSurface": "Edit surface",
+  "floatingBallClickAction": "Floating-ball click action",
+  "floatingBallClickActionTip": "Configure it per surface. Unavailable actions fall back to the switcher.",
+  "floatingBallClickSwitcher": "Open switcher",
+  "floatingBallClickMore": "Open more actions",
+  "floatingBallAppearance": "Appearance and behavior",
+  "floatingBallAppearanceTip": "Docking edge and position are saved per surface. Other appearance and behavior settings are shared. Sliders preview while dragging and save on release.",
+  "floatingBallEdge": "Docking edge",
+  "floatingBallEdgeLeft": "Left",
+  "floatingBallEdgeRight": "Right",
+  "floatingBallVertical": "Vertical position",
+  "floatingBallSize": "Ball size",
+  "floatingBallSizeTip": "Desktop and mobile support 44–64 px. The sidebar stays at 44 px.",
+  "floatingBallMargin": "Safe margin",
+  "floatingBallMarginTip": "Extra spacing inside the device safe area keeps edge content clear.",
+  "floatingBallIdleOpacity": "Idle opacity",
+  "floatingBallIdleDelay": "Idle delay",
+  "floatingBallSeconds": "s",
+  "floatingBallEdgeAvoid": "Off-edge docking (mobile)",
+  "floatingBallEdgeAvoidTip": "Keeps the mobile ball and its drag range away from the 12px edge-swipe strip so dragging never opens the sidebar; half-hide is disabled while active.",
+  "floatingBallHalfHide": "Half-hide at the edge when idle",
+  "floatingBallSnap": "Snap to an edge after dragging",
+  "floatingBallSnapTip": "Turn off to place the ball freely in the visible area. Selecting an edge docks it again.",
+  "floatingBallHideOnScroll": "Hide on upward scroll, restore on downward scroll",
+  "floatingBallHideOnFullscreen": "Hide in fullscreen",
+  "floatingBallYieldToModals": "Yield to dialogs",
+  "floatingBallAdvanced": "Advanced settings",
+  "floatingBallTouchSlop": "Drag threshold",
+  "floatingBallRestoreAppearance": "Restore default appearance and behavior",
+  "floatingBallRestoreAppearanceConfirm": "Restore shared appearance and behavior defaults for all surfaces? Surface switches, positions, and actions are kept.",
+  "floatingBallActions": "Action order and first layer",
+  "floatingBallActionsTip": "Choose up to 5 first-layer actions plus More. Remaining enabled actions appear in More; unavailable providers keep their saved configuration.",
+  "floatingBallDigitSlots": "Digit slot bindings",
+  "floatingBallDigitSlotsTip": "Bind 1–9 in the floating-ball More panel to an action or saved search. Empty slots follow the visible-row order.",
+  "floatingBallDigitSlot": "Digit slot",
+  "floatingBallDigitSlotNone": "None (visible-row fallback)",
+  "floatingBallDigitSlotAction": "Action catalog",
+  "floatingBallDigitSlotSearch": "Saved searches",
+  "floatingBallDigitSlotUnavailable": "Object unavailable",
+  "floatingBallSavedSearches": "Saved searches",
+  "floatingBallConfigureDigitSlot": "Configure digit slot",
+  "floatingBallNoActions": "No actions are configured for this surface. Add one below.",
+  "floatingBallStatusReady": "Ready",
+  "floatingBallStatusUnknown": "Unverified",
+  "floatingBallStatusUnavailable": "Unavailable",
+  "floatingBallEnabled": "Enabled",
+  "floatingBallFirstLayer": "First layer",
+  "floatingBallCustomLabel": "Custom action label",
+  "floatingBallCustomIcon": "Custom action icon",
+  "floatingBallMobileTry": "Try on mobile (unverified)",
+  "floatingBallMobileTryStatus": "Mobile try; result unverified",
+  "floatingBallEnableAction": "Enable action",
+  "floatingBallMoveUp": "Move action up",
+  "floatingBallMoveDown": "Move action down",
+  "floatingBallAddAction": "Add action…",
+  "floatingBallRestoreDefaults": "Restore default actions for this surface",
+  "floatingBallExport": "Export floating-ball config",
+  "floatingBallImport": "Import floating-ball config",
+  "floatingBallImportDone": "Floating-ball config imported",
+  "floatingBallImportFailed": "Invalid or oversized config file; import failed",
+  "floatingBallImportConfirm": "Replace shared quick actions and floating-ball configuration from this file? Current positions are kept. Legacy action-only files leave the floating ball unchanged.",
+  "floatingBallRestoreConfirm": "Restore the default actions for this surface? Other surfaces, switches, and positions will not change.",
+  "floatingBallPreview": "Live floating-ball preview",
+  "floatingBallPreviewTip": "The preview shows the idle ball and action direction. Click to simulate without opening or writing documents. A dimmed stage means this surface is disabled.",
+  "floatingBallPreviewResult": "Simulated: {x}. No action was executed.",
+  "floatingBallMore": "More actions",
+  "floatingBallActionSearch": "Search name, action ID or source",
+  "floatingBallPluginActions": "Plugin actions",
+  "floatingBallOtherActions": "Other",
+  "floatingBallProviderMissing": "The action provider is not loaded",
+  "floatingBallActionDisabled": "Disabled",
+  "floatingBallManageActions": "Manage actions",
+  "floatingBallRestoreVisible": "Restore floating ball",
+  "floatingBallMoreCount": "More actions: {x}",
+  "floatingBallStatusUnsupported": "Unsupported",
+  "secDocumentSets": "Document sets",
+  "documentSetsTip": "Save currently opened documents for a later restore preview; transient tabs without stable roots are skipped.",
+  "documentSetNamePlaceholder": "Document set name",
+  "documentSetSave": "Save current documents",
+  "documentSetExport": "Export",
+  "documentSetImport": "Import",
+  "documentSetImportDone": "Document sets imported",
+  "documentSetImportFailed": "Document-set import failed",
+  "documentSetImportConfirm": "Import and merge these document sets? {x} total.",
+  "documentSetEmpty": "No document sets yet",
+  "documentSetItems": "documents",
+  "documentSetPreview": "Preview restore",
+  "documentSetRestore": "Restore",
+  "documentSetCancel": "Cancel restore",
+  "documentSetRestoreConfirm": "Open the pending documents in this set in order?",
+  "documentSetMissingConfirm": "Some documents are missing from the current workspace. Continue with the remaining documents?",
+  "documentSetUnknownConfirm": "Some documents could not be verified. Try restoring the remaining documents?",
+  "documentSetNoAvailable": "No documents are available to restore",
+  "documentSetRestoreNone": "This set has no pending documents",
+  "documentSetRestoreDone": "Restored",
+  "documentSetRestoreFailed": "failed",
+  "documentSetRestoreSkipped": "skipped",
+  "documentSetRestoreMissing": "missing",
+  "documentSetRestoreUnknown": "unverified",
+  "documentSetRestoreCancelled": "Restore cancelled",
+  "documentSetRestoreReport": "Export restore report",
+  "documentSetRestoreReportNone": "No restore report yet — run a restore first",
+  "documentSetRestoreReportExported": "Restore report exported",
+  "documentSetRestoreReportMd": "Export MD",
+  "documentSetEssentialsApplied": "Essentials opened",
+  "documentSetRollback": "Rollback",
+  "documentSetRollbackConfirm": "Roll back to the latest version? Current content is kept as a version and can be rolled back again.",
+  "documentSetRollbackDone": "Rolled back \"{x}\"",
+  "documentSetRollbackNone": "No version to roll back",
+  "documentSetDelete": "Delete",
+  "documentSetRename": "Rename",
+  "documentSetDeleteConfirm": "Delete this document set?",
+  "documentSetSaved": "Document set saved",
+  "documentSetNoTabs": "No opened documents can be saved",
+  "documentSetVisitor": "outside set · kept open",
+  "documentSetOpened": "opened",
+  "documentSetsGuideTitle": "What is a document set?",
+  "documentSetsGuidePurpose": "A document set is a named snapshot of the documents currently open. Restore it later in the saved order when switching between projects or tasks.",
+  "documentSetsGuideStep1": "Open the documents needed for the task, enter a name below, then choose Save current documents.",
+  "documentSetsGuideStep2": "When returning, use Preview restore to review pending and already-open counts, then choose Restore.",
+  "documentSetsGuideStep3": "Export and import document sets for backup or migration. Saving with the same name updates the existing set.",
+  "documentSetsGuideNote": "Note: document sets store stable root-document references only. They do not save cursor positions, transient tabs, or document content. Deleted or unavailable documents are marked missing before restore.",
+  "secondPanel": "Widgets",
+  "platformName": "LvSpeed Switch",
+  "platformSubtitle": "Work context platform",
+  "platformContext": "Work context",
+  "platformSwitcher": "Switcher",
+  "platformWorkbench": "Workbench",
+  "platformStudio": "Snippet lab",
+  "platformSwitcherHint": "Find, preview and open content",
+  "platformWorkbenchHint": "Arrange widgets and the current workspace",
+  "platformStudioHint": "Edit, preview and manage snippets safely",
+  "platformConnected": "Kernel connected",
+  "platformCloseHint": "to close",
+  "settingsGroupTheme": "Theme & skin",
+  "moduleDisabledReceipt": "{x} is disabled: open windows stay until closed; new invocations are declined",
+  "moduleDisabled": "Disabled",
+  "moduleFloatingBall": "Floating ball",
+  "moduleStudio": "Snippet studio (panel 3)",
+  "moduleVisibilityHint": "Disabled modules hide their entries and decline route calls with an honest receipt; open windows stay until closed. The switcher is the platform root and cannot be disabled.",
+  "moduleVisibilityLabel": "Enabled modules",
+  "moduleWorkbench": "Workbench (panel 2)",
+  "settingsGroupModules": "Modules",
+  "settingsGroupWindow": "Switcher window",
+  "settingsGroupThumbnails": "Thumbnails",
+  "settingsGroupSortDensity": "Sort & density",
+  "settingsGroupSearchOpen": "Search & open",
+  "settingsGroupShortcuts": "Shortcuts",
+  "settingsGroupAgent": "Controlled abilities",
+  "settingsGroupListSidebar": "List & sidebar",
+  "settingsGroupDocks": "Dock panels",
+  "settingsGroupComponents": "Widget cards",
+  "settingsGroupWorkbenchWindow": "Workbench window",
+  "settingsGroupMobileLayout": "Card layout",
+  "settingsGroupCompatibility": "Compatibility",
+  "settingsGroupWorkbenchBehavior": "Workbench behavior",
+  "settingsGroupJournal": "Journal strategy",
+  "platformKbdPreview": "Alt Preview",
+  "platformGuideButton": "Quick start",
+  "platformGuideTitle": "LvSpeed Switch quick start",
+  "platformGuideIntro": "Use this local guide to learn the three work surfaces. You can reopen it whenever you need it.",
+  "platformGuideClose": "Got it",
+  "platformGuideSwitcherTitle": "Panel 1 · Switcher",
+  "platformGuideSwitcherStep1": "Type in the search box to filter open tabs first, then search the whole workspace when needed.",
+  "platformGuideSwitcherStep2": "Click a workspace result to open or locate it; hold Alt while clicking to preview a matching excerpt.",
+  "platformGuideSwitcherStep3": "Use Favorites, Recent and Journal to return to frequent work.",
+  "platformGuideWorkbenchTitle": "Panel 2 · Workbench",
+  "platformGuideWorkbenchStep1": "Open the widget store and choose the information components for your workbench.",
+  "platformGuideWorkbenchStep2": "Choose Edit layout to drag, resize or remove widgets; changes are saved as you work.",
+  "platformGuideWorkbenchStep3": "Use refresh/retry on a widget when data is stale or unavailable; settings control modules and window size.",
+  "platformGuideStudioTitle": "Panel 3 · Snippet lab",
+  "platformGuideStudioStep1": "Choose an existing snippet or create a CSS/JS draft; store snippets start disabled.",
+  "platformGuideStudioStep2": "Edit and preview the draft; Save is required before it is written to the snippet library.",
+  "platformGuideStudioStep3": "Enable a snippet only after reviewing it; JavaScript snippets are not executed in the lab.",
+  "platformGuideFloatingBallTitle": "Floating ball · Global entry",
+  "platformGuideFloatingBallStep1": "Enable the desktop or mobile ball separately in Settings; tap the ball to run its primary action, which opens the switcher by default.",
+  "platformGuideFloatingBallStep2": "Drag beyond 8 px to choose a first-layer action; release on empty space to save the position or on an action to run it.",
+  "platformGuideFloatingBallStep3": "On mobile you can bind flicks, double-click and long-press; use the edge restore handle after half-hide or dialog handoff.",
+  "platformGuideSettings": "Current shortcuts: Switcher {switcher}, Workbench {workbench}. Open Settings to adjust window size, shortcuts and visible modules.",
+  "platformGuideSearchAction": "Start searching",
+  "platformGuideWorkbenchAction": "Open workbench",
+  "platformGuideStudioAction": "Open snippet lab",
+  "mobileLayoutFailed": "The switcher failed to initialize. Close it and try again.",
+  "openHistory": "Recent",
+  "noOpenHistory": "No recent documents",
+  "historyExpand": "Show all",
+  "clearOpenHistory": "Clear history",
+  "clearClosedHistory": "Clear recently closed",
+  "clearOpenHistoryConfirm": "Clear all recent documents?",
+  "clearClosedHistoryConfirm": "Clear recently closed records? They cannot be restored from here afterward.",
+  "historyOpen": "Open",
+  "historyClosed": "Closed · click to reopen",
+  "historyOpenSection": "Recently opened",
+  "historyClosedSection": "Recently closed",
+  "historyOpenAction": "Open",
+  "historyRemove": "Remove record",
+  "historyInvalid": "This history entry is no longer available",
+  "historySyncFailed": "Recent records could not be synced. Showing local records.",
+  "historySyncRetry": "Retry syncing recent records",
+  "snippetStudioOpen": "Open snippet studio",
+  "snippetStudioTitle": "Code snippet studio",
+  "snippetExperimental": "Experimental",
+  "snippetBack": "Back to switcher",
+  "snippetAbout": "Snippet details",
+  "snippetDescription": "Native SiYuan snippets remain the saved source. Imported and AI-generated code stays disabled until you review it.",
+  "snippetDiffSummary": "Change summary: {hunks} hunks · +{added} / −{removed} lines",
+  "snippetDiffFindings": "{n} review findings",
+  "snippetDiffHunkToggle": "Toggle whether this hunk is applied",
+  "snippetDiffMore": "{n} more lines not shown",
+  "snippetDiffRoundBase": "This round's changes vs the previous candidate",
+  "snippetDiffDegraded": "Snippet too long for a line diff; applying replaces the whole block.",
+  "snippetPaneDraft": "Draft",
+  "homeCellUnavailable": "Module uninstalled; layout kept and restored in place after reinstall.",
+  "homeCellUnavailableTitle": "Module unavailable",
+  "homeConfigSaveFailed": "Saving the config failed: kept locally — retry or cancel.",
+  "homeConfigSaveMissed": "This module was removed from another entry; the edit was not saved — cancel or reopen.",
+  "homeEmptyNoSource": "No widget sources available: install widgets or enable providers to compose here.",
+  "homeEmptyRecommended": "Recommended widgets",
+  "homeEmptyRestoreDefault": "Add selected defaults",
+  "homeRestoreDefaultHint": "Add only missing selected widgets and keep the current layout.",
+  "homeEmptyTierHint": "Default material and size per widget come from its catalog declaration; adjust size and position in edit mode.",
+  "homeEmptyRecommendedConfirm": "Add “{x}” ({availability}) to the end of this workbench while keeping the existing layout?",
+  "homeEmptyRestoreConfirm": "Add {count} selected default widgets while keeping the current {existing} layout items?",
+  "homeEmptyRestoreNothing": "The selected default widgets are already in this workbench.",
+  "homeCalendarJumpNext": "Next month with journals",
+  "homeCalendarJumpNone": "No month with journals found within ±24 months.",
+  "homeCalendarJumpPrev": "Previous month with journals",
+  "homeCalendarPeriodPicker": "Pick a month",
+  "homeMilestoneImminent": "Coming soon",
+  "homeMilestoneMonth": "Within 30 days",
+  "homeMilestoneHundred": "Within 100 days",
+  "homeDragMove": "Drag to reorder",
+  "snippetPendingConfirm": "The write may have landed; verifying read-only…",
+  "snippetPendingUnverified": "The write may have landed but could not be confirmed: refresh the snippet list to verify before retrying.",
+  "snippetPaneSaved": "Saved",
+  "snippetPaneSavedEmpty": "No saved version yet; it appears here as the baseline after saving",
+  "snippetRecycle": "Recycle bin",
+  "snippetRecycleClear": "Empty recycle bin",
+  "snippetRecycleClearConfirm": "Empty the recycle bin? All snapshots will be permanently deleted and cannot be recovered.",
+  "snippetRecycleEmpty": "Recycle bin is empty",
+  "snippetRecycleOriginConflict": "Discarded on conflict",
+  "snippetRecycleOriginDelete": "Pre-delete snapshot",
+  "snippetRecycleOriginOverwrite": "Pre-save version",
+  "snippetRecyclePurge": "Delete forever",
+  "snippetRecyclePurgeConfirm": "Delete this snapshot forever? This cannot be undone.",
+  "snippetRecycleRestore": "Restore as draft",
+  "snippetRecycleRestored": "Restored as a new draft (kept disabled; enable after saving)",
+  "snippetRestore": "Restore backup",
+  "snippetRestoreAdd": "Add",
+  "snippetRestoreCancel": "Cancel",
+  "snippetRestoreConfirm": "Restore selected",
+  "snippetRestoreConflict": "The native snippets changed before restore; reload and try again.",
+  "snippetRestoreDelete": "Delete",
+  "snippetRestoreDone": "Backup restored; undo is available once for this session.",
+  "snippetRestoreEmpty": "The backup has no differences from the current native snippets.",
+  "snippetRestoreInvalid": "The backup is invalid, unsupported, or exceeds the safety limit.",
+  "snippetRestoreKeep": "Keep",
+  "snippetRestoreNoSelection": "Select at least one snippet or the master switches.",
+  "snippetRestoreOneShot": "The pre-restore state is kept for one session-only undo; no new persistent backup is written.",
+  "snippetRestorePending": "Restore may have landed, but read-back verification is incomplete; refresh before retrying.",
+  "snippetRestorePreview": "Restore preview",
+  "snippetRestoreReplace": "Replace",
+  "snippetRestoreSettings": "Also restore the CSS/JavaScript master switches",
+  "snippetRestoreUndo": "Undo restore",
+  "snippetRefreshExternal": "Another window updated snippets; native snippets refreshed.",
+  "snippetPreview": "Preview",
+  "snippetPreviewHint": "Preview runs in an isolated document and never changes your notes.",
+  "snippetCapabilitySceneLabel": "Scene",
+  "snippetCapabilityWidthLabel": "Width",
+  "snippetCapabilityThemeLabel": "Theme",
+  "snippetCapabilityProbeOn": "Probe: {n} hit(s)",
+  "snippetCapabilityProbeOff": "Probe: off (baseline)",
+  "snippetCapabilityScriptCss": "Scripts: blocked",
+  "snippetCapabilityNetwork": "Network: none",
+  "snippetCapabilitySemantics": "Semantic approximation; not your actual notes",
+  "snippetCapabilitySingleView": "Container too narrow; single view",
+  "snippetDiagnostics": "CSS coverage diagnostics",
+  "snippetDiagnosticsHit": "hit",
+  "snippetDiagnosticsMiss": "may miss",
+  "snippetDiagnosticsUnknown": "unknown",
+  "snippetDiagnosticsError": "errors",
+  "snippetDiagnosticsEmpty": "No selectors found",
+  "snippetDiagnosticsTruncated": "Large snippet; diagnostics truncated at the cap (preview unaffected)",
+  "snippetProbeDocTitle": "Journal title probe (document-level heading)",
+  "snippetProbeCallout": "Callout block probe",
+  "snippetProbeColumnA": "Column layout probe · first column",
+  "snippetProbeColumnB": "Column layout probe · second column",
+  "snippetProbeFormula": "Formula placeholder E=mc² (static sample, not rendered)",
+  "snippetProbeAttrsLead": "Block-with-attributes probe",
+  "snippetProbeAttrsValue": "Alias · #tag · custom attributes",
+  "snippetProbeDbColA": "Name",
+  "snippetProbeDbColB": "Status",
+  "snippetProbeDbRowA": "Static row one",
+  "snippetProbeDbRowB": "Static row two",
+  "snippetProbeMediaBlocked": "Media placeholder: audio/video/embeds never load in preview",
+  "snippetCapabilityTokenProfile": "Theme tokens: builtin snapshot (read-only)",
+  "snippetCapabilityTokenBaseline": "Theme tokens: baseline (no override)",
+  "snippetPreviewLoading": "Loading isolated preview…",
+  "snippetPreviewReady": "Preview ready",
+  "snippetPreviewLang": "en-US",
+  "snippetCompare": "Compare saved",
+  "snippetCompareUnavailable": "Save this snippet before comparing versions.",
+  "snippetDarkPreview": "Toggle dark preview",
+  "snippetResetPreview": "Reset preview",
+  "snippetPreviewError": "Preview error:",
+  "snippetJSPreviewUnavailable": "JavaScript preview execution is deferred until it can be terminated safely.",
+  "snippetName": "Name",
+  "snippetType": "Type",
+  "snippetCSS": "CSS",
+  "snippetJS": "JavaScript",
+  "snippetCode": "Code",
+  "snippetBytes": "bytes",
+  "snippetLines": "lines",
+  "snippetTypeLocked": "The type of a saved native snippet is locked. Create a new draft to change it.",
+  "snippetSave": "Save",
+  "snippetSaveDisabled": "Save draft",
+  "snippetSaveFirst": "Save the draft before enabling it.",
+  "snippetSaved": "Saved",
+  "snippetJSReload": "Saved. Reload the host to apply JavaScript.",
+  "snippetEnable": "Enable",
+  "snippetDisable": "Disable",
+  "snippetEnabled": "Enabled",
+  "snippetDisabled": "Disabled",
+  "snippetDraft": "Draft",
+  "snippetUnsaved": "Unsaved changes",
+  "snippetMasterOff": "The host master switch is off",
+  "snippetMasterTitle": "Snippet master switches",
+  "snippetMasterCSS": "CSS master switch",
+  "snippetMasterJS": "JavaScript master switch",
+  "snippetMasterEnabled": "On",
+  "snippetMasterDisabled": "Off",
+  "snippetMasterUnavailable": "The host did not expose this master switch",
+  "snippetMasterSaved": "Master switch updated",
+  "snippetMasterFailed": "Master switch update failed; refresh and verify it.",
+  "snippetDisabledInPublish": "Disable in publish",
+  "snippetDisabledInPublishHint": "When enabled, this snippet is omitted from published content while its editor state remains unchanged.",
+  "snippetOrderHint": "Native list order",
+  "snippetCascadeHint": "CSS participates in the native list cascade; later rules of the same kind usually have higher override priority.",
+  "snippetJSCascadeHint": "JavaScript snippets load in native list order; the studio never executes them in preview.",
+  "snippetDelete": "Delete",
+  "snippetExport": "Export",
+  "snippetBackup": "Back up snippets",
+  "snippetBackupHint": "Native snippets and master switches exported.",
+  "snippetSubmission": "Create submission package",
+  "snippetSubmissionHint": "Created a local, unreviewed submission package.",
+  "snippetChoose": "Choose snippet",
+  "snippetRecent": "Recent snippets",
+  "snippetClose": "Close",
+  "snippetImport": "Import file",
+  "snippetImportPackage": "Import snippet package",
+  "snippetImportPackageHint": "Confirmation writes directly to the native snippet list. Merge preserves existing enabled states and uses imported states for new entries; Fork creates disabled copies; Overwrite replaces the entire list using imported states.",
+  "snippetPackageImported": "Snippet package imported into the native list.",
+  "snippetImportInvalid": "Invalid snippet package. Check the JSON format and snippet fields.",
+  "snippetNew": "New",
+  "snippetCopy": "Copy",
+  "snippetCopied": "Snippet content copied to clipboard.",
+  "snippetCopyEmpty": "Nothing to copy — the draft is empty.",
+  "snippetCopyFailed": "Copy failed — please select the code and copy manually.",
+  "snippetRefresh": "Refresh",
+  "snippetSearch": "Search snippets",
+  "snippetSource": "Source",
+  "snippetAllSources": "All sources",
+  "snippetBuiltins": "Built-in",
+  "snippetMine": "My snippets",
+  "snippetGroupNew": "New group",
+  "snippetMetadata": "Catalog metadata (local to this plugin; drafts saved with snippet)",
+  "snippetStore": "Snippet store",
+  "snippetStoreDraft": "Create a disabled draft from this",
+  "snippetStoreBuiltinInfo": "Bundled · MIT · CSS applicable to desktop/sidebar/mobile (theme-dependent, appearance unverified) · sample preview only; network and scripts blocked",
+  "snippetStoreNativeInfo": "Native local snippet · source/license undeclared · devices unverified · original unchanged; preview network and scripts blocked",
+  "snippetStoreCommunity": "A community catalog is not established. Import local submission packs or preview Gists manually. Nothing uploads or enables automatically.",
+  "snippetAlias": "Alias",
+  "snippetTags": "Tags (comma-separated, up to 8)",
+  "snippetSummary": "Summary",
+  "snippetPinned": "Pinned",
+  "snippetCatalogSort": "Catalog sort",
+  "snippetCatalogNativeOrder": "Native order",
+  "snippetCatalogModified": "Recently changed in this plugin",
+  "snippetGroupRename": "Rename",
+  "snippetGroupDelete": "Delete group",
+  "snippetGroupView": "Group view",
+  "snippetGroupTree": "Tree",
+  "snippetGroupFlat": "Flat",
+  "snippetGroupUngrouped": "Ungrouped",
+  "snippetGroupNamePrompt": "Enter a group name",
+  "snippetGroupNameInvalid": "The name is empty, duplicated, or the group limit has been reached",
+  "snippetGroupDeleteConfirm": "Delete this group? Its snippets return to Ungrouped; native snippets are not deleted.",
+  "snippetGroupDropHint": "Drag snippets here to assign them to this group",
+  "snippetGist": "Gist publish & import",
+  "snippetGistHint": "Gists are unlisted; anyone with the link can access them. The token is stored as plain text in plugin settings and sent only in request headers. Imports create new disabled drafts.",
+  "snippetGistToken": "GitHub token",
+  "snippetGistTokenSet": "Configured (last four characters only)",
+  "snippetGistTokenPlaceholder": "Enter a GitHub token",
+  "snippetGistSaveToken": "Save token",
+  "snippetGistClearToken": "Clear token",
+  "snippetGistDescription": "Gist description",
+  "snippetGistUrl": "Full Gist URL",
+  "snippetGistPublish": "Publish new Gist",
+  "snippetGistPublishUpdate": "Update current Gist",
+  "snippetGistImportPreview": "Read Gist",
+  "snippetGistImport": "Import as disabled draft",
+  "snippetGistPreviewLoading": "Reading Gist…",
+  "snippetGistPreviewEmpty": "No parseable CSS/JS files found.",
+  "snippetGistParseable": "Parseable",
+  "snippetGistUnparseable": "Not parseable",
+  "snippetGistDiff": "Diff vs local same ID: {added} added · {removed} removed",
+  "snippetGistLink": "Gist preview ready",
+  "snippetGistPublished": "Gist published; the link was remembered.",
+  "snippetGistImported": "Imported as a disabled draft; review it before saving.",
+  "snippetGistTokenRequired": "Configure a GitHub token first.",
+  "snippetGistReplaceToken": "Replace token",
+  "snippetGistPrepareUpdate": "Read before updating",
+  "snippetGistStale": "The snippet or Gist changed; read it again and review.",
+  "snippetGistFailed": "Gist request failed. Check the URL, token gist permission, and network before retrying.",
+  "snippetGistPending": "The remote write may have landed; check GitHub before publishing again.",
+  "snippetGistUnknownNotice": "The previous Gist write has an unknown result. Your draft is preserved, and create/update are locked until you verify it on GitHub.",
+  "snippetGistRecovery": "Unlock after checking",
+  "snippetGistRecoveryTitle": "Verify the Gist write",
+  "snippetGistRecoveryMessage": "Check the previous operation on GitHub first. Unlock only after confirming it did not create or update the Gist. If it actually succeeded, submitting again may create a duplicate Gist or overwrite content again.",
+  "snippetGistRecoveryConfirm": "Checked: it did not succeed; unlock",
+  "snippetGistRecoveryCancel": "Keep locked",
+  "snippetGistRecoveryUnlocked": "Unlocked. Before submitting again, make sure the previous operation did not take effect, or you may create a duplicate Gist or overwrite content.",
+  "snippetAllTypes": "All types",
+  "snippetAllCategories": "All categories",
+  "snippetCategory": "Category",
+  "snippetCapabilities": "Capabilities and safety boundaries",
+  "snippetCapabilityCSS": "CSS preview always runs in an isolated sandbox document and never writes to your notes.",
+  "snippetCapabilityJS": "JS snippets support management and export only; preview execution stays disabled until scripts can be terminated safely.",
+  "snippetCapabilityScope": "AI sees only the current snippet and your instruction; it never reads or understands your whole vault.",
+  "snippetCapabilityStorage": "Saved snippets live only in SiYuan's native snippet storage; the studio keeps session drafts and no second persistent copy.",
+  "snippetCapabilityAI": "AI results are always drafts that need your manual acceptance and are never saved or enabled automatically.",
+  "snippetCategoryTypography": "Typography",
+  "snippetCategoryTable": "Tables",
+  "snippetCategoryFocus": "Focus",
+  "snippetCategoryCode": "Code",
+  "snippetCategoryFont": "Fonts",
+  "snippetCategoryQuote": "Quotes",
+  "snippetCategoryImage": "Images",
+  "snippetCategoryHeading": "Headings",
+  "snippetCategoryList": "Lists",
+  "snippetCategoryDivider": "Dividers",
+  "snippetCategoryTag": "Tags",
+  "snippetCategoryTheme": "Themes",
+  "snippetCategoryLayout": "Layout",
+  "snippetCategoryCustom": "Custom",
+  "snippetMore": "Show more",
+  "snippetSelect": "Select",
+  "snippetNoResults": "No matching snippets.",
+  "snippetLoading": "Loading snippets…",
+  "snippetLoaded": "Loaded snippets:",
+  "snippetImported": "Imported as a disabled draft.",
+  "snippetDiscard": "Discard this draft?",
+  "snippetLeaveTitle": "Unsaved changes",
+  "snippetLeaveMessage": "This snippet has unsaved changes. What should happen before leaving?",
+  "snippetLeaveSave": "Save and continue",
+  "snippetLeaveDiscard": "Discard changes",
+  "snippetLeaveSaveFailed": "Save did not complete; staying on the draft",
+  "snippetUndo": "Undo",
+  "snippetRedo": "Redo",
+  "snippetFormat": "Format",
+  "snippetFormatOnlyCss": "Formatting currently only supports CSS snippets",
+  "snippetFormatted": "Code formatted with standard indentation",
+  "snippetAlreadyFormatted": "Code is already well-formatted",
+  "snippetImportMerge": "Merge (Keep Enabled)",
+  "snippetImportFork": "Fork (New Copies)",
+  "snippetImportOverwrite": "Overwrite (Mirror)",
+  "snippetFindBar": "Find",
+  "snippetFindQuery": "Find text",
+  "snippetFindReplaceTo": "Replace with",
+  "snippetFindPrev": "Previous match",
+  "snippetFindNext": "Next match",
+  "snippetFindReplaceAll": "Replace all",
+  "snippetFindConfirm": "Confirm replacing {x}",
+  "snippetFindNone": "No matches",
+  "snippetFindDone": "Replaced {x}",
+  "configPackDiffTitle": "Import config pack",
+  "configPackGroupSettings": "Settings",
+  "configPackGroupDocumentSets": "Document sets",
+  "configPackActionAdd": "Add",
+  "configPackActionReplace": "Replace",
+  "configPackActionKeep": "Keep",
+  "configPackDiffNotice": "These groups will be merged into your current config (arrays replace as whole groups, no per-item merge). Confirm per group.",
+  "configPackDiffStale": "Current state changed; the diff has been refreshed. Please confirm again.",
+  "configPackApplySelected": "Apply selected groups",
+  "configPackApplyFailed": "Apply failed; current config preserved",
+  "snippetScene": "Scene",
+  "snippetSceneReading": "Reading document",
+  "snippetSceneTable": "Tables & code",
+  "snippetSceneControls": "Interface controls",
+  "snippetPreviewWidth": "Width",
+  "snippetWidthAuto": "Fit",
+  "snippetWidthNarrow": "Narrow 420",
+  "snippetWidthMedium": "Medium 768",
+  "snippetWidthWide": "Wide 1024",
+  "snippetConflictTitle": "Save conflict",
+  "snippetConflictMessage": "This snippet was changed externally; the local draft differs from the latest version.",
+  "snippetConflictContinue": "Continue editing",
+  "snippetConflictCopy": "Keep as disabled copy",
+  "snippetConflictReload": "Discard and reload latest",
+  "snippetConflictGone": "The original snippet was deleted; no diff available",
+  "snippetConflictAdded": "{x} lines added locally",
+  "snippetConflictRemoved": "{x} lines removed in latest",
+  "snippetConfirmDelete": "Delete this native snippet?",
+  "snippetConfirmJS": "Enabling JavaScript can have lasting side effects. Continue?",
+  "snippetConflict": "The native list changed elsewhere. Reload and review it before saving.",
+  "snippetUnavailable": "This SiYuan host does not provide the snippet endpoint.",
+  "snippetUsercssVars": "{n} variable defaults applied",
+  "snippetCancelled": "Cancelled",
+  "snippetTimeout": "The AI request timed out.",
+  "snippetTooLarge": "The snippet exceeds the 64 KiB limit.",
+  "snippetInvalid": "The host returned an invalid snippet result.",
+  "snippetFailed": "The operation failed.",
+  "snippetAI": "SiYuan AI",
+  "snippetAIHint": "AI receives your instruction and checked snippet context only. Documents, search results, attachments and the library are not read. Results stay drafts and are never enabled automatically.",
+  "snippetAIIncludeCode": "Send current snippet code (previous candidate when iterating)",
+  "snippetAIIncludeHistory": "Send recent conversation (iterate only, up to 6 messages)",
+  "snippetAIProviderInfo": "Uses SiYuan AI configuration. Provider, model and billing are managed by the host; this plugin cannot confirm costs or quota. Consent covers snippet requests only.",
+  "snippetAIContextSummary": "Sending: code {bytes} · {messages} conversation messages · your instruction",
+  "snippetAIContextTooLarge": "Context exceeds 64 KiB. Reduce code or uncheck conversation context and retry.",
+  "snippetAIPermissionDenied": "AI request was not authorized. Check SiYuan permissions and AI configuration. Your draft is unchanged.",
+  "snippetAIRetry": "Retry generation",
+  "snippetAICopyCandidate": "Copy candidate",
+  "snippetAIExportCandidate": "Export candidate",
+  "snippetAICandidateStale": "The draft changed after generation. Accepting requires another replacement confirmation.",
+  "snippetAIMode": "AI mode",
+  "snippetAIGenerate": "Generate",
+  "snippetAIOptimize": "Optimize",
+  "snippetAIPrompt": "Describe the change you want…",
+  "snippetAIConsent": "Allow checked context and instruction to be sent to the configured SiYuan AI provider.",
+  "snippetAISend": "Generate draft",
+  "snippetAICancel": "Cancel",
+  "snippetAIIdle": "AI is idle.",
+  "snippetAIReady": "Ready after consent",
+  "snippetAIConsentRequired": "Consent and an instruction are required.",
+  "snippetAIGenerating": "Generating…",
+  "snippetAIDone": "Draft ready for review.",
+  "snippetAIDiscarded": "AI candidate discarded; the draft is unchanged.",
+  "snippetAIExplain": "Explain",
+  "snippetAIIterate": "Iterate",
+  "snippetAICandidate": "AI draft",
+  "snippetAIAccept": "Apply selected changes",
+  "snippetAIAccepted": "Draft copied into the editor. Save it manually.",
+  "snippetAIStale": "The editor changed while AI was working. Replace the current code with this draft?",
+  "snippetAIGenerateHint": "Start a new snippet from a short visual or behavior goal.",
+  "snippetAIOptimizeHint": "Keep the current behavior and ask for a safer or cleaner implementation.",
+  "snippetAIExplainHint": "Ask for a plain-language explanation; the result stays read-only.",
+  "snippetAIIterateHint": "Continue the latest AI draft with bounded review history.",
+  "snippetAIResultHint": "The AI result appears here for review. Accepting it only copies code into the editor.",
+  "snippetSample": "Sample document · no personal notes",
+  "snippetSampleTitle": "Give ideas their own shape",
+  "snippetSampleParagraph": "中文 and English together, 1234567890. Preview headings, body text, and code.",
+  "snippetSampleQuote": "See the effect first, then decide whether to enable it.",
+  "snippetSampleSection": "A clear work record",
+  "snippetSampleCode": "Inline code",
+  "snippetSampleItem": "Item",
+  "snippetSampleState": "State",
+  "snippetSampleProgress": "Progress",
+  "snippetSampleReading": "Reading",
+  "snippetSampleReady": "Ready",
+  "snippetSampleWriting": "Writing",
+  "snippetSampleDraft": "Draft",
+  "snippetSampleButton": "Test interaction",
+  "snippetProbeTitle": "Probes matched by this CSS",
+  "snippetProbeNote": "These elements are matched by your snippet selectors — watch how your styles land on them.",
+  "snippetProbeH3": "Heading 3 probe",
+  "snippetProbeH4": "Heading 4 probe",
+  "snippetProbeH5": "Heading 5 probe",
+  "snippetProbeH6": "Heading 6 probe",
+  "snippetProbeLinksLead": "Link probe: ",
+  "snippetProbeLinksAnchor": "Visit the SiYuan website",
+  "snippetProbeListItem": "List item probe",
+  "snippetProbeListItem2": "Second item for list styling",
+  "snippetProbeTaskDone": "Completed task probe",
+  "snippetProbeTaskTodo": "Open task probe",
+  "snippetProbeImageAlt": "Image probe",
+  "snippetProbeStrong": "bold",
+  "snippetProbeEm": "italic",
+  "snippetProbeMark": "highlight",
+  "snippetProbeDel": "strikethrough",
+  "snippetProbeU": "underline",
+  "snippetProbeKbd": "Ctrl",
+  "snippetProbeTagA": "writing",
+  "snippetProbeTagB": "reading",
+  "snippetProbeTagC": "ideas",
+  "snippetBuiltinTypographyName": "Readable typography",
+  "snippetBuiltinTypographyDescription": "A calmer line height and heading rhythm for the editor.",
+  "snippetBuiltinTableName": "Quiet tables",
+  "snippetBuiltinTableDescription": "A restrained table grid with alternating rows.",
+  "snippetBuiltinFocusName": "Focused paragraph",
+  "snippetBuiltinQuoteDescription": "Blockquote enhancement: primary left border + tinted bg + nesting fade",
+  "snippetBuiltinQuoteName": "Blockquote Enhance",
+  "snippetBuiltinImgDescription": "Image rounded corners + shadow + hover deepen",
+  "snippetBuiltinImgName": "Image Rounded",
+  "snippetBuiltinHeadingDescription": "Heading hierarchy: H1 underline + H2 left border + H3 primary color",
+  "snippetBuiltinHeadingName": "Heading Hierarchy",
+  "snippetBuiltinListDescription": "List enhancement: ordered primary color + hover scale",
+  "snippetBuiltinListName": "List Enhance",
+  "snippetBuiltinDividerDescription": "Divider gradient: primary fade transition",
+  "snippetBuiltinDividerName": "Divider Gradient",
+  "snippetBuiltinEyecareDescription": "Eye care mode: warm background reduces visual fatigue",
+  "snippetBuiltinEyecareName": "Eye Care",
+  "snippetBuiltinLineheightDescription": "Enhanced line spacing: paragraphs 2.1, lists 1.9 for better readability",
+  "snippetBuiltinLineheightName": "Line Spacing",
+  "snippetBuiltinHiconDescription": "Add colored icons before headings for visual hierarchy",
+  "snippetBuiltinHiconName": "Heading Icons",
+  "snippetBuiltinCardparaDescription": "Card-style paragraphs: rounded corners + tinted bg + hover highlight",
+  "snippetBuiltinCardparaName": "Card Paragraphs",
+  "snippetBuiltinCodeThemeDescription": "Code block theme: rounded corners + subtle primary bg + colored toolbar",
+  "snippetBuiltinInlinecodeName": "Inline Code Pill",
+  "snippetBuiltinInlinecodeDescription": "Tints inline code with the theme primary, rounded border for instant scanning.",
+  "snippetBuiltinLinkName": "Link Hover Polish",
+  "snippetBuiltinLinkDescription": "Offsets link underlines and lights them up in the primary color on hover.",
+  "snippetBuiltinTaskName": "Task Checkbox Polish",
+  "snippetBuiltinTaskDescription": "Rounds and scales task checkboxes with primary accent and hover feedback.",
+  "snippetBuiltinZebraName": "Table Zebra Stripes",
+  "snippetBuiltinZebraDescription": "Subtle primary tint on alternating table rows for easier scanning.",
+  "snippetBuiltinMarkName": "Mark Highlight Polish",
+  "snippetBuiltinMarkDescription": "Rounds text marks with a primary tint that deepens on hover.",
+  "snippetBuiltinKbdName": "Keyboard Key Caps",
+  "snippetBuiltinKbdDescription": "Gives kbd keys a lifted key-cap look so shortcuts read at a glance.",
+  "snippetBuiltinImgzoomName": "Image Hover Zoom",
+  "snippetBuiltinImgzoomDescription": "Gently scales images on hover with a primary glow for a preview feel.",
+  "snippetBuiltinTaskdoneName": "Completed Task Softening",
+  "snippetBuiltinTaskdoneDescription": "Dims and strikes through finished task items to keep focus on what's left.",
+  "snippetBuiltinTheadName": "Table Header Accent",
+  "snippetBuiltinTheadDescription": "Bolds table headers with a primary tint and underline for clearer columns.",
+  "snippetBuiltinScrollbarName": "Scrollbar Refinement",
+  "snippetBuiltinScrollbarDescription": "Slim rounded content scrollbars that light up in the primary color on hover.",
+  "snippetBuiltinCodeThemeName": "Code Block Theme",
+  "snippetBuiltinTagDescription": "Tag pill: primary tint + rounded + hover invert",
+  "snippetBuiltinTagName": "Tag Pill",
+  "snippetBuiltinFocusDescription": "A subtle accent marks the paragraph receiving focus.",
+  "snippetBuiltinCodeName": "Comfortable code blocks",
+  "snippetBuiltinCodeDescription": "A border, padding, and readable code line height.",
+  "snippetBuiltinFontName": "Serif reading mix",
+  "snippetBuiltinFontDescription": "A conservative serif stack for prose and a system stack for code.",
+  "docSearchPreviewFailed": "Preview incomplete. Focus the item again to retry.",
+  "docSearchPreviewNoContent": "No outline or excerpt available",
+  "docSearchPreviewUnavailable": "Preview available for documents only",
+  "actionPaletteTitle": "Action palette",
+  "actionPaletteSearch": "Search actions",
+  "actionPaletteEmpty": "No actions available",
+  "actionPaletteHint": "↑↓ select · Enter run · Esc close",
+  "actionPaletteOpenInActive": "Open in current tab",
+  "actionPaletteOpenInRight": "Open in right pane",
+  "actionPaletteOpenInBottom": "Open in bottom pane",
+  "actionPaletteOpenInPreview": "Open in preview",
+  "actionPaletteRestoreDocSet": "Restore document set",
+  "actionPaletteCopyBlockLink": "Copy block link",
+  "actionPaletteCopyMarkdownLink": "Copy as Markdown reference",
+  "actionPaletteCopyId": "Copy ID",
+  "actionPaletteCopyPath": "Copy document path",
+  "actionPalettePinTab": "Pin",
+  "actionPaletteUnpinTab": "Unpin",
+  "actionPaletteFavoriteTab": "Add to favorites",
+  "actionPaletteUnfavoriteTab": "Remove from favorites",
+  "actionPaletteCloseTab": "Close tab"
 }

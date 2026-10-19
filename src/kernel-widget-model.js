@@ -3,6 +3,23 @@
 // T-6465：用户内容（名称/标题/标签/路径）排序显式钉定 zh 拼音 Collator，
 // 消除 localeCompare 缺省 locale 的宿主漂移（CI 镜像升级实证）。
 const {compareText} = require("./util.js");
+// T-7336：av 属性视图轻量只读看板模型（分组聚合/多视图/字段清单）。
+const {
+    normalizeAvBoardConfig,
+    extractAvBoardCellText,
+    collectAvBoardRows,
+    listAvBoardFields,
+    listAvBoardViews,
+    buildAvBoardSnapshot,
+} = require("./av-board-model.js");
+// T-7337：闪卡间隔重复复习模型（SM-2 调度推演/每日队列/掌握度统计）。
+const {
+    normalizeFlashcardReviewConfig,
+    scheduleSm2Review,
+    buildDailyReviewQueue,
+    buildMasteryProgress,
+    buildFlashcardReviewSnapshot,
+} = require("./flashcard-review-model.js");
 
 // 内核数据组件的有界投影模型（T-6321~T-6325、T-6328）。
 // 数据源全部是思源内核自带的只读端点（v3.8.x 起）：置顶文档、收集箱、最近更新块、
@@ -576,44 +593,10 @@ function normalizeAvTableConfig(value) {
 
 // 宽容抽取：av.Value 的形态随字段类型不同（text.content / number / mSelect / block），
 // 逐族尝试取展示文本；全不命中返回空串（调用方跳过）。绝不透传原始 JSON。
+// T-7336：实现下沉到 av-board-model 单点持有（含 mAsset 分支），此处改为转发，
+// 消除两处 ~25 行重复；av 取值契约由 av-table/av-board 双测试共同守护。
 function extractAvCellText(value, depth = 0) {
-    if (!value || typeof value !== "object" || depth > 2) return "";
-    if (typeof value.renderedContent === "string") return value.renderedContent;
-    if (value.text && typeof value.text.content === "string") return value.text.content;
-    if (value.block && typeof value.block.content === "string") return value.block.content;
-    if (value.number && typeof value.number.formattedContent === "string") return value.number.formattedContent;
-    if (value.number && Number.isFinite(Number(value.number.content))) return String(value.number.content);
-    if (Array.isArray(value.mSelect)) {
-        return value.mSelect
-            .map((option) => (option && typeof option.content === "string" ? option.content : ""))
-            .filter(Boolean)
-            .join("、");
-    }
-    if (value.date && typeof value.date.formattedContent === "string") return value.date.formattedContent;
-    if (value.date && ["string", "number"].includes(typeof value.date.content)) return String(value.date.content);
-    for (const key of ["url", "email", "phone"]) {
-        if (value[key] && typeof value[key].content === "string") return value[key].content;
-    }
-    if (value.checkbox && typeof value.checkbox.checked === "boolean") return value.checkbox.checked ? "☑" : "☐";
-    if (Array.isArray(value.mAsset)) {
-        return value.mAsset.slice(0, 3)
-            .map((asset) => asset && (boundedText(asset.name, 48) || boundedText(asset.content, 72)))
-            .filter(Boolean)
-            .join("、");
-    }
-    if (typeof value.template === "string") return value.template;
-    if (value.template && typeof value.template.content === "string") return value.template.content;
-    for (const key of ["created", "updated"]) {
-        if (value[key] && typeof value[key].formattedContent === "string") return value[key].formattedContent;
-    }
-    for (const key of ["relation", "rollup"]) {
-        if (!value[key] || !Array.isArray(value[key].contents)) continue;
-        return value[key].contents.slice(0, 3)
-            .map((entry) => extractAvCellText(entry, depth + 1))
-            .filter(Boolean)
-            .join("、");
-    }
-    return "";
+    return extractAvBoardCellText(value, depth);
 }
 
 // v3.8.x 返回 view.table；较新的公开 API 把 columns/rows/rowCount 直接挂在 view 上。
@@ -1896,6 +1879,12 @@ module.exports = {
     normalizeAvTableConfig,
     extractAvCellText,
     buildAvTableSnapshot,
+    normalizeAvBoardConfig,
+    extractAvBoardCellText,
+    collectAvBoardRows,
+    listAvBoardFields,
+    listAvBoardViews,
+    buildAvBoardSnapshot,
     normalizeRandomReviewConfig,
     buildRandomReviewSnapshot,
     normalizeRecentEditsConfig,
@@ -1920,6 +1909,11 @@ module.exports = {
     buildTodayTasksSnapshot,
     normalizeFlashcardDueConfig,
     buildFlashcardDueSnapshot,
+    normalizeFlashcardReviewConfig,
+    scheduleSm2Review,
+    buildDailyReviewQueue,
+    buildMasteryProgress,
+    buildFlashcardReviewSnapshot,
     normalizeJournalCalendarConfig,
     normalizeNoteStatsConfig,
     buildNoteStatsSnapshot,

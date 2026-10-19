@@ -32,7 +32,14 @@
 | 桌面切换器、数字直达、MRU/六种排序、置顶、分栏 | implemented / locally tested / real host partial | 数字键帽 1-9 显隐、可见性过滤与激活映射契约已加固（T-7324）；最新主题、200% 缩放与最窄 Dock 持续待验 |
 | 收藏/分组、最近打开/关闭、日记入口、文档集保存恢复 | implemented / locally tested / real host partial | 写入、恢复与返回现场已有隔离思源证据（含 document-sets.spec.mjs、favorites-flow.spec.mjs 与 recent-closed-flow.spec.mjs 闭环）；长期大工作区现场仍待持续观测 |
 | 已开页签→已开文档内容→全库标题/受限全文 | implemented / locally tested / real host partial | API 缺失时降级；不替代原生搜索，也不承诺全库无限结果 |
-| 笔记本、类型、方式、排序与路径筛选、保存筛选 | implemented / locally tested / real host partial | 桌面路径端点已有 200/22ms 及防御契约，245px 最窄 Dock 控件可达已取证（T-7311）；移动块定位及未知旧宿主语义继续待证 |
+| 笔记本、类型、方式、排序与路径筛选、保存筛选、路径首字母缩写加速 | implemented / locally tested / real host partial | 桌面路径端点已有 200/22ms 及防御契约；VS Code 式路径首字母模糊加速打分（`syk` 命中 `思源库/研发/小驴雷切`）与稳定重排已闭环（T-7334）；Raycast 式次级动作画板纯领域模型（条目上下文/可用动作/即时过滤/执行回执）已闭环（T-7335，UI 装配与键盘导航归后续生产接线）；移动块定位及未知旧宿主语义继续待证 |
+| 深入穿透检索（: 大纲穿透与 ^ 块搜索） | implemented / locally tested | Obsidian 风格语法解析（^块模式/:大纲模式）、引号与URL转义保护、大纲标题层级加权打分（H1>H2）及块结果归一化（BLOCK_ID_RE）已闭环（T-7338）；切换器搜索框的 UI 渲染分流与键盘回车穿透跳转归后续生产接线 |
+| 次级动作画板键盘导航 | implemented / locally tested | Action Palette 纯函数式键盘状态机（Tab/⌘K 唤出/上下/Enter/Escape）、循环 wrap-around 光标、空动作 Enter 防越界、非法 event 防崩契约已闭环（T-7339）；UI 弹层装配与快捷键全局监听归后续生产接线 |
+| Action Palette 面板声明式结构 | implemented / locally tested | 基于键盘状态机的声明式 DOM 模型（role=dialog + aria-modal + aria-activedescendant + role=listbox/option）、三端 className 字典（desktop/sidebar/mobile）、section 字典序与 isDestructive 标记契约已闭环（T-7340）；真实 DOM 节点创建、事件挂载、聚焦环、跨端样式实现归后续生产接线 |
+| Action Palette 真实 DOM 装配 | implemented / locally tested | 基于原生 DOM 装配（mountActionPalette）、a11y 树结构、实时输入过滤与键盘状态机联动、Disposer 生命周期清理与 18 个 i18n 资源键已闭环（T-7341）；切换器主界面的全局唤出热键与右键菜单无缝接力归后续生产接线 |
+| 深入穿透检索运行时编排 | implemented / locally tested | 端点请求规划（doc/block/outline 模式分流）、防注入 SQL 生成（单引号双写/危险字符剔除/只读 SELECT/LIMIT 钳制）、大纲树展平与结果聚合归一化契约已闭环（T-7342）；切换器主搜索框的异步请求发送与 UI 渲染接力归后续生产接线 |
+| Database 属性视图（av）轻量只读看板 | implemented / locally tested | av 分组聚合（计数/占比/有界代表项）、字段与视图清单、分组视图行源合并去重已闭环（T-7336）；av 取值实现单点化消除重复；UI 卡片装配与真实宿主 av 联调归后续生产接线 |
+| 闪卡复习（间隔重复）进度看板 | implemented / locally tested | SM-2 调度推演（未掌握重置/ease 递进/一年上限）、每日复习队列切片、掌握度分层进度（learning/young/mature）已闭环（T-7337）；UI 卡片渲染与真实宿主闪卡交互归后续生产接线 |
 | 右侧内容预览、预览内查找、取消/失败重试 | implemented / locally tested | 预览窗格长内容截断防溢出与读屏 aria-live 回执契约已加固（T-7316）；当前真实主题仍待持续复验 |
 | 移动切换器、排序/分组 sheet、焦点恢复 | implemented / locally tested | 底部 Sheet 模态声明（role=dialog、aria-modal）、Escape/Backdrop 拦截及焦点安全恢复契约已加固（T-7319）；真实 Android 触控仍按 B-004 后置 |
 | 工作台查看/编辑、尺寸、重排/长按、拉伸、撤销重做 | implemented / locally tested | 七档 Bento 尺寸归一化、X 英雄位与焦点环契约已固化（T-7314）；真实 Android 手势待验收 |
