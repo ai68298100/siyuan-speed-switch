@@ -9,7 +9,9 @@ const ts = require("typescript");
 const {readSourceFile} = require("./source-scan.cjs");
 const {createSearchSession, beginSearch, cacheSearchResult} = require("../src/search-session.js");
 // T-7334：runDocSearchFetch 依赖首字母缩写重排，AST 抽取后必须一并注入。
-const {normalizeTitleSearchDocuments, rankDocumentsByPathAcronym} = require("../src/search-model.js");
+const {normalizeTitleSearchDocuments, rankDocumentsByPathAcronym, planPenetrationSearchRequest, aggregatePenetrationResults, SEARCH_MODES} = require("../src/search-model.js");
+// T-7343：穿透分支引用的 BLOCK_ID_RE 来自 constants.js（与 doc-search-ui.ts 同源）
+const {BLOCK_ID_RE} = require("../src/constants.js");
 
 const uiSource = readSourceFile("src/doc-search-ui.ts");
 const sourceFile = ts.createSourceFile("doc-search-ui.ts", uiSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -34,6 +36,7 @@ function makeRunner(overrides = {}) {
         "runOpenedDocumentContentSearch", "runFullTextSearchFallback", "filterDocSearchResults", "canUseTitleSearch",
         "buildSearchCacheKey", "cacheSearchResult", "DOC_SEARCH_FETCH_LIMIT", "logger", "fetch",
         "normalizeTitleSearchDocuments", "rankDocumentsByPathAcronym",
+        "planPenetrationSearchRequest", "aggregatePenetrationResults", "SEARCH_MODES", "BLOCK_ID_RE",
         `${compiled}\nreturn runDocSearchFetch;`,
     )(
         new WeakMap(), 0,
@@ -75,6 +78,10 @@ function makeRunner(overrides = {}) {
         fetchImpl,
         overrides.normalizeTitleSearchDocuments || normalizeTitleSearchDocuments,
         overrides.rankDocumentsByPathAcronym || rankDocumentsByPathAcronym,
+        overrides.planPenetrationSearchRequest || planPenetrationSearchRequest,
+        overrides.aggregatePenetrationResults || aggregatePenetrationResults,
+        overrides.SEARCH_MODES || SEARCH_MODES,
+        overrides.BLOCK_ID_RE || BLOCK_ID_RE,
     );
     runner.requestKernelJsonOutcome = async (url, body, options = {}) => {
         try {

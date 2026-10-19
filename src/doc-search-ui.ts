@@ -6,7 +6,7 @@ import {Dialog, Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
 import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, normalizeTitleSearchDocuments, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, rankDocumentsByPathAcronym, resolveDocSearchResultId, resolveSearchNotebookId, SAVED_SEARCH_NAME_MAX, SAVED_SEARCH_QUERY_MAX, buildSavedSearchReplayFilters} from "./search-model";
+import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, normalizeTitleSearchDocuments, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, rankDocumentsByPathAcronym, resolveDocSearchResultId, resolveSearchNotebookId, SAVED_SEARCH_NAME_MAX, SAVED_SEARCH_QUERY_MAX, buildSavedSearchReplayFilters, planPenetrationSearchRequest, aggregatePenetrationResults, SEARCH_MODES} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {applyPreviewFind, clampScrollTop, clearPreviewFind, HIT_CLASS, nextHitIndex} from "./doc-preview-find";
@@ -14,7 +14,7 @@ import {logger} from "./logger";
 import {createPlatformStatus} from "./platform-dom";
 import {mountPlatformDialogCloseHint} from "./platform-dom";
 import type {DocSearchState} from "./doc-search-state";
-import type {IDocSearchFilters, IDocSearchResult, ISearchSession, DocSearchRenderState, IOverlayClose} from "./index";
+import type {IDocSearchFilters, IDocSearchResult, IPenetrationSearchPlan, ISearchSession, DocSearchRenderState, IOverlayClose} from "./index";
 
 type Tab = ReturnType<typeof getAllTabs>[number];
 
@@ -47,7 +47,9 @@ export interface DocSearchUiHost {
     filterCards(scrollElement: HTMLElement, keyword: string, contentRoots: Set<string>, filters: IDocSearchFilters): number;
     isSemanticSearchAvailable(): boolean;
     getMobileTabs(): Tab[];
+    getActiveTab?: () => Tab | undefined;
     rootIdOf(tab: Tab): string | null;
+    titleOf?: (tab: Tab) => string;
     mobileOpenDoc(rootId: string): Promise<boolean>;
     lastPickedByQuery: Map<string, string>;
     /** T-6827 保存的搜索 */
@@ -797,6 +799,99 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
             // including cache hits. Report failures separately from zero hits.
             const requestScope = docSearchRequestScope(scrollElement);
             if (signal) (signal as AbortSignal & {__swDocSearchScope?: string}).__swDocSearchScope = requestScope;
+
+            let activeDocId = "";
+            let activeDocTitle = "";
+            try {
+                const activeTab = this.getActiveTab ? this.getActiveTab() : undefined;
+                if (activeTab) {
+                    activeDocId = (this.rootIdOf ? this.rootIdOf(activeTab) : "") || (activeTab as unknown as {id?: string})?.id || "";
+                    activeDocTitle = (this.titleOf ? this.titleOf(activeTab) : "") || (activeTab as unknown as {title?: string})?.title || "";
+                }
+            } catch (_) {}
+
+            const penetrationPlan = planPenetrationSearchRequest(fetchText, {
+                activeDocId,
+                activeDocTitle,
+                notebookId: filters.notebook,
+            }) as IPenetrationSearchPlan;
+
+            if (penetrationPlan.isPenetration) {
+                if (penetrationPlan.empty || penetrationPlan.error) {
+                    report({state: "ready", counts: {global: 0}, totalLatencyMs: elapsed(),
+                        sources: {global: {status: "empty"}}});
+                    renderDocResults.call(this, scrollElement, [], onClose, "empty");
+                    return;
+                }
+
+                const cached = session.cache.get(cacheKey);
+                if (cached) {
+                    report({state: "ready", cacheHit: true, totalLatencyMs: elapsed(),
+                        counts: {global: cached.length}, sources: {global: {status: cached.length ? "ready" : "empty"}}});
+                    renderDocResults.call(this, scrollElement, cached, onClose);
+                    return;
+                }
+
+                let docs: IDocSearchResult[] = [];
+                if (penetrationPlan.mode === SEARCH_MODES.BLOCK) {
+                    const response = await boundedSearchRequest.call(this, penetrationPlan.endpoint, penetrationPlan.body, signal,
+                        `${requestScope}:penetration-block`);
+                    if (!response.ok) throw new Error("blockSearch unavailable");
+                    const json = await response.json();
+                    if (!current()) return;
+                    docs = aggregatePenetrationResults(penetrationPlan, json, {
+                        activeDocId,
+                        activeDocTitle,
+                    }) as IDocSearchResult[];
+                } else if (penetrationPlan.mode === SEARCH_MODES.OUTLINE) {
+                    if (penetrationPlan.isCurrentDoc) {
+                        const response = await boundedSearchRequest.call(this, penetrationPlan.endpoint, penetrationPlan.body, signal,
+                            `${requestScope}:penetration-outline`);
+                        if (!response.ok) throw new Error("outline unavailable");
+                        const json = await response.json();
+                        if (!current()) return;
+                        docs = aggregatePenetrationResults(penetrationPlan, json, {
+                            activeDocId,
+                            activeDocTitle,
+                        }) as IDocSearchResult[];
+                    } else {
+                        const docResp = await boundedSearchRequest.call(this, penetrationPlan.endpoint, penetrationPlan.body, signal,
+                            `${requestScope}:penetration-cross-doc`);
+                        if (!docResp.ok) throw new Error("searchDocs unavailable");
+                        const docJson = await docResp.json();
+                        if (!current()) return;
+                        const matchedDocs = Array.isArray(docJson?.data) ? docJson.data : [];
+                        if (matchedDocs.length > 0) {
+                            const targetDoc = matchedDocs[0];
+                            const targetId = resolveDocSearchResultId(targetDoc);
+                            const targetTitle = String(targetDoc.title || targetDoc.name || targetDoc.hPath?.split("/").pop() || targetId);
+                            if (targetId && BLOCK_ID_RE.test(targetId)) {
+                                const outlineResp = await boundedSearchRequest.call(this, "/api/outline/getDocOutline", {id: targetId}, signal,
+                                    `${requestScope}:penetration-cross-outline`);
+                                if (outlineResp.ok) {
+                                    const outlineJson = await outlineResp.json();
+                                    if (!current()) return;
+                                    docs = aggregatePenetrationResults({
+                                        ...penetrationPlan,
+                                        activeDocId: targetId,
+                                        activeDocTitle: targetTitle,
+                                    }, outlineJson, {
+                                        activeDocId: targetId,
+                                        activeDocTitle: targetTitle,
+                                    }) as IDocSearchResult[];
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!current()) return;
+                cacheSearchResult(session, cacheKey, docs);
+                report({state: "ready", counts: {global: docs.length}, totalLatencyMs: elapsed(),
+                    fallbackUsed: false, sources: {global: {status: docs.length ? "ready" : "empty", latencyMs: elapsed()}}});
+                renderDocResults.call(this, scrollElement, docs, onClose);
+                return;
+            }
+
             openedPromise = runOpenedDocumentContentSearch.call(this, fetchText, signal, filters,
                 (source: {status: string; count: number; latencyMs: number}) => {
                     report({counts: {opened: source.count}, sources: {opened: source}});
@@ -1041,9 +1136,6 @@ export function renderDocResults(this: DocSearchUiHost,
             appendDocSearchStatus.call(this, box, state, scrollElement, onClose, onRetry);
             return;
         }
-        // 排除当前已打开的文档（上半部分已有对应卡片）；手机端 getAllTabs() 恒为空，需用 MobileTabs 数据源
-        const openRootIds = collectOpenRootIds.call(this);
-
         // T-6802：运算符客户端预过滤（排除项剔除 / 短语必须命中），以及
         // "上次选择置顶"——同一查询下用户上次选中的结果优先展示。
         const parsedQuery = this.docSearchState.parsedQueries.get(scrollElement);
@@ -1054,6 +1146,9 @@ export function renderDocResults(this: DocSearchUiHost,
                 parsedQuery,
             ));
         }
+        // 排除当前已打开的文档（上半部分已有对应卡片）；深入穿透检索针对正文块与大纲，不排除已打开文档
+        const isPenetration = (effectiveDocs || []).some((doc) => doc.kind === "heading" || doc.kind === "block");
+        const openRootIds = isPenetration ? new Set<string>() : collectOpenRootIds.call(this);
         const queryKey = (scrollElement.dataset.swDocSearchQuery || "").trim().toLowerCase();
         const promoteId = queryKey ? this.lastPickedByQuery.get(queryKey) : undefined;
 
@@ -1863,6 +1958,9 @@ export function docSearchResultId(this: DocSearchUiHost, doc: IDocSearchResult):
      * fallback because older search responses may only contain document IDs.
      */
 export function docSearchHitId(this: DocSearchUiHost, doc: IDocSearchResult, rootId: string): string | null {
+        if (doc.blockId && BLOCK_ID_RE.test(String(doc.blockId)) && String(doc.blockId) !== rootId) {
+            return String(doc.blockId);
+        }
         const candidates = [
             ...(Array.isArray(doc.blockIds) ? doc.blockIds : []),
             ...(Array.isArray(doc.snippets) ? doc.snippets.map((snippet) => snippet?.blockId || "") : []),
@@ -1906,10 +2004,16 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         item.type = "button";
         item.className = "sw__doc-item";
         // T-6825 视口锚定依赖的稳定条目身份
-        item.dataset.swDocKey = id;
+        const docRootKey = String(doc.rootId || id);
+        item.dataset.swDocKey = docRootKey;
         const icon = document.createElement("span");
         icon.className = "sw__doc-icon";
-        icon.innerHTML = '<svg aria-hidden="true"><use xlink:href="#iconFile"></use></svg>';
+        const iconHref = doc.kind === "heading"
+            ? "#iconAlignLeft"
+            : doc.kind === "block"
+                ? "#iconParagraph"
+                : "#iconFile";
+        icon.innerHTML = `<svg aria-hidden="true"><use xlink:href="${iconHref}"></use></svg>`;
         const copy = document.createElement("span");
         copy.className = "sw__doc-copy";
         const title = document.createElement("span");
@@ -1929,11 +2033,15 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         }
         const source = document.createElement("span");
         source.className = "sw__doc-source";
-        source.textContent = doc.source === "opened"
-            ? this.i18n.docSearchSourceOpened
-            : doc.source === "title"
-                ? this.i18n.docSearchSourceTitle
-                : this.i18n.docSearchSourceFullText;
+        if (doc.kind === "heading" || doc.kind === "block") {
+            source.textContent = doc.subTitle || (doc.kind === "heading" ? "标题" : "正文块");
+        } else {
+            source.textContent = doc.source === "opened"
+                ? this.i18n.docSearchSourceOpened
+                : doc.source === "title"
+                    ? this.i18n.docSearchSourceTitle
+                    : this.i18n.docSearchSourceFullText;
+        }
         let snippetElement: HTMLSpanElement | null = null;
         const snippets = Array.isArray(doc.snippets)
             ? doc.snippets.map((snippet) => String(snippet?.text || "").trim()).filter(Boolean).join(" · ")
@@ -1955,17 +2063,17 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         }
         const path = document.createElement("span");
         path.className = "sw__doc-path";
-        path.textContent = hPath || docTitle;
+        path.textContent = hPath || (doc.kind ? (doc.subTitle || "") : docTitle);
         copy.appendChild(title);
         copy.appendChild(source);
         if (snippetElement) copy.appendChild(snippetElement);
         copy.appendChild(path);
         item.appendChild(icon);
         item.appendChild(copy);
-        item.title = hPath || docTitle;
-        item.setAttribute("aria-label", hPath || docTitle);
+        item.title = hPath || (doc.kind ? `${docTitle} (${source.textContent})` : docTitle);
+        item.setAttribute("aria-label", item.title);
         // T-6837 块级锚定随行持久化：点击与数字直达共用同一命中块，行为一致
-        const hitId = docSearchHitId.call(this, doc, id);
+        const hitId = docSearchHitId.call(this, doc, docRootKey);
         item.dataset.swDocHit = hitId || "";
         item.addEventListener("click", (event) => {
             // T-6837：激活路径单一化（点击与数字直达共用 activateDocResultItem；

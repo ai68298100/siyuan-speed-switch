@@ -19,7 +19,13 @@ const {
     resolveSearchNotebookId,
     // T-7334：runDocSearchFetch 依赖首字母缩写重排，AST 抽取后必须一并注入。
     rankDocumentsByPathAcronym,
+    // T-7343：穿透检索分支（计划/聚合/模式常量）。
+    planPenetrationSearchRequest,
+    aggregatePenetrationResults,
+    SEARCH_MODES,
 } = require("../src/search-model.js");
+// T-7343：BLOCK_ID_RE 与 doc-search-ui.ts 同源（constants.js）。
+const {BLOCK_ID_RE} = require("../src/constants.js");
 
 const uiSource = readSourceFile("src/doc-search-ui.ts");
 const sourceFile = ts.createSourceFile("doc-search-ui.ts", uiSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -47,6 +53,7 @@ function makeRunner(overrides = {}) {
         "DOC_SEARCH_FETCH_LIMIT", "logger", "fetch", "buildOpenedDocumentSearchRequests",
         "extractSearchRecords", "normalizeSearchResult", "buildFullTextSearchRequest",
         "aggregateSearchResults", "resolveSearchNotebookId", "rankDocumentsByPathAcronym",
+        "planPenetrationSearchRequest", "aggregatePenetrationResults", "SEARCH_MODES", "BLOCK_ID_RE",
         `${compiledFunctions}\nreturn {runDocSearchFetch, runOpenedDocumentContentSearch, runFullTextSearchFallback};`,
     )(
         new WeakMap(), 0,
@@ -81,6 +88,10 @@ function makeRunner(overrides = {}) {
         overrides.aggregateSearchResults || aggregateSearchResults,
         overrides.resolveSearchNotebookId || resolveSearchNotebookId,
         overrides.rankDocumentsByPathAcronym || rankDocumentsByPathAcronym,
+        overrides.planPenetrationSearchRequest || planPenetrationSearchRequest,
+        overrides.aggregatePenetrationResults || aggregatePenetrationResults,
+        overrides.SEARCH_MODES || SEARCH_MODES,
+        overrides.BLOCK_ID_RE || BLOCK_ID_RE,
     );
     runner.requestKernelJsonOutcome = async (url, body, options = {}) => {
         try {

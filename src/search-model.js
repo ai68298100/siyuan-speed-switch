@@ -1495,6 +1495,9 @@ function buildOpenedDocumentSearchRequests(tabs, query, options = {}) {
  * the direct id, then the searchDocs path basename (notebook/rootID.sy).
  */
 function resolveDocSearchResultId(doc) {
+    if ((doc?.kind === "heading" || doc?.kind === "block") && doc?.blockId && BLOCK_ID_RE.test(String(doc.blockId))) {
+        return String(doc.blockId);
+    }
     const rootId = String(doc?.rootId || "");
     if (BLOCK_ID_RE.test(rootId)) return rootId;
     const directId = String(doc?.id || "");

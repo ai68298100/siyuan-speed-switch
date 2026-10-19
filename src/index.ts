@@ -478,8 +478,10 @@ type JournalActionOutcome =
 export interface IDocSearchResult {
     id?: string;
     rootId?: string;
+    blockId?: string;
     name?: string;
     title?: string;
+    subTitle?: string;
     path?: string;
     hPath?: string;
     notebookId?: string;
@@ -488,6 +490,28 @@ export interface IDocSearchResult {
     blockIds?: string[];
     snippets?: Array<{text?: string; blockId?: string | null}>;
     source?: string;
+    kind?: "document" | "heading" | "block" | string;
+    icon?: string;
+    depth?: number;
+    subType?: string;
+}
+
+export interface IPenetrationSearchPlan {
+    isPenetration: boolean;
+    mode: string;
+    endpoint?: string;
+    body?: Record<string, unknown>;
+    method?: string;
+    query?: string;
+    empty?: boolean;
+    error?: string;
+    hint?: string;
+    isCurrentDoc?: boolean;
+    activeDocId?: string;
+    activeDocTitle?: string;
+    blockNeedle?: string;
+    docNeedle?: string;
+    headingNeedle?: string;
 }
 
 export interface IDocSearchFilters {
