@@ -5,6 +5,15 @@
 
 ## Changelog (full history)
 
+### v0.47.6 (2026-10-19)
+
+- **Isolated Real-Host E2E Verifications**: Document set restore with inbox shorthands aligned to cloud inbox (`tests/e2e/document-sets.spec.mjs`); snippet studio 3-mode import (Merge / Fork / Overwrite) and save lifecycle (`tests/e2e/snippet-import-save.spec.mjs`); favorites grouping with work context return (`tests/e2e/favorites-flow.spec.mjs`); and recent opened vs closed diff-sensing alignment (`tests/e2e/recent-closed-flow.spec.mjs`).
+- **Cross-Surface High-Contrast & A11y Reinforcement**: System-level `forced-colors: active` and `prefers-contrast: more` token hierarchy and high-visibility keyboard focus rings matching WCAG accessibility expectations.
+- **Core Dispatch & Data Safety Guardrails**: Request service recursion defense (>16 levels) and bounded retries (`MAX_RETRIES = 2`); Agent synchronous native ID reads and SQLite scoping to prevent asynchronous overwrites; snippet recycle bin triple-cap eviction and Gist token masking.
+- **Snippet Studio Safety & Lifecycle**: Snippet recycle bin 50-item / 30-day / 256KB triple-cap eviction with safe disabled draft recovery; Gist credential 4-dot masking (`••••cdef`), mandatory `public: false` unlisted declaration, and config-pack exclusion; snippet AI single-snippet authorization, 64KB bounded context, and SSE cancellation.
+- **Floating Ball & Settings Search Enhancements**: Viewport out-of-bounds inward anchor clamping, action target collision separation; settings center multi-token AND matching across 10 tabs with live DOM element focus routing.
+- **Verification**: Full test suite 8850 passed, 1 skipped, 0 failed; package.zip safely bounded below the 578 KiB release gate; all batch release, quality, and integration audits pass.
+
 ### v0.47.5 (2026-10-17)
 
 - **Zero-dependency lightweight code formatter**: native state-machine parser for CSS selectors, declarations, indentation, and cursor projection (`formatWithCursor`), eliminating 200KB+ Prettier overhead.

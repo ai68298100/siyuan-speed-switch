@@ -1,18 +1,18 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.47.5-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.47.6-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Latest stable release: v0.47.5 (2026-10-17)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.5) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Latest stable release: v0.47.6 (2026-10-19)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.6) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
-## What's New In v0.47.5 (2026-10-17)
+## What's New In v0.47.6 (2026-10-19)
 
-- Zero-dependency lightweight code formatter: native state-machine parser for CSS selectors, declarations, indentation, and cursor projection (`formatWithCursor`), eliminating 200KB+ Prettier overhead.
-- 3-mode snippet import planning engine: Merge (preserves local enabled state and ordering), Fork (regenerates unique IDs for safe experimentation), and Overwrite (full mirror).
-- Cross-surface crystalline rim-light and tactile bevel alignment: workbench cells, preview rail, and studio sections declare 1px crystalline top highlight (`--sw-rim-light`) and ambient occlusion soft shadows.
-- Masterpiece high-fidelity prototype fully integrates multi-device viewport simulation (Desktop/iPad/Mobile/Dock) and 40+ interactive feedback paths.
+- **Isolated Real-Host E2E Verifications**: Document set restore, favorites grouping, recent records, and 3-mode snippet import planning verified on real isolated SiYuan instances.
+- **Cross-Surface High-Contrast & A11y Reinforcement**: System-level `forced-colors: active` and `prefers-contrast: more` token hierarchy and high-visibility keyboard focus rings.
+- **Core Dispatch & Data Safety Guardrails**: Request service recursion defense (>16 levels) and bounded retries; Agent synchronous native ID reads; snippet recycle bin triple-cap eviction and Gist token masking.
+- **Floating Ball & Settings Search Enhancements**: Viewport out-of-bounds inward anchor clamping, multi-token AND matching across 10 settings tabs, and live element focus routing.
 
 Itemized changes, validation data, and release history are in the [complete changelog](./docs/CHANGELOG.en-US.md).
 
@@ -385,7 +385,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and size budgets after building: 578 KiB archive, 1160 KiB raw bundle, and 320 KiB compressed per entry (see [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)). Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.47.5`, featuring zero-dependency code formatting, 3-mode snippet import planning, cross-surface crystalline rim-light bevels, and multi-device bento layouts. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
+The current version is `v0.47.6`, featuring real-host E2E verifications, cross-surface high-contrast accessibility, request service safety guardrails, and floating ball free-placement contracts. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>

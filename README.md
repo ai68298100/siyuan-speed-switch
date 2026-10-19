@@ -1,18 +1,18 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.47.5-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.47.6-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **最近正式版：v0.47.5（2026-10-17）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.5) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **最近正式版：v0.47.6（2026-10-19）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.6) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
-## 本次更新（v0.47.5 · 2026-10-17）
+## 本次更新（v0.47.6 · 2026-10-19）
 
-- 零依赖极速代码格式化器（基于原生状态机解析，支持 CSS 选择器、大括号、声明规范化与光标平滑映射，彻底消除 200KB+ Prettier 依赖）。
-- 三模式代码片段导入规划引擎（增量合并 Merge 保留本地启用态与原序、分叉克隆 Fork 独立派生新副本、镜像覆盖 Overwrite 全量替换）。
-- 全表面晶体微倒角切光与物理质感深度对齐：工作台单元格、切换器大预览窗格、代码实验室与片段商店全面注入 1px 晶体微内切光高光（`--sw-rim-light`）与环境光遮蔽微阴影。
-- 典藏版高保真原型全面集成多设备视口模拟器（桌面/iPad/手机/Dock）与 40+ 交互闭环。
+- **真实隔离宿主 E2E 闭环**：文档集恢复、收藏分组、最近记录与代码片段 3 模式导入全面补齐真实宿主自动化 E2E 验证。
+- **全表面高对比度与无障碍强化**：系统级高对比度（`forced-colors: active`）与 `prefers-contrast: more` 边框强化，键盘焦点环清晰规范。
+- **调度核心与数据安全加固**：请求调度序列化防溢出、重试次数严格钳制；Agent 执行器内核原生 ID 直读；代码片段回收站三限淘汰与 Gist 凭据脱敏。
+- **悬浮球与设置搜索演进**：悬浮球自由停放越界内敛收敛、设置中心跨十标签多词 AND 匹配与真实控件高亮直达。
 
 逐项说明、验证数据与历史版本见[完整更新日志](./docs/CHANGELOG.md)。
 
@@ -386,7 +386,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和体积预算（归档 578 KiB、raw 1160 KiB、单条目压缩 320 KiB，见 [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.47.5`，包含零依赖代码格式化、三模式导入规划、全表面晶体微倒角切光与多端双拼 Bento。
+当前版本为 `v0.47.6`，包含真实隔离宿主 E2E 闭环、全表面高对比度无障碍、请求调度与核心数据安全加固。
 
 <details>
 <summary>历史更新日志（点击展开）</summary>
