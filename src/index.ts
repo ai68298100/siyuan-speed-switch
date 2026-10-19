@@ -13961,15 +13961,6 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 搜索：与弹窗一致，页签匹配在上、全库文档在下
         const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
         const disposeHistoryDropdown = this.setupOpenHistoryDropdown(element.querySelector<HTMLElement>(".sw__history-dd"), refresh);
-        const disposeToolbarAndHistory = () => {
-            if (backTopRaf) {
-                window.cancelAnimationFrame(backTopRaf);
-                backTopRaf = 0;
-            }
-            scrollElement.removeEventListener("scroll", onBackTopScroll);
-            backTopBtn?.removeEventListener("click", onBackTopClick);
-            disposeHistoryDropdown();
-        };
         this.sidebarSearchFilterDispose = searchInput
             ? bindDocSearchFilter.call(this, element, scrollElement, searchInput, refresh)
             : null;
@@ -14017,7 +14008,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         backTopBtn?.addEventListener("click", onBackTopClick);
         // T-7040：排序浮层与历史下拉共用侧栏释放通道
         return () => {
-            disposeToolbarAndHistory();
+            disposeHistoryDropdown();
             disposeSortMenu();
         };
     }
