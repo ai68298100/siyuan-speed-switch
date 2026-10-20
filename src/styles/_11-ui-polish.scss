@@ -1540,3 +1540,34 @@
         border: 1px solid ButtonText;
     }
 }
+
+// T-7352: 穿透检索与全平台关键词精准富文本高亮样式
+mark.sw__search-mark,
+.sw__doc-title mark,
+.sw__doc-snippet mark {
+    padding: 1px var(--sw-space-2xs, 2px);
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 22%, transparent);
+    color: var(--b3-theme-primary);
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary) 30%, transparent);
+}
+
+@media (forced-colors: active) {
+    mark.sw__search-mark,
+    .sw__doc-title mark,
+    .sw__doc-snippet mark {
+        background: Highlight !important;
+        color: HighlightText !important;
+        box-shadow: none !important;
+    }
+}
+
+@media (prefers-contrast: more) {
+    mark.sw__search-mark,
+    .sw__doc-title mark,
+    .sw__doc-snippet mark {
+        text-decoration: underline;
+        font-weight: 800;
+    }
+}

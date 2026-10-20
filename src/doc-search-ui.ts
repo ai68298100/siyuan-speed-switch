@@ -2026,6 +2026,7 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
             if (!segment.text) continue;
             if (segment.hit) {
                 const mark = document.createElement("mark");
+                mark.className = "sw__search-mark";
                 mark.textContent = segment.text;
                 title.appendChild(mark);
             } else {
@@ -2055,6 +2056,7 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
                 if (!segment.text) continue;
                 if (segment.hit) {
                     const mark = document.createElement("mark");
+                    mark.className = "sw__search-mark";
                     mark.textContent = segment.text;
                     snippetElement.appendChild(mark);
                 } else {

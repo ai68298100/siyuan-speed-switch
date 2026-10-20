@@ -1819,9 +1819,33 @@ function dedupeSyntheticOutlineHeading(outline) {
 // （小写化），匹配不区分大小写；命中区间有界（每词条≤64 处），重叠合并。
 const HIGHLIGHT_MAX_TERMS = 8;
 const HIGHLIGHT_RANGE_MAX = 64;
+
+/**
+ * 从可能带有穿透前缀的原始搜索字符串中提取出纯净的命中词。
+ * @param {string} query 用户搜索输入（如 @大纲、#标签、^正文块、周报@规划、普通搜索）
+ * @returns {string} 用于文本高亮的纯净查询词
+ */
+function extractHighlightSearchNeedle(query) {
+    if (typeof query !== "string") return "";
+    const raw = query.trim();
+    if (!raw) return "";
+    const penetration = parsePenetrationQuery(raw);
+    if (penetration && penetration.mode !== SEARCH_MODES.DOC) {
+        return penetration.headingNeedle
+            || penetration.blockNeedle
+            || penetration.tagNeedle
+            || penetration.bookmarkNeedle
+            || penetration.commandNeedle
+            || penetration.cleanKernelQuery
+            || raw;
+    }
+    return raw;
+}
+
 function buildKeywordHighlightSegments(text, query) {
     const raw = String(text || "");
-    const {includes} = parseSearchTerms(query, HIGHLIGHT_MAX_TERMS);
+    const effectiveNeedle = extractHighlightSearchNeedle(query);
+    const {includes} = parseSearchTerms(effectiveNeedle, HIGHLIGHT_MAX_TERMS);
     if (!raw || !includes.length) return [{text: raw, hit: false}];
     const lower = raw.toLowerCase();
     const ranges = [];
@@ -1852,6 +1876,36 @@ function buildKeywordHighlightSegments(text, query) {
     }
     if (cursor < raw.length) segments.push({text: raw.slice(cursor), hit: false});
     return segments;
+}
+
+/**
+ * 安全转义 HTML 特殊字符，彻底防御 XSS。
+ * @param {string} str 原始字符串
+ * @returns {string} 转义后的 HTML 安全字符串
+ */
+function escapeHtmlEntities(str) {
+    if (typeof str !== "string") return "";
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+/**
+ * 生成带 <mark class="sw__search-mark"> 的安全富文本高亮 HTML。
+ * 纯函数、严格转义，零 XSS 注入风险。
+ * @param {string} text 原始文本
+ * @param {string} query 搜索词
+ * @returns {string} 包含安全 <mark> 的 HTML 片段
+ */
+function highlightSearchMatchesHtml(text, query) {
+    const segments = buildKeywordHighlightSegments(text, query);
+    return segments.map((seg) => {
+        const escaped = escapeHtmlEntities(seg.text);
+        return seg.hit ? `<mark class="sw__search-mark">${escaped}</mark>` : escaped;
+    }).join("");
 }
 
 // T-6883（T-6848 页签卡更新时间徽标）：14 位 "yyyyMMddHHmmss" → 紧凑徽标文本。
@@ -1989,7 +2043,10 @@ module.exports = {
     buildOpenedDocumentSearchRequests,
     resolveDocSearchResultId,
     planDocResultsPage,
+    extractHighlightSearchNeedle,
     buildKeywordHighlightSegments,
+    escapeHtmlEntities,
+    highlightSearchMatchesHtml,
     stripSnippetMarkup,
     buildDocPreviewSnapshot,
     formatUpdatedBadge,

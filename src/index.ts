@@ -11909,12 +11909,61 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             this.openCardMenu(this.cardTabs.get(card) || tab, card, handlers, event.clientX, event.clientY);
         });
         this.cardMenuHandlers.set(card, handlers);
-        // T-7344：卡片次级动作快捷键唤出（⌘K / Ctrl+K）
+        // T-7344 & T-7353：卡片次级动作快捷键唤出（⌘K）与免呼出单键直达执行
         card.addEventListener("keydown", (event: KeyboardEvent) => {
-            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+            const currentTab = this.cardTabs.get(card) || tab;
+            const isCtrlOrCmd = event.ctrlKey || event.metaKey;
+
+            // 1. ⌘K / Ctrl+K 唤出次级动作画板
+            if (isCtrlOrCmd && event.key.toLowerCase() === "k") {
                 event.preventDefault();
                 event.stopPropagation();
-                this.openCardActionPalette(this.cardTabs.get(card) || tab, card, handlers);
+                this.openCardActionPalette(currentTab, card, handlers);
+                return;
+            }
+
+            // 2. T-7353 快捷键免呼出直达执行
+            // Ctrl+Enter / Cmd+Enter: 右侧分屏打开
+            if (isCtrlOrCmd && event.key === "Enter") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.executePaletteAction("open-right", currentTab, card, handlers);
+                return;
+            }
+            // Alt+Enter: 下方分屏打开
+            if (event.altKey && event.key === "Enter") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.executePaletteAction("open-bottom", currentTab, card, handlers);
+                return;
+            }
+            // Alt+C: 复制思源块链接
+            if (event.altKey && !isCtrlOrCmd && event.key.toLowerCase() === "c") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.executePaletteAction("copy-block-link", currentTab, card, handlers);
+                return;
+            }
+            // Alt+M: 复制 Markdown 链接
+            if (event.altKey && !isCtrlOrCmd && event.key.toLowerCase() === "m") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.executePaletteAction("copy-markdown-link", currentTab, card, handlers);
+                return;
+            }
+            // Alt+P: 切换置顶
+            if (event.altKey && !isCtrlOrCmd && event.key.toLowerCase() === "p") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.executePaletteAction("toggle-pin", currentTab, card, handlers);
+                return;
+            }
+            // Alt+D: 切换收藏
+            if (event.altKey && !isCtrlOrCmd && event.key.toLowerCase() === "d") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.executePaletteAction("toggle-fav", currentTab, card, handlers);
+                return;
             }
         });
         if (this.isMobile) {
