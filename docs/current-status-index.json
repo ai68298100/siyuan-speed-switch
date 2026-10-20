@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-20",
-  "currentTask": "T-7345",
+  "currentTask": "T-7346",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7345",
+  "nextLocalTask": "T-7346",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -159,7 +159,8 @@
     "T-7342",
     "T-7343",
     "T-7344",
-    "T-7345"
+    "T-7345",
+    "T-7346"
   ],
   "tasks": [
     {
@@ -4273,7 +4274,7 @@
     {
       "id": "T-7345",
       "title": "动作画板与深入穿透检索多端 E2E 交互与快捷键断言验证",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "verification",
@@ -4281,9 +4282,26 @@
         "T-7344"
       ],
       "evidence": [
-        "docs/dev-plan-2026-10-06.md"
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0238-t7345-action-palette-multitarget-e2e-contracts.md",
+        "tests/action-palette-e2e-interaction.test.cjs"
       ],
       "next": "T-7346"
+    },
+    {
+      "id": "T-7346",
+      "title": "多端端到端行为回归、窄侧栏自适应及文档与多语言对账",
+      "status": "in_progress",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "verification",
+      "dependsOn": [
+        "T-7345"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7347"
     }
   ],
   "global": {
