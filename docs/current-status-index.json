@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-20",
-  "currentTask": "T-7347",
+  "currentTask": "T-7348",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7347",
+  "nextLocalTask": "T-7348",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -161,7 +161,8 @@
     "T-7344",
     "T-7345",
     "T-7346",
-    "T-7347"
+    "T-7347",
+    "T-7348"
   ],
   "tasks": [
     {
@@ -4314,7 +4315,7 @@
     {
       "id": "T-7347",
       "title": "多端端到端基线快照审计、全表面交互验收与版本发布就绪审查",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "verification",
@@ -4322,9 +4323,26 @@
         "T-7346"
       ],
       "evidence": [
-        "docs/dev-plan-2026-10-06.md"
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0240-t7347-release-readiness-batch-review.md",
+        "tests/release-readiness-batch-review.test.cjs"
       ],
       "next": "T-7348"
+    },
+    {
+      "id": "T-7348",
+      "title": "版本候选封板演练、产物校验与发布清单审计",
+      "status": "in_progress",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "verification",
+      "dependsOn": [
+        "T-7347"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7349"
     }
   ],
   "global": {
