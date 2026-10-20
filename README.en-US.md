@@ -109,12 +109,13 @@ Search results keep a fixed priority:
 2. **Opened document content**: SiYuan search bounded to at most 6 opened root documents; hits restore existing tab cards only — no duplicate cards.
 3. **Workspace documents**: title search first; when titles have no results or advanced filters are active, fall back to bounded native full-text search aggregated into cards with a few snippets.
 
-**Tab filter query syntax** (local layer): space-separated terms all match (AND); `-term` excludes tabs containing it; `"quoted phrase"` matches as a whole. Example: `project -weekly "meeting notes"`.
+**Tab filter query syntax** (local layer): space-separated terms all match (AND); `-term` excludes tabs containing it; `"quoted phrase"` matches as a whole. Example: `project -weekly "meeting notes"`. Supports **penetration search**: `:heading` penetrates active document outline, `doc:heading` penetrates outline across documents, and `^block` searches workspace content blocks (excluding root docs), all with instant block anchor jumping.
 
 Search requests use a 180 ms debounce, bounded in-memory cache, request-version validation, and cancellation. Desktop dialog, right sidebar, and mobile each own an isolated search session, so one surface cannot cancel or overwrite another. The current worktree supports notebook, path, content-type, subtype, search-method, and result-order filters; notebook/path filters keep the title fast path, while other filters use bounded native block-level full-text requests. Workspace results fetch up to 33 entries at once and render the first 12; a "Load more" button expands the rest purely client-side (no new requests, no cache-key changes) before falling back to SiYuan's native search. The path menu browses notebook paths level by level and clearly degrades when the host lacks the capability; this remains an addition rather than a replacement for SiYuan's native search page. See [ROADMAP.md](./ROADMAP.md) for that work.
 
 ### Work Context, Commands & Actions (new)
 
+- **Action palette**: right-click any card or press `⌘K` / `Ctrl+K` on focus to open a Raycast-style palette for split-opening (`open-right` / `open-bottom`), preview mode (`open-preview`), pin/favorite toggles, closing tabs, and copying block/Markdown links; includes instant fuzzy filtering and mobile bottom sheet adaptation.
 - **Related content**: opening the switcher lists backlinks and mentions of the current document (official kernel endpoint, bounded projection with totals and truncation), click to jump.
 - **Saved searches**: save the current query and filters from the filter menu; replay from the zero-term workbench or filter menu, right-click to remove.
 - **Command mode**: typing `>` lists executable actions only (built-ins + SiYuan host commands); filter by text and click to run.
@@ -214,6 +215,7 @@ Read-only capabilities declare `localRead` and never declare write, egress, or e
 | `↑` `↓` `←` `→` | Move selection across the grid |
 | `Tab` / `Shift+Tab` | Next / previous |
 | `Enter` | Switch to the selected tab |
+| `Ctrl+K` or `⌘K` | Open focused card's Action Palette for split-opening, copying links, or tab actions |
 | `Shift+F10` or `ContextMenu` | Open the focused card's action menu (mouse-free) |
 | `Esc` | Close the switcher |
 

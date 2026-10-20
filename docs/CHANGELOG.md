@@ -4,6 +4,12 @@
 
 ## 更新日志（完整历史）
 
+### 开发中特性（T-7334～T-7346）
+
+- **深入穿透检索（Penetration Search）**：主搜索框新增 Obsidian 风格穿透语法分流：`:标题` 穿透活动文档大纲（H1~H6），`文档名:标题` 跨文档穿透大纲，`^正文块` 深入全库正文块（排除根文档块）；安全参数化 SQL 生成与防注入字符剔除；支持精准块锚定跳转与同文档多标题独立去重。
+- **次级动作画板（Action Palette）**：Raycast 风格次级动作画板，任意卡片右键菜单或获焦按 `⌘K` / `Ctrl+K` 唤出；聚合分屏打开（`open-right` / `open-bottom`）、只读预览（`open-preview`）、置顶/收藏切换、关闭页签及块链接/Markdown 引用/ID 复制；支持即时模糊过滤、全键盘循环导航与移动端底部抽屉适配。
+- **多端端到端交互契约与窄侧栏自适应**：覆盖桌面全键盘调度、移动端 44px WCAG 触摸靶心与 `aria-modal="false"` 声明、窄侧栏（245px～340px）自适应无横向溢出。
+
 ### v0.47.6（2026-10-19）
 
 - **真实隔离宿主 E2E 闭环**：文档集恢复与收集箱元数据无缝对齐思源原生云端收集箱（`tests/e2e/document-sets.spec.mjs`）；片段实验室 3 模式导入（Merge / Fork / Overwrite）与保存闭环（`tests/e2e/snippet-import-save.spec.mjs`）；收藏分组添加与工作现场返回闭环（`tests/e2e/favorites-flow.spec.mjs`）；最近打开与误关闭记录差集感知与重开对齐（`tests/e2e/recent-closed-flow.spec.mjs`）。

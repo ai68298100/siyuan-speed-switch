@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-20",
-  "currentTask": "T-7346",
+  "currentTask": "T-7347",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7346",
+  "nextLocalTask": "T-7347",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -160,7 +160,8 @@
     "T-7343",
     "T-7344",
     "T-7345",
-    "T-7346"
+    "T-7346",
+    "T-7347"
   ],
   "tasks": [
     {
@@ -4291,7 +4292,7 @@
     {
       "id": "T-7346",
       "title": "多端端到端行为回归、窄侧栏自适应及文档与多语言对账",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "verification",
@@ -4299,9 +4300,31 @@
         "T-7345"
       ],
       "evidence": [
-        "docs/dev-plan-2026-10-06.md"
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0239-t7346-narrow-sidebar-and-docs-reconciliation.md",
+        "src/styles/_11-ui-polish.scss",
+        "README.md",
+        "README.en-US.md",
+        "docs/CHANGELOG.md",
+        "docs/CHANGELOG.en-US.md",
+        "tests/narrow-sidebar-action-palette-contract.test.cjs"
       ],
       "next": "T-7347"
+    },
+    {
+      "id": "T-7347",
+      "title": "多端端到端基线快照审计、全表面交互验收与版本发布就绪审查",
+      "status": "in_progress",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "verification",
+      "dependsOn": [
+        "T-7346"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7348"
     }
   ],
   "global": {

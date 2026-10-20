@@ -1449,6 +1449,7 @@
 
     .sw__palette-item-label {
         flex: 1;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1457,6 +1458,7 @@
     .sw__palette-item-shortcut {
         display: inline-flex;
         align-items: center;
+        flex-shrink: 0;
         padding: 1px var(--sw-space-sm, 6px);
         font-size: var(--sw-font-xs, 11px);
         font-family: inherit;
