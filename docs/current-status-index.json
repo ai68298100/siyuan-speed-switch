@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-20",
-  "currentTask": "T-7348",
+  "currentTask": "T-7349",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7348",
+  "nextLocalTask": "T-7349",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -162,7 +162,8 @@
     "T-7345",
     "T-7346",
     "T-7347",
-    "T-7348"
+    "T-7348",
+    "T-7349"
   ],
   "tasks": [
     {
@@ -4332,7 +4333,7 @@
     {
       "id": "T-7348",
       "title": "版本候选封板演练、产物校验与发布清单审计",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "verification",
@@ -4340,9 +4341,26 @@
         "T-7347"
       ],
       "evidence": [
-        "docs/dev-plan-2026-10-06.md"
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0241-t7348-release-candidate-seal-audit.md",
+        "tests/release-candidate-seal-audit.test.cjs"
       ],
       "next": "T-7349"
+    },
+    {
+      "id": "T-7349",
+      "title": "版本正式发布动作封版：Tag 拟定、版本号推进与 CHANGELOG 历史固化",
+      "status": "in_progress",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "release",
+      "dependsOn": [
+        "T-7348"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7350"
     }
   ],
   "global": {
