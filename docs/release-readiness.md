@@ -4,9 +4,11 @@
 
 Current working-tree snapshot (2026-10-20): `dist/index.js` 1196626 bytes; `dist/index.css` 440172 bytes; `package.zip` 602644 bytes; plugin metadata `0.48.0`. The formal GitHub Release `v0.47.6` is `package.zip` 589877 bytes with SHA-256 `352d21a0ac78af2816de79f159023f8c119407046d158559451f3a661ed17643`; `icon.png` remains 160x160, 18376 bytes.
 
-评估日期：2026-10-19（`v0.47.6` 已正式发布；远端 main/tag、CI/Release 与下载资产已回读核验）。
+评估日期：2026-10-20（`v0.48.0` 本地封验就绪；package.zip 为 602644 bytes，SHA-256 `a6b09cc77ff2796545a0b710ac4231fa3a7b86c09a9c7b41a32d69965d77e712`；dist/index.js 为 1196626 bytes，SHA-256 `3f6c7d4f5a87d89c7ff40cff0946c8a72773fbd6bd25f0221445d27699a706b2`；可复现构建 3/3 绝对一致；前序 formal Release 为 v0.47.6）。
 
 历史评分卡仍保留“51 个组件完成完整评分卡”与 T-6476~T-6663 证据链。
+
+本轮 v0.48.0 候选封验：本地可复现生产构建 package.zip 602644 bytes（SHA-256 `a6b09cc77ff2796545a0b710ac4231fa3a7b86c09a9c7b41a32d69965d77e712`），低于 590 KiB 门限 1516 bytes；dist/index.js 1196626 bytes，低于 1170 KiB 观察线 1454 bytes；icon.png 160x160 18376 bytes。覆盖 T-7334～T-7349 累计 14 项特性（穿透检索、次级动作画板、属性看板、闪卡推演、窄侧栏防溢出）。历史 v0.47.6 远端资产 589877 bytes（SHA-256 `352d21a0ac78af2816de79f159023f8c119407046d158559451f3a661ed17643`）。
 
 历史发布回执（v0.46.2）：标签指向 `d72fca9ff4942abc70d86eac2e8400e7956949ea`；远端 `package.zip` 下载端点返回 HTTP 200，资产大小 **571709 bytes**。Release 页面：[v0.46.2](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.46.2)。后续 v0.46.3～v0.47.0 回执按时间顺序列于下方。
 

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-20",
-  "currentTask": "T-7350",
+  "currentTask": "T-7351",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7350",
+  "nextLocalTask": "T-7351",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -164,7 +164,8 @@
     "T-7347",
     "T-7348",
     "T-7349",
-    "T-7350"
+    "T-7350",
+    "T-7351"
   ],
   "tasks": [
     {
@@ -4374,7 +4375,7 @@
     {
       "id": "T-7350",
       "title": "构建发布产物检验、可复现构建验证与 Release 说明归档",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P0",
       "owner": "local",
       "workType": "release",
@@ -4382,16 +4383,34 @@
         "T-7349"
       ],
       "evidence": [
-        "docs/dev-plan-2026-10-06.md"
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0243-t7350-v0480-release-candidate-hash-and-notes.md",
+        "docs/release-readiness.md",
+        "tests/release-candidate-hash-audit.test.cjs"
       ],
       "next": "T-7351"
+    },
+    {
+      "id": "T-7351",
+      "title": "符号化前缀多模态检索模型扩展（@大纲、#标签、!书签、^正文块一体化路由）",
+      "status": "in_progress",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7350"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7352"
     }
   ],
   "global": {
     "jsRunner": "blocked",
-    "release": "published",
+    "release": "candidate_ready",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 591166 bytes is below the 591872-byte repository budget by 706 bytes (remote v0.47.5 package.zip; local working-tree snapshots require separate measurement)"
+    "packageBudget": "passed: 602644 bytes is below the 604160-byte repository budget by 1516 bytes (local v0.48.0 working-tree package.zip, SHA-256 a6b09cc77ff2796545a0b710ac4231fa3a7b86c09a9c7b41a32d69965d77e712)"
   }
 }
