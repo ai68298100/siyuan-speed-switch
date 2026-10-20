@@ -18,6 +18,18 @@ const SEARCH_MODES = Object.freeze({
     DOC: "doc",
     OUTLINE: "outline",
     BLOCK: "block",
+    TAG: "tag",
+    BOOKMARK: "bookmark",
+    COMMAND: "command",
+});
+
+const MODE_BADGES = Object.freeze({
+    [SEARCH_MODES.OUTLINE]: {key: "outline", defaultBadge: "大纲", icon: "iconAlignLeft", prefix: "@"},
+    [SEARCH_MODES.BLOCK]: {key: "block", defaultBadge: "正文块", icon: "iconParagraph", prefix: "^"},
+    [SEARCH_MODES.TAG]: {key: "tag", defaultBadge: "标签", icon: "iconTag", prefix: "#"},
+    [SEARCH_MODES.BOOKMARK]: {key: "bookmark", defaultBadge: "书签", icon: "iconBookmark", prefix: "!"},
+    [SEARCH_MODES.COMMAND]: {key: "command", defaultBadge: "命令", icon: "iconSparkles", prefix: ">"},
+    [SEARCH_MODES.DOC]: {key: "doc", defaultBadge: "", icon: "iconFile", prefix: ""},
 });
 
 function boundedText(value, max = 120) {
@@ -28,10 +40,13 @@ function boundedText(value, max = 120) {
 /**
  * 解析用户输入的搜索查询，判定检索模式并提取多段关键字。
  *
- * 语法规则：
+ * 语法规则（对齐 Obsidian QS++ 与 Raycast 模式）：
  * 1. 块级前缀：以 `^` 开头（如 `^重构架构`），判定为 block 模式；
- * 2. 大纲穿透：包含 `:` 且不属于 URL/引号内部（如 `周报:下周计划` 或 `:下周计划`），判定为 outline 模式；
- * 3. 普通模式：默认 doc 模式。
+ * 2. 标签前缀：以 `#` 开头（如 `#重要`），判定为 tag 模式；
+ * 3. 书签前缀：以 `!` 开头（如 `!项目`），判定为 bookmark 模式；
+ * 4. 命令前缀：以 `>` 开头（如 `>设置`），判定为 command 模式；
+ * 5. 大纲穿透：以 `@` 开头或包含 `@`（如 `@总结` 或 `周报@总结`），或包含 `:` 且不属于 URL/引号内部，判定为 outline 模式；
+ * 6. 普通模式：默认 doc 模式。
  *
  * @param {string} raw 用户原始输入
  * @returns {object} 解析后的结构化查询
@@ -45,8 +60,12 @@ function parsePenetrationQuery(raw) {
             docNeedle: "",
             headingNeedle: "",
             blockNeedle: "",
+            tagNeedle: "",
+            bookmarkNeedle: "",
+            commandNeedle: "",
             cleanKernelQuery: "",
             isCurrentDoc: false,
+            badge: "",
         };
     }
 
@@ -59,12 +78,107 @@ function parsePenetrationQuery(raw) {
             docNeedle: "",
             headingNeedle: "",
             blockNeedle: needle,
+            tagNeedle: "",
+            bookmarkNeedle: "",
+            commandNeedle: "",
             cleanKernelQuery: needle,
             isCurrentDoc: false,
+            badge: MODE_BADGES[SEARCH_MODES.BLOCK].defaultBadge,
         };
     }
 
-    // 2. 大纲穿透：以 `:` 分隔（忽略引号内部的冒号，如 `"http://example"`）
+    // 2. 标签前缀：以 `#` 开头
+    if (text.startsWith("#")) {
+        const needle = text.slice(1).trim();
+        return {
+            mode: SEARCH_MODES.TAG,
+            raw: text,
+            docNeedle: "",
+            headingNeedle: "",
+            blockNeedle: "",
+            tagNeedle: needle,
+            bookmarkNeedle: "",
+            commandNeedle: "",
+            cleanKernelQuery: needle,
+            isCurrentDoc: false,
+            badge: MODE_BADGES[SEARCH_MODES.TAG].defaultBadge,
+        };
+    }
+
+    // 3. 书签前缀：以 `!` 开头
+    if (text.startsWith("!")) {
+        const needle = text.slice(1).trim();
+        return {
+            mode: SEARCH_MODES.BOOKMARK,
+            raw: text,
+            docNeedle: "",
+            headingNeedle: "",
+            blockNeedle: "",
+            tagNeedle: "",
+            bookmarkNeedle: needle,
+            commandNeedle: "",
+            cleanKernelQuery: needle,
+            isCurrentDoc: false,
+            badge: MODE_BADGES[SEARCH_MODES.BOOKMARK].defaultBadge,
+        };
+    }
+
+    // 4. 命令前缀：以 `>` 开头
+    if (text.startsWith(">")) {
+        const needle = text.slice(1).trim();
+        return {
+            mode: SEARCH_MODES.COMMAND,
+            raw: text,
+            docNeedle: "",
+            headingNeedle: "",
+            blockNeedle: "",
+            tagNeedle: "",
+            bookmarkNeedle: "",
+            commandNeedle: needle,
+            cleanKernelQuery: needle,
+            isCurrentDoc: false,
+            badge: MODE_BADGES[SEARCH_MODES.COMMAND].defaultBadge,
+        };
+    }
+
+    // 5. 大纲穿透：以 `@` 开头或分隔
+    if (text.startsWith("@")) {
+        const needle = text.slice(1).trim();
+        return {
+            mode: SEARCH_MODES.OUTLINE,
+            raw: text,
+            docNeedle: "",
+            headingNeedle: needle,
+            blockNeedle: "",
+            tagNeedle: "",
+            bookmarkNeedle: "",
+            commandNeedle: "",
+            cleanKernelQuery: "",
+            isCurrentDoc: true,
+            badge: MODE_BADGES[SEARCH_MODES.OUTLINE].defaultBadge,
+        };
+    }
+
+    const atIndex = findOutlineSeparatorIndex(text, "@");
+    if (atIndex > 0) {
+        const docPart = text.slice(0, atIndex).trim();
+        const headingPart = text.slice(atIndex + 1).trim();
+        return {
+            mode: SEARCH_MODES.OUTLINE,
+            raw: text,
+            docNeedle: docPart,
+            headingNeedle: headingPart,
+            blockNeedle: "",
+            tagNeedle: "",
+            bookmarkNeedle: "",
+            commandNeedle: "",
+            cleanKernelQuery: docPart,
+            isCurrentDoc: false,
+            badge: MODE_BADGES[SEARCH_MODES.OUTLINE].defaultBadge,
+        };
+    }
+
+    // 6. 大纲穿透：兼容以 `:` 分隔
     const colonIndex = findOutlineColonIndex(text);
     if (colonIndex >= 0) {
         const docPart = text.slice(0, colonIndex).trim();
@@ -76,20 +190,63 @@ function parsePenetrationQuery(raw) {
             docNeedle: docPart,
             headingNeedle: headingPart,
             blockNeedle: "",
+            tagNeedle: "",
+            bookmarkNeedle: "",
+            commandNeedle: "",
             cleanKernelQuery: isCurrentDoc ? "" : docPart,
             isCurrentDoc,
+            badge: MODE_BADGES[SEARCH_MODES.OUTLINE].defaultBadge,
         };
     }
 
-    // 3. 默认文档模式
+    // 7. 默认普通文档模式
     return {
         mode: SEARCH_MODES.DOC,
         raw: text,
         docNeedle: text,
         headingNeedle: "",
         blockNeedle: "",
+        tagNeedle: "",
+        bookmarkNeedle: "",
+        commandNeedle: "",
         cleanKernelQuery: text,
         isCurrentDoc: false,
+        badge: "",
+    };
+}
+
+/**
+ * 查找用作大纲穿透的分隔符位置（忽略双引号内的字符）。
+ */
+function findOutlineSeparatorIndex(text, separator) {
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i += 1) {
+        const ch = text[i];
+        if (ch === '"') {
+            inQuotes = !inQuotes;
+            continue;
+        }
+        if (ch === separator && !inQuotes) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/**
+ * 获取指定搜索模式的徽章及视觉元数据。
+ * @param {string} mode 搜索模式
+ * @param {object} [i18n] 多语言字典
+ * @returns {object} { key, badge, icon, prefix }
+ */
+function resolveSearchModeBadge(mode, i18n = {}) {
+    const meta = MODE_BADGES[mode] || MODE_BADGES[SEARCH_MODES.DOC];
+    const localized = i18n && typeof i18n === "object" ? i18n[`searchMode_${meta.key}`] : "";
+    return {
+        key: meta.key,
+        badge: localized || meta.defaultBadge,
+        icon: meta.icon,
+        prefix: meta.prefix,
     };
 }
 
@@ -204,11 +361,14 @@ function normalizePenetrationBlockResult(rawBlock, docScope = {}) {
 
 module.exports = {
     SEARCH_MODES,
+    MODE_BADGES,
     MAX_QUERY_LENGTH,
     MAX_OUTLINE_RESULTS,
     MAX_BLOCK_CONTENT_BYTES,
     parsePenetrationQuery,
     findOutlineColonIndex,
+    findOutlineSeparatorIndex,
+    resolveSearchModeBadge,
     filterOutlineHeadings,
     normalizePenetrationBlockResult,
 };

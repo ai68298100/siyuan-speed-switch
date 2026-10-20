@@ -19,8 +19,11 @@ const {
 // T-7338：Obsidian 风格深入穿透检索模型（: 大纲穿透 / ^ 块检索语法与过滤）。
 const {
     SEARCH_MODES,
+    MODE_BADGES,
     parsePenetrationQuery,
     findOutlineColonIndex,
+    findOutlineSeparatorIndex,
+    resolveSearchModeBadge,
     filterOutlineHeadings,
     normalizePenetrationBlockResult,
 } = require("./penetration-search-model.js");
@@ -1952,8 +1955,11 @@ module.exports = {
     filterPaletteActions,
     createActionExecutionReceipt,
     SEARCH_MODES,
+    MODE_BADGES,
     parsePenetrationQuery,
     findOutlineColonIndex,
+    findOutlineSeparatorIndex,
+    resolveSearchModeBadge,
     filterOutlineHeadings,
     normalizePenetrationBlockResult,
     PALETTE_KEY_ACTIONS,

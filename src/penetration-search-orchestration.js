@@ -146,6 +146,44 @@ function planPenetrationSearchRequest(rawQuery, context = {}, options = {}) {
         };
     }
 
+    // 4. 标签检索模式（#标签）
+    if (parsed.mode === SEARCH_MODES.TAG) {
+        return {
+            mode: SEARCH_MODES.TAG,
+            isPenetration: true,
+            endpoint: "/api/tag/getTag",
+            body: {},
+            method: "tag",
+            tagNeedle: parsed.tagNeedle,
+            badge: parsed.badge,
+        };
+    }
+
+    // 5. 书签检索模式（!书签）
+    if (parsed.mode === SEARCH_MODES.BOOKMARK) {
+        return {
+            mode: SEARCH_MODES.BOOKMARK,
+            isPenetration: true,
+            endpoint: "/api/bookmark/getBookmark",
+            body: {},
+            method: "bookmark",
+            bookmarkNeedle: parsed.bookmarkNeedle,
+            badge: parsed.badge,
+        };
+    }
+
+    // 6. 命令模式（>命令）
+    if (parsed.mode === SEARCH_MODES.COMMAND) {
+        return {
+            mode: SEARCH_MODES.COMMAND,
+            isPenetration: true,
+            method: "command",
+            commandNeedle: parsed.commandNeedle,
+            badge: parsed.badge,
+            localOnly: true,
+        };
+    }
+
     // 兜底回退
     return {
         mode: SEARCH_MODES.DOC,
@@ -247,6 +285,78 @@ function aggregatePenetrationResults(plan, rawResponse, context = {}) {
             }
         });
         return results;
+    }
+
+    // 3. 标签响应聚合（#标签）
+    if (plan.mode === SEARCH_MODES.TAG) {
+        const rawTags = Array.isArray(rawResponse.data)
+            ? rawResponse.data
+            : (Array.isArray(rawResponse) ? rawResponse : (rawResponse?.data ? [rawResponse.data] : []));
+        const needle = (plan.tagNeedle || "").toLowerCase();
+        const results = [];
+
+        function extractTags(nodes) {
+            if (!Array.isArray(nodes)) return;
+            for (const item of nodes) {
+                if (!item || typeof item !== "object") continue;
+                const label = String(item.label || item.tag || item.name || item.title || "");
+                const blockId = String(item.blockId || item.id || item.rootId || "");
+                const count = Number(item.count || item.subFileCount || 1);
+                if (label && (!needle || label.toLowerCase().includes(needle))) {
+                    results.push({
+                        id: blockId || `tag-${label}`,
+                        rootId: String(item.rootId || blockId || ""),
+                        blockId: blockId,
+                        title: `#${label.replace(/^#/, "")}`,
+                        subTitle: `标签 · ${count} 处引用`,
+                        icon: "iconTag",
+                        kind: "tag",
+                        tag: label,
+                    });
+                }
+                if (Array.isArray(item.children)) {
+                    extractTags(item.children);
+                }
+            }
+        }
+        extractTags(rawTags);
+        return results.slice(0, 30);
+    }
+
+    // 4. 书签响应聚合（!书签）
+    if (plan.mode === SEARCH_MODES.BOOKMARK) {
+        const rawBookmarks = Array.isArray(rawResponse.data)
+            ? rawResponse.data
+            : (Array.isArray(rawResponse) ? rawResponse : (rawResponse?.data ? [rawResponse.data] : []));
+        const needle = (plan.bookmarkNeedle || "").toLowerCase();
+        const results = [];
+
+        function extractBookmarks(nodes) {
+            if (!Array.isArray(nodes)) return;
+            for (const item of nodes) {
+                if (!item || typeof item !== "object") continue;
+                const label = String(item.label || item.bookmark || item.name || item.title || "");
+                const blockId = String(item.blockId || item.id || item.rootId || "");
+                const count = Number(item.count || item.subFileCount || 1);
+                if (label && (!needle || label.toLowerCase().includes(needle))) {
+                    results.push({
+                        id: blockId || `bookmark-${label}`,
+                        rootId: String(item.rootId || blockId || ""),
+                        blockId: blockId,
+                        title: `!${label.replace(/^!/, "")}`,
+                        subTitle: `书签 · ${count} 处标记`,
+                        icon: "iconBookmark",
+                        kind: "bookmark",
+                        bookmark: label,
+                    });
+                }
+                if (Array.isArray(item.children)) {
+                    extractBookmarks(item.children);
+                }
+            }
+        }
+        extractBookmarks(rawBookmarks);
+        return results.slice(0, 30);
     }
 
     return [];

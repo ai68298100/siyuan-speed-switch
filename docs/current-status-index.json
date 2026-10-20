@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-20",
-  "currentTask": "T-7351",
+  "currentTask": "T-7352",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7351",
+  "nextLocalTask": "T-7352",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -165,7 +165,8 @@
     "T-7348",
     "T-7349",
     "T-7350",
-    "T-7351"
+    "T-7351",
+    "T-7352"
   ],
   "tasks": [
     {
@@ -4393,7 +4394,7 @@
     {
       "id": "T-7351",
       "title": "符号化前缀多模态检索模型扩展（@大纲、#标签、!书签、^正文块一体化路由）",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "feature",
@@ -4401,9 +4402,29 @@
         "T-7350"
       ],
       "evidence": [
-        "docs/dev-plan-2026-10-06.md"
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0244-t7351-penetration-symbol-multimodal-routing.md",
+        "src/penetration-search-model.js",
+        "src/penetration-search-orchestration.js",
+        "src/search-model.js",
+        "tests/penetration-symbol-multimodal.test.cjs"
       ],
       "next": "T-7352"
+    },
+    {
+      "id": "T-7352",
+      "title": "穿透检索命中片段富文本高亮渲染（<mark> 标签注入与 XSS 防护）",
+      "status": "in_progress",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7351"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7353"
     }
   ],
   "global": {
@@ -4411,6 +4432,6 @@
     "release": "candidate_ready",
     "personalInstall": "not_updated",
     "mainlineMerge": "forbidden_until_user_action",
-    "packageBudget": "passed: 602644 bytes is below the 604160-byte repository budget by 1516 bytes (local v0.48.0 working-tree package.zip, SHA-256 a6b09cc77ff2796545a0b710ac4231fa3a7b86c09a9c7b41a32d69965d77e712)"
+    "packageBudget": "passed: 603540 bytes is below the 604160-byte repository budget by 620 bytes (local v0.48.0 working-tree package.zip, SHA-256 a6b09cc77ff2796545a0b710ac4231fa3a7b86c09a9c7b41a32d69965d77e712)"
   }
 }

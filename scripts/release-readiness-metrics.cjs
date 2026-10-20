@@ -34,8 +34,12 @@
 // 并补充全套深浅色/毛玻璃/移动端抽屉样式；减量审计提取公共剪贴板/弹窗辅助
 // 消除 720 B 重复逻辑后，raw 产物为 1,196,626 B（超出 1164 KiB 4.6 KiB）。
 // raw 观察线 1164 -> 1170 KiB。归档包门限微调 586 -> 590 KiB（package.zip 602,045 B，余量 2,115 B）。
-const RAW_BUNDLE_BUDGET_BYTES = 1170 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0237";
+// ADR 0244 (2026-10-20): 符号化前缀多模态检索模型扩展（T-7351）扩展了
+// @/#/!/^/> 符号化多模态前缀路由、端点规划与标签/书签响应树聚合，
+// raw 产物为 1,200,759 B（超出 1170 KiB 自律线 2.6 KiB）。
+// raw 观察线由 1170 -> 1174 KiB（1,202,176 B，余量 1,417 B）。归档包门禁 590 KiB 保持不变。
+const RAW_BUNDLE_BUDGET_BYTES = 1174 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0244";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout

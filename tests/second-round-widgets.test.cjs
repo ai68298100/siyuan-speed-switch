@@ -103,11 +103,11 @@ test("second-round schemas land in semantic sections and stay bounded", () => {
     }
 });
 
-test("ADR 0237 recalibrates the raw bundle and archive budget after the action palette UI wiring", () => {
+test("ADR 0244 recalibrates the raw bundle and archive budget after the penetration symbol multimodal routing", () => {
     const gate = readSourceText(path.join(__dirname, "host", "release-quality.test.cjs"));
     assert.match(gate, /metrics\.RAW_BUNDLE_BUDGET_BYTES/);
-    // ADR 0098/0125 是历史基线；当前线由 ADR 0237 校准至 1170 KiB 与 590 KiB。
-    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1170 * 1024);
+    // ADR 0098/0125 是历史基线；当前线由 ADR 0244 校准至 1174 KiB 与 590 KiB。
+    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1174 * 1024);
     assert.equal(releaseMetrics.ARCHIVE_BUDGET_BYTES, 590 * 1024);
     // 校准日期备注本身就在注释里——按门禁清单 D-395 例外用原始文本断言注释
     const gateRaw = fs.readFileSync(path.join(__dirname, "host", "release-quality.test.cjs"), "utf8");
@@ -135,6 +135,11 @@ test("ADR 0237 recalibrates the raw bundle and archive budget after the action p
     assert.match(adr237, /1170 KiB/);
     assert.match(adr237, /586 KiB/);
     assert.match(adr237, /590 KiB/);
+    // T-7351：符号化前缀多模态检索模型扩展后由 ADR 0244 校准至 1174 KiB。
+    const adr244 = fs.readFileSync(path.join(__dirname, "..", "docs", "adr", "0244-t7351-penetration-symbol-multimodal-routing.md"), "utf8");
+    assert.match(adr244, /1170 KiB/);
+    assert.match(adr244, /1174 KiB/);
+    assert.match(adr244, /590 KiB/);
     const zh = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "zh-CN.json"), "utf8"));
     const en = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "en.json"), "utf8"));
     assert.equal(zh.homeCountdownElapsed, "已经 {n} 天");
