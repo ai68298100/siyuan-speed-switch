@@ -1,18 +1,18 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.47.6-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **最近正式版：v0.47.6（2026-10-19）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.47.6) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **最近正式版：v0.48.0（2026-10-20）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.0) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
-## 本次更新（v0.47.6 · 2026-10-19）
+## 本次更新（v0.48.0 · 2026-10-20）
 
-- **真实隔离宿主 E2E 闭环**：文档集恢复、收藏分组、最近记录与代码片段 3 模式导入全面补齐真实宿主自动化 E2E 验证。
-- **全表面高对比度与无障碍强化**：系统级高对比度（`forced-colors: active`）与 `prefers-contrast: more` 边框强化，键盘焦点环清晰规范。
-- **调度核心与数据安全加固**：请求调度序列化防溢出、重试次数严格钳制；Agent 执行器内核原生 ID 直读；代码片段回收站三限淘汰与 Gist 凭据脱敏。
-- **悬浮球与设置搜索演进**：悬浮球自由停放越界内敛收敛、设置中心跨十标签多词 AND 匹配与真实控件高亮直达。
+- **深入穿透检索（Penetration Search）**：主搜索框新增 Obsidian 风格穿透语法分流：`:标题` 穿透活动文档大纲，`文档名:标题` 跨文档穿透大纲，`^正文块` 深入全库正文块（排除根文档块），点击均可精准定位滚动至目标块，同文档多标题独立去重。
+- **次级动作画板（Action Palette）**：Raycast 风格次级动作画板，任意卡片右键菜单或获焦按 `⌘K` / `Ctrl+K` 唤出；聚合分屏打开（`open-right` / `open-bottom`）、只读预览（`open-preview`）、置顶/收藏切换、关闭页签及块链接/Markdown 引用/ID 复制；支持即时模糊过滤、全键盘循环导航与移动端底部抽屉适配。
+- **多端 E2E 交互与极限窄侧栏防溢出**：全键盘调度、移动端 44px WCAG 触摸靶心与 `aria-modal="false"` 规范；极限窄侧栏 Dock（245px～340px）自适应弹性防溢出加固。
+- **纯逻辑模型与生态支撑**：路径首字母缩写打分（`path-acronym-model`）、思源原生属性视图（AV）轻量只读看板模型与闪卡复习 SM-2 推演模型。
 
 逐项说明、验证数据与历史版本见[完整更新日志](./docs/CHANGELOG.md)。
 
@@ -388,7 +388,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和体积预算（归档 578 KiB、raw 1160 KiB、单条目压缩 320 KiB，见 [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.47.6`，包含真实隔离宿主 E2E 闭环、全表面高对比度无障碍、请求调度与核心数据安全加固。
+当前版本为 `v0.48.0`，包含深入穿透检索、次级动作画板、多端 E2E 交互与极限窄侧栏自适应加固。
 
 <details>
 <summary>历史更新日志（点击展开）</summary>

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-20",
-  "currentTask": "T-7349",
+  "currentTask": "T-7350",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7349",
+  "nextLocalTask": "T-7350",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -163,7 +163,8 @@
     "T-7346",
     "T-7347",
     "T-7348",
-    "T-7349"
+    "T-7349",
+    "T-7350"
   ],
   "tasks": [
     {
@@ -4350,7 +4351,7 @@
     {
       "id": "T-7349",
       "title": "版本正式发布动作封版：Tag 拟定、版本号推进与 CHANGELOG 历史固化",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "release",
@@ -4358,9 +4359,32 @@
         "T-7348"
       ],
       "evidence": [
-        "docs/dev-plan-2026-10-06.md"
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0242-t7349-v0480-release-and-changelog-sealing.md",
+        "package.json",
+        "plugin.json",
+        "README.md",
+        "README.en-US.md",
+        "docs/CHANGELOG.md",
+        "docs/CHANGELOG.en-US.md",
+        "tests/release-version-bump-contract.test.cjs"
       ],
       "next": "T-7350"
+    },
+    {
+      "id": "T-7350",
+      "title": "构建发布产物检验、可复现构建验证与 Release 说明归档",
+      "status": "in_progress",
+      "priority": "P0",
+      "owner": "local",
+      "workType": "release",
+      "dependsOn": [
+        "T-7349"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md"
+      ],
+      "next": "T-7351"
     }
   ],
   "global": {

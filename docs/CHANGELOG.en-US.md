@@ -5,11 +5,13 @@
 
 ## Changelog (full history)
 
-### Upcoming & In-Development Features (T-7334–T-7346)
+### v0.48.0 (2026-10-20)
 
 - **Deep Penetration Search**: Obsidian-inspired penetration syntax in the main search bar: `:heading` penetrates active document outline, `doc:heading` penetrates outline across documents, and `^block` searches workspace content blocks (excluding root docs); parameterized SQL generation with injection-character stripping, precise block anchor jump, and stable multi-heading deduplication.
 - **Secondary Action Palette**: Raycast-style action palette invoked via card context menu or `⌘K` / `Ctrl+K` on focus; aggregates split-opening (`open-right` / `open-bottom`), preview mode (`open-preview`), pin/favorite toggles, closing tabs, and copying block/Markdown links; includes instant fuzzy filtering, keyboard navigation loop, and mobile bottom sheet adaptation.
 - **Cross-Surface E2E Interactive Contracts & Narrow Sidebar**: Comprehensive assertions covering desktop keyboard lifecycle, mobile 44px WCAG hit targets with `aria-modal="false"` declarations, and narrow-dock sidebar (245px–340px) adaptability without horizontal overflow.
+- **Pure-Domain Models & Ecosystem Foundations**: Path acronym scoring (`path-acronym-model`), SiYuan native attribute view (AV) lightweight board model, and flashcard review SM-2 scheduling model.
+- **Verification**: Full test suite 8935 passed, 1 skipped, 0 failed; package.zip 602,668 B safely bounded below the 590 KiB release gate; all batch release, quality, and integration audits pass.
 
 ### v0.47.6 (2026-10-19)
 
