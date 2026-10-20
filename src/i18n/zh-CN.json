@@ -1821,5 +1821,10 @@
   "actionPaletteUnpinTab": "取消置顶",
   "actionPaletteFavoriteTab": "加入收藏",
   "actionPaletteUnfavoriteTab": "移出收藏",
-  "actionPaletteCloseTab": "关闭页签"
+  "actionPaletteCloseTab": "关闭页签",
+  "homeDatabaseBoard": "数据库看板",
+  "homeDescDatabaseBoard": "按分组桶聚合展示属性视图只读看板",
+  "homeFlashcardReview": "闪卡复习",
+  "homeDescFlashcardReview": "基于 SM-2 算法推演每日队列与掌握度统计",
+  "homeFlashcardReviewStat": "今日/待复习"
 }

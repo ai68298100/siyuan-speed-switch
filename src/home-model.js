@@ -471,7 +471,22 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showColumnNames", label: "显示字段名", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRank", label: "显示行号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
+    {moduleId: "database-board", title: "数据库看板", icon: "iconLayoutRight", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
+        {key: "blockId", label: "选择数据库", type: "database", defaults: ""},
+        {key: "groupBy", label: "分组字段", type: "text", defaults: ""},
+        {key: "limit", label: "每组条数", type: "number", min: 1, max: 12, defaults: 6},
+        {key: "showCounts", label: "显示计数", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showPercent", label: "显示占比", type: "select", options: ["否", "是"], defaults: "否"},
+    ]},
+    {moduleId: "flashcard-review", title: "闪卡复习", icon: "iconRiffCard", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
+        {key: "dailyLimit", label: "今日上限", type: "number", min: 5, max: 200, defaults: 30},
+        {key: "showPercent", label: "显示掌握进度", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showForecast", label: "显示推演预测", type: "select", options: ["否", "是"], defaults: "否"},
+    ]},
 ]);
+
+const BUILTIN_EXTENSION_MODULES = Object.freeze([]);
 
 function text(value, max = 128) {
     return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
@@ -569,6 +584,8 @@ const HOME_TILE_DEFAULT_SIZES = {
     'checkin-summary': 'medium',
     'database-list': 'medium',
     'database-table': 'wide',
+    'database-board': 'wide',
+    'flashcard-review': 'medium',
     'saved-searches': 'medium',
     'data-health': 'small',
     'recent-updates': 'wide',
@@ -1037,4 +1054,4 @@ function isLifeHeartbeatModule(moduleId) {
 }
 
 module.exports = {
-    LAYOUT_SIZES,LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, HOME_DEFAULTS_VERSION, HOME_DEFAULT_WIDGETS, HOME_DEFAULT_MODULE_IDS, resolveHomeStarterSize, normalizeHomeDefaultsVersion, prepareHomeDefaultState, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIconId, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+    LAYOUT_SIZES,LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, HOME_DEFAULTS_VERSION, HOME_DEFAULT_WIDGETS, HOME_DEFAULT_MODULE_IDS, resolveHomeStarterSize, normalizeHomeDefaultsVersion, prepareHomeDefaultState, DEVICES, DEFAULT_MODULES, BUILTIN_EXTENSION_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIconId, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};

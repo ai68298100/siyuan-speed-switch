@@ -237,11 +237,24 @@ function buildAvBoardSnapshot(payload, config, labels = {}, now = Date.now(), st
 
     const viewName = boundedText(view && view.name, BOARD_MAX_LABEL_BYTES) || boundedText(data.name, BOARD_MAX_LABEL_BYTES);
     const title = [boundedText(labels.title, 32) || "数据库看板", viewName].filter(Boolean).join(" · ");
+    const items = groups.map((group) => {
+        const topRow = group.items && group.items[0];
+        const secondary = normalized.showPercent && group.percent !== undefined
+            ? `${group.count} 行 (${group.percent}%)`
+            : `${group.count} 行`;
+        return {
+            label: group.key,
+            secondary,
+            value: topRow ? topRow.value : "",
+            count: group.count,
+        };
+    });
     return {
         title,
         status,
         updatedAt: now,
         groups,
+        items: items.slice(0, BOARD_MAX_ITEMS),
         totalRows,
         groupedBy: groupColumn ? boundedText(groupColumn.name || groupColumn.label, BOARD_MAX_LABEL_BYTES) : "",
         emptyHint: boundedText(labels.empty, 96) || "属性视图当前无可聚合的数据行",

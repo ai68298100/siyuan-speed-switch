@@ -17,14 +17,14 @@ function definitions() {
 
 test('component readiness map records the current normalized module inventory', () => {
     const modules = definitions();
-    assert.equal(modules.length, 58);
+    assert.equal(modules.length, 60);
     const availability = Object.fromEntries(home.AVAILABILITY_LEVELS.map((key) => [key, 0]));
     modules.forEach((item) => { availability[item.availability] += 1; });
-    assert.deepEqual(availability, {ready: 23, conditional: 13, external: 22});
+    assert.deepEqual(availability, {ready: 25, conditional: 13, external: 22});
     assert.deepEqual(modules.filter((item) => !item.supportedDevices.includes('mobile')).map((item) => item.moduleId), [
         'external-device-battery', 'external-activitywatch-time',
     ]);
-    assert.match(map, /23 `ready`、13 `conditional`、22 `external`/);
+    assert.match(map, /25 `ready`、13 `conditional`、22 `external`/);
 });
 
 test('every external production module has source metadata except the explicitly tracked gap', () => {

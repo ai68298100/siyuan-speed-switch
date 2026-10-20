@@ -72,7 +72,7 @@ const specsById = new Map(specs.map((spec) => [spec.moduleId, spec]));
 
 test("component spec cards cover the production module catalog exactly", () => {
     assert.equal(SPEC_FILES.length, 9);
-    assert.equal(specs.length, 58);
+    assert.equal(specs.length, 60);
     assert.equal(specsById.size, specs.length, "spec card moduleIds must be unique");
     assert.deepEqual([...specsById.keys()].filter((moduleId) => !definitions.has(moduleId)), []);
     assert.deepEqual([...definitions.keys()].filter((moduleId) => !specsById.has(moduleId)), []);

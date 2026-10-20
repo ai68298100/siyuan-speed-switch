@@ -9,7 +9,7 @@
 | 维度 | 当前事实 | 证据/边界 |
 | --- | --- | --- |
 | 内置工作台定义 | 58 个 | `DEFAULT_MODULES`；不是“58 个都离线可用” |
-| 归一化就绪级别 | 23 `ready`、13 `conditional`、22 `external` | `AVAILABILITY_LEVELS` 与条件集合；`external` 只表示有外部/桥接前置，不保证服务在线 |
+| 归一化就绪级别 | 25 `ready`、13 `conditional`、22 `external` | `AVAILABILITY_LEVELS` 与条件集合；`external` 只表示有外部/桥接前置，不保证服务在线 |
 | 表面支持 | 桌面 58、侧栏 58、手机 56 | 手机不支持 `external-device-battery` 与 `external-activitywatch-time`；`supportedDevices` 是可见边界 |
 | 来源/隐私登记 | 23 个 moduleId 有 `SOURCE_INFO`/依赖信息 | `src/home-store-model.js:33-57`、`:58` 起；`inbox-shorthands` 当前为 external 但没有对应来源摘要或依赖登记，列为已知缺口 |
 | 外部候选目录 | 20 个：builtin 4、external 14、conditional 1、reference 1；9 个需要凭据/端点/本机服务等配置 | `src/external-widget-model.js:8-22`、`EXTERNAL_WIDGET_CATALOG`；目录本身不发网络请求 |

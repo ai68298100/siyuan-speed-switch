@@ -38,8 +38,12 @@
 // @/#/!/^/> 符号化多模态前缀路由、端点规划与标签/书签响应树聚合，
 // raw 产物为 1,200,759 B（超出 1170 KiB 自律线 2.6 KiB）。
 // raw 观察线由 1170 -> 1174 KiB（1,202,176 B，余量 1,417 B）。归档包门禁 590 KiB 保持不变。
-const RAW_BUNDLE_BUDGET_BYTES = 1174 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0244";
+// ADR 0247 (2026-10-20): 属性视图看板与闪卡复习小组件生产装配（T-7354 & T-7355）
+// 把 database-board 与 flashcard-review 接入工作台调度管线与样式层，
+// raw 产物为 1,204,810 B（超出 1174 KiB 2.6 KiB）。
+// raw 观察线由 1174 -> 1178 KiB（1,206,272 B，余量 1,462 B）。归档包门限微调 590 -> 592 KiB（606,208 B，package.zip 604,591 B，余量 1,617 B）。
+const RAW_BUNDLE_BUDGET_BYTES = 1178 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0247";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout
@@ -79,8 +83,10 @@ const RAW_BUNDLE_BUDGET_ADR = "0244";
 // ADR 0237 (2026-10-20): recalibrated 586 -> 590 KiB after T-7344 action-palette-main-wiring
 // (卡片右键菜单/⌘K 快捷键/动作执行调度/全套深浅色与移动端抽屉 SCSS 样式)；
 // 生产构建 package.zip 为 602,045 B，在 590 KiB（604,160 B）门禁内留有 2,115 B 健康余量。
+// ADR 0247 (2026-10-20): recalibrated 590 -> 592 KiB after T-7354 database-board & T-7355 flashcard-review
+// production widget wiring; working tree package.zip is 604,591 B, safely below 592 KiB (606,208 B) with 1,617 B headroom.
 // Per-entry compressed line (320 KiB, ADR 0089) unchanged.
-const ARCHIVE_BUDGET_BYTES = 590 * 1024;
+const ARCHIVE_BUDGET_BYTES = 592 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
 // writing-streak second wave (T-6681) shrank headroom to 11780 bytes. Same

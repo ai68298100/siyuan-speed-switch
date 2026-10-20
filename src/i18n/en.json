@@ -1821,5 +1821,10 @@
   "actionPaletteUnpinTab": "Unpin",
   "actionPaletteFavoriteTab": "Add to favorites",
   "actionPaletteUnfavoriteTab": "Remove from favorites",
-  "actionPaletteCloseTab": "Close tab"
+  "actionPaletteCloseTab": "Close tab",
+  "homeDatabaseBoard": "Database Board",
+  "homeDescDatabaseBoard": "Grouped read-only board for attribute views",
+  "homeFlashcardReview": "Flashcard Review",
+  "homeDescFlashcardReview": "Review queue and mastery projections using SM-2",
+  "homeFlashcardReviewStat": "Due / Today"
 }

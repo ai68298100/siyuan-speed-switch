@@ -2165,6 +2165,29 @@
     }
 }
 
+// 数据库看板：分组与泳道排版 (T-7354)
+.sw-home__cell[data-module-id="database-board"] {
+    .sw__home-stat-value {
+        font-variant-numeric: tabular-nums;
+        font-weight: var(--sw-weight-semibold, 600);
+    }
+    .sw__home-module-item-label {
+        font-weight: var(--sw-weight-medium, 500);
+    }
+}
+
+// 闪卡复习推演：进度与今日队列 (T-7355)
+.sw-home__cell[data-module-id="flashcard-review"] {
+    .sw__home-stat-value {
+        font-variant-numeric: tabular-nums;
+        font-weight: var(--sw-weight-bold, 700);
+        color: var(--b3-theme-primary);
+    }
+    .sw__home-module-item-action {
+        font-weight: var(--sw-weight-semibold, 600);
+    }
+}
+
 // Keep the mobile range contract readable to older WebView style scanners.
 @media (max-width: 560px) {
     .sw-settings__range-number { min-width: 0; width: 100%; gap: var(--sw-space-sm, 6px); }

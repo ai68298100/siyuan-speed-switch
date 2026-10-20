@@ -10,9 +10,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {JSDOM} = require("jsdom");
 const {mountActionPalette} = require("../src/action-palette-ui.js");
+const {readSourceText} = require("./source-scan.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
-const polishScss = fs.readFileSync(path.join(ROOT, "src", "styles", "_11-ui-polish.scss"), "utf8");
+const polishScss = readSourceText(path.join(ROOT, "src", "styles", "_11-ui-polish.scss"));
 const readmeZh = fs.readFileSync(path.join(ROOT, "README.md"), "utf8");
 const readmeEn = fs.readFileSync(path.join(ROOT, "README.en-US.md"), "utf8");
 const changelogZh = fs.readFileSync(path.join(ROOT, "docs", "CHANGELOG.md"), "utf8");

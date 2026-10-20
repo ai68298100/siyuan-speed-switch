@@ -239,9 +239,9 @@ function findOutlineSeparatorIndex(text, separator) {
  * @param {object} [i18n] 多语言字典
  * @returns {object} { key, badge, icon, prefix }
  */
-function resolveSearchModeBadge(mode, i18n = {}) {
+function resolveSearchModeBadge(mode, bundle = {}) {
     const meta = MODE_BADGES[mode] || MODE_BADGES[SEARCH_MODES.DOC];
-    const localized = i18n && typeof i18n === "object" ? i18n[`searchMode_${meta.key}`] : "";
+    const localized = bundle && typeof bundle === "object" ? bundle[`searchMode_${meta.key}`] : "";
     return {
         key: meta.key,
         badge: localized || meta.defaultBadge,

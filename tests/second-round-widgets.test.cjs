@@ -103,12 +103,12 @@ test("second-round schemas land in semantic sections and stay bounded", () => {
     }
 });
 
-test("ADR 0244 recalibrates the raw bundle and archive budget after the penetration symbol multimodal routing", () => {
+test("ADR 0247 recalibrates the raw bundle and archive budget after the widget board and review wiring", () => {
     const gate = readSourceText(path.join(__dirname, "host", "release-quality.test.cjs"));
     assert.match(gate, /metrics\.RAW_BUNDLE_BUDGET_BYTES/);
-    // ADR 0098/0125 是历史基线；当前线由 ADR 0244 校准至 1174 KiB 与 590 KiB。
-    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1174 * 1024);
-    assert.equal(releaseMetrics.ARCHIVE_BUDGET_BYTES, 590 * 1024);
+    // ADR 0098/0125 是历史基线；当前线由 ADR 0247 校准至 1178 KiB 与 592 KiB。
+    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1178 * 1024);
+    assert.equal(releaseMetrics.ARCHIVE_BUDGET_BYTES, 592 * 1024);
     // 校准日期备注本身就在注释里——按门禁清单 D-395 例外用原始文本断言注释
     const gateRaw = fs.readFileSync(path.join(__dirname, "host", "release-quality.test.cjs"), "utf8");
     assert.match(gateRaw, /2026-09-23 \(ADR 0074\)/);
@@ -140,6 +140,12 @@ test("ADR 0244 recalibrates the raw bundle and archive budget after the penetrat
     assert.match(adr244, /1170 KiB/);
     assert.match(adr244, /1174 KiB/);
     assert.match(adr244, /590 KiB/);
+    // T-7354 & T-7355：数据库看板与闪卡复习装配后由 ADR 0247 校准至 1178 KiB 与 592 KiB。
+    const adr247 = fs.readFileSync(path.join(__dirname, "..", "docs", "adr", "0247-t7354-database-board-widget-wiring.md"), "utf8");
+    assert.match(adr247, /1174 KiB/);
+    assert.match(adr247, /1178 KiB/);
+    assert.match(adr247, /590 KiB/);
+    assert.match(adr247, /592 KiB/);
     const zh = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "zh-CN.json"), "utf8"));
     const en = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "en.json"), "utf8"));
     assert.equal(zh.homeCountdownElapsed, "已经 {n} 天");

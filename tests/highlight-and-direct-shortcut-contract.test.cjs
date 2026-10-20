@@ -9,6 +9,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const {readSourceText} = require("./source-scan.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
 const {
@@ -18,8 +19,8 @@ const {
     highlightSearchMatchesHtml,
 } = require("../src/search-model.js");
 
-const indexTs = fs.readFileSync(path.join(ROOT, "src", "index.ts"), "utf8");
-const polishScss = fs.readFileSync(path.join(ROOT, "src", "styles", "_11-ui-polish.scss"), "utf8");
+const indexTs = readSourceText(path.join(ROOT, "src", "index.ts"));
+const polishScss = readSourceText(path.join(ROOT, "src", "styles", "_11-ui-polish.scss"));
 
 test("T-7352: extractHighlightSearchNeedle 自动剥离前缀符号并提取纯净搜索词", () => {
     assert.equal(extractHighlightSearchNeedle("@系统架构"), "系统架构");

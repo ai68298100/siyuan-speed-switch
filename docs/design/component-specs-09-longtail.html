@@ -91,7 +91,7 @@ body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(
 <section class="note">
   <h2>终批说明</h2>
   <ol>
-    <li><b>覆盖收口</b>：本批覆盖其余 23 个组件，58 组件规格<b>全部闭环</b>；每卡 = 默认材质 + 默认档 + 布局与验收要点（家族共享部分引用批次①~⑥既定规范，不重复）。</li>
+    <li><b>覆盖收口</b>：本批覆盖其余 25 个组件，60 组件规格<b>全部闭环</b>；每卡 = 默认材质 + 默认档 + 布局与验收要点（家族共享部分引用批次①~⑥既定规范，不重复）。</li>
     <li><b>材质</b>：终批组件全部 <b>plain</b>（数据/列表/检索型，阅读对比度优先）；accent/dark/vibrant 仅限前几批已声明的组件。</li>
     <li><b>默认档位</b>：以「组件内容天然形态」为准（列表=wide、统计=medium/small、一览=small）；落格时仍须校验该模块 def.sizes 白名单，不在白名单内回退 medium/首个支持档。</li>
     <li><b>通用验收</b>：本地 SQL 有界聚合（T-6478）；点击跳转幂等；失效条目「已失效」占位；明暗采样 ≥ AA；空数据状态区文案。</li>
@@ -100,7 +100,7 @@ body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(
 
 <!-- ============ A 数据库与检索 ============ -->
 <section class="screen">
-  <h2>A · 数据库与检索 <span>8 组件</span></h2>
+  <h2>A · 数据库与检索 <span>9 组件</span></h2>
   <div class="cards">
     <div class="mini">
       <h4>数据库 <span class="tag">plain · medium</span></h4>
@@ -113,6 +113,12 @@ body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(
       <p><b>moduleId</b>：database-table</p>
       <p><b>布局</b>：有界表格（列白名单 + 行上限），其他视图降级 + 视图名标注。</p>
       <p><b>验收</b>：溢出可读；行点击跳源库（P8 已交付语义）。</p>
+    </div>
+    <div class="mini">
+      <h4>数据库看板 <span class="tag">plain · wide</span></h4>
+      <p><b>moduleId</b>：database-board</p>
+      <p><b>布局</b>：按字段分组的看板桶（每组行数上限 + 可选计数/占比）。</p>
+      <p><b>验收</b>：av 端点只读取数；非支持视图降级为空态并标注视图名。</p>
     </div>
     <div class="mini">
       <h4>已存筛选 <span class="tag">plain · medium</span></h4>
@@ -155,7 +161,7 @@ body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(
 
 <!-- ============ B 日记与任务 ============ -->
 <section class="screen">
-  <h2>B · 日记与任务 <span>7 组件</span></h2>
+  <h2>B · 日记与任务 <span>8 组件</span></h2>
   <div class="cards">
     <div class="mini">
       <h4>今日日记 <span class="tag">plain · small</span></h4>
@@ -198,6 +204,12 @@ body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(
       <p><b>moduleId</b>：flashcard-due</p>
       <p><b>布局</b>：待复习计数 + 进入复习指引（复习在思源闪卡内完成）。</p>
       <p><b>验收</b>：计数来源 flashcard 统计接口；未启用闪卡 = 空态。</p>
+    </div>
+    <div class="mini">
+      <h4>闪卡复习 <span class="tag">plain · medium</span></h4>
+      <p><b>moduleId</b>：flashcard-review</p>
+      <p><b>布局</b>：当前待复习卡片摘要（问题/答案面切换）+ 开始复习入口。</p>
+      <p><b>验收</b>：复习判决与队列更新走思源原生闪卡接口；无卡片时保留空态。</p>
     </div>
   </div>
 </section>
@@ -266,7 +278,7 @@ body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(
 
 <!-- ============ 覆盖收口 ============ -->
 <section class="screen">
-  <h2>覆盖收口 <span>批次①~⑨ 全部落地后，58 组件规格闭环</span></h2>
+  <h2>覆盖收口 <span>批次①~⑨ 全部落地后，60 组件规格闭环</span></h2>
   <div class="frame">
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr style="text-align:left;color:var(--b3-theme-on-surface-light);border-bottom:1px solid var(--b3-border-color);">

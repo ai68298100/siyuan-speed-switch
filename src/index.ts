@@ -10,7 +10,7 @@ import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, re
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, buildSearchHealthSnapshot, buildSearchDocumentFilterMatcher, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, formatUpdatedBadge, isSemanticEmbeddingConfigured, matchesParsedQuery, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId, updateSavedSearchEntry, extractActionContext, getAvailableActions} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
-import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayJournalSnapshot, normalizeTodayJournalConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
+import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayJournalSnapshot, normalizeTodayJournalConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildAvBoardSnapshot, normalizeAvBoardConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, buildFlashcardReviewSnapshot, normalizeFlashcardReviewConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
 import {favoriteDocumentIdsForProbe, buildFavoritesWidgetSnapshot, buildDocumentSetsWidgetSnapshot, normalizeFixedDocumentConfig, buildFixedDocumentSnapshot} from "./document-widget-model";
 import {
     sanitizeQuickActions,
@@ -7784,6 +7784,63 @@ const updatedMap: {[rootId: string]: string} = {};
             if (!snapshot) return {emptyHint: this.i18n.homeAvTableUnavailable, items: []};
             return snapshot;
         }, {timeoutMs: 1500, cacheTtlMs: 1000});
+        // 数据库看板（T-7354 / ADR 0247）：用户绑定属性视图，按分组桶聚合展示
+        register("database-board", this.i18n.homeDatabaseBoard || "数据库看板", "iconLayoutRight", this.i18n.homeDescDatabaseBoard || "按分组桶聚合展示属性视图只读看板", ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const normalized = normalizeAvBoardConfig(config);
+            if (!normalized.blockId) return {emptyHint: this.i18n.homeAvTableConfigHint || "请先在组件配置中选择属性视图", items: []};
+            const fetchView = (id: string, extra: Record<string, unknown> = {}) =>
+                this.fetchKernelJson("/api/av/renderAttributeView", {id, pageSize: 100, ...extra});
+            let json = await fetchView(normalized.blockId);
+            if (!json?.data?.view?.rows?.length) {
+                try {
+                    const full = await this.fetchKernelJson("/api/av/getAttributeView", {id: normalized.blockId});
+                    const dbId = full?.data?.av?.id;
+                    const viewID = full?.data?.av?.viewID;
+                    if (typeof dbId === "string" && dbId && dbId !== normalized.blockId && typeof viewID === "string" && viewID) {
+                        json = await fetchView(dbId, {viewID});
+                    }
+                } catch (_) { /* 保持首呼结果 */ }
+            }
+            const snapshot = buildAvBoardSnapshot(json, normalized, {
+                title: this.i18n.homeDatabaseBoard || "数据库看板",
+                empty: this.i18n.homeAvTableEmpty || "暂无数据行",
+                stat: this.i18n.homeAvTableRows || "分组/行数",
+            });
+            if (!snapshot) return {emptyHint: this.i18n.homeAvTableUnavailable || "属性视图暂不可用", items: []};
+            return snapshot;
+        }, {timeoutMs: 1500, cacheTtlMs: 1000});
+        // 闪卡复习推演（T-7355 / ADR 0248）：SM-2 调度推演与每日队列进度
+        register("flashcard-review", this.i18n.homeFlashcardReview || "闪卡复习", "iconRiffCard", this.i18n.homeDescFlashcardReview || "基于 SM-2 算法推演每日队列与掌握度统计", ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const normalized = normalizeFlashcardReviewConfig(config);
+            const notebookFilter = normalizeAgentNotebookId(normalized.notebook);
+            let payload: {code: number; data: unknown[]} = {code: 0, data: []};
+            if (notebookFilter) {
+                const json = await this.fetchKernelJson("/api/riff/getNotebookRiffDueCards", {notebook: notebookFilter});
+                payload = {code: 0, data: Array.isArray(json?.data) ? json.data : []};
+            } else {
+                const notebooks = (await this.loadNotebooks()).slice(0, 12);
+                const aggregatedCards: unknown[] = [];
+                for (let index = 0; index < notebooks.length; index += 4) {
+                    const chunk = await Promise.all(notebooks.slice(index, index + 4).map(async (nb) => {
+                        const json = await this.fetchKernelJson("/api/riff/getNotebookRiffDueCards", {notebook: nb.id});
+                        return Array.isArray(json?.data) ? json.data : [];
+                    }));
+                    for (const list of chunk) {
+                        aggregatedCards.push(...list);
+                        if (aggregatedCards.length >= 100) break;
+                    }
+                    if (aggregatedCards.length >= 100) break;
+                }
+                payload = {code: 0, data: aggregatedCards};
+            }
+            const snapshot = buildFlashcardReviewSnapshot(payload, normalized, {
+                title: this.i18n.homeFlashcardReview || "闪卡复习",
+                empty: this.i18n.homeFlashcardEmpty || "当前范围没有待复习闪卡",
+                stat: this.i18n.homeFlashcardReviewStat || "今日/待复习",
+            });
+            if (!snapshot) return {emptyHint: this.i18n.homeFlashcardEmpty || "当前范围没有待复习闪卡", items: []};
+            return snapshot;
+        }, {timeoutMs: 2500, cacheTtlMs: 2000});
     }
 
     private getHomeState() {

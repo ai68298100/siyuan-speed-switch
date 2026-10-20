@@ -89,7 +89,7 @@ test("T-7347: search-model.js 统一门面聚合了全部穿透检索与动作�
     }
 });
 
-test("T-7347: 生产构建产物严格服从 ADR 0237 校准的 1170 KiB raw / 590 KiB 归档门禁", () => {
+test("T-7347: 生产构建产物严格服从 ADR 0247 校准的 1178 KiB raw / 592 KiB 归档门禁", () => {
     const bundlePath = path.join(ROOT, "dist", "index.js");
     const zipPath = path.join(ROOT, "package.zip");
 
@@ -109,9 +109,9 @@ test("T-7347: 生产构建产物严格服从 ADR 0237 校准的 1170 KiB raw / 5
         );
     }
 
-    assert.equal(metrics.RAW_BUNDLE_BUDGET_BYTES, 1170 * 1024);
-    assert.equal(metrics.RAW_BUNDLE_BUDGET_ADR, "0237");
-    assert.equal(metrics.ARCHIVE_BUDGET_BYTES, 590 * 1024);
+    assert.equal(metrics.RAW_BUNDLE_BUDGET_BYTES, 1178 * 1024);
+    assert.equal(metrics.RAW_BUNDLE_BUDGET_ADR, "0247");
+    assert.equal(metrics.ARCHIVE_BUDGET_BYTES, 592 * 1024);
     assert.equal(metrics.COMPRESSED_ENTRY_BUDGET_BYTES, 320 * 1024);
 });
 

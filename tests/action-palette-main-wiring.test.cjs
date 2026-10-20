@@ -81,7 +81,7 @@ test("T-7344: 卡片操作菜单与卡片 DOM 键盘监听接入 ⌘K / Ctrl+K",
     // 2. 卡片键盘监听 (buildCardItem)
     assert.match(
         indexTs,
-        /\(event\.ctrlKey\s*\|\|\s*event\.metaKey\)\s*&&\s*event\.key\.toLowerCase\(\)\s*===\s*["']k["']/,
+        /(?:\(event\.ctrlKey\s*\|\|\s*event\.metaKey\)|isCtrlOrCmd)\s*&&\s*event\.key\.toLowerCase\(\)\s*===\s*["']k["']/,
         "buildCardItem 中必须监听 Ctrl+K / Cmd+K 快捷键",
     );
 });
