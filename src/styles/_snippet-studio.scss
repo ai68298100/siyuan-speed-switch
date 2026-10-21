@@ -67,13 +67,13 @@
         grid-template-columns: minmax(280px, 330px) minmax(0, 1fr) 48px;
 
         .sw-studio__ai {
-            padding: 14px 6px;
+            padding: 14px var(--sw-space-sm, 6px);
             overflow: hidden;
 
             .sw-studio__ai-header {
                 flex-direction: column;
                 align-items: center;
-                gap: 8px;
+                gap: var(--sw-space-md, 8px);
             }
 
             .sw-studio__ai-title {
@@ -226,6 +226,27 @@
     &__field { display: grid; gap: var(--sw-space-sm, 6px); margin: var(--sw-space-lg, 12px) 0; color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); }
     &__commands { display: flex; gap: var(--sw-space-md, 8px); flex-wrap: wrap; margin-top: var(--sw-space-lg, 12px); }
     &__editor-section { display: flex; flex-direction: column; }
+    &__color-swatches {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sw-space-xs, 4px);
+        margin-inline: var(--sw-space-xs, 4px);
+    }
+    &__color-swatch {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 1px solid rgba(0, 0, 0, 0.25);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: transform $sw-dur-fast $sw-ease;
+
+        &:hover {
+            transform: scale(1.25);
+        }
+    }
     &__editor, &__ai-result { font-family: var(--b3-font-family-code, monospace); tab-size: 2; white-space: pre; resize: none; line-height: 1.55; font-size: var(--sw-font-sm, 12px); }
     &__editor {
         width: 100%;

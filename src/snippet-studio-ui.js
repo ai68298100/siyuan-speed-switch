@@ -940,9 +940,26 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             : Promise.resolve().then(fallbackCopy);
         job.then(() => setStatus(t("snippetCopied"), "ready")).catch(() => setStatus(t("snippetCopyFailed"), "warn"));
     }
+    function extractSnippetColors(code, limit = 6) {
+        if (typeof code !== "string" || !code) return [];
+        const re = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b|rgba?\([^)]+\)|hsla?\([^)]+\)/g;
+        const matches = code.match(re) || [];
+        const seen = new Set();
+        const results = [];
+        for (const m of matches) {
+            const cleaned = m.trim();
+            if (!seen.has(cleaned)) {
+                seen.add(cleaned);
+                results.push(cleaned);
+                if (results.length >= limit) break;
+            }
+        }
+        return results;
+    }
+    const colorSwatches = node("span", "sw-studio__color-swatches");
     const copyButton = action("snippetCopy", () => copyText(draft.content || ""));
     const snippetStoreButton = action("snippetStore", () => openPicker(true));
-    editorBar.append(editorLead, draftUndoButton, draftRedoButton, formatButton, findToggleButton, chooseButton, snippetStoreButton, importButton, newButton, copyButton);
+    editorBar.append(editorLead, colorSwatches, draftUndoButton, draftRedoButton, formatButton, findToggleButton, chooseButton, snippetStoreButton, importButton, newButton, copyButton);
     const editor = node("textarea", "sw-studio__editor");
     editor.setAttribute("aria-label", t("snippetCode"));
     // 冲突对话框销毁后宿主 Dialog 可能把焦点放回 body；关闭冲突层的
@@ -1758,6 +1775,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 ? `${t("snippetDiagnosticsError")}: ${bracketState.issues.length}`
                 : `${t("snippetDiagnostics")} ✓`;
         editorMeta.textContent = `${formatBytes(byteLength(editor.value))} · ${lineState.lineCount} ${t("snippetLines")} · ${status}`;
+        colorSwatches.replaceChildren();
+        const colors = extractSnippetColors(editor.value);
+        colors.forEach((color) => {
+            const swatch = node("span", "sw-studio__color-swatch");
+            swatch.style.backgroundColor = color;
+            swatch.title = `${t("snippetCopy") || "复制"}: ${color}`;
+            swatch.addEventListener("click", () => copyText(color));
+            colorSwatches.appendChild(swatch);
+        });
     }
     function renderPreview() {
         clearTimeout(previewTimer);
@@ -1897,10 +1923,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             lineNumbers.scrollTop = editor.scrollTop;
         });
     }, {passive: true});
-    editorSection.addEventListener("keydown", (event) => {
+    root.addEventListener("keydown", (event) => {
         if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === "s" && !event.isComposing) {
             event.preventDefault();
-            saveButton.click();
+            event.stopPropagation();
+            if (!saveButton.disabled) {
+                saveButton.click();
+            } else {
+                setStatus(t("snippetAlreadySaved") || t("snippetSaved"), "ready");
+            }
         }
     });
     // T-6957：输入法组合期内不落账（组合提交后才结算事务）；编辑器聚焦时接管
