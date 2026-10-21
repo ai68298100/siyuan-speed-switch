@@ -112,7 +112,7 @@ test("T-7347: 生产构建产物严格服从 ADR 0247 校准的 1178 KiB raw / 5
     assert.equal(metrics.RAW_BUNDLE_BUDGET_BYTES, 1188 * 1024);
     assert.equal(metrics.RAW_BUNDLE_BUDGET_ADR, "0253");
     assert.equal(metrics.ARCHIVE_BUDGET_BYTES, 598 * 1024);
-    assert.equal(metrics.COMPRESSED_ENTRY_BUDGET_BYTES, 320 * 1024);
+    assert.equal(metrics.COMPRESSED_ENTRY_BUDGET_BYTES, 328 * 1024);
 });
 
 test("T-7347 门禁负向验证：若缺失核心模块或预算篡改，断言必须精确红", () => {

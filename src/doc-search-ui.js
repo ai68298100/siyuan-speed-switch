@@ -1796,6 +1796,33 @@ function appendDocResultsEmpty(box, scrollElement, onClose) {
     empty.setAttribute("role", "status");
     empty.setAttribute("aria-live", "polite");
     appendDocStatusCopy(empty, this.i18n.noDocResults, this.i18n.docSearchEmptyHint);
+
+    const q = (scrollElement.dataset.swDocSearchQuery || "").trim();
+    if (q && !/^[@^#!>?]/.test(q)) {
+        const bar = document.createElement("div");
+        bar.className = "sw__search-empty-hints";
+        const lbl = document.createElement("span");
+        lbl.className = "sw__search-empty-hints-label";
+        lbl.textContent = this.i18n.searchTryPenetration;
+        bar.appendChild(lbl);
+        [["^", this.i18n.searchModeBlock], ["@", this.i18n.searchModeHeading], ["#", this.i18n.searchModeTag]].forEach(([p, name]) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "b3-button b3-button--text sw__search-empty-chip";
+            btn.textContent = `${name} (${p}${q})`;
+            btn.onclick = () => {
+                const input = scrollElement.closest(".speed-switch")?.querySelector("input.sw__search");
+                if (input) {
+                    input.value = `${p}${q}`;
+                    input.dispatchEvent(new (input.ownerDocument.defaultView || window).Event("input", {bubbles: true}));
+                    input.focus();
+                }
+            };
+            bar.appendChild(btn);
+        });
+        empty.appendChild(bar);
+    }
+
     box.appendChild(empty);
     appendDocResultsViewAll.call(this, box, scrollElement, onClose);
 }

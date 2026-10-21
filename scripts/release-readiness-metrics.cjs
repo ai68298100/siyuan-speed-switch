@@ -120,7 +120,10 @@ const ARCHIVE_BUDGET_BYTES = 598 * 1024;
 // The then-current repository archive budget was 512 KiB — archive headroom was only ~13 KiB,
 // so the next Phase A batches had to re-audit it per the same
 // program.
-const COMPRESSED_ENTRY_BUDGET_BYTES = 320 * 1024;
+// ADR 0254 (2026-10-21): recalibrated 320 -> 328 KiB (335,872 B) after T-7360
+// (penetration search smart empty hints, snippet studio dual maximize views, color chips);
+// compressed index.js is 328,031 bytes (7,841 B headroom within 328 KiB).
+const COMPRESSED_ENTRY_BUDGET_BYTES = 328 * 1024;
 const ARCHIVE_DRIFT_TOLERANCE_BYTES = 1024;
 
 function parseArtifactSnapshot(text) {

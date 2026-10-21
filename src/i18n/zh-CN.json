@@ -1843,5 +1843,9 @@
   "snippetSubmitTitle": "投稿与共享优质代码片段",
   "snippetSubmitGuide": "感谢共建思源代码片段生态！您可以将编写的高颜值样式通过 Gist 分享，或导出标准 JSON 投稿到 GitHub 仓库与链滴社区，经收录后将直接内置入片段商店供所有人一键使用。",
   "snippetPreviewMaximize": "最大化/还原预览",
-  "snippetEditorMaximize": "最大化/还原编辑器"
+  "snippetEditorMaximize": "最大化/还原编辑器",
+  "searchTryPenetration": "尝试深度穿透：",
+  "searchModeBlock": "正文块",
+  "searchModeHeading": "标题大纲",
+  "searchModeTag": "标签"
 }

@@ -950,6 +950,40 @@
     .sw__doc-status--empty,
     .sw__empty { border-style: dashed; }
 
+    .sw__search-empty-hints {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: var(--sw-space-sm, 6px);
+        margin-top: var(--sw-space-md, 8px);
+        padding-top: var(--sw-space-sm, 6px);
+        border-top: 1px dashed var(--sw-polish-line-soft);
+    }
+    .sw__search-empty-hints-label {
+        color: var(--b3-theme-on-surface-light);
+        font-size: var(--sw-font-xs, 11px);
+        opacity: 0.85;
+    }
+    .sw__search-empty-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
+        border: 1px solid var(--sw-polish-line);
+        border-radius: var(--sw-platform-radius-pill, 999px);
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-primary);
+        font-size: var(--sw-font-xs, 11px);
+        font-variant-numeric: tabular-nums;
+        cursor: pointer;
+        transition: transform $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease;
+
+        &:hover {
+            background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+            transform: translateY(-1px);
+        }
+    }
+
     .sw__empty { min-height: 180px; }
 
     .sw__workbench-dock {
