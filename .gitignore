@@ -2,6 +2,7 @@ node_modules/
 .pnpm-store/
 dist/
 package.zip
+package.zip.sha256
 .history/
 .hotreload
 *.log
