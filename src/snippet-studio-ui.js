@@ -49,6 +49,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     // below by key. There is no user-controlled key path here.
     const locale = {i18n};
     const translations = {
+        snippetSubmit: locale.i18n.snippetSubmit,
+        snippetSubmitTitle: locale.i18n.snippetSubmitTitle,
+        snippetSubmitGuide: locale.i18n.snippetSubmitGuide,
         snippetAbout: locale.i18n.snippetAbout,
         snippetAI: locale.i18n.snippetAI,
         snippetAIIncludeCode: locale.i18n.snippetAIIncludeCode,
@@ -2963,8 +2966,35 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 dark: doc.documentElement.dataset.themeMode === "dark", scene: previewScene, width: previewWidth});
             storePane.scrollIntoView?.({block: "nearest"});
         }
+        const openSubmitGuide = () => {
+            const overlay = node("div", "sw-studio__dialog-overlay");
+            const box = node("div", "sw-studio__dialog sw-studio__leave");
+            const head = node("h3", "sw-studio__section-title", t("snippetSubmitTitle"));
+            const desc = node("p", "sw-studio__leave-message", t("snippetSubmitGuide"));
+            const actions = node("div", "sw-studio__leave-actions");
+            const copyJsonBtn = node("button", "b3-button b3-button--text", t("snippetCopy"));
+            copyJsonBtn.addEventListener("click", () => {
+                const payload = JSON.stringify({
+                    name: draft.name || "My Snippet",
+                    type: draft.type || "css",
+                    content: draft.content || "",
+                }, null, 2);
+                copyText(payload);
+            });
+            const closeBtn = node("button", "b3-button b3-button--cancel", t("cancel"));
+            closeBtn.addEventListener("click", () => overlay.remove());
+            actions.append(copyJsonBtn, closeBtn);
+            box.append(head, desc, actions);
+            overlay.appendChild(box);
+            doc.body.appendChild(overlay);
+        };
         // T-7025 第二阶段：目录浮层头部提供回收站入口
-        head.append(node("strong", "", t("snippetChoose")), action("snippetRecycle", () => openRecycleViewer()), action("snippetClose", closePicker));
+        head.append(
+            node("strong", "", t(browse ? "snippetStore" : "snippetChoose")),
+            ...(browse ? [action("snippetSubmit", openSubmitGuide)] : []),
+            action("snippetRecycle", () => openRecycleViewer()),
+            action("snippetClose", closePicker),
+        );
         const recentItems = (session.recentIds || []).map((id) => snippets.find((item) => item.id === id)).filter(Boolean);
         const recent = node("div", "sw-studio__recent");
         if (recentItems.length) {

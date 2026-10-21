@@ -894,8 +894,8 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 if (card.dataset.recommended === "true" || HOME_FEATURED_MODULE_IDS.includes(moduleId)) {
                     const featBadge = document.createElement("em");
                     featBadge.className = "sw-home-store__availability sw-home-store__badge--featured";
-                    featBadge.textContent = "⭐ " + (this.i18n.homeStoreRecommended || "精选");
-                    featBadge.title = this.i18n.homeStoreRecommended || "精选推荐组件";
+                    featBadge.textContent = "⭐ " + (this.i18n.homeStoreTabRecommended || "精选");
+                    featBadge.title = this.i18n.homeStoreTabRecommended || "精选推荐组件";
                     title.appendChild(document.createTextNode(" "));
                     title.appendChild(featBadge);
                 }

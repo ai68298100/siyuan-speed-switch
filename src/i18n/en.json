@@ -1838,5 +1838,8 @@
   "openedInReaderReceipt": "Opened in SiReader: {x}",
   "openedInMediaReceipt": "Opened in SiMedia: {x}",
   "homeScenePresets": "Presets",
-  "homeScenePresetApplied": "Applied scene preset: {x} (undo available)"
+  "homeScenePresetApplied": "Applied scene preset: {x} (undo available)",
+  "snippetSubmit": "Submit",
+  "snippetSubmitTitle": "Submit & Share Snippets",
+  "snippetSubmitGuide": "Thank you for contributing! You can share your snippet via Gist or export it as standard JSON to submit on GitHub or the LianDi community. Featured snippets will be curated into the builtin store."
 }

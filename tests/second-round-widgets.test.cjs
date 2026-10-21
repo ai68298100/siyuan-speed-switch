@@ -103,12 +103,12 @@ test("second-round schemas land in semantic sections and stay bounded", () => {
     }
 });
 
-test("ADR 0247/0249/0251/0252 recalibrates the raw bundle and archive budget after the widget board and review wiring", () => {
+test("ADR 0247/0249/0251/0252/0253 recalibrates the raw bundle and archive budget after the widget board and review wiring", () => {
     const gate = readSourceText(path.join(__dirname, "host", "release-quality.test.cjs"));
     assert.match(gate, /metrics\.RAW_BUNDLE_BUDGET_BYTES/);
-    // ADR 0098/0125 是历史基线；当前线由 ADR 0252 校准至 1188 KiB 与 596 KiB。
+    // ADR 0098/0125 是历史基线；当前线由 ADR 0253 校准至 1188 KiB 与 598 KiB。
     assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1188 * 1024);
-    assert.equal(releaseMetrics.ARCHIVE_BUDGET_BYTES, 596 * 1024);
+    assert.equal(releaseMetrics.ARCHIVE_BUDGET_BYTES, 598 * 1024);
     // 校准日期备注本身就在注释里——按门禁清单 D-395 例外用原始文本断言注释
     const gateRaw = fs.readFileSync(path.join(__dirname, "host", "release-quality.test.cjs"), "utf8");
     assert.match(gateRaw, /2026-09-23 \(ADR 0074\)/);

@@ -1838,5 +1838,8 @@
   "openedInReaderReceipt": "已在思阅中打开：{x}",
   "openedInMediaReceipt": "已在思播中打开：{x}",
   "homeScenePresets": "场景预设",
-  "homeScenePresetApplied": "已套用预设场景：{x}（支持一键撤销）"
+  "homeScenePresetApplied": "已套用预设场景：{x}（支持一键撤销）",
+  "snippetSubmit": "投稿共享",
+  "snippetSubmitTitle": "投稿与共享优质代码片段",
+  "snippetSubmitGuide": "感谢共建思源代码片段生态！您可以将编写的高颜值样式通过 Gist 分享，或导出标准 JSON 投稿到 GitHub 仓库与链滴社区，经收录后将直接内置入片段商店供所有人一键使用。"
 }
