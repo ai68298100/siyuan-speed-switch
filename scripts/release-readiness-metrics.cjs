@@ -63,8 +63,11 @@
 // ADR 0257 (2026-10-21): 切换器近期搜索词历史重放、卡片悬停复制块链接与门限校准，
 // raw 产物为 1,220,915 B（处于 1194 KiB 自律线内，余量约 1.7 KiB）。
 // 归档包门禁由 600 -> 602 KiB（616,448 B，package.zip 614,563 B，余量 1,885 B）。
-const RAW_BUNDLE_BUDGET_BYTES = 1194 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0257";
+// ADR 0258 (2026-10-22): 移动端常驻多模态穿透药丸、搜索模式专属提示、搜索结果 Alt+C 快捷复制与门限校准，
+// raw 产物为 1,223,603 B（处于 1196 KiB 自律线内，余量约 1.1 KiB）。
+// 归档包门禁维持 602 KiB（616,448 B，package.zip 615,429 B，余量 1,019 B）。
+const RAW_BUNDLE_BUDGET_BYTES = 1196 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0258";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout

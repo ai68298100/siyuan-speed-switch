@@ -2121,11 +2121,23 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         // T-6810 并排打开：右键结果在右侧分屏打开（桌面）；T-6816 Alt+点击预览打开
         if (!this.isMobile) {
             item.title = (item.title ? item.title + " · " : "") + this.i18n.docSearchSplitHint
-                + " · " + this.i18n.docSearchPreviewHint;
+                + " · " + this.i18n.docSearchPreviewHint
+                + " · " + (this.i18n.actionPaletteCopyBlockLink || "复制块超链接") + " (Alt+C)";
             item.addEventListener("contextmenu", (event) => {
                 event.preventDefault();
                 onClose();
                 void openDocSearchResult.call(this, id, hitId, "right");
+            });
+            item.addEventListener("keydown", (event) => {
+                if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.key.toLowerCase() === "c") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const copyTargetId = hitId || docRootKey;
+                    if (copyTargetId && navigator?.clipboard?.writeText) {
+                        void navigator.clipboard.writeText(`siyuan://blocks/${copyTargetId}`);
+                        showMessage(this.i18n.snippetCopied || "已复制到剪贴板");
+                    }
+                }
             });
         }
         return item;

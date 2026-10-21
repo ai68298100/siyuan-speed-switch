@@ -5349,16 +5349,17 @@ const updatedMap: {[rootId: string]: string} = {};
     }
 
     // 常驻多模态搜索模式 Chips 栏（对标 Arc / Raycast 模式指示与快速切换）
-    private setupSearchModeChips(container: HTMLElement | null, searchInput: HTMLInputElement | null, onTrigger: () => void): () => void {
+    setupSearchModeChips(container: HTMLElement | null, searchInput: HTMLInputElement | null, onTrigger: () => void): () => void {
         if (!container || !searchInput) return () => undefined;
+        const defaultPlaceholder = this.i18n.searchTabs || "搜索页签或全库文档…";
         const modes = [
-            {key: "all", prefix: "", label: this.i18n.chipsTabs || "页签", icon: "iconLayout"},
-            {key: "outline", prefix: "@", label: "@ " + (this.i18n.searchModeHeading || "大纲"), icon: "iconAlignLeft"},
-            {key: "block", prefix: "^", label: "^ " + (this.i18n.searchModeBlock || "正文"), icon: "iconParagraph"},
-            {key: "tag", prefix: "#", label: "# " + (this.i18n.searchModeTag || "标签"), icon: "iconTag"},
-            {key: "bookmark", prefix: "!", label: "! " + (this.i18n.searchModeBookmark || "书签"), icon: "iconBookmark"},
-            {key: "command", prefix: ">", label: "> " + (this.i18n.searchModeCommand || "命令"), icon: "iconSparkles"},
-            {key: "help", prefix: "?", label: "? " + (this.i18n.searchModeHelp || "速查"), icon: "iconHelp"},
+            {key: "all", prefix: "", label: this.i18n.chipsTabs || "页签", icon: "iconLayout", placeholder: defaultPlaceholder},
+            {key: "outline", prefix: "@", label: "@ " + (this.i18n.searchModeHeading || "大纲"), icon: "iconAlignLeft", placeholder: "@ " + (this.i18n.searchModeHeading || "大纲") + "…"},
+            {key: "block", prefix: "^", label: "^ " + (this.i18n.searchModeBlock || "正文"), icon: "iconParagraph", placeholder: "^ " + (this.i18n.searchModeBlock || "正文") + "…"},
+            {key: "tag", prefix: "#", label: "# " + (this.i18n.searchModeTag || "标签"), icon: "iconTag", placeholder: "# " + (this.i18n.searchModeTag || "标签") + "…"},
+            {key: "bookmark", prefix: "!", label: "! " + (this.i18n.searchModeBookmark || "书签"), icon: "iconBookmark", placeholder: "! " + (this.i18n.searchModeBookmark || "书签") + "…"},
+            {key: "command", prefix: ">", label: "> " + (this.i18n.searchModeCommand || "命令"), icon: "iconSparkles", placeholder: "> " + (this.i18n.searchModeCommand || "命令") + "…"},
+            {key: "help", prefix: "?", label: "? " + (this.i18n.searchModeHelp || "速查"), icon: "iconHelp", placeholder: "? " + (this.i18n.searchModeHelp || "速查") + "…"},
         ];
         container.innerHTML = "";
         container.className = "sw__mode-chips-bar";
@@ -5382,6 +5383,8 @@ const updatedMap: {[rootId: string]: string} = {};
                 btn.classList.toggle("is-active", active);
                 btn.setAttribute("aria-pressed", String(active));
             });
+            const activeMode = modes.find((m) => m.prefix === matchedPrefix) || modes[0];
+            searchInput.placeholder = activeMode.placeholder;
         };
 
         modes.forEach(({key, prefix, label, icon}) => {
@@ -13466,6 +13469,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         <div class="sw__search-wrap">
             <svg class="sw__search-icon" width="14" height="14"><use xlink:href="#iconSearch"></use></svg>
             <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" aria-label="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
+            <button type="button" class="sw__search-clear fn__none" aria-label="${this.i18n.cancel || "清除"}" title="${this.i18n.cancel || "清除"}">
+                <svg width="12" height="12"><use xlink:href="#iconClose"></use></svg>
+            </button>
             <button type="button" class="sw__search-filter-btn" aria-label="${this.i18n.searchFilters}" title="${this.i18n.searchFilters}">
                 <svg width="15" height="15"><use xlink:href="#iconFilter"></use></svg>
             </button>
@@ -13494,7 +13500,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 <svg width="16" height="16"><use xlink:href="#iconSettings"></use></svg><span class="sw__mobile-chip-label">${this.i18n.settingsShort}</span>
             </button>
         </div>
-            </div>
+    </div>
+    <div class="sw__mode-chips-bar" role="group" aria-label="${this.i18n.chipsLabel}"></div>
     <div class="sw__scroll" tabindex="0"></div>
     <div class="sw__quick-actions" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
 </div>`;

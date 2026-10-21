@@ -41,7 +41,7 @@ test("T-7360: 切换器顶栏常驻多模态穿透药丸 Chips（全部、@大�
     );
     assert.match(
         indexTs,
-        /private setupSearchModeChips\(/,
+        /setupSearchModeChips\(/,
         "必须声明 setupSearchModeChips 调度装配函数",
     );
     assert.match(

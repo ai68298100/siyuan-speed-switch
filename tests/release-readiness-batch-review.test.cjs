@@ -109,8 +109,8 @@ test("T-7347: 生产构建产物严格服从 ADR 0247 校准的 1178 KiB raw / 5
         );
     }
 
-    assert.equal(metrics.RAW_BUNDLE_BUDGET_BYTES, 1194 * 1024);
-    assert.equal(metrics.RAW_BUNDLE_BUDGET_ADR, "0257");
+    assert.equal(metrics.RAW_BUNDLE_BUDGET_BYTES, 1196 * 1024);
+    assert.equal(metrics.RAW_BUNDLE_BUDGET_ADR, "0258");
     assert.equal(metrics.ARCHIVE_BUDGET_BYTES, 602 * 1024);
     assert.equal(metrics.COMPRESSED_ENTRY_BUDGET_BYTES, 332 * 1024);
 });

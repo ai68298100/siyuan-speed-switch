@@ -61,6 +61,7 @@ export interface MobileSwitcherUiHost {
     renderThumbnails(list: IGroupedTab[], scrollElement: HTMLElement, batch: number): void;
     scheduleAnimationFrame(callback: FrameRequestCallback): number;
     setupOpenHistoryDropdown(container: HTMLElement | null, onClose: IOverlayClose): () => void;
+    setupSearchModeChips?(container: HTMLElement | null, searchInput: HTMLInputElement | null, onTrigger: () => void): () => void;
     showMobileFavSheet(dialog: Dialog, closeOverlay: IOverlayClose, onTabsChanged?: () => void, returnFocus?: HTMLElement | null): void;
     sortGroupItems(group: IGroupedTab[], sortBy: SortBy, mru: string[],
         pinned: Set<string>, updatedMap: {[rootId: string]: string}): IGroupedTab[];
@@ -214,6 +215,7 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
         let unregisterRefresh: () => void = () => undefined;
         let disposeMobileToolbar: () => void = () => undefined;
         let disposeHistoryDropdown: () => void = () => undefined;
+        let disposeModeChips: () => void = () => undefined;
         // 释放入口：宿主 destroyCallback（Escape/点击外部/程序调用）统一收敛到这里。
         let mobileReleased = false;
         switcherRelease.fn = () => {
@@ -228,6 +230,7 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
             // portal down with its owner, including Escape and route changes.
             disposeMobileToolbar();
             disposeHistoryDropdown();
+            disposeModeChips();
             unregisterRefresh();
             if (scrollElement) {
                 disposeDocSearchSession.call(this, scrollElement);
@@ -256,6 +259,12 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
         unregisterRefresh = this.registerSwitcherRefresh(refreshMobileSurface);
         disposeMobileToolbar = bindMobileSwitcherToolbarActions.call(this, dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList, context);
         disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector<HTMLElement>(".sw__history-dd"), closeOverlay);
+        const mobileModeBar = dialog.element.querySelector<HTMLElement>(".sw__mode-chips-bar");
+        disposeModeChips = this.setupSearchModeChips
+            ? this.setupSearchModeChips(mobileModeBar, searchInput, () => {
+                if (searchInput) this.applySearch(scrollElement, searchInput, closeOverlay);
+            })
+            : () => undefined;
         this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
         rendered = true;
 

@@ -161,6 +161,7 @@ function openMobileSwitcherDialog(tabs, focusSearch = false, returnTo = "switche
     let unregisterRefresh = () => undefined;
     let disposeMobileToolbar = () => undefined;
     let disposeHistoryDropdown = () => undefined;
+    let disposeModeChips = () => undefined;
     // 释放入口：宿主 destroyCallback（Escape/点击外部/程序调用）统一收敛到这里。
     let mobileReleased = false;
     switcherRelease.fn = () => {
@@ -176,6 +177,7 @@ function openMobileSwitcherDialog(tabs, focusSearch = false, returnTo = "switche
         // portal down with its owner, including Escape and route changes.
         disposeMobileToolbar();
         disposeHistoryDropdown();
+        disposeModeChips();
         unregisterRefresh();
         if (scrollElement) {
             doc_search_ui_1.disposeDocSearchSession.call(this, scrollElement);
@@ -203,6 +205,12 @@ function openMobileSwitcherDialog(tabs, focusSearch = false, returnTo = "switche
     unregisterRefresh = this.registerSwitcherRefresh(refreshMobileSurface);
     disposeMobileToolbar = bindMobileSwitcherToolbarActions.call(this, dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList, context);
     disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector(".sw__history-dd"), closeOverlay);
+    const mobileModeBar = dialog.element.querySelector(".sw__mode-chips-bar");
+    disposeModeChips = this.setupSearchModeChips
+        ? this.setupSearchModeChips(mobileModeBar, searchInput, () => {
+            if (searchInput) this.applySearch(scrollElement, searchInput, closeOverlay);
+        })
+        : () => undefined;
     this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
     rendered = true;
     // Explicit search actions (for example from the floating ball) opt in
