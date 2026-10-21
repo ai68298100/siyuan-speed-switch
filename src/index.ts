@@ -5198,7 +5198,7 @@ const updatedMap: {[rootId: string]: string} = {};
     private applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, onClose: IOverlayClose) {
         const keyword = searchInput.value.trim();
         if (keyword.length >= 2) {
-            this.recordRecentSearchQuery(keyword);
+            this.recordRecentSearchQuery?.(keyword);
         }
         scrollElement.dataset.swDocSearchQuery = keyword;
         searchInput.dataset.swMode = keyword.startsWith(">") ? "command" : "search";
@@ -5335,6 +5335,7 @@ const updatedMap: {[rootId: string]: string} = {};
         container.setAttribute("role", "group");
         container.setAttribute("aria-label", this.i18n.chipsLabel);
 
+        const chipButtons: HTMLElement[] = [];
         const updateActiveMode = () => {
             const val = (searchInput.value || "").trim();
             let matchedPrefix = "";
@@ -5345,7 +5346,7 @@ const updatedMap: {[rootId: string]: string} = {};
             else if (val.startsWith(">")) matchedPrefix = ">";
             else if (val.startsWith("?") || val.startsWith("？")) matchedPrefix = "?";
 
-            container.querySelectorAll<HTMLElement>(".sw__mode-chip").forEach((btn) => {
+            chipButtons.forEach((btn) => {
                 const btnPrefix = btn.dataset.prefix || "";
                 const active = matchedPrefix ? btnPrefix === matchedPrefix : btnPrefix === "";
                 btn.classList.toggle("is-active", active);
@@ -5374,6 +5375,7 @@ const updatedMap: {[rootId: string]: string} = {};
                 onTrigger();
                 searchInput.focus();
             });
+            chipButtons.push(btn);
             container.appendChild(btn);
         });
 
@@ -13078,13 +13080,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             const current = cards.findIndex((el) => el.classList.contains("sw__focused"));
             const focusIndex = current >= 0 ? current : 0;
 
-            // 读取网格真实列数用于上下导航（设置列数或自动时均准确）
-            const grid = scrollElement.querySelector(".sw__grid") as HTMLElement | null;
             let colCount = 1;
-            if (grid) {
-                const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").filter((c) => c && c !== "none");
-                if (cols.length > 0) {
-                    colCount = cols.length;
+            const plain = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
+            if (plain && (key === "ArrowDown" || key === "ArrowUp")) {
+                const grid = scrollElement.querySelector(".sw__grid") as HTMLElement | null;
+                if (grid) {
+                    const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").filter((c) => c && c !== "none");
+                    if (cols.length > 0) colCount = cols.length;
                 }
             }
 
@@ -13096,7 +13098,6 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             };
 
             let next = -1;
-            const plain = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
             if (key === "ArrowRight" && plain) {
                 event.preventDefault();
                 next = key === "ArrowRight" && flowNav && flowNeighbor(key) >= 0
