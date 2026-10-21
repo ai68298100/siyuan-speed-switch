@@ -1204,6 +1204,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private activeAgentSearchControllers = new Set<AbortController>();
     private activeDocumentSetRestoreControllers = new Set<AbortController>();
     private recentPaletteActions: string[] = [];
+    private recentSearchQueries: string[] = [];
     private switcherRefreshers = new Set<() => void>();
     private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
     private quickActionAdapterTargets = new Map<string, QuickActionTarget[]>();
@@ -5196,6 +5197,9 @@ const updatedMap: {[rootId: string]: string} = {};
     // 执行搜索：已打开页签匹配卡片显示在上半部分，同时（防抖）搜索全库文档标题显示在下半部分
     private applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, onClose: IOverlayClose) {
         const keyword = searchInput.value.trim();
+        if (keyword.length >= 2) {
+            this.recordRecentSearchQuery(keyword);
+        }
         scrollElement.dataset.swDocSearchQuery = keyword;
         searchInput.dataset.swMode = keyword.startsWith(">") ? "command" : "search";
         const session = getDocSearchSession.call(this, scrollElement);
@@ -11808,6 +11812,30 @@ private rootIdOf(tab: Tab): string | null {
         empty.innerHTML = `<div class="sw__empty-message" role="status" aria-live="polite"><div class="sw__empty-title"></div><div class="sw__empty-sub"></div></div>`;
         empty.querySelector(".sw__empty-title")!.textContent = this.i18n.noOpenedTabs;
         empty.querySelector(".sw__empty-sub")!.textContent = this.i18n.emptyHint;
+        if (this.recentSearchQueries.length > 0) {
+            const recentBox = document.createElement("div");
+            recentBox.className = "sw__recent-queries";
+            const recentLbl = document.createElement("span");
+            recentLbl.className = "sw__recent-query-label";
+            recentLbl.textContent = this.i18n.recentSearchQueries;
+            recentBox.appendChild(recentLbl);
+            this.recentSearchQueries.forEach((q) => {
+                const qChip = document.createElement("button");
+                qChip.type = "button";
+                qChip.className = "b3-button b3-button--text sw__recent-query-chip";
+                qChip.textContent = q;
+                qChip.addEventListener("click", () => {
+                    const searchInput = searchSurface?.querySelector<HTMLInputElement>(".sw__search");
+                    if (searchInput) {
+                        searchInput.value = q;
+                        searchInput.dispatchEvent(new (searchInput.ownerDocument.defaultView || window).Event("input", {bubbles: true}));
+                        searchInput.focus();
+                    }
+                });
+                recentBox.appendChild(qChip);
+            });
+            empty.appendChild(recentBox);
+        }
         const actions = document.createElement("div");
         actions.className = "sw__empty-actions";
         const searchSurface = empty.closest<HTMLElement>(".sw-platform-surface")
@@ -11865,6 +11893,19 @@ private rootIdOf(tab: Tab): string | null {
         if (isPinned) {
             card.parentElement?.prepend(card);
             this.focusCard(card);
+        }
+    }
+
+    private recordRecentSearchQuery(query: string) {
+        const clean = (query || "").trim();
+        if (!clean || clean.length < 2) return;
+        this.recentSearchQueries = [clean, ...this.recentSearchQueries.filter((q) => q !== clean)].slice(0, 5);
+    }
+
+    private copyToClipboard(text: string) {
+        if (navigator?.clipboard?.writeText) {
+            void navigator.clipboard.writeText(text);
+            showMessage(this.i18n.snippetCopied || "已复制到剪贴板");
         }
     }
 
@@ -12258,6 +12299,22 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             handlers.onCloseTab(this.cardTabs.get(card) || tab, card);
         });
         frag.appendChild(closeBtn);
+
+        // 快捷复制块链接（右上角，紧邻关闭）
+        const rootId = this.rootIdOf(tab);
+        if (rootId) {
+            const copyBtn = document.createElement("button");
+            copyBtn.type = "button";
+            copyBtn.className = "sw__copy-btn";
+            copyBtn.setAttribute("aria-label", this.i18n.actionPaletteCopyBlockLink || "复制块超链接");
+            copyBtn.title = (this.i18n.actionPaletteCopyBlockLink || "复制块超链接") + " (Alt+C)";
+            copyBtn.innerHTML = '<svg><use xlink:href="#iconLink"></use></svg>';
+            copyBtn.addEventListener("click", (event) => {
+                event.stopPropagation();
+                this.copyToClipboard(`siyuan://blocks/${rootId}`);
+            });
+            frag.appendChild(copyBtn);
+        }
 
         return frag;
     }

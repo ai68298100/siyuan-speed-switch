@@ -370,6 +370,44 @@
         box-shadow: var(--sw-rim-light, none), inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary) 68%, transparent), var(--sw-focus-glow, 0 0 12px color-mix(in srgb, var(--b3-theme-primary) 30%, transparent));
     }
 
+    .sw__copy-btn {
+        position: absolute;
+        top: 6px;
+        right: 34px;
+        z-index: 2;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: 1px solid var(--sw-polish-line-soft);
+        border-radius: var(--sw-platform-radius-sm, 6px);
+        background: color-mix(in srgb, var(--b3-theme-surface) 90%, var(--b3-theme-background));
+        color: var(--b3-theme-on-surface-light);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease, color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease;
+
+        svg {
+            width: 13px;
+            height: 13px;
+        }
+
+        &:hover {
+            color: var(--b3-theme-primary);
+            background: color-mix(in srgb, var(--b3-theme-primary) 12%, var(--b3-theme-surface));
+            border-color: color-mix(in srgb, var(--b3-theme-primary) 40%, var(--sw-polish-line));
+            transform: scale(1.08);
+        }
+    }
+
+    .sw__card:hover .sw__copy-btn,
+    .sw__card:focus-within .sw__copy-btn {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
     .sw__thumb { border-bottom-color: var(--sw-polish-line-soft); }
 
     .sw__meta {
@@ -986,6 +1024,40 @@
         &:hover {
             background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
             transform: translateY(-1px);
+        }
+    }
+
+    .sw__recent-queries {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: var(--sw-space-xs, 4px);
+        margin: var(--sw-space-sm, 6px) 0;
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
+    }
+    .sw__recent-query-label {
+        font-size: var(--sw-font-xs, 11px);
+        color: var(--b3-theme-on-surface-light);
+        opacity: 0.85;
+    }
+    .sw__recent-query-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sw-space-2xs, 2px);
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
+        border: 1px solid var(--sw-polish-line-soft);
+        border-radius: var(--sw-platform-radius-pill, 999px);
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-on-surface);
+        font-size: var(--sw-font-xs, 11px);
+        cursor: pointer;
+        transition: border-color $sw-dur-fast $sw-ease, color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease;
+
+        &:hover {
+            border-color: color-mix(in srgb, var(--b3-theme-primary) 40%, var(--sw-polish-line));
+            background: color-mix(in srgb, var(--b3-theme-primary) 10%, var(--b3-theme-surface));
+            color: var(--b3-theme-primary);
         }
     }
 

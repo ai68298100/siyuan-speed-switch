@@ -58,15 +58,15 @@ test("T-7350: package.zip、dist/index.js 与 release-readiness.md 记录的散�
     const readinessContent = fs.readFileSync(readinessPath, "utf8");
 
     // 1. 验证大小在门禁之内
-    assert.equal(zipStat.size, 613957, "package.zip 物理大小必须严格吻合快照");
-    assert.equal(bundleStat.size, 1219436, "dist/index.js 物理大小必须严格吻合快照");
+    assert.equal(zipStat.size, 614563, "package.zip 物理大小必须严格吻合快照");
+    assert.equal(bundleStat.size, 1220915, "dist/index.js 物理大小必须严格吻合快照");
 
     // 2. 验证 release-readiness.md 包含真实的哈希值与大小声明
     const zipSha = calcSha256(zipPath);
     const bundleSha = calcSha256(bundlePath);
 
-    assert.equal(zipSha, "2bfae54200ad46f3b772f26db08b679bc5c60fa0c5ed1d6b6266af5cc8724820");
-    assert.equal(bundleSha, "a4150ef3e0fb1af1ae76cc101fcf2bb071130ac09bd3039e49b79dbcbcd6e0d7");
+    assert.equal(zipSha, "595ae8f7290552640c57ae6f4d0a591d2ac02a84267910829da1067d4136656a");
+    assert.equal(bundleSha, "f8907bef6d0490bccc275595a6ae07154d0eb5b4a28af9fb4910d80df45e0b30");
 
     assert.ok(readinessContent.includes(zipSha), "release-readiness.md 必须包含当前构建 package.zip 的 SHA-256");
     assert.ok(readinessContent.includes(bundleSha), "release-readiness.md 必须包含当前构建 dist/index.js 的 SHA-256");

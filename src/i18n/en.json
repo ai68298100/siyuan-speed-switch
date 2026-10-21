@@ -1851,5 +1851,6 @@
   "searchModeBookmark": "Bookmark",
   "searchModeCommand": "Command",
   "searchModeHelp": "CheatSheet",
-  "allTasksDone": "🎉 Great job! All tasks completed today"
+  "allTasksDone": "🎉 Great job! All tasks completed today",
+  "recentSearchQueries": "Recent searches: "
 }

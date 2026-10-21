@@ -1851,5 +1851,6 @@
   "searchModeBookmark": "书签",
   "searchModeCommand": "命令",
   "searchModeHelp": "速查",
-  "allTasksDone": "🎉 太棒了！今日待办已全部完成"
+  "allTasksDone": "🎉 太棒了！今日待办已全部完成",
+  "recentSearchQueries": "近期搜索："
 }

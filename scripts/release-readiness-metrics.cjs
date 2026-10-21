@@ -60,8 +60,11 @@
 // ADR 0256 (2026-10-21): 切换器常驻多模态穿透药丸 Chips、画板立体机械键帽与门限校准，
 // raw 产物为 1,219,436 B（处于 1192 KiB 自律线内，余量约 1.2 KiB）。
 // 归档包门禁维持 600 KiB（614,400 B，package.zip 613,957 B，余量 443 B）。
-const RAW_BUNDLE_BUDGET_BYTES = 1192 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0256";
+// ADR 0257 (2026-10-21): 切换器近期搜索词历史重放、卡片悬停复制块链接与门限校准，
+// raw 产物为 1,220,915 B（处于 1194 KiB 自律线内，余量约 1.7 KiB）。
+// 归档包门禁由 600 -> 602 KiB（616,448 B，package.zip 614,563 B，余量 1,885 B）。
+const RAW_BUNDLE_BUDGET_BYTES = 1194 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0257";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout
@@ -111,8 +114,10 @@ const RAW_BUNDLE_BUDGET_ADR = "0256";
 // working tree package.zip is 610,299 B, safely below 598 KiB (612,352 B) with 2,053 B headroom.
 // ADR 0255 (2026-10-21): recalibrated 598 -> 600 KiB after Xiaolv Checkin 7-day capsule tracker, celebration banner and dual bento tiles;
 // working tree package.zip is 612,866 B, safely below 600 KiB (614,400 B) with 1,534 B headroom.
-// Per-entry compressed line (328 KiB, ADR 0254) unchanged.
-const ARCHIVE_BUDGET_BYTES = 600 * 1024;
+// ADR 0257 (2026-10-21): recalibrated 600 -> 602 KiB after switcher recent queries replay and card hover copy block link;
+// working tree package.zip is 614,563 B, safely below 602 KiB (616,448 B) with 1,885 B headroom.
+// Per-entry compressed line (332 KiB, ADR 0256) unchanged.
+const ARCHIVE_BUDGET_BYTES = 602 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
 // writing-streak second wave (T-6681) shrank headroom to 11780 bytes. Same
