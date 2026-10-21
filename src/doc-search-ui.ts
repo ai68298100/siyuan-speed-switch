@@ -2063,9 +2063,9 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
             }
         }
         const source = document.createElement("span");
-        source.className = "sw__doc-source";
+        source.className = "sw__doc-source" + (doc.kind ? ` is-${doc.kind}` : "");
         if (doc.kind === "heading" || doc.kind === "block") {
-            source.textContent = doc.subTitle || (doc.kind === "heading" ? "标题" : "正文块");
+            source.textContent = doc.subTitle || (doc.kind === "heading" ? (this.i18n.searchModeHeading || "标题") : (this.i18n.searchModeBlock || "正文块"));
         } else {
             source.textContent = doc.source === "opened"
                 ? this.i18n.docSearchSourceOpened

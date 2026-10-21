@@ -4606,6 +4606,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 <div class="sw__search-wrap">
                     <svg class="sw__search-icon" width="14" height="14"><use xlink:href="#iconSearch"></use></svg>
                     <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" aria-label="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
+                    <button type="button" class="sw__search-clear fn__none" aria-label="${this.i18n.cancel || "清除"}" title="${this.i18n.cancel || "清除"}">
+                        <svg width="12" height="12"><use xlink:href="#iconClose"></use></svg>
+                    </button>
                     <button type="button" class="sw__search-filter-btn" aria-label="${this.i18n.searchFilters}" title="${this.i18n.searchFilters}">
                         <svg width="14" height="14"><use xlink:href="#iconFilter"></use></svg>
                     </button>
@@ -4869,17 +4872,44 @@ const updatedMap: {[rootId: string]: string} = {};
      */
     private bindSearchInputComposition(input: HTMLInputElement, onTrigger: () => void) {
         let composing = false;
+        const searchWrap = input.closest(".sw__search-wrap");
+        const clearBtn = searchWrap?.querySelector<HTMLButtonElement>(".sw__search-clear");
+        const updateClearVisibility = () => {
+            if (clearBtn) {
+                clearBtn.classList.toggle("fn__none", !input.value);
+            }
+        };
+        if (clearBtn) {
+            clearBtn.addEventListener("click", () => {
+                input.value = "";
+                updateClearVisibility();
+                onTrigger();
+                input.focus();
+            });
+        }
         input.addEventListener("compositionstart", () => {
             composing = true;
         });
         input.addEventListener("compositionend", () => {
             composing = false;
+            updateClearVisibility();
             onTrigger();
         });
         input.addEventListener("input", () => {
+            updateClearVisibility();
             if (composing) return;
             onTrigger();
         });
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && input.value) {
+                event.preventDefault();
+                event.stopPropagation();
+                input.value = "";
+                updateClearVisibility();
+                onTrigger();
+            }
+        });
+        updateClearVisibility();
     }
 
     // 绑定回到顶部按钮：滚动超过 240px 显示，点击平滑回顶（RAF 节流 + 被动监听 + 销毁解绑）
@@ -14387,6 +14417,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         <div class="sw__search-wrap">
             <svg class="sw__search-icon" width="14" height="14"><use xlink:href="#iconSearch"></use></svg>
             <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" aria-label="${this.i18n.searchTabs}" />
+            <button type="button" class="sw__search-clear fn__none" aria-label="${this.i18n.cancel || "清除"}" title="${this.i18n.cancel || "清除"}">
+                <svg width="12" height="12"><use xlink:href="#iconClose"></use></svg>
+            </button>
             <button type="button" class="sw__search-filter-btn" aria-label="${this.i18n.searchFilters}" title="${this.i18n.searchFilters}">
                 <svg width="15" height="15"><use xlink:href="#iconFilter"></use></svg>
             </button>

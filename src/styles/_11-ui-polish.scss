@@ -340,10 +340,26 @@
     }
 
     .sw__card {
+        position: relative;
         border-color: var(--sw-polish-line);
         border-radius: var(--sw-platform-radius-md, 12px);
         box-shadow: var(--sw-rim-light, inset 0 1px 0 rgba(255, 255, 255, 0.08)), 0 1px 3px rgba(0, 0, 0, 0.04);
         transition: border-color $sw-dur-base $sw-ease, box-shadow $sw-dur-base $sw-ease, transform $sw-dur-base $sw-ease, background-color $sw-dur-base $sw-ease;
+
+        &::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 14px;
+            bottom: 14px;
+            width: 3px;
+            border-radius: 0 var(--sw-platform-radius-pill, 999px) var(--sw-platform-radius-pill, 999px) 0;
+            background: var(--b3-theme-primary);
+            opacity: 0;
+            transform: scaleY(0.4);
+            transition: opacity $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease;
+            z-index: 2;
+        }
     }
 
     .sw__card:hover {
@@ -368,6 +384,11 @@
     .sw__card.sw__active {
         border-color: var(--b3-theme-primary);
         box-shadow: var(--sw-rim-light, none), inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary) 68%, transparent), var(--sw-focus-glow, 0 0 12px color-mix(in srgb, var(--b3-theme-primary) 30%, transparent));
+
+        &::before {
+            opacity: 1;
+            transform: scaleY(1);
+        }
     }
 
     .sw__copy-btn {
@@ -418,12 +439,28 @@
 
     .sw__doc-grid { gap: 10px; }
     .sw__doc-item {
+        position: relative;
         min-height: 76px;
         padding: 10px var(--sw-space-lg, 12px);
         border-color: var(--sw-polish-line);
         border-radius: var(--sw-platform-radius-md, 12px);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.03);
         transition: border-color $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease;
+
+        &::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 12px;
+            bottom: 12px;
+            width: 3px;
+            border-radius: 0 var(--sw-platform-radius-pill, 999px) var(--sw-platform-radius-pill, 999px) 0;
+            background: var(--b3-theme-primary);
+            opacity: 0;
+            transform: scaleY(0.4);
+            transition: opacity $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease;
+            z-index: 2;
+        }
 
         &:active {
             transform: scale(0.992);
@@ -435,6 +472,11 @@
         border-color: color-mix(in srgb, var(--b3-theme-primary) 48%, var(--sw-polish-line));
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), var(--sw-polish-shadow-card);
         transform: translateY(-1px);
+
+        &::before {
+            opacity: 1;
+            transform: scaleY(1);
+        }
     }
 
     .sw__doc-icon { border-radius: var(--sw-platform-radius-sm, 8px); }
@@ -958,6 +1000,30 @@
     .sw__updated-badge,
     .sw__group-count,
     [data-sw-digit] { font-variant-numeric: tabular-nums; }
+
+    .sw__doc-source.is-heading {
+        display: inline-flex;
+        align-items: center;
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
+        border: 1px solid color-mix(in srgb, #7c68d5 36%, transparent);
+        border-radius: var(--sw-platform-radius-pill, 999px);
+        background: color-mix(in srgb, #7c68d5 12%, transparent);
+        color: #7c68d5;
+        font-size: var(--sw-font-2xs, 10px);
+        font-weight: 600;
+    }
+
+    .sw__doc-source.is-block {
+        display: inline-flex;
+        align-items: center;
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
+        border: 1px solid color-mix(in srgb, #3575f0 36%, transparent);
+        border-radius: var(--sw-platform-radius-pill, 999px);
+        background: color-mix(in srgb, #3575f0 12%, transparent);
+        color: #3575f0;
+        font-size: var(--sw-font-2xs, 10px);
+        font-weight: 600;
+    }
 
     .sw__doc-preview-hint,
     .sw__doc-preview-excerpt { line-height: var(--sw-leading-reading, 1.6); }

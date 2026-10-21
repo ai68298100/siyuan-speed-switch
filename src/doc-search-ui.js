@@ -1948,12 +1948,16 @@ function buildDocResultItem(doc, id, onClose, query = "") {
         }
     }
     const source = document.createElement("span");
-    source.className = "sw__doc-source";
-    source.textContent = doc.source === "opened"
-        ? this.i18n.docSearchSourceOpened
-        : doc.source === "title"
-            ? this.i18n.docSearchSourceTitle
-            : this.i18n.docSearchSourceFullText;
+    source.className = "sw__doc-source" + (doc.kind ? ` is-${doc.kind}` : "");
+    if (doc.kind === "heading" || doc.kind === "block") {
+        source.textContent = doc.subTitle || (doc.kind === "heading" ? (this.i18n.searchModeHeading || "标题") : (this.i18n.searchModeBlock || "正文块"));
+    } else {
+        source.textContent = doc.source === "opened"
+            ? this.i18n.docSearchSourceOpened
+            : doc.source === "title"
+                ? this.i18n.docSearchSourceTitle
+                : this.i18n.docSearchSourceFullText;
+    }
     let snippetElement = null;
     const snippets = Array.isArray(doc.snippets)
         ? doc.snippets.map((snippet) => String((snippet === null || snippet === void 0 ? void 0 : snippet.text) || "").trim()).filter(Boolean).join(" · ")
