@@ -306,7 +306,11 @@ function buildSceneBody(scene, text, features = []) {
                 + `<div class="p"><span class="demo-chip">标签</span> <span class="demo-chip is-accent">强调标签</span> <span class="demo-count">3</span></div>`
                 + table + quote
             : `${heading}${paragraph}${quote}${section}${inlineCode}${table}${codeBlock}${demoButton}`;
-    return base + buildProbeSection(features, text);
+
+    const probeSection = buildProbeSection(features, text);
+    if (!probeSection) return base;
+    // 智能内容感知优先置顶：当前代码定制了特定元素时，优先将对应样式元素展示在预览区最上方
+    return `${probeSection}<div class="p" style="margin:20px 0 16px;border-top:1px dashed var(--b3-border-color);opacity:0.6;"></div>${base}`;
 }
 
 // 探针区块：只包含当前 CSS 命中的元素类型；无命中则整块省略（基础样例照旧）。
@@ -315,6 +319,11 @@ function buildProbeSection(features, text) {
     const nid = (i) => ` data-node-id="${probeNodeId(i + 8)}"`;
     const parts = [];
     let cursor = 0;
+    const hasHeadings = features.some((f) => ["h3", "h4", "h5", "h6", "title"].includes(f));
+    if (hasHeadings) {
+        parts.push(`<div class="h1"${nid(cursor++)} data-type="NodeHeading" data-subtype="h1"><div contenteditable="true">${text("probeH1", "一级标题探针 · 特征置顶")}</div></div>`);
+        parts.push(`<div class="h2"${nid(cursor++)} data-type="NodeHeading" data-subtype="h2"><div contenteditable="true">${text("probeH2", "二级标题探针 · 特征置顶")}</div></div>`);
+    }
     if (features.includes("h3")) {
         parts.push(`<div class="h3"${nid(cursor++)} data-type="NodeHeading" data-subtype="h3"><div contenteditable="true">${text("probeH3", "三级标题探针")}</div></div>`);
     }

@@ -668,6 +668,10 @@
     }
 
     .sw-studio__editor-frame {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: stretch !important;
+        position: relative;
         overflow: hidden;
         border: 1px solid var(--sw-polish-line-soft);
         border-radius: var(--sw-platform-radius-sm, 8px);
@@ -676,21 +680,47 @@
     }
 
     .sw-studio__editor-frame .sw-studio__line-numbers {
-        flex: 0 0 34px;
-        min-width: 34px;
-        border-right: 1px solid var(--sw-polish-line-soft);
+        display: block !important;
+        flex: 0 0 38px !important;
+        width: 38px !important;
+        min-width: 38px !important;
+        max-width: 38px !important;
+        box-sizing: border-box !important;
+        padding: 10px var(--sw-space-2xs, 2px) 10px 0 !important;
+        border: 0 !important;
+        border-right: 1px solid var(--sw-polish-line-soft) !important;
         background: color-mix(in srgb, var(--b3-theme-surface) 82%, var(--b3-theme-background));
         color: var(--b3-theme-on-surface-light);
         text-align: right;
+        white-space: pre !important;
+        overflow: hidden !important;
         box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.05);
+        font-family: var(--b3-font-family-code, monospace) !important;
+        font-size: var(--sw-font-xs, 11px) !important;
+        line-height: 1.55 !important;
         font-variant-numeric: tabular-nums;
         user-select: none;
     }
 
     .sw-studio__editor-frame .sw-studio__editor {
-        border: 0;
-        border-radius: 0;
-        background: transparent;
+        display: block !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        height: 100% !important;
+        box-sizing: border-box !important;
+        padding: 10px 10px !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        white-space: pre !important;
+        overflow-wrap: normal !important;
+        overflow: auto !important;
+        font-family: var(--b3-font-family-code, monospace) !important;
+        font-size: var(--sw-font-xs, 11px) !important;
+        line-height: 1.55 !important;
+        resize: none !important;
+        outline: none !important;
+        box-shadow: none !important;
     }
 
     .sw-studio__ai-result-panel {

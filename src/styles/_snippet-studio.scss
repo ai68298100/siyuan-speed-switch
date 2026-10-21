@@ -62,7 +62,7 @@
     // all three in one row on desktop; a two-column grid auto-places the AI rail
     // on a second row, leaving the library stretched across the first row and
     // making the preview/editor appear squeezed into the right edge.
-    &__layout { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 4fr) minmax(280px, 1.2fr); min-height: 0; flex: 1; }
+    &__layout { display: grid; grid-template-columns: minmax(200px, 240px) minmax(0, 5fr) minmax(240px, 1.1fr); min-height: 0; flex: 1; }
     &__library {
         display: flex;
         flex-direction: column;
@@ -111,7 +111,7 @@
     &__library-item-copy { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     &__library-item-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); }
     &__library-empty { margin: var(--sw-space-md, 8px) 0; color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); line-height: 1.55; text-align: center; }
-    &__main { display: grid; grid-template-rows: minmax(250px, 1.1fr) minmax(250px, 1fr); gap: 14px; min-width: 0; min-height: 0; padding: 14px; }
+    &__main { display: grid; grid-template-rows: minmax(360px, 1.8fr) minmax(200px, 1fr); gap: 14px; min-width: 0; min-height: 0; padding: 14px; }
     &__preview-section, &__details, &__editor-section {
         min-width: 0;
         min-height: 0;
@@ -154,7 +154,7 @@
     &__state-badge.is-error { background: color-mix(in srgb, var(--sw-platform-error, var(--studio-error)) 13%, transparent); color: var(--sw-platform-error, var(--studio-error)); }
     &__state-badge.is-draft { background: color-mix(in srgb, var(--sw-platform-warning, var(--studio-warning)) 13%, transparent); color: var(--sw-platform-warning, var(--studio-warning)); }
     &__state-badge.is-muted { background: var(--studio-surface); color: var(--studio-on-surface); }
-    &__preview { position: relative; flex: 1; min-height: 140px; overflow: hidden; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-md); background: var(--studio-surface); }
+    &__preview { position: relative; flex: 1; min-height: 240px; overflow: hidden; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-md); background: var(--studio-surface); }
     // T-7022：双栏预览——左已保存/右草稿并排，窄容器按 data-view 降级单栏；
     // 仅 grid/display 变化，无动画（reduced-motion 语义不受影响）。
     &__preview-dual { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 100%; }
