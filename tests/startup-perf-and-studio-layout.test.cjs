@@ -79,6 +79,21 @@ test("T-7360: snippet-studio 支持 AI 伴侣栏折叠以最大化中间预览�
         /sw-studio__ai-collapse-toggle/,
         "必须渲染 AI 折叠切换按钮",
     );
+    assert.match(
+        studioUiJs,
+        /extractSnippetColors/,
+        "必须包含代码调色板取色引擎",
+    );
+    assert.match(
+        studioScss,
+        /&__main\.is-preview-maximized/,
+        "样式必须支持 .is-preview-maximized 最大化预览画布模式",
+    );
+    assert.match(
+        studioScss,
+        /&__main\.is-editor-maximized/,
+        "样式必须支持 .is-editor-maximized 最大化代码编辑器模式",
+    );
 });
 
 test("T-7360: index.ts onload 采用微任务调度后台非核心能力，保证首屏启动速度", () => {

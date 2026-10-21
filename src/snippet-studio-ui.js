@@ -49,6 +49,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     // below by key. There is no user-controlled key path here.
     const locale = {i18n};
     const translations = {
+        snippetPreviewMaximize: locale.i18n.snippetPreviewMaximize,
+        snippetEditorMaximize: locale.i18n.snippetEditorMaximize,
         snippetSubmit: locale.i18n.snippetSubmit,
         snippetSubmitTitle: locale.i18n.snippetSubmitTitle,
         snippetSubmitGuide: locale.i18n.snippetSubmitGuide,
@@ -621,6 +623,34 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     librarySearch.addEventListener("input", () => renderLibrary());
     library.append(libraryHeader, librarySearch, libraryFilters, libraryList);
     const main = node("main", "sw-studio__main");
+    let previewMaximized = false;
+    let editorMaximized = false;
+    const expandPreviewButton = node("button", "sw-studio__button is-quiet", "⤢");
+    expandPreviewButton.type = "button";
+    expandPreviewButton.title = t("snippetPreviewMaximize");
+    expandPreviewButton.setAttribute("aria-label", t("snippetPreviewMaximize"));
+    const expandEditorButton = node("button", "sw-studio__button is-quiet", "⤢");
+    expandEditorButton.type = "button";
+    expandEditorButton.title = t("snippetEditorMaximize");
+    expandEditorButton.setAttribute("aria-label", t("snippetEditorMaximize"));
+    const updateMainLayoutModes = () => {
+        main.classList.toggle("is-preview-maximized", previewMaximized);
+        main.classList.toggle("is-editor-maximized", editorMaximized);
+        expandPreviewButton.setAttribute("aria-pressed", String(previewMaximized));
+        expandPreviewButton.textContent = previewMaximized ? "⤡" : "⤢";
+        expandEditorButton.setAttribute("aria-pressed", String(editorMaximized));
+        expandEditorButton.textContent = editorMaximized ? "⤡" : "⤢";
+    };
+    expandPreviewButton.addEventListener("click", () => {
+        previewMaximized = !previewMaximized;
+        if (previewMaximized) editorMaximized = false;
+        updateMainLayoutModes();
+    });
+    expandEditorButton.addEventListener("click", () => {
+        editorMaximized = !editorMaximized;
+        if (editorMaximized) previewMaximized = false;
+        updateMainLayoutModes();
+    });
     const previewSection = node("section", "sw-studio__preview-section");
     const previewToolbar = node("div", "sw-studio__section-bar");
     const previewLead = node("div", "sw-studio__section-lead");
@@ -641,7 +671,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     sceneSelect.addEventListener("change", () => { previewScene = sceneSelect.value; renderPreview(); });
     const widthSelect = select("snippetPreviewWidth", [["auto", "snippetWidthAuto"], ["narrow", "snippetWidthNarrow"], ["medium", "snippetWidthMedium"], ["wide", "snippetWidthWide"]]);
     widthSelect.addEventListener("change", () => { previewWidth = widthSelect.value; renderPreview(); });
-    previewToolbar.append(previewLead, compareButton, themeButton, sceneSelect, widthSelect, stopButton);
+    previewToolbar.append(previewLead, compareButton, themeButton, sceneSelect, widthSelect, stopButton, expandPreviewButton);
     const previewShell = node("div", "sw-studio__preview");
     // T-7022：双栏预览——左=已保存版本效果（显式渲染保存代码，不冒用 baseline 原始
     // 样例标志），右=当前草稿效果；两栏共享场景/宽度/主题观察环境；窄容器降级为
@@ -959,7 +989,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const colorSwatches = node("span", "sw-studio__color-swatches");
     const copyButton = action("snippetCopy", () => copyText(draft.content || ""));
     const snippetStoreButton = action("snippetStore", () => openPicker(true));
-    editorBar.append(editorLead, colorSwatches, draftUndoButton, draftRedoButton, formatButton, findToggleButton, chooseButton, snippetStoreButton, importButton, newButton, copyButton);
+    editorBar.append(editorLead, colorSwatches, draftUndoButton, draftRedoButton, formatButton, findToggleButton, chooseButton, snippetStoreButton, importButton, newButton, copyButton, expandEditorButton);
     const editor = node("textarea", "sw-studio__editor");
     editor.setAttribute("aria-label", t("snippetCode"));
     // 冲突对话框销毁后宿主 Dialog 可能把焦点放回 body；关闭冲突层的
