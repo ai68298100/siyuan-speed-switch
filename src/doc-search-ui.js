@@ -2009,14 +2009,24 @@ function buildDocResultItem(doc, id, onClose, query = "") {
     if (!this.isMobile) {
         item.title = (item.title ? item.title + " · " : "") + this.i18n.docSearchSplitHint
             + " · " + this.i18n.docSearchPreviewHint
-            + " · " + (this.i18n.actionPaletteCopyBlockLink || "复制块超链接") + " (Alt+C)";
+            + " · " + (this.i18n.actionPaletteCopyBlockLink || "复制块超链接") + " (Alt+C)"
+            + " · ⌘K " + (this.i18n.actionPaletteTitle || "动作画板");
         item.addEventListener("contextmenu", (event) => {
             event.preventDefault();
             onClose();
             void openDocSearchResult.call(this, id, hitId, "right");
         });
         item.addEventListener("keydown", (event) => {
-            if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.key.toLowerCase() === "c") {
+            const isCtrlOrCmd = event.ctrlKey || event.metaKey;
+            if (isCtrlOrCmd && event.key.toLowerCase() === "k") {
+                event.preventDefault();
+                event.stopPropagation();
+                if (typeof this.openActionPaletteForDoc === "function") {
+                    this.openActionPaletteForDoc(doc, item);
+                }
+                return;
+            }
+            if (event.altKey && !isCtrlOrCmd && !event.shiftKey && event.key.toLowerCase() === "c") {
                 event.preventDefault();
                 event.stopPropagation();
                 const copyTargetId = hitId || docRootKey;

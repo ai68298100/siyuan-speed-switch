@@ -1127,6 +1127,21 @@
         }
     }
 
+    .sw__recent-query-clear {
+        padding: var(--sw-space-2xs, 2px) var(--sw-space-xs, 4px);
+        color: var(--b3-theme-on-surface-light);
+        font-size: var(--sw-font-xs, 11px);
+        opacity: 0.7;
+        cursor: pointer;
+        border-radius: var(--sw-platform-radius-sm, 6px);
+        transition: opacity $sw-dur-fast $sw-ease, color $sw-dur-fast $sw-ease;
+
+        &:hover {
+            color: var(--b3-theme-error);
+            opacity: 1;
+        }
+    }
+
     // 搜索顶栏常驻多模态穿透药丸 Chips
     .sw__mode-chips-bar {
         display: flex;

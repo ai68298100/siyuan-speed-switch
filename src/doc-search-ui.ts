@@ -62,6 +62,7 @@ export interface DocSearchUiHost {
     /** T-6830 打开策略：复用已开页签 */
     reuseOpenTabsEnabled(): boolean;
     activateTabForReuse(rootId: string, onClose?: IOverlayClose): boolean;
+    openActionPaletteForDoc?(doc: IDocSearchResult, item?: HTMLElement): void;
     /** Shared kernel transport; extracted UI must not create a second request policy. */
     requestKernelJsonOutcome(url: string, body: Record<string, unknown>, options?: {signal?: AbortSignal; latestKey?: string}): Promise<{ok: boolean; value?: unknown; error?: {kind: string}}>;
 }
@@ -2122,14 +2123,23 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         if (!this.isMobile) {
             item.title = (item.title ? item.title + " · " : "") + this.i18n.docSearchSplitHint
                 + " · " + this.i18n.docSearchPreviewHint
-                + " · " + (this.i18n.actionPaletteCopyBlockLink || "复制块超链接") + " (Alt+C)";
+                + " · " + (this.i18n.actionPaletteCopyBlockLink || "复制块超链接") + " (Alt+C)"
+                + " · ⌘K " + (this.i18n.actionPaletteTitle || "动作画板");
             item.addEventListener("contextmenu", (event) => {
                 event.preventDefault();
                 onClose();
                 void openDocSearchResult.call(this, id, hitId, "right");
             });
             item.addEventListener("keydown", (event) => {
-                if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.key.toLowerCase() === "c") {
+                const isCtrlOrCmd = event.ctrlKey || event.metaKey;
+                // ⌘K / Ctrl+K 呼出动作画板
+                if (isCtrlOrCmd && event.key.toLowerCase() === "k") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    this.openActionPaletteForDoc?.(doc, item);
+                    return;
+                }
+                if (event.altKey && !isCtrlOrCmd && !event.shiftKey && event.key.toLowerCase() === "c") {
                     event.preventDefault();
                     event.stopPropagation();
                     const copyTargetId = hitId || docRootKey;

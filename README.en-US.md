@@ -1,18 +1,19 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.48.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.1-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Latest stable release: v0.48.0 (2026-10-20)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.0) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Latest stable release: v0.48.1 (2026-10-22)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.1) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
-## What's New In v0.48.0 (2026-10-20)
+## What's New In v0.48.1 (2026-10-22)
 
-- **Deep Penetration Search**: Obsidian-inspired penetration syntax in the main search bar: `:heading` penetrates active document outline, `doc:heading` penetrates outline across documents, and `^block` searches workspace content blocks (excluding root docs), with instant block anchor jumping and stable multi-heading deduplication.
-- **Secondary Action Palette**: Raycast-style action palette invoked via card context menu or `⌘K` / `Ctrl+K` on focus; aggregates split-opening (`open-right` / `open-bottom`), preview mode (`open-preview`), pin/favorite toggles, closing tabs, and copying block/Markdown links; includes instant fuzzy filtering, keyboard navigation loop, and mobile bottom sheet adaptation.
-- **Cross-Surface E2E Interactive Contracts & Narrow Sidebar**: Comprehensive assertions covering desktop keyboard lifecycle, mobile 44px WCAG hit targets with `aria-modal="false"` declarations, and narrow-dock sidebar (245px–340px) adaptability without horizontal overflow.
-- **Pure-Domain Models**: Path acronym scoring (`path-acronym-model`), SiYuan native attribute view (AV) lightweight board model, and flashcard review SM-2 scheduling model.
+- **Persistent Search Mode Chips Bar Across All Surfaces**: Desktop switcher, mobile drawer, and narrow sidebar dock feature persistent pill chips bar (`[All Tabs]`, `[@ Outline]`, `[^ Block]`, `[# Tag]`, `[! Bookmark]`, `[> Command]`, `[? Help]`) with touch-friendly horizontal scroll and real-time input placeholder synchronization.
+- **Search Results Action Palette & Direct Shortcuts**: Full-text search results support `⌘K` / `Ctrl+K` to open the Raycast-style action palette for split opening, reader/media launch, and block/Markdown copying; direct `Alt+C` shortcut on any focused search result row to copy `siyuan://blocks/...` to clipboard.
+- **Laddered Escape Mechanism & Search Clear Micro-Buttons**: Pressing `Escape` in a non-empty search input clears text and restores the tab list, while pressing `Escape` in an empty input closes the switcher; search input hosts dynamic `.sw__search-clear` button; recent search query list hosts one-click `.sw__recent-query-clear` chip.
+- **Xiaolv Checkin 7-Day Capsule Tracker & Dual Bento Tiles**: `checkin-weekly` widget features 7-day capsule tracker (`.sw__home-capsule-tracker`) with today halo and checkmark states; emotional celebration banner (`.sw__home-celebration`) when all today tasks are completed; dual Bento tiles in Honey Orange (`#f9a84d`) and Lavender Soft (`#9b8df7`) with 2px tactile keycaps.
+- **High-Performance Keyboard & Render Optimizations**: Removed layout-thrashing `getComputedStyle` on non-vertical arrow keys; cached mode chip button arrays in memory to eliminate DOM queries during rapid typing.
 
 Itemized changes, validation data, and release history are in the [complete changelog](./docs/CHANGELOG.en-US.md).
 
@@ -399,7 +400,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and size budgets after building: 578 KiB archive, 1160 KiB raw bundle, and 320 KiB compressed per entry (see [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)). Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.48.0`, featuring deep penetration search, secondary action palette, cross-surface E2E interactive contracts, and narrow sidebar overflow protection. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
+The current version is `v0.48.1`, featuring deep penetration search, secondary action palette, cross-surface E2E interactive contracts, and narrow sidebar overflow protection. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>

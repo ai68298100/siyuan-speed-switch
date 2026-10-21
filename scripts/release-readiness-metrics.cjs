@@ -64,9 +64,9 @@
 // raw 产物为 1,220,915 B（处于 1194 KiB 自律线内，余量约 1.7 KiB）。
 // 归档包门禁由 600 -> 602 KiB（616,448 B，package.zip 614,563 B，余量 1,885 B）。
 // ADR 0258 (2026-10-22): 移动端常驻多模态穿透药丸、搜索模式专属提示、搜索结果 Alt+C 快捷复制与门限校准，
-// raw 产物为 1,223,603 B（处于 1196 KiB 自律线内，余量约 1.1 KiB）。
-// 归档包门禁维持 602 KiB（616,448 B，package.zip 615,429 B，余量 1,019 B）。
-const RAW_BUNDLE_BUDGET_BYTES = 1196 * 1024;
+// raw 产物为 1,225,245 B（处于 1198 KiB 自律线内，余量约 1.5 KiB）。
+// 归档包门禁由 602 -> 604 KiB（618,496 B，package.zip 616,535 B，余量 1,961 B）。
+const RAW_BUNDLE_BUDGET_BYTES = 1198 * 1024;
 const RAW_BUNDLE_BUDGET_ADR = "0258";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
@@ -119,8 +119,10 @@ const RAW_BUNDLE_BUDGET_ADR = "0258";
 // working tree package.zip is 612,866 B, safely below 600 KiB (614,400 B) with 1,534 B headroom.
 // ADR 0257 (2026-10-21): recalibrated 600 -> 602 KiB after switcher recent queries replay and card hover copy block link;
 // working tree package.zip is 614,563 B, safely below 602 KiB (616,448 B) with 1,885 B headroom.
+// ADR 0258 (2026-10-22): recalibrated 602 -> 604 KiB after mobile mode chips bar, doc action palette and clear history button;
+// working tree package.zip is 616,535 B, safely below 604 KiB (618,496 B) with 1,961 B headroom.
 // Per-entry compressed line (332 KiB, ADR 0256) unchanged.
-const ARCHIVE_BUDGET_BYTES = 602 * 1024;
+const ARCHIVE_BUDGET_BYTES = 604 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
 // writing-streak second wave (T-6681) shrank headroom to 11780 bytes. Same

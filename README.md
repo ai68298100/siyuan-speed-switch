@@ -1,18 +1,19 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.48.0-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.1-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **最近正式版：v0.48.0（2026-10-20）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.0) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **最近正式版：v0.48.1（2026-10-22）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.1) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
-## 本次更新（v0.48.0 · 2026-10-20）
+## 本次更新（v0.48.1 · 2026-10-22）
 
-- **深入穿透检索（Penetration Search）**：主搜索框新增 Obsidian 风格穿透语法分流：`:标题` 穿透活动文档大纲，`文档名:标题` 跨文档穿透大纲，`^正文块` 深入全库正文块（排除根文档块），点击均可精准定位滚动至目标块，同文档多标题独立去重。
-- **次级动作画板（Action Palette）**：Raycast 风格次级动作画板，任意卡片右键菜单或获焦按 `⌘K` / `Ctrl+K` 唤出；聚合分屏打开（`open-right` / `open-bottom`）、只读预览（`open-preview`）、置顶/收藏切换、关闭页签及块链接/Markdown 引用/ID 复制；支持即时模糊过滤、全键盘循环导航与移动端底部抽屉适配。
-- **多端 E2E 交互与极限窄侧栏防溢出**：全键盘调度、移动端 44px WCAG 触摸靶心与 `aria-modal="false"` 规范；极限窄侧栏 Dock（245px～340px）自适应弹性防溢出加固。
-- **纯逻辑模型与生态支撑**：路径首字母缩写打分（`path-acronym-model`）、思源原生属性视图（AV）轻量只读看板模型与闪卡复习 SM-2 推演模型。
+- **多模态穿透药丸 Chips 栏与全表面适配**：桌面端、移动端与侧栏 Dock 搜索顶栏全面常驻小驴打卡风格饱满全圆角药丸 Chips（`[全部页签]`、`[@ 大纲]`、`[^ 正文]`、`[# 标签]`、`[! 书签]`、`[> 命令]`、`[? 速查]`），支持触控横向滑动点选与输入框专属 Placeholder 实时联动。
+- **全库搜索结果次级动作画板与单键快捷引用**：全库搜索结果行全面接入 Raycast 风格次级动作画板（`⌘K` / `Ctrl+K`），支持分屏/思阅/思播/复制等动作；获焦时支持 `Alt+C` 单键秒级复制块超链接。
+- **阶梯式 Escape 清空机制与一键清除微按钮**：搜索框输入时按 Esc 优先清空并恢复列表，空输入时再次 Esc 退出弹窗；提供动态 `.sw__search-clear` 与 `.sw__recent-query-clear` 清空历史微按钮。
+- **小驴打卡风格 7天胶囊时间轴与双拼 Bento 瓦片**：工作台 `checkin-weekly` 升级为 7天周期胶囊进度链（`.sw__home-capsule-tracker`）；待办全部达标触发情绪化鼓励横幅（`.sw__home-celebration`）；连续记录（蜜糖金）与今日进度（薰衣草紫）双拼 Bento 瓦片与 2px 实体微凸机械键帽。
+- **高性能键盘与渲染重排消除**：消除非垂直方向键强制重排 `getComputedStyle`，缓存模式药丸节点数组，输入帧率达到满帧 60fps。
 
 逐项说明、验证数据与历史版本见[完整更新日志](./docs/CHANGELOG.md)。
 
@@ -398,7 +399,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和体积预算（归档 578 KiB、raw 1160 KiB、单条目压缩 320 KiB，见 [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.48.0`，包含深入穿透检索、次级动作画板、多端 E2E 交互与极限窄侧栏自适应加固。
+当前版本为 `v0.48.1`，包含深入穿透检索、次级动作画板、多端 E2E 交互与极限窄侧栏自适应加固。
 
 <details>
 <summary>历史更新日志（点击展开）</summary>

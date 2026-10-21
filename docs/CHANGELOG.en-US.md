@@ -5,6 +5,25 @@
 
 ## Changelog (full history)
 
+### v0.48.1 (2026-10-22)
+
+- **Persistent Search Mode Chips Bar (Desktop, Mobile & Sidebar)**:
+  - Persistent pill chips bar (`[All Tabs]`, `[@ Outline]`, `[^ Block]`, `[# Tag]`, `[! Bookmark]`, `[> Command]`, `[? Help]`) across desktop switcher, mobile drawer, and narrow sidebar dock;
+  - Supports touch-friendly horizontal scroll and single-tap mode activation; real-time two-way synchronization between input prefixes, active chips, and dynamic mode placeholders.
+- **Search Results Action Palette & Direct Shortcuts**:
+  - Full-text search results (`.sw__doc-item`) support `⌘K` / `Ctrl+K` to open the Raycast-style action palette for split opening, reader/media launch, and block/Markdown copying;
+  - Direct `Alt+C` shortcut on any focused search result row to copy `siyuan://blocks/...` to clipboard without leaving the view.
+- **Laddered Escape Mechanism & Search Clear Micro-Buttons**:
+  - Pressing `Escape` in a non-empty search input clears text and restores the tab list, while pressing `Escape` in an empty input closes the switcher;
+  - Search input hosts dynamic `.sw__search-clear` button; recent search query list hosts one-click `.sw__recent-query-clear` chip.
+- **Xiaolv Checkin 7-Day Capsule Tracker & Dual Bento Tiles**:
+  - `checkin-weekly` widget features 7-day capsule tracker (`.sw__home-capsule-tracker`) with today halo and checkmark states;
+  - Emotional celebration banner (`.sw__home-celebration`) when all today tasks are completed;
+  - Dual Bento tiles: Honey Orange (`#f9a84d`) for streak metrics and Lavender Soft (`#9b8df7`) for daily progress, with 2.2em tabular numbers;
+  - Action palette shortcuts styled as tactile 2px mechanical keycaps (`.sw__palette-item-shortcut`) with active indicator stripes (`.sw__card::before`).
+- **High-Performance Keyboard & Render Optimizations**:
+  - Removed layout-thrashing `getComputedStyle` on non-vertical arrow keys; cached mode chip button arrays in memory to eliminate DOM queries during rapid typing.
+
 ### v0.48.0 (2026-10-20)
 
 - **Deep Penetration Search & Symbol Navigation Hub**:

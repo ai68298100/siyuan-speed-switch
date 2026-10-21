@@ -47,8 +47,8 @@ test("T-7360: setupSearchModeChips 动态联动搜索框专属 Placeholder", () 
 test("T-7360: 文档搜索结果项挂载 Alt+C 快捷键与复制 siyuan://blocks/ 逻辑", () => {
     assert.match(
         docSearchTs,
-        /event\.altKey && !event\.ctrlKey && !event\.metaKey && !event\.shiftKey && event\.key\.toLowerCase\(\) === "c"/,
-        "doc-search-ui.ts 必须监听 Alt+C",
+        /event\.altKey && !isCtrlOrCmd && !event\.shiftKey && event\.key\.toLowerCase\(\) === "c"/,
+        "doc-search-ui.ts 必须在 Alt+C 时触发复制",
     );
     assert.match(docSearchTs, /siyuan:\/\/blocks\/\$\{copyTargetId\}/);
     assert.match(docSearchJs, /siyuan:\/\/blocks\/\$\{copyTargetId\}/);

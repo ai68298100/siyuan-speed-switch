@@ -11869,6 +11869,16 @@ private rootIdOf(tab: Tab): string | null {
                 });
                 recentBox.appendChild(qChip);
             });
+            const clearHistoryBtn = document.createElement("button");
+            clearHistoryBtn.type = "button";
+            clearHistoryBtn.className = "b3-button b3-button--text sw__recent-query-clear";
+            clearHistoryBtn.textContent = this.i18n.cancel || "清空";
+            clearHistoryBtn.title = this.i18n.cancel || "清空";
+            clearHistoryBtn.addEventListener("click", () => {
+                this.recentSearchQueries = [];
+                recentBox.remove();
+            });
+            recentBox.appendChild(clearHistoryBtn);
             empty.appendChild(recentBox);
         }
         const actions = document.createElement("div");
@@ -12422,6 +12432,63 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         card.addEventListener("touchcancel", cancel);
     }
 
+    // T-7344：文档搜索结果行次级动作画板（⌘K 唤出）
+    openActionPaletteForDoc(doc: any, item?: HTMLElement): IActionPaletteHandle | null {
+        if (!doc) return null;
+        const rootId = String(doc.rootId || doc.id || "");
+        const blockId = String(doc.blockId || doc.hitId || "");
+        const title = String(doc.title || doc.name || doc.subTitle || rootId || "未命名文档");
+        const context = extractActionContext({
+            kind: doc.kind || "doc",
+            rootId,
+            blockId,
+            title,
+            path: doc.path || "",
+            hPath: doc.hPath || "",
+            notebookId: doc.notebookId || "",
+        });
+
+        const actions = getAvailableActions(context, {
+            platform: this.isMobile ? "mobile" : "desktop",
+            i18n: this.i18n,
+        });
+
+        if (!actions || actions.length === 0) return null;
+
+        const backdrop = document.createElement("div");
+        backdrop.className = "sw__palette-backdrop";
+        backdrop.setAttribute("role", "presentation");
+        document.body.appendChild(backdrop);
+
+        let handle: IActionPaletteHandle | null = null;
+        const closeOverlay = () => {
+            if (handle && !handle.isDisposed()) handle.dispose();
+            if (backdrop.parentElement) backdrop.parentElement.removeChild(backdrop);
+        };
+
+        backdrop.addEventListener("click", (e) => {
+            if (e.target === backdrop) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeOverlay();
+            }
+        });
+
+        handle = mountActionPalette(backdrop, actions, {
+            platform: this.isMobile ? "mobile" : "desktop",
+            title,
+            targetContext: context,
+            recentActionIds: this.recentPaletteActions,
+            onClose: closeOverlay,
+            onExecute: (action: {id: string}, ctx: any) => {
+                closeOverlay();
+                this.executePaletteAction(action.id, null, item, undefined, ctx || context);
+            },
+        }) as unknown as IActionPaletteHandle;
+
+        return handle;
+    }
+
     // T-7344：卡片次级动作画板（Tab / ⌘K / 右键菜单"更多动作"唤出）
     private openCardActionPalette(tab: Tab, card?: HTMLElement, handlers?: CardMenuHandlers): IActionPaletteHandle | null {
         if (!tab) return null;
@@ -12488,15 +12555,16 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         return handle;
     }
 
-    private executePaletteAction(
+    executePaletteAction(
         actionId: string,
-        tab: Tab,
+        tab?: Tab | null,
         card?: HTMLElement,
         handlers?: CardMenuHandlers,
         _ctx?: any
     ): void {
-        const rootId = this.rootIdOf(tab);
-        const title = this.titleOf(tab) || rootId;
+        const rootId = (tab ? this.rootIdOf(tab) : _ctx?.rootId) || _ctx?.rootId || "";
+        const blockId = _ctx?.blockId || "";
+        const title = (tab ? this.titleOf(tab) : _ctx?.title) || _ctx?.title || rootId;
         const effectiveHandlers = handlers || (card ? this.cardMenuHandlers.get(card) : undefined);
         const destroySwitcher = () => {
             if (this.platformSwitcherDialog) {
@@ -12517,55 +12585,62 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
         switch (actionId) {
             case "open-active":
-                if (effectiveHandlers?.onActivate) {
+                if (effectiveHandlers?.onActivate && tab) {
                     effectiveHandlers.onActivate(tab);
+                } else if (rootId) {
+                    destroySwitcher();
+                    if (this.isMobile) {
+                        void this.mobileOpenDoc(rootId);
+                    } else {
+                        void openTab({app: this.app, doc: {id: blockId || rootId}});
+                    }
                 }
                 break;
             case "open-right":
                 if (rootId) {
                     destroySwitcher();
-                    void openTab({app: this.app, doc: {id: rootId}, position: "right"});
+                    void openTab({app: this.app, doc: {id: blockId || rootId}, position: "right"});
                 }
                 break;
             case "open-bottom":
                 if (rootId) {
                     destroySwitcher();
-                    void openTab({app: this.app, doc: {id: rootId}, position: "bottom"});
+                    void openTab({app: this.app, doc: {id: blockId || rootId}, position: "bottom"});
                 }
                 break;
             case "open-preview":
                 if (rootId) {
                     destroySwitcher();
-                    void openTab({app: this.app, doc: {id: rootId, mode: "preview"}});
+                    void openTab({app: this.app, doc: {id: blockId || rootId, mode: "preview"}});
                 }
                 break;
             case "toggle-pin":
-                if (card && effectiveHandlers?.onTogglePin) {
+                if (card && effectiveHandlers?.onTogglePin && tab) {
                     effectiveHandlers.onTogglePin(tab, card);
                 }
                 break;
             case "toggle-fav":
-                if (card && effectiveHandlers?.onToggleFav) {
+                if (card && effectiveHandlers?.onToggleFav && tab) {
                     effectiveHandlers.onToggleFav(tab, card);
                 }
                 break;
             case "close-tab":
-                if (card && effectiveHandlers?.onCloseTab) {
+                if (card && effectiveHandlers?.onCloseTab && tab) {
                     effectiveHandlers.onCloseTab(tab, card);
                 }
                 break;
             case "copy-block-link":
-                if (rootId) copyToClipboard(`siyuan://blocks/${rootId}`);
+                if (rootId) copyToClipboard(`siyuan://blocks/${blockId || rootId}`);
                 break;
             case "copy-markdown-link":
-                if (rootId) copyToClipboard(`[${title}](siyuan://blocks/${rootId})`);
+                if (rootId) copyToClipboard(`[${title}](siyuan://blocks/${blockId || rootId})`);
                 break;
             case "copy-id":
-                if (rootId) copyToClipboard(rootId);
+                if (rootId) copyToClipboard(blockId || rootId);
                 break;
             case "copy-path":
                 {
-                    const docPath = (tab as any)?.doc?.path || (tab as any)?.path || rootId;
+                    const docPath = _ctx?.path || _ctx?.hPath || (tab as any)?.doc?.path || (tab as any)?.path || rootId;
                     if (docPath) copyToClipboard(String(docPath));
                 }
                 break;
