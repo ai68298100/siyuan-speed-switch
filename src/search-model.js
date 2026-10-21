@@ -13,6 +13,7 @@ const {
     extractActionContext,
     getBuiltinActionDefinitions,
     getAvailableActions,
+    sortPaletteActionsByMru,
     filterPaletteActions,
     createActionExecutionReceipt,
 } = require("./action-palette-model.js");
@@ -2006,6 +2007,7 @@ module.exports = {
     extractActionContext,
     getBuiltinActionDefinitions,
     getAvailableActions,
+    sortPaletteActionsByMru,
     filterPaletteActions,
     createActionExecutionReceipt,
     SEARCH_MODES,

@@ -1203,6 +1203,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private dataChangeReloadQueued = false;
     private activeAgentSearchControllers = new Set<AbortController>();
     private activeDocumentSetRestoreControllers = new Set<AbortController>();
+    private recentPaletteActions: string[] = [];
     private switcherRefreshers = new Set<() => void>();
     private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
     private quickActionAdapterTargets = new Map<string, QuickActionTarget[]>();
@@ -12289,6 +12290,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             platform: this.isMobile ? "mobile" : "desktop",
             title,
             targetContext: context,
+            recentActionIds: this.recentPaletteActions,
             onClose: () => {
                 closeOverlay();
             },
@@ -12323,6 +12325,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 showMessage(this.i18n.snippetCopied || "已复制到剪贴板");
             }
         };
+
+        if (actionId) {
+            this.recentPaletteActions = [actionId, ...this.recentPaletteActions.filter((id) => id !== actionId)].slice(0, 5);
+        }
 
         switch (actionId) {
             case "open-active":

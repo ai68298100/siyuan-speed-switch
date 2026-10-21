@@ -43,6 +43,7 @@ function mountActionPalette(container, actions = [], options = {}) {
         isOpen: true,
         query: options.initialQuery || "",
         targetContext: options.targetContext || null,
+        recentActionIds: Array.isArray(options.recentActionIds) ? options.recentActionIds : [],
     });
 
     const platform = options.platform || "desktop";

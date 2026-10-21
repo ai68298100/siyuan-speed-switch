@@ -29,7 +29,8 @@ const PALETTE_KEY_ACTIONS = Object.freeze({
 function createPaletteNavigationState(actions = [], options = {}) {
     const safeActions = Array.isArray(actions) ? actions : [];
     const query = typeof options.query === "string" ? options.query.trim() : "";
-    const filtered = filterPaletteActions(safeActions, query);
+    const recentActionIds = Array.isArray(options.recentActionIds) ? options.recentActionIds : [];
+    const filtered = filterPaletteActions(safeActions, query, {recentActionIds});
     const selectedIndex = filtered.length > 0 ? 0 : -1;
     const isOpen = Boolean(options.isOpen);
     const targetContext = options.targetContext && typeof options.targetContext === "object"
@@ -43,6 +44,7 @@ function createPaletteNavigationState(actions = [], options = {}) {
         filteredActions: filtered,
         selectedIndex,
         targetContext,
+        recentActionIds,
     };
 }
 
@@ -55,7 +57,9 @@ function createPaletteNavigationState(actions = [], options = {}) {
  */
 function updatePaletteQuery(state, newQuery) {
     const raw = typeof newQuery === "string" ? newQuery : "";
-    const filtered = filterPaletteActions(state.allActions, raw);
+    const filtered = filterPaletteActions(state.allActions, raw, {
+        recentActionIds: state.recentActionIds,
+    });
     const selectedIndex = filtered.length > 0 ? 0 : -1;
     return {
         ...state,

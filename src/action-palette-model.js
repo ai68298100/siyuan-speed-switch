@@ -122,23 +122,58 @@ function getAvailableActions(context, options = {}) {
 }
 
 /**
- * 在动作画板内针对输入的查询过滤动作项（支持标签、ID、快捷键匹配）。
+ * 根据最近使用动作历史（MRU）对动作列表排序。
+ * 保持不同 section（open / copy / manage）的既有分布，在同分区内部将高频/近期使用的动作前置。
+ *
+ * @param {Array<object>} actions 待排序动作列表
+ * @param {Array<string>} [recentActionIds] 最近使用的动作 ID 列表（最近在前）
+ * @returns {Array<object>} 排序后的动作列表副本
+ */
+function sortPaletteActionsByMru(actions, recentActionIds = []) {
+    if (!Array.isArray(actions)) return [];
+    if (!Array.isArray(recentActionIds) || recentActionIds.length === 0) return actions.slice();
+    const rankMap = new Map();
+    for (let i = 0; i < recentActionIds.length; i++) {
+        const id = String(recentActionIds[i]);
+        if (id && !rankMap.has(id)) {
+            rankMap.set(id, i);
+        }
+    }
+    const cloned = actions.slice();
+    cloned.sort((a, b) => {
+        const secA = a.section || "";
+        const secB = b.section || "";
+        if (secA !== secB) return 0;
+        const rA = rankMap.has(a.id) ? rankMap.get(a.id) : 999;
+        const rB = rankMap.has(b.id) ? rankMap.get(b.id) : 999;
+        return rA - rB;
+    });
+    return cloned;
+}
+
+/**
+ * 在动作画板内针对输入的查询过滤动作项（支持标签、ID、快捷键匹配与 MRU 偏好）。
  */
 function filterPaletteActions(actions, query, options = {}) {
     if (!Array.isArray(actions)) return [];
+    const recentActionIds = Array.isArray(options.recentActionIds) ? options.recentActionIds : [];
+    const sourceActions = recentActionIds.length > 0
+        ? sortPaletteActionsByMru(actions, recentActionIds)
+        : actions;
+
     const rawNeedle = typeof query === "string" ? query.trim().toLowerCase() : "";
     const limit = Number.isFinite(options.limit) && options.limit > 0
         ? Math.min(Math.floor(options.limit), ACTION_MAX_RESULTS)
         : ACTION_MAX_RESULTS;
 
     if (!rawNeedle) {
-        return actions.slice(0, limit);
+        return sourceActions.slice(0, limit);
     }
 
     const needle = rawNeedle.slice(0, ACTION_MAX_QUERY_LENGTH);
     const scored = [];
-    for (let i = 0; i < actions.length; i++) {
-        const action = actions[i];
+    for (let i = 0; i < sourceActions.length; i++) {
+        const action = sourceActions[i];
         if (!action || typeof action !== "object") continue;
         const label = String(action.label || "").toLowerCase();
         const id = String(action.id || "").toLowerCase();
@@ -178,6 +213,7 @@ module.exports = {
     extractActionContext,
     getBuiltinActionDefinitions,
     getAvailableActions,
+    sortPaletteActionsByMru,
     filterPaletteActions,
     createActionExecutionReceipt,
 };

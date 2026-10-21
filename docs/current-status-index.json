@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-21",
-  "currentTask": "T-7358",
+  "currentTask": "T-7359",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7358",
+  "nextLocalTask": "T-7359",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -172,7 +172,8 @@
     "T-7355",
     "T-7356",
     "T-7357",
-    "T-7358"
+    "T-7358",
+    "T-7359"
   ],
   "tasks": [
     {
@@ -4533,12 +4534,29 @@
     {
       "id": "T-7358",
       "title": "全平台 E2E 矩阵与性能门禁最终验收",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P2",
       "owner": "local",
       "workType": "feature",
       "dependsOn": [
         "T-7357"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0250-t7358-full-platform-e2e-matrix-and-mru.md",
+        "tests/full-platform-e2e-matrix.test.cjs"
+      ],
+      "next": "T-7359"
+    },
+    {
+      "id": "T-7359",
+      "title": "版本说明、集市资源核验与多端使用说明同步",
+      "status": "in_progress",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "release",
+      "dependsOn": [
+        "T-7358"
       ],
       "evidence": [
         "docs/dev-plan-2026-10-06.md"
