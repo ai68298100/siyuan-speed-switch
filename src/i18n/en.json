@@ -1826,5 +1826,15 @@
   "homeDescDatabaseBoard": "Grouped read-only board for attribute views",
   "homeFlashcardReview": "Flashcard Review",
   "homeDescFlashcardReview": "Review queue and mastery projections using SM-2",
-  "homeFlashcardReviewStat": "Due / Today"
+  "homeFlashcardReviewStat": "Due / Today",
+  "actionPaletteOpenInReader": "Open in SiReader",
+  "actionPaletteOpenInMedia": "Play in SiMedia",
+  "actionPaletteSaveAsDocSet": "Save as Document Set",
+  "actionPaletteUndoClosedTab": "Reopen Closed Tab",
+  "docSetSavedReceipt": "Saved opened tabs as document set: {x}",
+  "emptyDocSetWarning": "No opened tabs available to save",
+  "noClosedTabsToRestore": "No closed tabs to restore",
+  "restoredClosedTab": "Restored closed tab: {x}",
+  "openedInReaderReceipt": "Opened in SiReader: {x}",
+  "openedInMediaReceipt": "Opened in SiMedia: {x}"
 }

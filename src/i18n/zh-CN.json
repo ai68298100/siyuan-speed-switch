@@ -1826,5 +1826,15 @@
   "homeDescDatabaseBoard": "按分组桶聚合展示属性视图只读看板",
   "homeFlashcardReview": "闪卡复习",
   "homeDescFlashcardReview": "基于 SM-2 算法推演每日队列与掌握度统计",
-  "homeFlashcardReviewStat": "今日/待复习"
+  "homeFlashcardReviewStat": "今日/待复习",
+  "actionPaletteOpenInReader": "在思阅中阅读",
+  "actionPaletteOpenInMedia": "在思播中打开",
+  "actionPaletteSaveAsDocSet": "保存为文档集",
+  "actionPaletteUndoClosedTab": "撤销关闭页签",
+  "docSetSavedReceipt": "已将打开页签保存为文档集：{x}",
+  "emptyDocSetWarning": "当前无有效页签可保存",
+  "noClosedTabsToRestore": "暂无可撤销关闭的页签",
+  "restoredClosedTab": "已恢复页签：{x}",
+  "openedInReaderReceipt": "已在思阅中打开：{x}",
+  "openedInMediaReceipt": "已在思播中打开：{x}"
 }

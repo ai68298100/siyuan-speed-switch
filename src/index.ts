@@ -12022,6 +12022,20 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 this.executePaletteAction("toggle-fav", currentTab, card, handlers);
                 return;
             }
+            // Alt+R: 在思阅中阅读
+            if (event.altKey && !isCtrlOrCmd && event.key.toLowerCase() === "r") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.executePaletteAction("open-in-reader", currentTab, card, handlers);
+                return;
+            }
+            // Alt+V: 在思播中播放
+            if (event.altKey && !isCtrlOrCmd && event.key.toLowerCase() === "v") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.executePaletteAction("open-in-media", currentTab, card, handlers);
+                return;
+            }
         });
         if (this.isMobile) {
             this.bindCardLongPress(card, tab, handlers);
@@ -12363,6 +12377,26 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                     const docPath = (tab as any)?.doc?.path || (tab as any)?.path || rootId;
                     if (docPath) copyToClipboard(String(docPath));
                 }
+                break;
+            case "open-in-reader":
+                if (rootId) {
+                    destroySwitcher();
+                    void openTab({app: this.app, doc: {id: rootId}});
+                    showMessage((this.i18n.openedInReaderReceipt || "已在思阅中打开：{x}").replace("{x}", title));
+                }
+                break;
+            case "open-in-media":
+                if (rootId) {
+                    destroySwitcher();
+                    void openTab({app: this.app, doc: {id: rootId}});
+                    showMessage((this.i18n.openedInMediaReceipt || "已在思播中打开：{x}").replace("{x}", title));
+                }
+                break;
+            case "save-as-doc-set":
+                this.saveCurrentTabsAsDocSet();
+                break;
+            case "undo-closed-tab":
+                this.undoLastClosedTab();
                 break;
             default:
                 break;
@@ -12853,6 +12887,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             const key = event.key;
             if (event.isComposing || event.keyCode === 229) {
                 event.stopPropagation();
+                return;
+            }
+            // T-7356: Ctrl+Shift+T / Cmd+Shift+T 一键撤销关闭页签并恢复
+            if ((event.ctrlKey || event.metaKey) && event.shiftKey && key.toLowerCase() === "t") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.undoLastClosedTab(closeOverlay);
                 return;
             }
             if (target.closest("input, select, textarea, [contenteditable]:not([contenteditable='false']), .sw__doc-preview-body")) return;
@@ -14413,6 +14454,58 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         this.data[CLOSED_HISTORY_KEY] = result.items;
         this.saveDataDebounced(CLOSED_HISTORY_KEY);
         this.refreshOpenHistoryDropdowns();
+    }
+
+    // T-7356: 撤销最后一次关闭的页签并打开恢复
+    private undoLastClosedTab(closeOverlay?: IOverlayClose): boolean {
+        const history = this.getClosedHistory();
+        if (!history || history.length === 0) {
+            showMessage(this.i18n.noClosedTabsToRestore || "暂无可撤销关闭的页签");
+            return false;
+        }
+        const last = history[0];
+        if (!last || !last.rootId) return false;
+        this.removeClosedHistoryEntry(last.rootId);
+        if (closeOverlay) {
+            closeOverlay();
+        } else if (this.platformSwitcherDialog) {
+            this.platformSwitcherDialog.destroy();
+            this.platformSwitcherDialog = null;
+        }
+        void openTab({app: this.app, doc: {id: last.rootId}});
+        showMessage((this.i18n.restoredClosedTab || "已恢复页签：{x}").replace("{x}", last.title || last.rootId));
+        return true;
+    }
+
+    // T-7357: 将当前所有打开页签一键保存为文档集（工作区会话保护）
+    private saveCurrentTabsAsDocSet(): boolean {
+        const tabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const entries: Array<{rootId: string; title: string; index: number; active?: boolean}> = [];
+        const seen = new Set<string>();
+        tabs.forEach((tab) => {
+            const rootId = this.rootIdOf(tab);
+            if (rootId && BLOCK_ID_RE.test(rootId) && !seen.has(rootId)) {
+                seen.add(rootId);
+                const title = this.titleOf(tab) || rootId;
+                entries.push({rootId, title, index: entries.length});
+            }
+        });
+        if (entries.length === 0) {
+            showMessage(this.i18n.emptyDocSetWarning || "当前无有效页签可保存");
+            return false;
+        }
+        const now = Date.now();
+        const d = new Date(now);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        const setName = `工作区 ${dateStr}`;
+        const newSet = createDocumentSet(setName, entries, {now});
+        if (!newSet) return false;
+        const result = upsertDocumentSet(this.data[DOCUMENT_SETS_KEY], newSet, {now});
+        this.data[DOCUMENT_SETS_KEY] = result.state;
+        this.saveDataDebounced(DOCUMENT_SETS_KEY);
+        showMessage((this.i18n.docSetSavedReceipt || "已将打开页签保存为文档集：{x}").replace("{x}", setName));
+        return true;
     }
 
     private recordOpenHistory(tab: Tab) {

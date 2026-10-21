@@ -613,6 +613,8 @@ function renderHomeModuleView(doc, view, options = {}) {
             button.dataset.focusKey = `media-${index}`;
             if (item.href) button.dataset.href = item.href;
             if (item.image) {
+                const coverWrap = doc.createElement("div");
+                coverWrap.className = "sw__home-media-cover-wrap";
                 const image = doc.createElement("img");
                 image.className = "sw__home-media-cover";
                 image.src = item.image;
@@ -620,7 +622,25 @@ function renderHomeModuleView(doc, view, options = {}) {
                 image.loading = "lazy";
                 image.decoding = "async";
                 image.referrerPolicy = "no-referrer";
-                button.appendChild(image);
+                coverWrap.appendChild(image);
+                if (item.badge) {
+                    const badge = doc.createElement("span");
+                    badge.className = "sw__home-media-badge";
+                    badge.textContent = String(item.badge);
+                    coverWrap.appendChild(badge);
+                }
+                const numProgress = Number(item.progress);
+                if (Number.isFinite(numProgress) && numProgress >= 0) {
+                    const progressWrap = doc.createElement("span");
+                    progressWrap.className = "sw__home-media-progress";
+                    progressWrap.setAttribute("aria-hidden", "true");
+                    const progressBar = doc.createElement("i");
+                    progressBar.className = "sw__home-media-progress-bar";
+                    progressBar.style.width = `${Math.min(100, Math.max(0, numProgress))}%`;
+                    progressWrap.appendChild(progressBar);
+                    coverWrap.appendChild(progressWrap);
+                }
+                button.appendChild(coverWrap);
             }
             const copy = doc.createElement("span");
             copy.className = "sw__home-media-copy";

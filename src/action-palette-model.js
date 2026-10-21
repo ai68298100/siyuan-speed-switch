@@ -69,17 +69,24 @@ function getBuiltinActionDefinitions(i18n) {
     const DESKTOP_ONLY = ["desktop"];
     const ALL_KINDS = ["tab", "doc", "favorite", "closed"];
     const s = ACTION_SECTION_MAP;
-    const lk = (k) => (t[k] || k);
+    const lk = (k) => {
+        const keyWithPrefix = "actionPalette" + k.charAt(0).toUpperCase() + k.slice(1);
+        return t[keyWithPrefix] || t[k] || k;
+    };
     return [
         {id: "open-active", section: s.OPEN, label: lk("openActive"), icon: "iconFile", shortcut: "↵", supportedKinds: ALL_KINDS, platforms: ALL_PLATFORMS},
         {id: "open-right", section: s.OPEN, label: lk("openRight"), icon: "iconLayoutRight", shortcut: "⌘↵", supportedKinds: ALL_KINDS, platforms: DESKTOP_ONLY},
         {id: "open-bottom", section: s.OPEN, label: lk("openBottom"), icon: "iconLayoutBottom", shortcut: "⌥↵", supportedKinds: ALL_KINDS, platforms: DESKTOP_ONLY},
         {id: "open-preview", section: s.OPEN, label: lk("openPreview"), icon: "iconEye", shortcut: "⇧↵", supportedKinds: ["doc", "favorite", "closed"], platforms: DESKTOP_ONLY},
+        {id: "open-in-reader", section: s.OPEN, label: lk("openInReader"), icon: "iconBook", shortcut: "⌥R", supportedKinds: ALL_KINDS, platforms: ALL_PLATFORMS},
+        {id: "open-in-media", section: s.OPEN, label: lk("openInMedia"), icon: "iconVideo", shortcut: "⌥V", supportedKinds: ALL_KINDS, platforms: ALL_PLATFORMS},
         {id: "restore-doc-set", section: s.OPEN, label: lk("restoreDocSet"), icon: "iconHistory", shortcut: "↵", supportedKinds: ["doc-set"], platforms: ALL_PLATFORMS},
         {id: "copy-block-link", section: s.COPY, label: lk("copyBlockLink"), icon: "iconLink", shortcut: "⌘C", supportedKinds: ALL_KINDS, platforms: ALL_PLATFORMS},
         {id: "copy-markdown-link", section: s.COPY, label: lk("copyMarkdownLink"), icon: "iconRef", shortcut: "⌘⇧C", supportedKinds: ALL_KINDS, platforms: ALL_PLATFORMS},
         {id: "copy-id", section: s.COPY, label: lk("copyId"), icon: "iconCopy", shortcut: "⌥C", supportedKinds: ALL_KINDS, platforms: ALL_PLATFORMS},
         {id: "copy-path", section: s.COPY, label: lk("copyPath"), icon: "iconFolder", shortcut: "⌃C", supportedKinds: ALL_KINDS, platforms: ALL_PLATFORMS},
+        {id: "save-as-doc-set", section: s.MANAGE, label: lk("saveAsDocSet"), icon: "iconFolder", shortcut: "⌘⇧S", supportedKinds: ["tab", "doc"], platforms: ALL_PLATFORMS},
+        {id: "undo-closed-tab", section: s.MANAGE, label: lk("undoClosedTab"), icon: "iconHistory", shortcut: "⌘⇧T", supportedKinds: ALL_KINDS, platforms: ALL_PLATFORMS},
         {id: "toggle-pin", section: s.MANAGE, label: (ctx) => lk(ctx.isPinned ? "unpinTab" : "pinTab"), icon: (ctx) => ctx.isPinned ? "iconUnpin" : "iconPin", shortcut: "⌘P", supportedKinds: ["tab"], platforms: ALL_PLATFORMS},
         {id: "toggle-fav", section: s.MANAGE, label: (ctx) => lk(ctx.isFaved ? "unfavoriteTab" : "favoriteTab"), icon: "iconStar", shortcut: "⌘D", supportedKinds: ["tab", "doc", "closed"], platforms: ALL_PLATFORMS},
         {id: "close-tab", section: s.MANAGE, label: lk("closeTab"), icon: "iconClose", shortcut: "⌘W", supportedKinds: ["tab"], platforms: ALL_PLATFORMS, isDestructive: true},

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-20",
-  "currentTask": "T-7354",
+  "updated": "2026-10-21",
+  "currentTask": "T-7358",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7354",
+  "nextLocalTask": "T-7358",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -168,7 +168,11 @@
     "T-7351",
     "T-7352",
     "T-7353",
-    "T-7354"
+    "T-7354",
+    "T-7355",
+    "T-7356",
+    "T-7357",
+    "T-7358"
   ],
   "tasks": [
     {
@@ -4454,7 +4458,7 @@
     {
       "id": "T-7354",
       "title": "属性视图（AV）轻量只读看板卡片装配与工作台接入",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "owner": "local",
       "workType": "feature",
@@ -4462,9 +4466,83 @@
         "T-7353"
       ],
       "evidence": [
-        "docs/dev-plan-2026-10-06.md"
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0247-t7354-database-board-widget-wiring.md",
+        "src/home-model.js",
+        "src/index.ts",
+        "tests/widget-board-and-review-wiring.test.cjs"
       ],
       "next": "T-7355"
+    },
+    {
+      "id": "T-7355",
+      "title": "今日待复习闪卡（Flashcard Due）卡片装配与一键复习入口",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7354"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0248-t7355-flashcard-review-widget-wiring.md",
+        "src/index.ts",
+        "tests/av-board-and-flashcard-wiring.test.cjs"
+      ],
+      "next": "T-7356"
+    },
+    {
+      "id": "T-7356",
+      "title": "切换器一键撤销关闭页签（Ctrl+Shift+T）与历史快速恢复",
+      "status": "completed",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7355"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0249-t7356-undo-close-docset-and-ecosystem-linkage.md",
+        "src/index.ts",
+        "tests/undo-closed-docset-and-ecosystem-contract.test.cjs"
+      ],
+      "next": "T-7357"
+    },
+    {
+      "id": "T-7357",
+      "title": "当前打开页签一键保存为文档集与思阅/思播生态联动增强",
+      "status": "completed",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7356"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0249-t7356-undo-close-docset-and-ecosystem-linkage.md",
+        "src/action-palette-model.js",
+        "src/home-view.js",
+        "src/index.ts",
+        "tests/undo-closed-docset-and-ecosystem-contract.test.cjs"
+      ],
+      "next": "T-7358"
+    },
+    {
+      "id": "T-7358",
+      "title": "全平台 E2E 矩阵与性能门禁最终验收",
+      "status": "in_progress",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "feature",
+      "dependsOn": [
+        "T-7357"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md"
+      ]
     }
   ],
   "global": {

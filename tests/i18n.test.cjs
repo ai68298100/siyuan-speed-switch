@@ -190,6 +190,10 @@ const ALLOWED_UNUSED = [
   "actionPaletteFavoriteTab",
   "actionPaletteUnfavoriteTab",
   "actionPaletteCloseTab",
+  "actionPaletteOpenInReader",
+  "actionPaletteOpenInMedia",
+  "actionPaletteSaveAsDocSet",
+  "actionPaletteUndoClosedTab",
 ];
 
 test("i18n: 语言文件中不允许存在源码未引用的死 key", (t) => {
