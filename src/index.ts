@@ -12189,6 +12189,20 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 this.executePaletteAction("open-in-media", currentTab, card, handlers);
                 return;
             }
+            // Alt+S: 保存当前已开页签为文档集
+            if (event.altKey && !isCtrlOrCmd && event.key.toLowerCase() === "s") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.executePaletteAction("save-as-doc-set", currentTab, card, handlers);
+                return;
+            }
+            // Alt+T: 撤销恢复最后关闭的页签
+            if (event.altKey && !isCtrlOrCmd && event.key.toLowerCase() === "t") {
+                event.preventDefault();
+                event.stopPropagation();
+                this.executePaletteAction("undo-closed-tab", currentTab, card, handlers);
+                return;
+            }
         });
         if (this.isMobile) {
             this.bindCardLongPress(card, tab, handlers);
