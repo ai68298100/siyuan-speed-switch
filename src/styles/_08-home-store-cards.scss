@@ -356,6 +356,18 @@
     user-select: none;
 }
 
+.sw-home-store__badge--featured {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
+    border: 1px solid color-mix(in srgb, #e6a23c 60%, transparent);
+    border-radius: $sw-radius-sm;
+    background: color-mix(in srgb, #e6a23c 16%, transparent);
+    color: #e6a23c;
+    font-size: var(--sw-font-2xs, 10px);
+    font-weight: var(--sw-weight-medium, 500);
+}
+
 .sw-home-store__sizes,
 .sw-home-store__group-toggle,
 .sw-home-store__clear-search,

@@ -12,6 +12,7 @@ import {
     buildHomeStoreTabCounts,
     canHomeStoreInstall,
     matchesHomeStoreTokens,
+    HOME_FEATURED_MODULE_IDS,
     normalizeHomeStoreInstallability,
     normalizeHomeStoreQuery,
     normalizeHomeStoreSort,
@@ -673,13 +674,14 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             // 离线组件属内置（行内中性能力 chip 表达「完全离线」），不再单设页签；
             // 推荐/可配置/插件/条件可用由详情窗格与行内 chip 表达，不再占筛选位。
 const tabs: Array<{key: string; label: string; category?: string; availability?: string; integration?: string; addedOnly?: boolean; recommendedOnly?: boolean; configurableOnly?: boolean; dependency?: string}> = [
-                {key: "all", label: this.i18n.homeStoreTabAll},
-                {key: "builtin", label: this.i18n.homeStoreTabBuiltin, category: "builtin"},
-                {key: "network", label: this.i18n.homeStoreTabNetwork, integration: "network"},
-                {key: "local", label: this.i18n.homeStoreTabLocal, integration: "local"},
-                {key: "requires", label: this.i18n.homeStoreTabRequires, dependency: "required"},
-                {key: "added", label: this.i18n.homeStoreTabAdded, addedOnly: true},
-            ];
+    {key: "all", label: this.i18n.homeStoreTabAll},
+    {key: "recommended", label: this.i18n.homeStoreTabRecommended || "⭐ 精选", recommendedOnly: true},
+    {key: "builtin", label: this.i18n.homeStoreTabBuiltin, category: "builtin"},
+    {key: "network", label: this.i18n.homeStoreTabNetwork, integration: "network"},
+    {key: "local", label: this.i18n.homeStoreTabLocal, integration: "local"},
+    {key: "requires", label: this.i18n.homeStoreTabRequires, dependency: "required"},
+    {key: "added", label: this.i18n.homeStoreTabAdded, addedOnly: true},
+];
             tabs.forEach((tab, tabIndex) => {
                 const btn = document.createElement("button");
                 btn.type = "button";
@@ -888,6 +890,14 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                     badge.title = badge.textContent;
                     title.appendChild(document.createTextNode(" "));
                     title.appendChild(badge);
+                }
+                if (card.dataset.recommended === "true" || HOME_FEATURED_MODULE_IDS.includes(moduleId)) {
+                    const featBadge = document.createElement("em");
+                    featBadge.className = "sw-home-store__availability sw-home-store__badge--featured";
+                    featBadge.textContent = "⭐ " + (this.i18n.homeStoreRecommended || "精选");
+                    featBadge.title = this.i18n.homeStoreRecommended || "精选推荐组件";
+                    title.appendChild(document.createTextNode(" "));
+                    title.appendChild(featBadge);
                 }
                 const desc = document.createElement("span");
                 desc.textContent = def.description || "";

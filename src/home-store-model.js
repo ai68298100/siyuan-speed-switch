@@ -11,6 +11,22 @@ const STORE_AVAILABILITY = Object.freeze(["ready", "conditional", "external"]);
 const STORE_CATEGORIES = Object.freeze(["builtin", "plugin"]);
 const STORE_INTEGRATIONS = Object.freeze(["offline", "local", "network"]);
 const STORE_SORTS = Object.freeze(["relevance", "title", "status", "category"]);
+
+// T-7360 核心精选推荐组件清单（Featured / Essentials）
+const HOME_FEATURED_MODULE_IDS = Object.freeze([
+    "recent-documents",
+    "today-journal",
+    "today-tasks",
+    "database-board",
+    "flashcard-review",
+    "note-stats",
+    "year-progress",
+    "external-local-time",
+    "favorites",
+    "document-sets",
+    "external-weather-open-meteo",
+    "checkin-today",
+]);
 const PREVIEW_KINDS = Object.freeze({
     "today-journal": "documents", "journal-monthly": "calendar", "recent-daily-notes": "documents", "today-reservations": "tasks",
     "on-this-day": "documents", "journal-calendar": "calendar", "writing-streak": "progress", "today-tasks": "tasks",
@@ -573,6 +589,8 @@ function resolveHomeStoreFilter(tab) {
 
 function normalizeHomeStoreCard(card) {
     const source = card && typeof card === "object" ? card : {};
+    const rawModuleId = boundedText(source.moduleId || source.id, 64);
+    const isFeatured = rawModuleId ? HOME_FEATURED_MODULE_IDS.includes(rawModuleId) : false;
     const normalized = {
         search: boundedText(source.search, 512).toLowerCase(),
         category: normalizeHomeStoreCategory(source.category),
@@ -580,7 +598,7 @@ function normalizeHomeStoreCard(card) {
         integration: STORE_INTEGRATIONS.includes(source.integration) ? source.integration : "unknown",
         added: source.added === true || source.added === "true",
         configurable: source.configurable === true || source.configurable === "true",
-        recommended: source.recommended === true || source.recommended === "true",
+        recommended: source.recommended === true || source.recommended === "true" || isFeatured,
     };
     if (source.dependency === "required" || source.dependency === "optional") normalized.dependency = source.dependency;
     return normalized;
@@ -967,6 +985,7 @@ module.exports = {
     normalizeHomeStoreStatusLabel, buildHomeStoreTooltip, normalizeHomeStoreSearchState,
     sameHomeStoreSearchState, resetHomeStoreSearchState,
     normalizeHomeStoreAvailability, resolveHomeStoreFilter, normalizeHomeStoreCard, matchesHomeStoreCard,
+    HOME_FEATURED_MODULE_IDS,
     filterHomeStoreCards, isHomeStoreAdded, isHomeStoreRecommended, countHomeStoreCards, summarizeHomeStoreCards, buildHomeStoreSearchText,
     resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, normalizeHomeStorePreviewKind, resolveHomeStoreCardStatus,
     resolveHomeStoreSizeSelection, isHomeStoreSizeSupported, normalizeHomeStoreSupportedSurfaces,

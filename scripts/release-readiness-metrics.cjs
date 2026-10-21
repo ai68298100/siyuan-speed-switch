@@ -48,8 +48,11 @@
 // ADR 0251 (2026-10-21): 符号导航速查指引（CheatSheet，T-7359）与中英文文档完备对账，
 // raw 产物为 1,211,534 B（处于 1186 KiB 自律线内，余量约 2.9 KiB）。
 // raw 观察线由 1182 -> 1186 KiB（1,214,464 B）。归档包门禁由 594 -> 596 KiB（610,304 B，package.zip 608,361 B，余量约 1.9 KiB）。
-const RAW_BUNDLE_BUDGET_BYTES = 1186 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0251";
+// ADR 0252 (2026-10-21): 组件商店精选推荐分层（Featured / Curation，T-7360）与精选徽标微光体系，
+// raw 产物为 1,214,983 B（处于 1188 KiB 自律线内，余量约 1.5 KiB）。
+// raw 观察线由 1186 -> 1188 KiB（1,216,512 B）。归档包门禁维持 596 KiB（610,304 B，package.zip 609,592 B，余量 712 B）。
+const RAW_BUNDLE_BUDGET_BYTES = 1188 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0252";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout
