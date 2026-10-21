@@ -1836,5 +1836,7 @@
   "noClosedTabsToRestore": "No closed tabs to restore",
   "restoredClosedTab": "Restored closed tab: {x}",
   "openedInReaderReceipt": "Opened in SiReader: {x}",
-  "openedInMediaReceipt": "Opened in SiMedia: {x}"
+  "openedInMediaReceipt": "Opened in SiMedia: {x}",
+  "homeScenePresets": "Presets",
+  "homeScenePresetApplied": "Applied scene preset: {x} (undo available)"
 }

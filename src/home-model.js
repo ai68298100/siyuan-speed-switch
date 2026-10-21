@@ -16,6 +16,90 @@ const HOME_DEFAULT_WIDGETS = Object.freeze([
 ].map(Object.freeze));
 const HOME_DEFAULT_MODULE_IDS = Object.freeze(HOME_DEFAULT_WIDGETS.map((item) => item.moduleId));
 
+// T-7360: 工作台黄金场景化预设布局库（Scene Presets）
+const WORKBENCH_SCENE_PRESETS = Object.freeze([
+    {
+        id: "default",
+        title: "全景工作流",
+        description: "近期文档、日记、待办、时间、年度进度与笔记统计",
+        icon: "iconLayout",
+        widgets: HOME_DEFAULT_WIDGETS,
+    },
+    {
+        id: "minimal",
+        title: "极简行动",
+        description: "聚焦核心行动：今日日记、待办任务与本地时间",
+        icon: "iconCheck",
+        widgets: Object.freeze([
+            {moduleId: "today-journal", x: 0, y: 0, w: 6, h: 3, size: "small"},
+            {moduleId: "today-tasks", x: 6, y: 0, w: 6, h: 3, size: "small"},
+            {moduleId: "external-local-time", x: 0, y: 3, w: 12, h: 3, size: "wide"},
+        ].map(Object.freeze)),
+    },
+    {
+        id: "research",
+        title: "学术与复盘",
+        description: "属性看板、闪卡复习、笔记统计与近期文档",
+        icon: "iconGraph",
+        widgets: Object.freeze([
+            {moduleId: "database-board", x: 0, y: 0, w: 8, h: 3, size: "wide"},
+            {moduleId: "flashcard-review", x: 8, y: 0, w: 4, h: 3, size: "small"},
+            {moduleId: "recent-documents", x: 0, y: 3, w: 6, h: 3, size: "medium"},
+            {moduleId: "note-stats", x: 6, y: 3, w: 6, h: 3, size: "medium"},
+        ].map(Object.freeze)),
+    },
+    {
+        id: "daily",
+        title: "打卡与生活",
+        description: "小驴打卡桥接、每日放送与年度进度",
+        icon: "iconCalendar",
+        widgets: Object.freeze([
+            {moduleId: "checkin-today", x: 0, y: 0, w: 6, h: 3, size: "medium"},
+            {moduleId: "checkin-streak", x: 6, y: 0, w: 6, h: 3, size: "medium"},
+            {moduleId: "external-anime-bangumi", x: 0, y: 3, w: 8, h: 3, size: "wide"},
+            {moduleId: "year-progress", x: 8, y: 3, w: 4, h: 3, size: "small"},
+        ].map(Object.freeze)),
+    },
+]);
+
+function applyWorkbenchScenePreset(state, presetId, device = "desktop") {
+    const targetDevice = ["desktop", "sidebar", "mobile"].includes(device) ? device : "desktop";
+    const sourceState = state && typeof state === "object" ? state : {instances: [], layouts: {}};
+    const matched = WORKBENCH_SCENE_PRESETS.find((p) => p.id === presetId) || WORKBENCH_SCENE_PRESETS[0];
+
+    const instances = [];
+    const layoutEntries = [];
+    matched.widgets.forEach((item, index) => {
+        const {moduleId, ...layout} = item;
+        instances.push({
+            instanceId: moduleId,
+            moduleId,
+            enabled: true,
+            config: moduleId === "external-local-time" ? {showSeconds: "否"} : {},
+        });
+        layoutEntries.push({
+            instanceId: moduleId,
+            ...layout,
+            collapsed: false,
+            ...(targetDevice === "mobile" ? {x: 0, y: index * 3, w: 12} : {}),
+        });
+    });
+
+    const nextLayouts = {...(sourceState.layouts || {})};
+    nextLayouts[targetDevice] = layoutEntries;
+
+    const nextState = {
+        ...sourceState,
+        instances,
+        layouts: nextLayouts,
+    };
+    return {
+        state: nextState,
+        changed: true,
+        preset: matched,
+    };
+}
+
 function resolveHomeStarterSize(moduleId, supported) {
     const starter = HOME_DEFAULT_WIDGETS.find((item) => item.moduleId === moduleId);
     return starter && supported.includes(starter.size) ? starter.size : "";
@@ -1054,4 +1138,4 @@ function isLifeHeartbeatModule(moduleId) {
 }
 
 module.exports = {
-    LAYOUT_SIZES,LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, HOME_DEFAULTS_VERSION, HOME_DEFAULT_WIDGETS, HOME_DEFAULT_MODULE_IDS, resolveHomeStarterSize, normalizeHomeDefaultsVersion, prepareHomeDefaultState, DEVICES, DEFAULT_MODULES, BUILTIN_EXTENSION_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIconId, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+    LAYOUT_SIZES,LIFE_HEARTBEAT_MODULE_IDS, isLifeHeartbeatModule, HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, HOME_SCHEMA_VERSION, HOME_DEFAULTS_VERSION, HOME_DEFAULT_WIDGETS, HOME_DEFAULT_MODULE_IDS, resolveHomeStarterSize, normalizeHomeDefaultsVersion, prepareHomeDefaultState, DEVICES, DEFAULT_MODULES, BUILTIN_EXTENSION_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIconId, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot, WORKBENCH_SCENE_PRESETS, applyWorkbenchScenePreset};

@@ -4,12 +4,12 @@
 // 拖拽排序、IntersectionObserver 懒读调度）是一个自洽运行时，本批保持原样不拆——
 // 拆它属于后续批次（与 P1-2 样式层「先原样搬、再逐块治理」同一取向）。
 // 注意：下列签名是从迁移前 index.ts 的类声明逐项同步而来，改宿主实现时此处须同步。
-import {Dialog, showMessage} from "siyuan";
+import {Dialog, showMessage, Menu} from "siyuan";
 import type {EventBus, TEventBus} from "siyuan";
 import {HOME_WIDGET_SIZES, PANEL_SCALE_DEFAULT, PANEL_SIZE_MIN_PX} from "./constants";
 import type {HomeSizeMode, HomeWidgetSize} from "./constants";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries, buildHomeHealthReport, buildHomeDiagnosticSummary, formatHealthTime} from "./home-controller";
-import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, resolveHomeTileDefaultSize, LIFE_HEARTBEAT_MODULE_IDS, HOME_DEFAULT_MODULE_IDS, prepareHomeDefaultState, resolveHomeStarterSize} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint, moveLayoutEntry, moveLayoutEntryByOffset, computeEdgeScrollDelta, resolveHomeTileDefaultSize, LIFE_HEARTBEAT_MODULE_IDS, HOME_DEFAULT_MODULE_IDS, prepareHomeDefaultState, resolveHomeStarterSize, WORKBENCH_SCENE_PRESETS, applyWorkbenchScenePreset} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
 import {createLayoutHistory, layoutSnapshotOf, pushLayoutHistory, undoLayoutHistory, redoLayoutHistory, canUndoLayoutHistory, canRedoLayoutHistory, peekUndoLabel, peekRedoLabel, reconcileLayoutSnapshot} from "./home-layout-history";
 import {openHomeConfigForm} from "./home-config-form";
@@ -502,6 +502,34 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 return restore;
             };
             if (editing && cells.length > 0) {
+                const presetBtn = document.createElement("button");
+                presetBtn.type = "button";
+                presetBtn.className = "b3-button b3-button--text sw-home__preset-btn";
+                presetBtn.dataset.homeAction = "scene-presets";
+                presetBtn.innerHTML = '<svg><use xlink:href="#iconLayout"></use></svg><span>' + (this.i18n.homeScenePresets || "场景预设") + '</span>';
+                presetBtn.title = this.i18n.homeScenePresets || "场景预设";
+                presetBtn.addEventListener("click", () => {
+                    const menu = new Menu("swWorkbenchPresets");
+                    WORKBENCH_SCENE_PRESETS.forEach((preset: any) => {
+                        menu.addItem({
+                            icon: preset.icon,
+                            label: preset.title,
+                            click: () => {
+                                prepareLayoutMutation();
+                                const result = applyWorkbenchScenePreset(this.getHomeState(), preset.id, device);
+                                this.saveHomeState(result.state);
+                                commitLayoutMutation(result.state);
+                                layoutOpLabel = preset.title;
+                                showMessage((this.i18n.homeScenePresetApplied || "已套用预设场景：{x}（支持一键撤销）").replace("{x}", preset.title));
+                                renderPanel();
+                            },
+                        });
+                    });
+                    const rect = presetBtn.getBoundingClientRect();
+                    menu.open({x: rect.left, y: rect.bottom + 4});
+                });
+                bar.appendChild(presetBtn);
+
                 const restore = createRestoreButton("b3-button b3-button--text sw-home__restore-default");
                 if (restore) bar.appendChild(restore);
             }

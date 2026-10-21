@@ -1836,5 +1836,7 @@
   "noClosedTabsToRestore": "暂无可撤销关闭的页签",
   "restoredClosedTab": "已恢复页签：{x}",
   "openedInReaderReceipt": "已在思阅中打开：{x}",
-  "openedInMediaReceipt": "已在思播中打开：{x}"
+  "openedInMediaReceipt": "已在思播中打开：{x}",
+  "homeScenePresets": "场景预设",
+  "homeScenePresetApplied": "已套用预设场景：{x}（支持一键撤销）"
 }
