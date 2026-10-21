@@ -1848,5 +1848,8 @@
   "searchModeBlock": "Block",
   "searchModeHeading": "Heading",
   "searchModeTag": "Tag",
+  "searchModeBookmark": "Bookmark",
+  "searchModeCommand": "Command",
+  "searchModeHelp": "CheatSheet",
   "allTasksDone": "🎉 Great job! All tasks completed today"
 }

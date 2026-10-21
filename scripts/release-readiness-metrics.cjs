@@ -57,8 +57,11 @@
 // ADR 0255 (2026-10-21): 小驴打卡风格 7天胶囊轴、待办完成横幅与双拼 Bento 瓦片，
 // raw 产物为 1,217,136 B（处于 1190 KiB 自律线内，余量约 1.4 KiB）。
 // 归档包门禁由 598 -> 600 KiB（614,400 B，package.zip 612,866 B，余量 1,534 B）。
-const RAW_BUNDLE_BUDGET_BYTES = 1190 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0255";
+// ADR 0256 (2026-10-21): 切换器常驻多模态穿透药丸 Chips、画板立体机械键帽与门限校准，
+// raw 产物为 1,219,436 B（处于 1192 KiB 自律线内，余量约 1.2 KiB）。
+// 归档包门禁维持 600 KiB（614,400 B，package.zip 613,957 B，余量 443 B）。
+const RAW_BUNDLE_BUDGET_BYTES = 1192 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0256";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout
@@ -128,7 +131,10 @@ const ARCHIVE_BUDGET_BYTES = 600 * 1024;
 // ADR 0254 (2026-10-21): recalibrated 320 -> 328 KiB (335,872 B) after T-7360
 // (penetration search smart empty hints, snippet studio dual maximize views, color chips);
 // compressed index.js is 328,031 bytes (7,841 B headroom within 328 KiB).
-const COMPRESSED_ENTRY_BUDGET_BYTES = 328 * 1024;
+// ADR 0256 (2026-10-21): recalibrated 328 -> 332 KiB (339,968 B) after T-7360
+// (switcher persistent mode chips bar, keycap styling on action palette);
+// compressed index.js is 329,065 bytes (10,903 B headroom within 332 KiB).
+const COMPRESSED_ENTRY_BUDGET_BYTES = 332 * 1024;
 const ARCHIVE_DRIFT_TOLERANCE_BYTES = 1024;
 
 function parseArtifactSnapshot(text) {

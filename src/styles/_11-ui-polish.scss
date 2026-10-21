@@ -989,6 +989,65 @@
         }
     }
 
+    // 搜索顶栏常驻多模态穿透药丸 Chips
+    .sw__mode-chips-bar {
+        display: flex;
+        align-items: center;
+        gap: var(--sw-space-xs, 4px);
+        padding: var(--sw-space-xs, 4px) var(--sw-space-lg, 12px);
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        border-bottom: 1px solid var(--sw-polish-line-soft);
+        background: color-mix(in srgb, var(--b3-theme-surface) 92%, var(--b3-theme-background));
+    }
+    .sw__mode-chips-bar::-webkit-scrollbar { display: none; }
+
+    .sw__mode-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sw-space-xs, 4px);
+        flex-shrink: 0;
+        min-height: 24px;
+        height: 24px;
+        padding: 0 var(--sw-space-md, 8px);
+        border: 1px solid var(--sw-polish-line-soft);
+        border-radius: var(--sw-platform-radius-pill, 999px);
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-on-surface);
+        font-size: var(--sw-font-xs, 11px);
+        font-weight: var(--sw-weight-medium, 500);
+        cursor: pointer;
+        user-select: none;
+        transition: border-color $sw-dur-fast $sw-ease, color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease;
+
+        svg {
+            width: 12px;
+            height: 12px;
+            opacity: 0.75;
+        }
+
+        &:hover {
+            border-color: color-mix(in srgb, var(--b3-theme-primary) 40%, var(--sw-polish-line));
+            background: color-mix(in srgb, var(--b3-theme-primary) 8%, var(--b3-theme-surface));
+            color: var(--b3-theme-primary);
+            transform: translateY(-1px);
+        }
+
+        &.is-active,
+        &[aria-pressed="true"] {
+            border-color: color-mix(in srgb, var(--b3-theme-primary) 50%, transparent);
+            background: color-mix(in srgb, var(--b3-theme-primary) 14%, var(--b3-theme-surface));
+            color: var(--b3-theme-primary);
+            font-weight: var(--sw-weight-semibold, 600);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+
+            svg {
+                opacity: 1;
+            }
+        }
+    }
+
     .sw__empty { min-height: 180px; }
 
     .sw__workbench-dock {
@@ -1531,19 +1590,34 @@
     .sw__palette-item-shortcut {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         flex-shrink: 0;
+        min-width: 20px;
+        height: 20px;
         padding: 1px var(--sw-space-sm, 6px);
-        border: 1px solid color-mix(in srgb, var(--b3-border-color) 64%, transparent);
-        border-radius: $sw-radius-sm;
-        background: color-mix(in srgb, var(--b3-theme-surface) 65%, transparent);
-        font-size: var(--sw-font-xs, 11px);
-        font-family: inherit;
-        font-variant-numeric: tabular-nums;
-        border-radius: 4px;
-        background: color-mix(in srgb, var(--b3-theme-on-surface) 8%, transparent);
-        color: var(--b3-theme-on-surface-light, rgba(128, 128, 128, 0.9));
-        border: 1px solid color-mix(in srgb, var(--b3-border-color) 50%, transparent);
         margin-left: auto;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 70%, transparent);
+        border-bottom: 2px solid color-mix(in srgb, var(--b3-border-color) 85%, #000 15%);
+        border-radius: var(--sw-platform-radius-sm, 6px);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--b3-theme-surface) 96%, #fff 4%), color-mix(in srgb, var(--b3-theme-surface) 88%, var(--b3-theme-background) 12%));
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        color: var(--b3-theme-on-surface-light, rgba(128, 128, 128, 0.9));
+        font-family: var(--b3-font-family-code, monospace);
+        font-size: var(--sw-font-xs, 11px);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.04em;
+        line-height: 1;
+        user-select: none;
+        transition: border-color $sw-dur-fast $sw-ease, color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease;
+    }
+
+    .sw__palette-item.is-selected .sw__palette-item-shortcut {
+        border-color: color-mix(in srgb, var(--b3-theme-primary) 50%, transparent);
+        border-bottom-color: color-mix(in srgb, var(--b3-theme-primary) 70%, #000 30%);
+        background: color-mix(in srgb, var(--b3-theme-primary) 18%, var(--b3-theme-surface));
+        color: var(--b3-theme-primary);
+        box-shadow: 0 1px 1px color-mix(in srgb, var(--b3-theme-primary) 40%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.25);
     }
 
     .sw__palette-empty {

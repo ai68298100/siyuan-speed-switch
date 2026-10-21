@@ -4638,6 +4638,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                     <svg width="16" height="16"><use xlink:href="#iconCode"></use></svg>
                 </button>
             </div>
+            <div class="sw__mode-chips-bar" role="group" aria-label="${this.i18n.chipsLabel}"></div>
             <div class="sw__scroll" tabindex="0"></div>
             <div class="sw__workbench-dock fn__none"></div>
             <div class="sw__quick-actions" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
@@ -4749,6 +4750,10 @@ const updatedMap: {[rootId: string]: string} = {};
         const disposeSearchFilter: () => void = searchInput
             ? bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay)
             : () => undefined;
+        const modeBar = dialog.element.querySelector<HTMLElement>(".sw__mode-chips-bar");
+        const disposeModeChips = this.setupSearchModeChips(modeBar, searchInput, () => {
+            if (searchInput) this.applySearch(scrollElement, searchInput, closeOverlay);
+        });
         const disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector<HTMLElement>(".sw__history-dd"), closeOverlay);
         // T-7040：排序浮层 disposer 由 bindSwitcherToolbarActions 返回后在释放链调用
         let disposeSortMenu: () => void = () => undefined;
@@ -4762,6 +4767,7 @@ const updatedMap: {[rootId: string]: string} = {};
             iconObserver?.disconnect();
             if (iconClampFrame) cancelAnimationFrame(iconClampFrame);
             disposeSearchFilter();
+            disposeModeChips();
             disposeBackTop();
             disposeHistoryDropdown();
             disposeSortMenu();
@@ -5306,6 +5312,71 @@ const updatedMap: {[rootId: string]: string} = {};
             el.classList.toggle("is-active", active);
             el.setAttribute("aria-pressed", String(active));
         });
+    }
+
+    // 常驻多模态搜索模式 Chips 栏（对标 Arc / Raycast 模式指示与快速切换）
+    private setupSearchModeChips(container: HTMLElement | null, searchInput: HTMLInputElement | null, onTrigger: () => void): () => void {
+        if (!container || !searchInput) return () => undefined;
+        const modes = [
+            {key: "all", prefix: "", label: this.i18n.chipsTabs || "页签", icon: "iconLayout"},
+            {key: "outline", prefix: "@", label: "@ " + (this.i18n.searchModeHeading || "大纲"), icon: "iconAlignLeft"},
+            {key: "block", prefix: "^", label: "^ " + (this.i18n.searchModeBlock || "正文"), icon: "iconParagraph"},
+            {key: "tag", prefix: "#", label: "# " + (this.i18n.searchModeTag || "标签"), icon: "iconTag"},
+            {key: "bookmark", prefix: "!", label: "! " + (this.i18n.searchModeBookmark || "书签"), icon: "iconBookmark"},
+            {key: "command", prefix: ">", label: "> " + (this.i18n.searchModeCommand || "命令"), icon: "iconSparkles"},
+            {key: "help", prefix: "?", label: "? " + (this.i18n.searchModeHelp || "速查"), icon: "iconHelp"},
+        ];
+        container.innerHTML = "";
+        container.className = "sw__mode-chips-bar";
+        container.setAttribute("role", "group");
+        container.setAttribute("aria-label", this.i18n.chipsLabel);
+
+        const updateActiveMode = () => {
+            const val = (searchInput.value || "").trim();
+            let matchedPrefix = "";
+            if (val.startsWith("@") || (val.includes(":") && !val.includes("://"))) matchedPrefix = "@";
+            else if (val.startsWith("^")) matchedPrefix = "^";
+            else if (val.startsWith("#")) matchedPrefix = "#";
+            else if (val.startsWith("!")) matchedPrefix = "!";
+            else if (val.startsWith(">")) matchedPrefix = ">";
+            else if (val.startsWith("?") || val.startsWith("？")) matchedPrefix = "?";
+
+            container.querySelectorAll<HTMLElement>(".sw__mode-chip").forEach((btn) => {
+                const btnPrefix = btn.dataset.prefix || "";
+                const active = matchedPrefix ? btnPrefix === matchedPrefix : btnPrefix === "";
+                btn.classList.toggle("is-active", active);
+                btn.setAttribute("aria-pressed", String(active));
+            });
+        };
+
+        modes.forEach(({key, prefix, label, icon}) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "b3-button b3-button--text sw__mode-chip" + (prefix === "" ? " is-active" : "");
+            btn.dataset.mode = key;
+            btn.dataset.prefix = prefix;
+            btn.setAttribute("aria-pressed", String(prefix === ""));
+            btn.innerHTML = `<svg width="12" height="12"><use xlink:href="#${icon}"></use></svg><span>${label}</span>`;
+            btn.addEventListener("click", () => {
+                const rawVal = searchInput.value || "";
+                const currentPrefixMatch = rawVal.match(/^[@^#!>?？]/);
+                const pureText = currentPrefixMatch ? rawVal.slice(1).trim() : rawVal.trim();
+                if (prefix === "") {
+                    searchInput.value = pureText;
+                } else {
+                    searchInput.value = pureText ? `${prefix}${pureText}` : prefix;
+                }
+                updateActiveMode();
+                onTrigger();
+                searchInput.focus();
+            });
+            container.appendChild(btn);
+        });
+
+        searchInput.addEventListener("input", updateActiveMode);
+        return () => {
+            searchInput.removeEventListener("input", updateActiveMode);
+        };
     }
 
     // T-6799 统一索引分区：收藏/最近关闭/文档集的查询命中。挂在页签卡片之后、
@@ -14245,6 +14316,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             this.applySearch(scrollElement, searchInput, refresh);
         }
         this.renderQuickActions(element, "sidebar", element.querySelector<HTMLInputElement>(".sw__search"), refresh);
+        const sidebarModeBar = element.querySelector<HTMLElement>(".sw__mode-chips-bar");
+        this.setupSearchModeChips(sidebarModeBar, searchInput, () => {
+            if (searchInput) this.applySearch(scrollElement, searchInput, refresh);
+        });
     }
 
     // 侧边栏 DOM 骨架：搜索 + 收藏下拉 + 排序 + 设置 + 滚动区 + 回到顶部
@@ -14275,6 +14350,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             <svg width="16" height="16"><use xlink:href="#iconSettings"></use></svg>
         </button>
     </div>
+    <div class="sw__mode-chips-bar" role="group" aria-label="${this.i18n.chipsLabel}"></div>
     <div class="sw__scroll" tabindex="0"></div>
     <div class="sw__quick-actions" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
     <button type="button" class="sw__back-top b3-tooltips b3-tooltips__n" aria-label="${this.i18n.backTop}">

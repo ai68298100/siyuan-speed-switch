@@ -1848,5 +1848,8 @@
   "searchModeBlock": "正文块",
   "searchModeHeading": "标题大纲",
   "searchModeTag": "标签",
+  "searchModeBookmark": "书签",
+  "searchModeCommand": "命令",
+  "searchModeHelp": "速查",
   "allTasksDone": "🎉 太棒了！今日待办已全部完成"
 }
