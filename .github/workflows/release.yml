@@ -64,8 +64,16 @@ jobs:
           SW_REQUIRE_PACKAGE: "1"
         run: node --test tests/host/package-integrity.test.cjs tests/host/final-package-audit.test.cjs
 
+      - name: Generate SHA-256 checksum
+        shell: bash
+        run: |
+          sha256sum package.zip > package.zip.sha256
+          cat package.zip.sha256
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: package.zip
+          files: |
+            package.zip
+            package.zip.sha256
           generate_release_notes: true

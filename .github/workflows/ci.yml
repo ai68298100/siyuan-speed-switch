@@ -60,5 +60,23 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      - name: Release check and package drift gate
+        run: pnpm run release:check
+
+      - name: Quality batch audit
+        run: pnpm run quality:audit
+
+      - name: Integration boundary audit
+        run: pnpm run integration:audit
+
+      - name: Current status audit
+        run: pnpm run current-status:audit
+
       - name: Smoke test
         run: pnpm test:smoke
+
+      - name: Browser style smoke
+        run: pnpm test:smoke:browser
+
+      - name: Floating ball smoke
+        run: pnpm test:smoke:floating-ball

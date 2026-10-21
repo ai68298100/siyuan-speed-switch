@@ -46,6 +46,8 @@ body:
       label: 出问题的入口 / Surface
       options:
         - 切换器 / Switcher
+        - 切换器动作画板 / Action Palette
+        - 穿透检索 / Penetration Search
         - 工作台 / Workbench
         - 片段实验室 / Snippet Lab
         - 悬浮球 / Floating ball
