@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-21",
-  "currentTask": "T-7359",
+  "currentTask": "T-7360",
   "sourceOfTruth": "docs/current-status-index.json",
   "activePlan": "docs/dev-plan-2026-10-06.md",
   "productReview": "docs/product-review-2026-10-06.md",
-  "nextLocalTask": "T-7359",
+  "nextLocalTask": "T-7360",
   "localExecutionOrder": [
     "T-7125",
     "T-7126",
@@ -173,7 +173,8 @@
     "T-7356",
     "T-7357",
     "T-7358",
-    "T-7359"
+    "T-7359",
+    "T-7360"
   ],
   "tasks": [
     {
@@ -4551,12 +4552,29 @@
     {
       "id": "T-7359",
       "title": "版本说明、集市资源核验与多端使用说明同步",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P2",
       "owner": "local",
       "workType": "release",
       "dependsOn": [
         "T-7358"
+      ],
+      "evidence": [
+        "docs/dev-plan-2026-10-06.md",
+        "docs/adr/0251-t7359-symbol-cheatsheet-and-docs-reconciliation.md",
+        "tests/symbol-cheatsheet-and-docs-reconciliation.test.cjs"
+      ],
+      "next": "T-7360"
+    },
+    {
+      "id": "T-7360",
+      "title": "生产发布候选终验与环境待验项巡检",
+      "status": "in_progress",
+      "priority": "P2",
+      "owner": "local",
+      "workType": "release",
+      "dependsOn": [
+        "T-7359"
       ],
       "evidence": [
         "docs/dev-plan-2026-10-06.md"

@@ -45,8 +45,11 @@
 // ADR 0249 (2026-10-21): 切换器撤销关闭页签（T-7356）、一键保存文档集（T-7357）与思阅/思播生态联动增强，
 // raw 产物为 1,208,829 B（处于 1182 KiB 自律线内，余量约 1.5 KiB）。
 // raw 观察线由 1178 -> 1182 KiB（1,210,368 B）。归档包门禁由 592 -> 594 KiB（608,256 B，package.zip 606,461 B，余量约 1.8 KiB）。
-const RAW_BUNDLE_BUDGET_BYTES = 1182 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0249";
+// ADR 0251 (2026-10-21): 符号导航速查指引（CheatSheet，T-7359）与中英文文档完备对账，
+// raw 产物为 1,211,534 B（处于 1186 KiB 自律线内，余量约 2.9 KiB）。
+// raw 观察线由 1182 -> 1186 KiB（1,214,464 B）。归档包门禁由 594 -> 596 KiB（610,304 B，package.zip 608,361 B，余量约 1.9 KiB）。
+const RAW_BUNDLE_BUDGET_BYTES = 1186 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0251";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout
@@ -90,8 +93,10 @@ const RAW_BUNDLE_BUDGET_ADR = "0249";
 // production widget wiring; working tree package.zip is 604,591 B, safely below 592 KiB (606,208 B) with 1,617 B headroom.
 // ADR 0249 (2026-10-21): recalibrated 592 -> 594 KiB after T-7356 undo-closed-tab, T-7357 save-as-doc-set
 // and SiReader/SiMedia ecosystem wiring; working tree package.zip is 606,461 B, safely below 594 KiB (608,256 B) with ~1.8 KiB headroom.
+// ADR 0251 (2026-10-21): recalibrated 594 -> 596 KiB after T-7359 symbol CheatSheet and full docs reconciliation;
+// working tree package.zip is 608,361 B, safely below 596 KiB (610,304 B) with ~1.9 KiB headroom.
 // Per-entry compressed line (320 KiB, ADR 0089) unchanged.
-const ARCHIVE_BUDGET_BYTES = 594 * 1024;
+const ARCHIVE_BUDGET_BYTES = 596 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
 // writing-streak second wave (T-6681) shrank headroom to 11780 bytes. Same

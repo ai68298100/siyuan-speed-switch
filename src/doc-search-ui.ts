@@ -843,6 +843,8 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
                         activeDocId,
                         activeDocTitle,
                     }) as IDocSearchResult[];
+                } else if (penetrationPlan.mode === SEARCH_MODES.HELP) {
+                    docs = aggregatePenetrationResults(penetrationPlan, {}, {}) as IDocSearchResult[];
                 } else if (penetrationPlan.mode === SEARCH_MODES.OUTLINE) {
                     if (penetrationPlan.isCurrentDoc) {
                         const response = await boundedSearchRequest.call(this, penetrationPlan.endpoint, penetrationPlan.body, signal,

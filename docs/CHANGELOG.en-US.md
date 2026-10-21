@@ -7,11 +7,26 @@
 
 ### v0.48.0 (2026-10-20)
 
-- **Deep Penetration Search**: Obsidian-inspired penetration syntax in the main search bar: `:heading` penetrates active document outline, `doc:heading` penetrates outline across documents, and `^block` searches workspace content blocks (excluding root docs); parameterized SQL generation with injection-character stripping, precise block anchor jump, and stable multi-heading deduplication.
-- **Secondary Action Palette**: Raycast-style action palette invoked via card context menu or `⌘K` / `Ctrl+K` on focus; aggregates split-opening (`open-right` / `open-bottom`), preview mode (`open-preview`), pin/favorite toggles, closing tabs, and copying block/Markdown links; includes instant fuzzy filtering, keyboard navigation loop, and mobile bottom sheet adaptation.
-- **Cross-Surface E2E Interactive Contracts & Narrow Sidebar**: Comprehensive assertions covering desktop keyboard lifecycle, mobile 44px WCAG hit targets with `aria-modal="false"` declarations, and narrow-dock sidebar (245px–340px) adaptability without horizontal overflow.
-- **Pure-Domain Models & Ecosystem Foundations**: Path acronym scoring (`path-acronym-model`), SiYuan native attribute view (AV) lightweight board model, and flashcard review SM-2 scheduling model.
-- **Verification**: Full test suite 8935 passed, 1 skipped, 0 failed; package.zip 602,668 B safely bounded below the 590 KiB release gate; all batch release, quality, and integration audits pass.
+- **Deep Penetration Search & Symbol Navigation Hub**:
+  - Full symbol prefix routing: `@heading` or `:heading` penetrates document outlines (H1–H6), `^block` searches workspace text blocks, `#tag` filters global tags, `!bookmark` jumps to bookmarks, `>command` runs built-in actions, and `?` invokes the full CheatSheet navigation guide;
+  - Parameterized safe SQL generation with injection-character stripping, precise block anchor jump, and stable multi-heading deduplication;
+  - Rich-text keyword highlighting (`<mark class="sw__search-mark">`) with multi-term AND token matching and XSS entity escaping.
+- **Secondary Action Palette & Direct Shortcuts**:
+  - Raycast-style action palette (`⌘K` / `Ctrl+K`), aggregating split-opening (`open-right` / `open-bottom`), preview mode (`open-preview`), pin/favorite toggles, closing tabs, and copying block/Markdown links;
+  - Card-level direct shortcuts: `Ctrl+Enter` (right split), `Alt+Enter` (bottom split), `Alt+C` (copy block link), `Alt+M` (copy Markdown), `Alt+P` (pin), `Alt+D` (favorite), `Alt+R` (read in SiReader), `Alt+V` (play in SiMedia);
+  - Built-in MRU dynamic sorting engine prioritizing frequently used actions within preserved section hierarchy.
+- **Workspace Session Protection & Undo Close**:
+  - Browser-standard `Ctrl+Shift+T` / `⌘Shift+T` to undo and reopen the most recently closed tab from stack;
+  - `save-as-doc-set` (`⌘⇧S`) in Action Palette to snapshot all opened tabs into a versioned document set.
+- **Workbench Widgets & Ecosystem Linkage**:
+  - **Database Board (`database-board`)**: Attribute view lightweight read-only board widget with field-based bucket aggregation and counts;
+  - **Flashcard Review (`flashcard-review`)**: SM-2 review queue projection and `action:riffCard` direct launch;
+  - **SiReader & SiMedia Linkage**: Media and reading cards support frosted glass corner badges (`.sw__home-media-badge`) and theme progress bars (`.sw__home-media-progress-bar`).
+- **Tactile Visual Polish (Xiaolv Checkin Style)**:
+  - Unified acrylic luminous inner highlights (`inset 0 1px 0 rgba(255,255,255,0.08~0.16)`) across cards, search items, palette, and Bento cells;
+  - Double-layer ambient occlusion shadows, smooth hover elevations, and tabular numeral typography (`tabular-nums`);
+  - Full narrow sidebar (245px–340px) anti-overflow protection and mobile 44px WCAG hit target compliance.
+- **Verification**: Full test suite 8982 passed, 1 skipped, 0 failed; package.zip 606 KiB safely bounded below the 594 KiB release gate; all batch release, quality, and integration audits pass.
 
 ### v0.47.6 (2026-10-19)
 

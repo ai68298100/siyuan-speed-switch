@@ -21,6 +21,7 @@ const SEARCH_MODES = Object.freeze({
     TAG: "tag",
     BOOKMARK: "bookmark",
     COMMAND: "command",
+    HELP: "help",
 });
 
 const MODE_BADGES = Object.freeze({
@@ -29,6 +30,7 @@ const MODE_BADGES = Object.freeze({
     [SEARCH_MODES.TAG]: {key: "tag", defaultBadge: "标签", icon: "iconTag", prefix: "#"},
     [SEARCH_MODES.BOOKMARK]: {key: "bookmark", defaultBadge: "书签", icon: "iconBookmark", prefix: "!"},
     [SEARCH_MODES.COMMAND]: {key: "command", defaultBadge: "命令", icon: "iconSparkles", prefix: ">"},
+    [SEARCH_MODES.HELP]: {key: "help", defaultBadge: "快捷指引", icon: "iconHelp", prefix: "?"},
     [SEARCH_MODES.DOC]: {key: "doc", defaultBadge: "", icon: "iconFile", prefix: ""},
 });
 
@@ -138,6 +140,24 @@ function parsePenetrationQuery(raw) {
             cleanKernelQuery: needle,
             isCurrentDoc: false,
             badge: MODE_BADGES[SEARCH_MODES.COMMAND].defaultBadge,
+        };
+    }
+
+    // 4.5 快捷指引前缀：以 `?` 或 `？` 开头
+    if (text.startsWith("?") || text.startsWith("？")) {
+        const needle = text.slice(1).trim();
+        return {
+            mode: SEARCH_MODES.HELP,
+            raw: text,
+            docNeedle: "",
+            headingNeedle: "",
+            blockNeedle: "",
+            tagNeedle: "",
+            bookmarkNeedle: "",
+            commandNeedle: "",
+            cleanKernelQuery: needle,
+            isCurrentDoc: false,
+            badge: MODE_BADGES[SEARCH_MODES.HELP].defaultBadge,
         };
     }
 

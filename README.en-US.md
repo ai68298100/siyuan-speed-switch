@@ -216,6 +216,18 @@ Read-only capabilities declare `localRead` and never declare write, egress, or e
 | `Tab` / `Shift+Tab` | Next / previous |
 | `Enter` | Switch to the selected tab |
 | `Ctrl+K` or `⌘K` | Open focused card's Action Palette for split-opening, copying links, or tab actions |
+| `Ctrl+Shift+T` or `⌘Shift+T` | Undo and reopen the most recently closed tab |
+| `Alt+Enter` | Open search result in bottom split pane |
+| `Alt+C` / `Alt+M` | Copy block link / Markdown reference link directly without opening palette |
+| `Alt+P` / `Alt+D` | Toggle pin / Toggle favorite |
+| `Alt+R` / `Alt+V` | Ecosystem: Read in SiReader / Play in SiMedia |
+| `⌘⇧S` | Save all current opened tabs as a new workspace document set |
+| Type `?` | CheatSheet: Show all symbol prefixes and shortcut reference guide |
+| Type `@` or `:` | Outline penetration: Search headings (H1–H6) in current or cross-document |
+| Type `#` | Tag search: Filter and locate global tags across documents |
+| Type `!` | Bookmarks: Quickly locate and jump to saved bookmarks |
+| Type `^` | Block penetration: Search paragraph, code, and list block contents |
+| Type `>` | Command mode: Filter and run built-in actions and host commands |
 | `Shift+F10` or `ContextMenu` | Open the focused card's action menu (mouse-free) |
 | `Esc` | Close the switcher |
 

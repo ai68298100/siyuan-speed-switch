@@ -184,6 +184,17 @@ function planPenetrationSearchRequest(rawQuery, context = {}, options = {}) {
         };
     }
 
+    // 6.5 快捷与符号指引模式（?帮助）
+    if (parsed.mode === SEARCH_MODES.HELP) {
+        return {
+            mode: SEARCH_MODES.HELP,
+            isPenetration: true,
+            method: "help",
+            badge: parsed.badge,
+            localOnly: true,
+        };
+    }
+
     // 兜底回退
     return {
         mode: SEARCH_MODES.DOC,
@@ -357,6 +368,20 @@ function aggregatePenetrationResults(plan, rawResponse, context = {}) {
         }
         extractBookmarks(rawBookmarks);
         return results.slice(0, 30);
+    }
+
+    // 5. 快捷与符号指引模式（?指引）
+    if (plan.mode === SEARCH_MODES.HELP) {
+        return [
+            {id: "help-outline", rootId: "", blockId: "", title: "@标题 或 :标题", subTitle: "大纲穿透 · 检索当前或指定文档的 H1~H6 标题", icon: "iconAlignLeft", kind: "heading"},
+            {id: "help-tag", rootId: "", blockId: "", title: "#标签名", subTitle: "标签检索 · 跨文档快速过滤标签及引用", icon: "iconTag", kind: "tag"},
+            {id: "help-bookmark", rootId: "", blockId: "", title: "!书签名", subTitle: "书签直达 · 秒级检索定位重要书签", icon: "iconBookmark", kind: "bookmark"},
+            {id: "help-block", rootId: "", blockId: "", title: "^正文关键词", subTitle: "深入穿透 · 检索段落、列表、代码块正文", icon: "iconParagraph", kind: "block"},
+            {id: "help-palette", rootId: "", blockId: "", title: "⌘K / Ctrl+K 动作画板", subTitle: "次级面板 · 分屏、预览、复制与管理动作", icon: "iconSparkles", kind: "heading"},
+            {id: "help-undo", rootId: "", blockId: "", title: "Ctrl+Shift+T 撤销关闭", subTitle: "工作区恢复 · 快速重开最后一次关闭的页签", icon: "iconHistory", kind: "heading"},
+            {id: "help-docset", rootId: "", blockId: "", title: "⌘⇧S 保存文档集", subTitle: "会话保护 · 将当前所有打开页签固化为快照", icon: "iconFolder", kind: "heading"},
+            {id: "help-ecosystem", rootId: "", blockId: "", title: "Alt+R 思阅 · Alt+V 思播", subTitle: "生态联动 · 单键直达电子书阅读或媒体播放", icon: "iconVideo", kind: "heading"},
+        ];
     }
 
     return [];
