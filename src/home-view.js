@@ -901,6 +901,40 @@ function renderHomeModuleView(doc, view, options = {}) {
             hint.textContent = view.emptyHint;
             body.appendChild(hint);
         }
+        // 小驴打卡风格：今日待办全部完成时的情绪化鼓励横幅
+        const allTasksDone = view.moduleId === "today-tasks" && Array.isArray(view.items) && view.items.length > 0 && view.items.every((it) => it.done === true);
+        if (allTasksDone) {
+            const celebration = doc.createElement("div");
+            celebration.className = "sw__home-celebration";
+            celebration.textContent = labels.allTasksDone || "🎉 太棒了！今日待办已全部完成";
+            body.appendChild(celebration);
+        }
+        // 小驴打卡风格：本周打卡 7天周期胶囊时间轴
+        if (view.moduleId === "checkin-weekly" && Array.isArray(view.items) && view.items.length > 0) {
+            const tracker = doc.createElement("div");
+            tracker.className = "sw__home-capsule-tracker";
+            const dayNames = ["一", "二", "三", "四", "五", "六", "日"];
+            const todayDay = (new Date().getDay() + 6) % 7;
+            for (let i = 0; i < 7; i += 1) {
+                const item = view.items[i];
+                const capsule = doc.createElement("div");
+                capsule.className = "sw__home-capsule-item";
+                const isToday = i === todayDay;
+                const val = item ? Number(item.value) : 0;
+                const isDone = Number.isFinite(val) && val > 0;
+                if (isToday) capsule.classList.add("is-today");
+                if (isDone) capsule.classList.add("is-done");
+                const dayLabel = doc.createElement("span");
+                dayLabel.className = "sw__home-capsule-day";
+                dayLabel.textContent = dayNames[i];
+                const dot = doc.createElement("span");
+                dot.className = "sw__home-capsule-dot";
+                dot.textContent = isDone ? "✓" : (isToday ? "●" : "·");
+                capsule.append(dayLabel, dot);
+                tracker.appendChild(capsule);
+            }
+            body.insertBefore(tracker, list);
+        }
         // T-7054 A 批次：时间与日期组件日进度条——当日已过百分比可视化
         if (view.moduleId === "external-local-time" && view.dayProgress >= 0) {
             const progress = doc.createElement("div");

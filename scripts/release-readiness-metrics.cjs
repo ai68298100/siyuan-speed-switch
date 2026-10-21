@@ -54,8 +54,11 @@
 // ADR 0253 (2026-10-21): 片段实验室行号修复、特征内容智能置顶与投稿共享指引（闭环 Issue #16），
 // raw 产物为 1,214,989 B（处于 1188 KiB 自律线内，余量约 1.5 KiB）。
 // 归档包门禁由 596 -> 598 KiB（612,352 B，package.zip 610,299 B，余量 2,053 B）。
-const RAW_BUNDLE_BUDGET_BYTES = 1188 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0253";
+// ADR 0255 (2026-10-21): 小驴打卡风格 7天胶囊轴、待办完成横幅与双拼 Bento 瓦片，
+// raw 产物为 1,217,136 B（处于 1190 KiB 自律线内，余量约 1.4 KiB）。
+// 归档包门禁由 598 -> 600 KiB（614,400 B，package.zip 612,866 B，余量 1,534 B）。
+const RAW_BUNDLE_BUDGET_BYTES = 1190 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0255";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout
@@ -103,8 +106,10 @@ const RAW_BUNDLE_BUDGET_ADR = "0253";
 // working tree package.zip is 608,361 B, safely below 596 KiB (610,304 B) with ~1.9 KiB headroom.
 // ADR 0253 (2026-10-21): recalibrated 596 -> 598 KiB after Issue #16 studio line-number fix, probe priority and submit guide;
 // working tree package.zip is 610,299 B, safely below 598 KiB (612,352 B) with 2,053 B headroom.
-// Per-entry compressed line (320 KiB, ADR 0089) unchanged.
-const ARCHIVE_BUDGET_BYTES = 598 * 1024;
+// ADR 0255 (2026-10-21): recalibrated 598 -> 600 KiB after Xiaolv Checkin 7-day capsule tracker, celebration banner and dual bento tiles;
+// working tree package.zip is 612,866 B, safely below 600 KiB (614,400 B) with 1,534 B headroom.
+// Per-entry compressed line (328 KiB, ADR 0254) unchanged.
+const ARCHIVE_BUDGET_BYTES = 600 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
 // writing-streak second wave (T-6681) shrank headroom to 11780 bytes. Same

@@ -437,6 +437,111 @@
     .sw__home-item-bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6552c5, #9182ea); }
 }
 
+// 7天周期胶囊进度链（对标小驴打卡 Days Logged In）
+.sw__home-capsule-tracker {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--sw-space-xs, 4px);
+    margin: var(--sw-space-xs, 4px) 0 var(--sw-space-sm, 6px);
+    padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px);
+    border-radius: var(--sw-platform-radius-md, 12px);
+    background: color-mix(in srgb, var(--b3-theme-surface) 92%, var(--b3-theme-background));
+    border: 1px solid var(--sw-polish-line-soft);
+}
+
+.sw__home-capsule-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sw-space-2xs, 2px);
+    flex: 1 1 0;
+    min-width: 0;
+    padding: var(--sw-space-2xs, 2px) var(--sw-space-2xs, 2px);
+    border-radius: var(--sw-platform-radius-pill, 999px);
+    transition: transform $sw-dur-fast $sw-ease;
+
+    &.is-today {
+        background: color-mix(in srgb, var(--b3-theme-primary) 14%, transparent);
+        border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 32%, transparent);
+        font-weight: var(--sw-weight-bold, 700);
+
+        .sw__home-capsule-dot {
+            background: var(--b3-theme-primary);
+            color: #fff;
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--b3-theme-primary) 25%, transparent);
+        }
+    }
+
+    &.is-done {
+        .sw__home-capsule-dot {
+            background: color-mix(in srgb, var(--b3-theme-primary) 20%, transparent);
+            color: var(--b3-theme-primary);
+        }
+    }
+
+    .sw__home-capsule-day {
+        font-size: var(--sw-font-2xs, 10px);
+        color: var(--b3-theme-on-surface-light);
+        line-height: 1.2;
+    }
+
+    .sw__home-capsule-dot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--b3-theme-surface) 80%, var(--b3-theme-background));
+        font-size: var(--sw-font-2xs, 10px);
+        font-weight: var(--sw-weight-bold, 700);
+        color: var(--b3-theme-on-surface-light);
+        border: 1px solid var(--sw-polish-line-soft);
+    }
+}
+
+// 情绪化鼓励横幅（对标小驴打卡 You're Doing Great!）
+.sw__home-celebration {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sw-space-xs, 4px);
+    margin: var(--sw-space-xs, 4px) 0;
+    padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px);
+    border-radius: var(--sw-platform-radius-pill, 999px);
+    background: color-mix(in srgb, var(--sw-platform-success, #2d9865) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--sw-platform-success, #2d9865) 28%, transparent);
+    color: var(--sw-platform-success, #2d9865);
+    font-size: var(--sw-font-xs, 11px);
+    font-weight: var(--sw-weight-medium, 500);
+}
+
+// 小驴打卡风格：双拼 Bento 瓦片强调色（蜜糖金与薰衣草紫）
+.sw-home__cell[data-module-id="checkin-streak"],
+.sw-home__cell[data-module-id="writing-streak"] {
+    background: linear-gradient(145deg, color-mix(in srgb, #f9a84d 18%, var(--b3-theme-surface)), color-mix(in srgb, #f39c12 8%, var(--b3-theme-surface)));
+    border-color: color-mix(in srgb, #f9a84d 38%, var(--b3-border-color));
+
+    .sw__home-stat-value {
+        color: #e67e22;
+        font-weight: 800;
+        font-size: 2.2em;
+    }
+}
+
+.sw-home__cell[data-module-id="checkin-today"],
+.sw-home__cell[data-module-id="today-tasks"] {
+    background: linear-gradient(145deg, color-mix(in srgb, #9b8df7 16%, var(--b3-theme-surface)), color-mix(in srgb, #7c68d5 6%, var(--b3-theme-surface)));
+    border-color: color-mix(in srgb, #9b8df7 36%, var(--b3-border-color));
+
+    .sw__home-stat-value {
+        color: #7c68d5;
+        font-weight: 800;
+        font-size: 2.2em;
+    }
+}
+
 @media (max-width: 560px) {
     .sw-home-store { padding: 10px var(--sw-space-lg, 12px) 14px; }
     .sw-home-store__search { flex-wrap: wrap; gap: var(--sw-space-md, 8px); }

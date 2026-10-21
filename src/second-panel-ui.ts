@@ -967,6 +967,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         sourceStale: this.i18n.homeSourceStale,
                         taskDone: this.i18n.homeTaskMarkDone,
                         taskUndone: this.i18n.homeTaskMarkUndone,
+                        allTasksDone: this.i18n.allTasksDone,
                         previousMonth: this.i18n.homeCalendarPreviousMonth,
                         nextMonth: this.i18n.homeCalendarNextMonth,
                         today: this.i18n.homeCalendarToday,

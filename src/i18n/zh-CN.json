@@ -1847,5 +1847,6 @@
   "searchTryPenetration": "尝试深度穿透：",
   "searchModeBlock": "正文块",
   "searchModeHeading": "标题大纲",
-  "searchModeTag": "标签"
+  "searchModeTag": "标签",
+  "allTasksDone": "🎉 太棒了！今日待办已全部完成"
 }

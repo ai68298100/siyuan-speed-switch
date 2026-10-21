@@ -1847,5 +1847,6 @@
   "searchTryPenetration": "Try penetration search: ",
   "searchModeBlock": "Block",
   "searchModeHeading": "Heading",
-  "searchModeTag": "Tag"
+  "searchModeTag": "Tag",
+  "allTasksDone": "🎉 Great job! All tasks completed today"
 }
