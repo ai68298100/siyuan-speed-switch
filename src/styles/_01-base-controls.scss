@@ -1,5 +1,10 @@
 @use "00-tokens" as *;
 
+// 跨主题与隔离宿主保护：确保声明了 fn__none 的隐藏节点在任何视口与主题下均严格隐藏
+.fn__none {
+    display: none !important;
+}
+
 // 旋转动画（缩略图加载中）
 @keyframes sw-spin {
     from { transform: rotate(0deg); }

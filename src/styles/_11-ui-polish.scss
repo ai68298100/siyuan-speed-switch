@@ -423,16 +423,21 @@
     .sw__quick-action {
         min-height: var(--sw-control-h);
         height: var(--sw-control-h);
+        border: 1px solid var(--sw-polish-line-soft);
         border-radius: var(--sw-platform-radius-sm, 8px);
+        background: var(--b3-theme-background);
         color: var(--b3-theme-on-surface);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+        transition: border-color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease;
     }
 
     .sw__quick-action:hover,
     .sw__quick-action:focus-visible,
     .sw__quick-action[aria-pressed="true"] {
-        border-color: color-mix(in srgb, var(--b3-theme-primary) 26%, transparent);
+        border-color: color-mix(in srgb, var(--b3-theme-primary) 38%, var(--sw-polish-line));
         background: var(--sw-accent-soft);
         color: var(--b3-theme-primary);
+        transform: translateY(-1px);
     }
 
     .sw__quick-action--add {

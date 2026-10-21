@@ -675,7 +675,6 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             // 推荐/可配置/插件/条件可用由详情窗格与行内 chip 表达，不再占筛选位。
 const tabs: Array<{key: string; label: string; category?: string; availability?: string; integration?: string; addedOnly?: boolean; recommendedOnly?: boolean; configurableOnly?: boolean; dependency?: string}> = [
     {key: "all", label: this.i18n.homeStoreTabAll},
-    {key: "recommended", label: this.i18n.homeStoreTabRecommended || "⭐ 精选", recommendedOnly: true},
     {key: "builtin", label: this.i18n.homeStoreTabBuiltin, category: "builtin"},
     {key: "network", label: this.i18n.homeStoreTabNetwork, integration: "network"},
     {key: "local", label: this.i18n.homeStoreTabLocal, integration: "local"},

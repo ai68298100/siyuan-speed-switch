@@ -272,6 +272,16 @@
     }
     // 手机端2列双拼Bento：微瓦片(xs)占1列并排，列表与大卡占满2列(1/-1)
     .sw-home.sw-home--mobile .sw-home__cell[data-size="xs"] { grid-column: span 1 !important; }
+    // 窄桌面容器 (如侧栏 Dock 或紧凑浮层)：单列卡片自适应平铺，消除 span 6 横向溢出与截断
+    .sw-home:not(.sw-home--mobile) {
+        .sw-home__grid {
+            grid-template-columns: 1fr !important;
+            gap: var(--sw-space-sm, 6px);
+        }
+        .sw-home__cell {
+            grid-column: 1 / -1 !important;
+        }
+    }
     // When every saved widget is unavailable, the ghost cards are diagnostic
     // placeholders rather than layout tiles. Keep each one readable across
     // the full narrow work area instead of preserving its stale desktop span.

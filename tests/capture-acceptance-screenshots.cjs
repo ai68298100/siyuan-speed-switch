@@ -127,11 +127,12 @@ async function main() {
         await send("Emulation.setDeviceMetricsOverride", {width: 1366, height: 768, deviceScaleFactor: 1, mobile: false});
         // T-7036 本地部分：逐 case 应用视口（响应式矩阵——窄视口/竖屏/短横屏）
         const applyViewport = (viewport) => {
-            if (!viewport) return;
-            void send("Emulation.setDeviceMetricsOverride", {
-                width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: false});
+            const vp = viewport || {width: 1366, height: 768};
+            return send("Emulation.setDeviceMetricsOverride", {
+                width: vp.width, height: vp.height, deviceScaleFactor: 1, mobile: false});
         };
         for (const entry of CASES) {
+            await applyViewport(entry.viewport);
             const page = path.join(artifactDir, `page-${entry.theme}.html`);
             fs.writeFileSync(page, pageHtml(entry.theme));
             await send("Page.navigate", {url: "file:///" + page.replace(/\\/g, "/")});
@@ -148,7 +149,7 @@ async function main() {
                 catch (_) { return {loaded: false, rules: 0}; }
             })()`);
             if (!cssState?.loaded) { failures.push(`${entry.id}: production CSS missing or not loaded (${cssState?.rules || 0} rules)`); continue; }
-            applyViewport(entry.viewport);
+            await applyViewport(entry.viewport);
             await evalJs(entry.action);
             const targetSelector = entry.id.startsWith("switcher-") ? ".sw__main"
                 : entry.id.startsWith("studio-") ? ".sw-studio, .sw-snippet-studio-host"

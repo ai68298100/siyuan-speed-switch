@@ -73,7 +73,5 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            package.zip
-            package.zip.sha256
+          files: package.zip
           generate_release_notes: true

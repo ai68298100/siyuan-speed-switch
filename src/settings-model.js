@@ -257,7 +257,12 @@ function resolvePanelSize(settings, viewport) {
         return {width: vpWidth, height: vpHeight};
     }
     if (mode === "custom") {
-        return {width: Math.round(Number(settings?.dialogWidth) || 0), height: Math.round(Number(settings?.dialogHeight) || 0)};
+        const customW = Math.round(Number(settings?.dialogWidth) || 0);
+        const customH = Math.round(Number(settings?.dialogHeight) || 0);
+        return {
+            width: vpWidth > 0 ? Math.min(customW, vpWidth) : customW,
+            height: vpHeight > 0 ? Math.min(customH, vpHeight) : customH,
+        };
     }
     const scale = Math.min(1, Math.max(0, (Number(settings?.panelScale) || 100) / 100));
     const width = Math.max(minWidth, Math.round(vpWidth * scale));

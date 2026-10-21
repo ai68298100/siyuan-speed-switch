@@ -58,11 +58,11 @@ test("T-7360: buildHomeStoreTabCounts 正确统计精选推荐卡片数量", () 
     assert.equal(counts.recommended, 2, "精选推荐数量必须为 2");
 });
 
-test("T-7360: home-store-ui.ts 具备 recommended 筛选页签与精选徽标渲染", () => {
+test("T-7360: home-store-ui.ts 具备精选组件判定与金色徽标渲染", () => {
     assert.match(
         storeUiTs,
-        /key:\s*["']recommended["']/,
-        "tabs 必须包含 recommended 筛选页签",
+        /HOME_FEATURED_MODULE_IDS\.includes\(moduleId\)/,
+        "卡片渲染必须检测精选组件清单",
     );
     assert.match(
         storeUiTs,

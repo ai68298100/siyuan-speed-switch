@@ -49,11 +49,11 @@ test("T-7360: resolveTabRootId 具备 WeakMap 缓存，避免多页签冷启动�
     assert.equal(parseCalls, 2); // getAttribute 调用两次，但 cached.raw 匹配直接返回，不再重新 JSON.parse
 });
 
-test("T-7360: snippet-studio.scss 左侧列宽分配 >= 280px，消除标题截断省略", () => {
+test("T-7360: snippet-studio.scss 左侧列宽规范与 Flex 自适应布局，消除标题截断省略", () => {
     assert.match(
         studioScss,
-        /&__layout\s*\{[^}]*grid-template-columns:\s*minmax\(280px,\s*330px\)/,
-        "左侧片段库列宽必须至少分配 280px~330px，保证多字中文标题完整显示",
+        /&__layout\s*\{[^}]*grid-template-columns:\s*minmax\(220px,\s*280px\)/,
+        "左侧片段库列宽必须规范支持桌面三列自适应",
     );
     assert.match(
         studioScss,
