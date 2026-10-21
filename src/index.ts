@@ -1530,8 +1530,16 @@ export default class SpeedSwitchPlugin extends Plugin {
                 return {structuredContent: {ok: true, docId}, result: JSON.stringify({ok: true, docId})};
             },
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));        }
-        this.registerWorkspacePlanCapabilities(pluginWithAgentAction);
-        this.registerBuiltinHomeAdapters();
+        const setupDeferredCapabilities = () => {
+            if (this.isUnloading) return;
+            this.registerWorkspacePlanCapabilities(pluginWithAgentAction);
+            this.registerBuiltinHomeAdapters();
+        };
+        if (typeof queueMicrotask === "function") {
+            queueMicrotask(() => setupDeferredCapabilities());
+        } else {
+            setupDeferredCapabilities();
+        }
     }
 
     // T-1219 执行链（ADR 0063 宿主路线）：

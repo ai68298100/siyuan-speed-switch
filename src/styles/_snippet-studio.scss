@@ -62,7 +62,39 @@
     // all three in one row on desktop; a two-column grid auto-places the AI rail
     // on a second row, leaving the library stretched across the first row and
     // making the preview/editor appear squeezed into the right edge.
-    &__layout { display: grid; grid-template-columns: minmax(200px, 240px) minmax(0, 5fr) minmax(240px, 1.1fr); min-height: 0; flex: 1; }
+    &__layout { display: grid; grid-template-columns: minmax(280px, 330px) minmax(0, 1fr) minmax(240px, 280px); min-height: 0; flex: 1; }
+    &__layout[data-ai-collapsed="true"] {
+        grid-template-columns: minmax(280px, 330px) minmax(0, 1fr) 48px;
+
+        .sw-studio__ai {
+            padding: 14px 6px;
+            overflow: hidden;
+
+            .sw-studio__ai-header {
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .sw-studio__ai-title {
+                writing-mode: vertical-rl;
+                letter-spacing: 0.1em;
+                font-size: 13px;
+                margin: 0;
+            }
+
+            .sw-studio__state-badge,
+            .sw-studio__hint,
+            .sw-studio__ai-context-options,
+            .sw-studio__ai-context,
+            .sw-studio__ai-field,
+            .sw-studio__prompt,
+            .sw-studio__ai-actions,
+            .sw-studio__ai-result-panel {
+                display: none !important;
+            }
+        }
+    }
     &__library {
         display: flex;
         flex-direction: column;
@@ -81,15 +113,14 @@
     &__library-filter { min-height: var(--sw-control-h-md, 32px); padding: var(--sw-space-xs, 4px) var(--sw-space-md, 8px); border: 1px solid var(--studio-line); border-radius: var(--studio-radius-sm); background: var(--b3-theme-background); color: inherit; cursor: pointer; font: inherit; font-size: var(--sw-font-xs, 11px); }
     &__library-filter:hover, &__library-filter[aria-pressed="true"] { border-color: var(--studio-accent); color: var(--studio-accent); background: var(--studio-accent-soft); }
     &__library-list { display: flex; flex: 1 1 auto; flex-direction: column; gap: var(--sw-space-sm, 6px); min-height: 0; overflow: auto; padding-right: var(--sw-space-2xs, 2px); }
-    &__library-item-wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sw-space-sm, 6px); min-width: 0; align-items: stretch; }
+    &__library-item-wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sw-space-xs, 4px); min-width: 0; align-items: stretch; }
     &__library-item {
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto;
+        display: flex;
         align-items: center;
-        gap: var(--sw-space-md, 8px);
+        gap: var(--sw-space-sm, 6px);
         width: 100%;
         min-width: 0;
-        padding: var(--sw-space-md, 8px);
+        padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px);
         border: 1px solid var(--studio-line);
         border-radius: var(--studio-radius-sm);
         background: var(--b3-theme-background);
@@ -99,17 +130,26 @@
         font: inherit;
         text-align: left;
         transition: border-color $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease;
+
+        .sw-studio__catalog-kind {
+            padding: var(--sw-space-2xs, 2px) var(--sw-space-sm, 6px);
+            border-radius: var(--sw-radius-sm, 6px);
+            font-size: var(--sw-font-2xs, 10px);
+            line-height: 1.2;
+            align-self: center;
+            flex-shrink: 0;
+        }
     }
     &__library-item:hover, &__library-item.is-current, &__library-item[aria-pressed="true"] {
         border-color: var(--studio-accent);
         background: var(--studio-accent-soft);
         box-shadow: var(--sw-rim-light, none), var(--sw-polish-shadow-card, 0 4px 12px rgba(0, 0, 0, 0.08));
     }
-    &__library-toggle { min-width: 58px; padding: var(--sw-space-sm, 6px) var(--sw-space-md, 8px); border: 1px solid var(--studio-line); border-radius: var(--studio-radius-sm); background: var(--studio-surface); color: var(--studio-on-surface); cursor: pointer; font: inherit; font-size: var(--sw-font-xs, 11px); }
+    &__library-toggle { min-width: 48px; padding: var(--sw-space-xs, 4px) var(--sw-space-sm, 6px); border: 1px solid var(--studio-line); border-radius: var(--studio-radius-sm); background: var(--studio-surface); color: var(--studio-on-surface); cursor: pointer; font: inherit; font-size: var(--sw-font-xs, 11px); }
     &__library-toggle:hover, &__library-toggle[aria-pressed="true"] { border-color: var(--studio-accent); color: var(--studio-accent); background: var(--studio-accent-soft); }
     &__library-toggle:disabled { opacity: .52; cursor: default; }
-    &__library-item-copy { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    &__library-item-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); }
+    &__library-item-copy { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--sw-weight-medium, 500); }
+    &__library-item-state { flex: 0 0 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--studio-on-surface); font-size: var(--sw-font-2xs, 10px); opacity: 0.85; margin-left: auto; }
     &__library-empty { margin: var(--sw-space-md, 8px) 0; color: var(--studio-on-surface); font-size: var(--sw-font-xs, 11px); line-height: 1.55; text-align: center; }
     &__main { display: grid; grid-template-rows: minmax(360px, 1.8fr) minmax(200px, 1fr); gap: 14px; min-width: 0; min-height: 0; padding: 14px; }
     &__preview-section, &__details, &__editor-section {

@@ -1045,7 +1045,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const aiHeader = node("div", "sw-studio__ai-header");
     const aiTitle = node("h2", "sw-studio__ai-title", t("snippetAI"));
     const aiProvider = node("span", "sw-studio__state-badge", t("snippetAIIdle"));
-    aiHeader.append(aiTitle, aiProvider);
+    const aiToggleBtn = node("button", "b3-button b3-button--text sw-studio__ai-collapse-toggle", "›");
+    aiToggleBtn.type = "button";
+    aiToggleBtn.title = "折叠/展开 AI 伴侣以扩大预览面积";
+    aiToggleBtn.addEventListener("click", () => {
+        const collapsed = layout.dataset.aiCollapsed === "true";
+        layout.dataset.aiCollapsed = String(!collapsed);
+        aiToggleBtn.textContent = !collapsed ? "‹" : "›";
+    });
+    aiHeader.append(aiTitle, aiProvider, aiToggleBtn);
     const aiNote = node("p", "sw-studio__hint", t("snippetAIHint"));
     const aiProviderInfo = node("p", "sw-studio__hint", t("snippetAIProviderInfo"));
     const contextOptions = node("div", "sw-studio__ai-context-options");

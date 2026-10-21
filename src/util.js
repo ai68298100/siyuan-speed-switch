@@ -334,30 +334,42 @@ function buildTabGroupsByParent(tabs, fallbackKey) {
     return groups;
 }
 
+const tabRootIdCache = typeof WeakMap === "function" ? new WeakMap() : null;
+
 /**
  * 解析页签当前文档 rootID：已加载模型优先于懒加载初始化数据。
  * 每次调用都读取当前对象，确保同一 tab 导航到另一文档后不会沿用旧值。
+ * 针对未加载 protyle 的懒加载 Tab，引入 WeakMap 缓存避免在多页签启动和遍历时反复 JSON.parse。
  * @param {{model?: object, headElement?: {getAttribute?: (name: string) => string|null}}} tab
  * @returns {string|null}
  */
 function resolveTabRootId(tab) {
-    const model = tab && tab.model;
+    if (!tab || typeof tab !== "object") return null;
+    const model = tab.model;
     const loadedRootId = model?.editor?.protyle?.block?.rootID || model?.editor?.block?.rootID;
     if (typeof loadedRootId === "string" && loadedRootId) {
         return loadedRootId;
     }
+    const head = tab.headElement;
+    if (!head || typeof head.getAttribute !== "function") return null;
+    const initData = head.getAttribute("data-initdata");
+    if (!initData) return null;
+    if (tabRootIdCache) {
+        const cached = tabRootIdCache.get(tab);
+        if (cached && cached.raw === initData) return cached.rootId;
+    }
     try {
-        const initData = tab?.headElement?.getAttribute?.("data-initdata");
-        if (!initData) {
-            return null;
-        }
         const data = JSON.parse(initData);
         if (data?.instance !== "Editor") {
+            if (tabRootIdCache) tabRootIdCache.set(tab, {raw: initData, rootId: null});
             return null;
         }
         const rootId = data.rootId || data.blockId;
-        return typeof rootId === "string" && rootId ? rootId : null;
+        const validRootId = typeof rootId === "string" && rootId ? rootId : null;
+        if (tabRootIdCache) tabRootIdCache.set(tab, {raw: initData, rootId: validRootId});
+        return validRootId;
     } catch {
+        if (tabRootIdCache) tabRootIdCache.set(tab, {raw: initData, rootId: null});
         return null;
     }
 }
