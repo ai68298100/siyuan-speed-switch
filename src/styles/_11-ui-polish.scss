@@ -342,14 +342,15 @@
     .sw__card {
         border-color: var(--sw-polish-line);
         border-radius: var(--sw-platform-radius-md, 12px);
-        box-shadow: var(--sw-rim-light, none);
+        box-shadow: var(--sw-rim-light, inset 0 1px 0 rgba(255, 255, 255, 0.08)), 0 1px 3px rgba(0, 0, 0, 0.04);
         transition: border-color $sw-dur-base $sw-ease, box-shadow $sw-dur-base $sw-ease, transform $sw-dur-base $sw-ease, background-color $sw-dur-base $sw-ease;
     }
 
     .sw__card:hover {
         border-color: color-mix(in srgb, var(--b3-theme-primary) 52%, var(--sw-polish-line));
         background: var(--sw-polish-surface-raised);
-        box-shadow: var(--sw-rim-light, none), var(--sw-polish-shadow-card);
+        box-shadow: var(--sw-rim-light, inset 0 1px 0 rgba(255, 255, 255, 0.16)), var(--sw-polish-shadow-card);
+        transform: translateY(-2px);
     }
 
     .sw__card:focus-visible {
@@ -383,17 +384,19 @@
         padding: 10px var(--sw-space-lg, 12px);
         border-color: var(--sw-polish-line);
         border-radius: var(--sw-platform-radius-md, 12px);
-        box-shadow: none;
-        transition: border-color $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.03);
+        transition: border-color $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease;
 
         &:active {
             transform: scale(0.992);
         }
     }
 
-    .sw__doc-item:hover {
+    .sw__doc-item:hover,
+    .sw__doc-item:focus-visible {
         border-color: color-mix(in srgb, var(--b3-theme-primary) 48%, var(--sw-polish-line));
-        box-shadow: var(--sw-polish-shadow-card);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), var(--sw-polish-shadow-card);
+        transform: translateY(-1px);
     }
 
     .sw__doc-icon { border-radius: var(--sw-platform-radius-sm, 8px); }
@@ -1331,9 +1334,9 @@
     max-height: min(520px, 75vh);
     background: var(--b3-theme-surface, #ffffff);
     color: var(--b3-theme-on-surface, #24292f);
-    border: 1px solid var(--b3-border-color, rgba(0, 0, 0, 0.12));
+    border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 22%, var(--b3-border-color));
     border-radius: var(--sw-radius-lg, 12px);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22), 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
     overflow: hidden;
     user-select: none;
     animation: swPaletteScaleIn $sw-dur-panel $sw-ease;
@@ -1419,6 +1422,7 @@
             background: color-mix(in srgb, var(--b3-theme-primary) 15%, transparent);
             color: var(--b3-theme-primary);
             font-weight: 500;
+            box-shadow: inset 3px 0 0 var(--b3-theme-primary);
         }
 
         &.is-destructive {
@@ -1460,8 +1464,12 @@
         align-items: center;
         flex-shrink: 0;
         padding: 1px var(--sw-space-sm, 6px);
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 64%, transparent);
+        border-radius: $sw-radius-sm;
+        background: color-mix(in srgb, var(--b3-theme-surface) 65%, transparent);
         font-size: var(--sw-font-xs, 11px);
         font-family: inherit;
+        font-variant-numeric: tabular-nums;
         border-radius: 4px;
         background: color-mix(in srgb, var(--b3-theme-on-surface) 8%, transparent);
         color: var(--b3-theme-on-surface-light, rgba(128, 128, 128, 0.9));
