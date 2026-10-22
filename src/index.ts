@@ -4344,6 +4344,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             content: this.buildSwitcherHtml(fullscreen),
             width: `${size.width}px`,
             height: `${size.height}px`,
+            disableAnimation: true,
             destroyCallback: () => {
                 if (this.platformSwitcherDialog === holder.dialog) this.platformSwitcherDialog = null;
                 // T-7172：切换器关闭时批量取消在途缩略图回源
@@ -4674,8 +4675,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         const dockElement = dialog.element.querySelector<HTMLDivElement>(".sw__dock");
         this.renderDockList(dockElement, dialog, settings.excludedDocks, settings.dockDisplay);
 
-        // 清理缩略图缓存中已无对应打开页签的孤儿条目（页签关闭即失效）
-        this.pruneThumbCache(tabs);
+        // 极速首屏：清理缩略图孤儿条目移出同步关键路径，由微任务异步执行
+        queueMicrotask(() => {
+            if (dialog.element.isConnected) this.pruneThumbCache(tabs);
+        });
 
         // 宸ュ叿鏍忓紩鐢?
 const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
@@ -4749,8 +4752,6 @@ const updatedMap: {[rootId: string]: string} = {};
         };
         const iconObserver = typeof MutationObserver === "function"
             ? new MutationObserver(clampIcons) : null;
-        iconObserver?.observe(dialog.element, {childList: true, subtree: true});
-        clampIcons();
         const disposeSearchFilter: () => void = searchInput
             ? bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay)
             : () => undefined;
@@ -4792,6 +4793,8 @@ const updatedMap: {[rootId: string]: string} = {};
         this.bindSwitcherListArea(dialog, scrollElement, tabs, activeTab, listOpts, settings, searchInput, sortSelect, closeOverlay, updatedMap);
         refreshQuickActions();
         restoreSceneScroll();
+        iconObserver?.observe(dialog.element, {childList: true, subtree: true});
+        clampIcons();
 
         // 普通打开仍把焦点交给滚动区，保持键盘卡片导航语义；动作面板
         // 的“搜索”入口显式要求搜索框获得焦点，避免只打开切换器却让
@@ -4838,7 +4841,12 @@ const updatedMap: {[rootId: string]: string} = {};
         } else {
             this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
             // T-6807/T-6814：首次打开（空查询且无筛选）即呈现零词条工作台（含关联内容行）
-            this.renderWorkbench(scrollElement, "", closeOverlay);
+            // 优化：优先保证卡片列表完成首屏绘制，零词条工作台微任务随后接入，杜绝同步等待
+            queueMicrotask(() => {
+                if (dialog.element.isConnected && (!searchInput || !searchInput.value.trim())) {
+                    this.renderWorkbench(scrollElement, "", closeOverlay);
+                }
+            });
         }
         this.bindKeydown(scrollElement, closeOverlay);
 
@@ -11391,6 +11399,20 @@ private rootIdOf(tab: Tab): string | null {
 
         const ctx: ITabGroupRenderCtx = {reusable, activeTabId, pinned, favorites, mru, settings, updatedMap, opts};
 
+        const isSidebar = Boolean(scrollElement.closest(".sw--sidebar"));
+        const measuredWidth = scrollElement.clientWidth || (scrollElement.parentElement?.clientWidth ?? 0);
+        const useTabPreview = !this.isMobile && !isSidebar && (measuredWidth >= 680 || (!scrollElement.isConnected && ((settings.dialogWidth || 880) >= 680 || window.innerWidth >= 800)));
+        let layout: HTMLElement | null = null;
+        let contentHost: HTMLElement = scrollElement;
+        if (useTabPreview) {
+            layout = document.createElement("div");
+            layout.className = "sw__tab-preview";
+            const content = document.createElement("div");
+            content.className = "sw__tab-content";
+            layout.appendChild(content);
+            contentHost = content;
+        }
+
         const all: IGroupedTab[] = [];
         const focusState: {defaultFocusIndex: number} = {defaultFocusIndex: 0};
         const groupMode = settings.groupBy;
@@ -11399,10 +11421,10 @@ private rootIdOf(tab: Tab): string | null {
             const groups = buildTabGroupsByParent(tabs, scrollElement);
             groups.forEach((group) => {
                 const ordered = this.sortGroupItems(group, sortBy, mru, pinned, updatedMap);
-                this.renderTabGroup(scrollElement, ordered, ctx, all, focusState);
+                this.renderTabGroup(contentHost, ordered, ctx, all, focusState);
             });
         } else {
-            this.renderGroupedList(scrollElement, tabs, activeTab, groupMode, ctx, all, focusState, opts, sortBy, updatedMap);
+            this.renderGroupedList(contentHost, tabs, activeTab, groupMode, ctx, all, focusState, opts, sortBy, updatedMap);
         }
 
         if (all.length === 0) {
@@ -11412,14 +11434,8 @@ private rootIdOf(tab: Tab): string | null {
             return;
         }
 
-        // 页签区与文档结果区共用一个预览窗格；移动端/窄容器降级。
-        if (!this.isMobile && !scrollElement.closest(".sw--sidebar") && scrollElement.clientWidth >= 680) {
-            const layout = document.createElement("div");
-            layout.className = "sw__tab-preview";
-            const content = document.createElement("div");
-            content.className = "sw__tab-content";
-            while (scrollElement.firstChild) content.appendChild(scrollElement.firstChild);
-            layout.appendChild(content);
+        // 页签区与文档结果区共用一个预览窗格；直接装配布局流，杜绝全卡片二次遍历拔插与强制 Reflow
+        if (layout) {
             scrollElement.appendChild(layout);
             mountDocPreviewPane.call(this, layout, scrollElement);
         }
@@ -13107,8 +13123,18 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         }
     }
 
-    // 裁剪克隆内容：只保留前 max 个子块。缩略图仅显示文档首屏，
-    // 大文档整篇 cloneNode 是切换器打开卡顿的主因，裁剪后克隆量与文档大小解耦
+    // 浅克隆外层容器，并仅对前 max 个直接子块做深拷贝（真正的 O(1) 首屏克隆，彻底与大文档体积解耦）
+    private cloneLimitedContent(source: HTMLElement, max: number): HTMLElement {
+        const clone = source.cloneNode(false) as HTMLElement;
+        const children = source.children;
+        const count = Math.min(children.length, max);
+        for (let i = 0; i < count; i += 1) {
+            clone.appendChild(children[i].cloneNode(true));
+        }
+        return clone;
+    }
+
+    // 裁剪克隆内容：只保留前 max 个子块（向后兼容兜底）
     private limitCloneChildren(clone: HTMLElement, max: number) {
         while (clone.children.length > max) {
             clone.removeChild(clone.lastChild as ChildNode);
@@ -13117,27 +13143,32 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
     // 获取可克隆的缩略图内容源；文档页签优先取其 WYSIWYG 内容
     // 注意：每次打开切换器都会重新调用本方法克隆实时 DOM，保证缩略图展示的是页签当前最新状态
+    // T-7173 边界：保持 cloneNode（严禁 innerHTML 解析实时内容）；
+    // T-7360 性能根治：浅克隆外层容器，仅对前 THUMB_CLONE_MAX 个直接子块做 cloneNode(true)，与大文档体积彻底解耦
     private getThumbSource(tab: Tab): HTMLElement | null {
         try {
             // Editor 模型的 .editor 即 Protyle 实例，其 wysiwyg.element 为实时文档 DOM
             const model = (tab as unknown as { model?: IProtyleTabModel }).model;
             const wysiwyg = model?.editor?.wysiwyg?.element;
             if (wysiwyg && wysiwyg.childElementCount > 0) {
-                const clone = wysiwyg.cloneNode(true) as HTMLElement;
-                this.limitCloneChildren(clone, THUMB_CLONE_MAX);
+                const clone = wysiwyg.cloneNode(false) as HTMLElement;
+                const limit = Math.min(wysiwyg.children.length, THUMB_CLONE_MAX);
+                for (let i = 0; i < limit; i += 1) clone.appendChild(wysiwyg.children[i].cloneNode(true));
                 return clone;
             }
             // 兜底：从面板容器里直接找 WYSIWYG 内容（不依赖 model 内部结构）
             const panelWysiwyg = tab.panelElement?.querySelector<HTMLElement>(".protyle-wysiwyg");
             if (panelWysiwyg && panelWysiwyg.childElementCount > 0) {
-                const clone = panelWysiwyg.cloneNode(true) as HTMLElement;
-                this.limitCloneChildren(clone, THUMB_CLONE_MAX);
+                const clone = panelWysiwyg.cloneNode(false) as HTMLElement;
+                const limit = Math.min(panelWysiwyg.children.length, THUMB_CLONE_MAX);
+                for (let i = 0; i < limit; i += 1) clone.appendChild(panelWysiwyg.children[i].cloneNode(true));
                 return clone;
             }
             // 最后再退回整个面板内容
             if (tab.panelElement && tab.panelElement.childElementCount > 0) {
-                const clone = tab.panelElement.cloneNode(true) as HTMLElement;
-                this.limitCloneChildren(clone, THUMB_CLONE_MAX);
+                const clone = tab.panelElement.cloneNode(false) as HTMLElement;
+                const limit = Math.min(tab.panelElement.children.length, THUMB_CLONE_MAX);
+                for (let i = 0; i < limit; i += 1) clone.appendChild(tab.panelElement.children[i].cloneNode(true));
                 return clone;
             }
         } catch (e) {

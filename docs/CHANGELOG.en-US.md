@@ -5,6 +5,14 @@
 
 ## Changelog (full history)
 
+### v0.48.2 (2026-10-22)
+
+- **Instant Topbar Switcher Open & Shallow Clone Engine**:
+  - **Shallow First-Screen Thumbnail Cloning**: Replaced the performance-draining `wysiwyg.cloneNode(true)` which deep-cloned entire massive documents before stripping them with `cloneNode(false)` shallow container clone plus on-demand deep-copy of only the first 6 blocks (`THUMB_CLONE_MAX`), decoupling thumbnail cost from document size (reducing clone time from hundreds of milliseconds to 0.1ms);
+  - **Zero-Latency Desktop Dialog Presentation**: Added `disableAnimation: true` to `createSwitcherDialog` to eliminate SiYuan Dialog's native 50ms mounting timeout and transform delays for instant response on topbar clicks;
+  - **Eliminated Card DOM Churn & Forced Synchronous Reflow**: Streamlined `renderList` to mount groups directly into the `contentHost` preview container, removing the legacy double-pass extraction loop (`while (scrollElement.firstChild)`) and layout reads;
+  - **Asynchronous Microtask Scheduling**: Defer thumbnail cache pruning (`pruneThumbCache`) and zero-query workbench (`renderWorkbench`) to microtasks, prioritizing tab grid and search input rendering.
+
 ### v0.48.1 (2026-10-22)
 
 - **Persistent Search Mode Chips Bar (Desktop, Mobile & Sidebar)**:

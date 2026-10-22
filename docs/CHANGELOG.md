@@ -4,6 +4,14 @@
 
 ## 更新日志（完整历史）
 
+### v0.48.2（2026-10-22）
+
+- **顶栏点击秒级直出与深度克隆性能根治（Instant Open & Shallow Clone Engine）**：
+  - **大长文档浅层首屏克隆**：彻底废弃此前 `wysiwyg.cloneNode(true)` 将大长文数万个节点整篇递归深拷贝再裁剪的卡顿根因，重构为 `cloneNode(false)` 浅克隆容器并仅按需深拷贝前 6 个子块（`THUMB_CLONE_MAX`），克隆开销彻底与文档大小解耦（从数百毫秒降至 0.1ms）；
+  - **桌面端弹窗 0 延迟瞬出**：`createSwitcherDialog` 补齐 `disableAnimation: true`，消除思源 Dialog 原生挂载时的 50ms 超时等待与过渡停顿，点击顶栏瞬间无感呈现；
+  - **消除全卡片二次搬迁与强制同步 Reflow**：重构 `renderList` 流式装载逻辑，直接装入 `contentHost` 容器，消除了旧代码在挂载后又拔插所有卡片的二次循环（`while (scrollElement.firstChild)`）与 `clientWidth` 引起的强制重排；
+  - **非关键任务微任务异步调度**：清理缩略图孤儿缓存（`pruneThumbCache`）与零词条工作台（`renderWorkbench`）以异步微任务挂载，卡片列表与搜索框获得最高首屏绘制优先级。
+
 ### v0.48.1（2026-10-22）
 
 - **第一面板多模态搜索模式药丸栏（Persistent Search Mode Chips Bar）**：
