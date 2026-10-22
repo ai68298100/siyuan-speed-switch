@@ -4709,13 +4709,13 @@ const updatedMap: {[rootId: string]: string} = {};
         const refreshQuickActions = () => {
             if (!dialog.element.isConnected) return;
             const currentSettings = this.getSettings();
-            this.renderQuickActions(dialog.element, "desktop", searchInput, closeOverlay, ".sw__quick-actions");
-            this.renderQuickActions(dialog.element, "desktop", searchInput, closeOverlay, ".sw__quick-rail");
             const useRightRail = currentSettings.quickActionsRightRail
                 && currentSettings.quickActionsDisplayDesktop !== "hidden";
+            const targetSelector = useRightRail ? ".sw__quick-rail" : ".sw__quick-actions";
+            this.renderQuickActions(dialog.element, "desktop", searchInput, closeOverlay, targetSelector);
             dialog.element.querySelector<HTMLElement>(".sw__body")?.classList.toggle("sw--quick-rail", useRightRail);
-            dialog.element.querySelector<HTMLElement>(".sw__quick-actions")?.classList.toggle("fn__none", currentSettings.quickActionsRightRail);
-            dialog.element.querySelector<HTMLElement>(".sw__quick-rail")?.classList.toggle("fn__none", !currentSettings.quickActionsRightRail);
+            dialog.element.querySelector<HTMLElement>(".sw__quick-actions")?.classList.toggle("fn__none", useRightRail);
+            dialog.element.querySelector<HTMLElement>(".sw__quick-rail")?.classList.toggle("fn__none", !useRightRail);
         };
         // T-7163：跨面板往返——恢复会话快照的 query/筛选/滚动（新入口已在 showSwitcher 重置）。
         const switcherScene = context ? this.switcherScene : null;
@@ -9570,6 +9570,14 @@ const updatedMap: {[rootId: string]: string} = {};
         dockElement.classList.remove("fn__none");
         dockElement.innerHTML = "";
 
+        // 单次捕获当前激活 dock 节点类型，避免每个面板循环对整个页面 DOM 执行 querySelector
+        let activeDockType: string | null = null;
+        try {
+            activeDockType = document.querySelector<HTMLElement>(".dock__item--active")?.getAttribute("data-type") || null;
+        } catch {
+            activeDockType = null;
+        }
+
         // 折叠 ⇄ 完整 切换按钮：弹窗内即时切换（不写回设置，设置只决定初始形态）
         const toggle = document.createElement("button");
         toggle.type = "button";
@@ -9591,24 +9599,20 @@ const updatedMap: {[rootId: string]: string} = {};
         dockElement.appendChild(label);
 
         panels.forEach((panel) => {
-            dockElement.appendChild(this.createDockItem(panel, dialog));
+            dockElement.appendChild(this.createDockItem(panel, dialog, activeDockType));
         });
     }
 
     // 构建一个面板列表项（图标 + 名称），点击即激活该面板
-    private createDockItem(panel: IDockPanel, dialog: Dialog): HTMLElement {
+    private createDockItem(panel: IDockPanel, dialog: Dialog, activeDockType?: string | null): HTMLElement {
         const item = document.createElement("button");
         item.type = "button";
         item.className = "sw__dock-item";
         item.dataset.dockType = panel.type;
 
-        // 面板当前已展开时高亮标识
-        try {
-            if (document.querySelector(`.dock__item[data-type="${panel.type}"].dock__item--active`)) {
-                item.classList.add("sw__active");
-            }
-        } catch (e) {
-            // 蹇界暐楂樹寒妫€娴嬪け璐?
+        // 面板当前已展开时高亮标识（复用父级单次捕获结果）
+        if (activeDockType ? activeDockType === panel.type : false) {
+            item.classList.add("sw__active");
         }
 
         const icon = document.createElement("span");
@@ -12817,11 +12821,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         if (source) {
             // 视觉空白的实时克隆不进缓存，回退 API 回源（T-6970 缩略图空框防护）
             if (this.applyThumbContent(thumb, source, title)) {
-                // 实时 DOM 可用：刷新该文档的缓存快照（下次重启/后台未渲染时直接命中）
+                // 实时 DOM 可用：立刻呈现缩略图，异步更新缓存快照（移出同步关键路径）
                 if (rootId) {
-                    const cache = this.getThumbCache();
-                    this.setThumbCache(cache, rootId, title, source.innerHTML);
-                    this.saveThumbCache(cache);
+                    queueMicrotask(() => {
+                        if (!thumb.isConnected) return;
+                        const cache = this.getThumbCache();
+                        this.setThumbCache(cache, rootId, title, source.innerHTML);
+                        this.saveThumbCache(cache);
+                    });
                 }
                 return;
             }
@@ -13011,18 +13018,17 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 依据盒子实际宽度计算缩放比例；容器尚未完成布局（宽度为 0）时等下一帧重算，
         // 后续尺寸变化由侧边栏的 ResizeObserver 兜底重算
         content.style.visibility = "hidden";
-        const syncScale = (attempt: number) => {
+        const syncScale = () => {
             if (!thumb.isConnected) return;
             const width = thumb.clientWidth || thumb.getBoundingClientRect().width;
             if (width > 0) {
                 content.style.transform = `scale(${(width / CONTENT_WIDTH_PX).toFixed(3)})`;
                 content.style.visibility = "visible";
-                return;
+            } else {
+                content.style.visibility = "visible";
             }
-            if (attempt < 5) this.scheduleAnimationFrame(() => syncScale(attempt + 1));
-            else content.style.visibility = "visible";
         };
-        syncScale(0);
+        this.scheduleAnimationFrame(syncScale);
         content.setAttribute("aria-label", title);
         return true;
     }

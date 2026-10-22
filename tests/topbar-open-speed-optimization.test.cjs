@@ -91,6 +91,16 @@ test("T-7360: pruneThumbCache 与 renderWorkbench 走 queueMicrotask 异步化�
         /queueMicrotask\(\(\)\s*=>\s*\{[^}]*this\.renderWorkbench\(scrollElement/s,
         "renderWorkbench 必须由微任务异步调度",
     );
+    assert.match(
+        indexTs,
+        /this\.createDockItem\(panel,\s*dialog,\s*activeDockType\)/,
+        "createDockItem 必须复用父级单次捕获的 activeDockType，避免逐项查询全局 DOM",
+    );
+    assert.match(
+        indexTs,
+        /const targetSelector = useRightRail \? "\.sw__quick-rail" : "\.sw__quick-actions";/,
+        "refreshQuickActions 必须按需仅装配活动宿主，避免无用 DOM 冗余生成",
+    );
 });
 
 test("T-7360 门禁负向验证: 若大文档整篇深克隆或同步阻塞退化必须精确红", () => {
