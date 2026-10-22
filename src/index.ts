@@ -1238,6 +1238,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         syncStart: () => void;
         syncEnd: () => void;
         syncFail: () => void;
+        openSiyuanUrlPlugin?: (event: CustomEvent<{url: string}>) => void;
     } | null = null;
     private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（已持久化，重启后恢复）
     private fabElement: HTMLElement | null = null; // 手机端悬浮按钮
@@ -1282,7 +1283,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 用结构化局部类型承接（菜单对象运行时只需 addItem），变量传参绕开
         // 字面量多余属性检查。
         type TopBarContextMenu = (menu: {addItem: (item: {icon: string; label: string; click: () => void}) => void}) => void;
-        const switcherTopBar: {icon: string; title: string; position: "right"; contextMenu: TopBarContextMenu; callback: () => void} = {
+        const switcherTopBar: {id?: string; icon: string; title: string; position: "right"; contextMenu: TopBarContextMenu; callback: () => void} = {
+            id: "siyuan-speed-switch-topbar",
             icon: "iconLayout",
             title: this.i18n.switchTabs,
             position: "right",
@@ -1887,13 +1889,32 @@ export default class SpeedSwitchPlugin extends Plugin {
         };
         const syncEnd = () => syncFinish(false);
         const syncFail = () => syncFinish(true);
-        this.globalEventHandlers = {switchProtyle, loadedProtyle, destroyProtyle, syncStart, syncEnd, syncFail};
+        const openSiyuanUrlPlugin = (event: CustomEvent<{url: string}>) => {
+            const rawUrl = event?.detail?.url;
+            if (!rawUrl || typeof rawUrl !== "string") return;
+            try {
+                const parsed = new URL(rawUrl);
+                const surface = parsed.searchParams.get("surface") || parsed.searchParams.get("s");
+                const query = parsed.searchParams.get("query") || parsed.searchParams.get("q") || "";
+                if (surface === "workbench") {
+                    this.openPlatformSurface("workbench", "switcher", {entry: "url-scheme", ...(query ? {query} : {})});
+                } else if (surface === "studio") {
+                    this.openPlatformSurface("studio", "switcher", {entry: "url-scheme", ...(query ? {query} : {})});
+                } else {
+                    this.showSwitcher(Boolean(query), "switcher", {entry: "url-scheme", ...(query ? {query} : {})});
+                }
+            } catch (error) {
+                logger.warn("handle open-siyuan-url-plugin fail", error);
+            }
+        };
+        this.globalEventHandlers = {switchProtyle, loadedProtyle, destroyProtyle, syncStart, syncEnd, syncFail, openSiyuanUrlPlugin};
         this.eventBus.on("switch-protyle", switchProtyle);
         this.eventBus.on("loaded-protyle-static", loadedProtyle);
         this.eventBus.on("destroy-protyle", destroyProtyle);
         this.eventBus.on("sync-start", syncStart);
         this.eventBus.on("sync-end", syncEnd);
         this.eventBus.on("sync-fail", syncFail);
+        this.eventBus.on("open-siyuan-url-plugin", openSiyuanUrlPlugin as any);
     }
 
     private setSyncPresentation(syncing: boolean) {
@@ -1980,7 +2001,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     private setupBreadcrumbEntry() {
         const host = this as unknown as {
-            addBreadcrumbButton?: (options: {id: string; icon: string; title: string; callback: (event: MouseEvent) => void}) => string;
+            addBreadcrumbButton?: (options: {id: string; icon: string; title: string; callback: (event: MouseEvent, protyle?: any) => void}) => string;
         };
         if (typeof host.addBreadcrumbButton !== "function") return;
         try {
@@ -1988,7 +2009,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 id: "swBreadcrumbEntry",
                 icon: "iconSearch",
                 title: this.i18n.breadcrumbEntry,
-                callback: () => {
+                callback: (_event, protyle) => {
                     if (!this.isMobile && !this.isUnloading) this.showSwitcher(true);
                 },
             }) || "";
@@ -2181,6 +2202,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.eventBus.off("sync-start", globalEventHandlers.syncStart);
             this.eventBus.off("sync-end", globalEventHandlers.syncEnd);
             this.eventBus.off("sync-fail", globalEventHandlers.syncFail);
+            if (globalEventHandlers.openSiyuanUrlPlugin) {
+                this.eventBus.off("open-siyuan-url-plugin", globalEventHandlers.openSiyuanUrlPlugin as any);
+            }
         }
         this.globalEventHandlers = null;
         this.syncDepth = 0;
@@ -2250,9 +2274,20 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.floatingBallUi = null;
         this.fabElement = null;
         this.fabModalDepth = 0;
+        if (typeof (this as any).removeTopBar === "function") {
+            try {
+                (this as any).removeTopBar("siyuan-speed-switch-topbar");
+            } catch (error) {
+                logger.warn("remove topbar entry fail", error);
+            }
+        }
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = null;
         await pendingSaves;
+    }
+
+    async uninstall() {
+        logger.info("siyuan-speed-switch uninstalled cleanly");
     }
 
     // ==================== 鎸佷箙鍖栨€ц兘 ====================

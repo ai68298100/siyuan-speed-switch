@@ -66,8 +66,11 @@
 // ADR 0258 (2026-10-22): 移动端常驻多模态穿透药丸、搜索模式专属提示、搜索结果 Alt+C 快捷复制与门限校准，
 // raw 产物为 1,225,245 B（处于 1198 KiB 自律线内，余量约 1.5 KiB）。
 // 归档包门禁由 602 -> 604 KiB（618,496 B，package.zip 616,535 B，余量 1,961 B）。
-const RAW_BUNDLE_BUDGET_BYTES = 1198 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0258";
+// ADR 0259 (2026-10-22): 顶栏点击秒开直出、长文档首屏浅克隆、Petal 生命周期与 URL Scheme 闭环，
+// raw 产物为 1,227,074 B（处于 1200 KiB 自律线内，余量约 1.7 KiB）。
+// 归档包门禁维持 604 KiB（618,496 B，package.zip 617,142 B，余量 1,354 B）。
+const RAW_BUNDLE_BUDGET_BYTES = 1200 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0259";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout

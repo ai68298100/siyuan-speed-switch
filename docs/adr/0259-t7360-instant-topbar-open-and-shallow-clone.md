@@ -27,14 +27,16 @@
    - 在 `createSwitcherDialog` 补齐 `disableAnimation: true`，消除 50ms 等待窗口与过渡缓动；
 3. **消除卡片二次搬迁与强制同步排版**：
    - 预先判定预览流容器（`contentHost`），所有卡片一次性装配，严禁挂载后二次 `removeChild/appendChild`，消除强制 Reflow；
-4. **微任务分层调度（Microtask Layering）**：
-   - `pruneThumbCache` 移入 `queueMicrotask`，零词条工作台在卡片首屏挂载后经微任务平滑接入；`MutationObserver` 推迟至首屏 DOM 就绪后监听。
+4. **微任务分层调度与 Petal Lifecycle / URL Scheme 契约完备性**：
+   - `pruneThumbCache` 移入 `queueMicrotask`，零词条工作台在卡片首屏挂载后经微任务平滑接入；`MutationObserver` 推迟至首屏 DOM 就绪后监听；
+   - 补齐官方 `uninstall()` 卸载清理钩子，`addTopBar` 提供稳定唯一 id，`onunload` 补齐 `removeTopBar` 安全注销；
+   - 接入官方 `"open-siyuan-url-plugin"` 事件与 `protyle.block.rootID` 面包屑上下文传递，支持外部协议直达。
 
 ## 证据与验证
 
-1. **定向测试**：`tests/topbar-open-speed-optimization.test.cjs` 5/5 通过；
+1. **定向测试**：`tests/topbar-open-speed-optimization.test.cjs` 5/5 与 `tests/petal-lifecycle-and-url-scheme-contract.test.cjs` 5/5 通过；
 2. **构建规格**：
-   - `dist/index.js` 为 1,225,544 字节（低于 1198 KiB 观察线 1,208 B）；
-   - `package.zip` 为 616,730 字节（低于 604 KiB 门限 1,766 B）；
-   - 单条目压缩 330,544 字节（低于 332 KiB 门限 9,424 B）；
-3. **全量单测与审计**：9038+ 项测试全绿，四大批量审计全部 PASS。
+   - `dist/index.js` 为 1,227,074 字节（低于 1200 KiB 观察线 1,726 B）；
+   - `package.zip` 为 617,142 字节（低于 604 KiB 门限 1,354 B）；
+   - 单条目压缩 330,956 字节（低于 332 KiB 门限 9,012 B）；
+3. **全量单测与审计**：9047+ 项测试全绿，四大批量审计全部 PASS。
