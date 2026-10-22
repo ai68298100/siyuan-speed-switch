@@ -12591,6 +12591,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 this.platformSwitcherDialog.destroy();
                 this.platformSwitcherDialog = null;
             }
+            if (this.mobileSwitcherDialog) {
+                this.mobileSwitcherDialog.destroy();
+                this.mobileSwitcherDialog = null;
+            }
         };
         const copyToClipboard = (text: string) => {
             if (navigator?.clipboard?.writeText) {
@@ -12667,14 +12671,22 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             case "open-in-reader":
                 if (rootId) {
                     destroySwitcher();
-                    void openTab({app: this.app, doc: {id: rootId}});
+                    if (this.isMobile) {
+                        void this.mobileOpenDoc(rootId);
+                    } else {
+                        void openTab({app: this.app, doc: {id: rootId}});
+                    }
                     showMessage((this.i18n.openedInReaderReceipt || "已在思阅中打开：{x}").replace("{x}", title));
                 }
                 break;
             case "open-in-media":
                 if (rootId) {
                     destroySwitcher();
-                    void openTab({app: this.app, doc: {id: rootId}});
+                    if (this.isMobile) {
+                        void this.mobileOpenDoc(rootId);
+                    } else {
+                        void openTab({app: this.app, doc: {id: rootId}});
+                    }
                     showMessage((this.i18n.openedInMediaReceipt || "已在思播中打开：{x}").replace("{x}", title));
                 }
                 break;
@@ -12682,7 +12694,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 this.saveCurrentTabsAsDocSet();
                 break;
             case "undo-closed-tab":
-                this.undoLastClosedTab();
+                this.undoLastClosedTab(destroySwitcher);
                 break;
             default:
                 break;

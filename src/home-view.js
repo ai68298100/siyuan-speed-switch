@@ -916,7 +916,8 @@ function renderHomeModuleView(doc, view, options = {}) {
             const dayNames = ["一", "二", "三", "四", "五", "六", "日"];
             const todayDay = (new Date().getDay() + 6) % 7;
             for (let i = 0; i < 7; i += 1) {
-                const item = view.items[i];
+                const targetDay = dayNames[i];
+                const item = view.items.find((it) => it && (it.label === targetDay || it.label === `周${targetDay}` || it.label === `星期${targetDay}`)) || view.items[i];
                 const capsule = doc.createElement("div");
                 capsule.className = "sw__home-capsule-item";
                 const isToday = i === todayDay;
@@ -926,7 +927,7 @@ function renderHomeModuleView(doc, view, options = {}) {
                 if (isDone) capsule.classList.add("is-done");
                 const dayLabel = doc.createElement("span");
                 dayLabel.className = "sw__home-capsule-day";
-                dayLabel.textContent = dayNames[i];
+                dayLabel.textContent = targetDay;
                 const dot = doc.createElement("span");
                 dot.className = "sw__home-capsule-dot";
                 dot.textContent = isDone ? "✓" : (isToday ? "●" : "·");
