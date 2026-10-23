@@ -5,6 +5,17 @@
 
 ## Changelog (full history)
 
+### v0.48.8 (2026-10-23)
+
+- **Mode Chips Keyboard Navigation & Fluid Focus Handoff**:
+  - Mode chips bar (`.sw__mode-chips-bar`) supports `ArrowLeft` / `ArrowRight` keyboard cycling across mode chips, `ArrowDown` to return to the search input, and `ArrowUp` (when at start of input) to focus the active chip, creating a complete keyboard-first loop.
+- **Card Action Buttons Fluid Hover Micro-Interactions**:
+  - Pin (`.sw__pin`), favorite (`.sw__fav-btn`), and close (`.sw__close`) handles upgrade with smooth scale (scale 1.12) and color transitions, eliminating abrupt flicker during card hover.
+- **First Panel Masterpiece Polish (The Storefront Interface)**:
+  - Tab cards (`.sw__card`) and document search results (`.sw__doc-item`) active indicator stripes upgraded to **interstellar purple to titanium raikiri gold dual-gradient energy shimmer** (`linear-gradient`) with ambient soft glow;
+  - Window group counters (`.sw__group-count`) upgraded to branded rounded pill capsules with tabular numerals;
+  - 1-9 direct access digit keycaps (`[data-sw-digit]::after`) upgraded with 2px physical mechanical keycap bottom edge and tactile inset shadow.
+
 ### v0.48.7 (2026-10-23)
 
 - **First Panel Masterpiece Polish (The Storefront Interface)**:

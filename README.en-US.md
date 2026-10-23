@@ -1,20 +1,20 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.48.7-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.8-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Latest stable release: v0.48.7 (2026-10-23)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.7) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Latest stable release: v0.48.8 (2026-10-23)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.8) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
-## What's New In v0.48.7 (2026-10-23)
+## What's New In v0.48.8 (2026-10-23)
 
+- **Mode Chips Keyboard Navigation & Fluid Focus Handoff**: Supports `ArrowLeft` / `ArrowRight` keyboard cycling across mode chips, `ArrowDown` to return to the search input, and `ArrowUp` (when at start of input) to focus the active chip, creating a complete keyboard-first loop.
+- **Card Action Buttons Fluid Hover Micro-Interactions**: Pin (`.sw__pin`), favorite (`.sw__fav-btn`), and close (`.sw__close`) handles upgrade with smooth scale and color transitions, eliminating abrupt flicker during card hover.
 - **First Panel Masterpiece Polish (The Storefront Interface)**:
   - Tab cards (`.sw__card`) and document search results (`.sw__doc-item`) active indicator stripes upgraded to **interstellar purple to titanium raikiri gold dual-gradient energy shimmer** (`linear-gradient`) with ambient soft glow;
   - Window group counters (`.sw__group-count`) upgraded to branded rounded pill capsules with tabular numerals;
   - 1-9 direct access digit keycaps (`[data-sw-digit]::after`) upgraded with 2px physical mechanical keycap bottom edge and tactile inset shadow.
-- **Ecosystem & Plugin Commands Discovery In Command Mode**: Switcher command mode (`>` or `》`) now discovers and filters all registered commands across installed plugins (including QuickGate, Checkin, Exam), enabling one-click and Enter execution.
-- **Chinese Full-Width Punctuation Adaptive Routing**: Penetration search model natively supports Chinese full-width symbols (`！` $\to$ bookmark mode, `》` $\to$ command palette, `：` $\to$ outline penetration, `？` $\to$ cheatsheet).
 
 Itemized changes, validation data, and release history are in the [complete changelog](./docs/CHANGELOG.en-US.md).
 
@@ -401,7 +401,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and size budgets after building: 578 KiB archive, 1160 KiB raw bundle, and 320 KiB compressed per entry (see [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)). Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.48.7`, featuring first panel masterpiece polish, ecosystem command discovery in command mode, Chinese full-width punctuation adaptive routing, unified branded dialog titlebars, and midnight black gold hero tiles. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
+The current version is `v0.48.8`, featuring mode chips keyboard navigation, fluid card action transitions, first panel masterpiece polish, and ecosystem command discovery. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>

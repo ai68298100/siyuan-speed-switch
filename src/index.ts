@@ -3549,7 +3549,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.7", "iconSettings");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.8", "iconSettings");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
 
         const tabs = document.createElement("div");
@@ -4405,7 +4405,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         holder.dialog = dialog;
         this.platformSwitcherDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.7", "iconLvSpeedSwitch");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.8", "iconLvSpeedSwitch");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
         if (surfaceRoot) {
@@ -4495,7 +4495,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.7", "iconCode");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.8", "iconCode");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
@@ -5466,13 +5466,38 @@ const updatedMap: {[rootId: string]: string} = {};
                 onTrigger();
                 searchInput.focus();
             });
+            btn.addEventListener("keydown", (e: KeyboardEvent) => {
+                const idx = chipButtons.indexOf(btn);
+                if (e.key === "ArrowRight") {
+                    e.preventDefault();
+                    chipButtons[(idx + 1) % chipButtons.length]?.focus();
+                } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
+                    chipButtons[(idx - 1 + chipButtons.length) % chipButtons.length]?.focus();
+                } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    searchInput.focus();
+                }
+            });
             chipButtons.push(btn);
             container.appendChild(btn);
         });
 
+        const onSearchKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "ArrowUp" && searchInput.selectionStart === 0 && searchInput.selectionEnd === 0) {
+                const activeBtn = chipButtons.find((b) => b.classList.contains("is-active")) || chipButtons[0];
+                if (activeBtn) {
+                    e.preventDefault();
+                    activeBtn.focus();
+                }
+            }
+        };
+
         searchInput.addEventListener("input", updateActiveMode);
+        searchInput.addEventListener("keydown", onSearchKeyDown);
         return () => {
             searchInput.removeEventListener("input", updateActiveMode);
+            searchInput.removeEventListener("keydown", onSearchKeyDown);
         };
     }
 

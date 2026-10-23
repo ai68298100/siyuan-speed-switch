@@ -442,6 +442,19 @@
 
     .sw__thumb { border-bottom-color: var(--sw-polish-line-soft); }
 
+    .sw__card .sw__pin,
+    .sw__card .sw__fav-btn,
+    .sw__card .sw__close {
+        transition: transform $sw-dur-fast $sw-ease, color $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease;
+
+        &:hover {
+            transform: scale(1.12);
+        }
+        &:active {
+            transform: scale(0.95);
+        }
+    }
+
     .sw__meta {
         min-height: 42px;
         padding: var(--sw-space-md, 8px) var(--sw-space-lg, 12px);

@@ -6,6 +6,11 @@
 
 ---
 
+### v0.48.8 (2026-10-23)
+- **模式药丸栏键盘循环导航与输入框焦点互通（Mode Chips Keyboard Navigation）**：支持在药丸栏内通过键盘 `ArrowLeft` / `ArrowRight` 循环切换模式，按 `ArrowDown` 快速切回搜索框；在搜索框起始位置按 `ArrowUp` 智能回焦至当前模式药丸，打造纯键盘操作流。
+- **卡片操作把手丝滑悬浮微交互（Card Action Buttons Smooth Transition）**：置顶（`.sw__pin`）、收藏（`.sw__fav-btn`）与关闭（`.sw__close`）把手升级为平滑微缩放与颜色过渡，彻底消除卡片悬停时的生硬闪烁感。
+- **第一面板门面专项深度打磨（First Panel Masterpiece Polish）**：双色能量微光指示条（紫金渐变）、圆角胶囊分组计数与 1-9 直达立体机械键帽。
+
 ### v0.48.7 (2026-10-23)
 - **第一面板门面专项深度打磨（First Panel Masterpiece Polish）**：
   - 页签卡片（`.sw__card`）与文档搜索结果行（`.sw__doc-item`）激活指示微条升级为**星际深紫至钛金雷刃能量双色渐变光芒**（`linear-gradient`）并带有柔和的辉光光晕（ambient glow），与小驴雷切品牌深度共鸣；
