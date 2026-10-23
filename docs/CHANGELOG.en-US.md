@@ -5,6 +5,19 @@
 
 ## Changelog (full history)
 
+### v0.48.6 (2026-10-23)
+
+- **Ecosystem & Plugin Commands Discovery In Command Mode**:
+  - Command mode (`>` or `》`) now discovers and filters all registered commands across installed plugins (including QuickGate, Checkin, Exam), enabling one-click and Enter execution;
+  - Complements the Xiaolv Common phrase search to establish a unified command cockpit.
+- **Chinese Full-Width Punctuation Adaptive Routing**:
+  - Penetration search model natively supports full-width Chinese punctuation (`！` $\to$ bookmark mode, `》` $\to$ command palette, `：` $\to$ outline penetration, `？` $\to$ cheatsheet);
+  - Mode chips bar (`.sw__mode-chips-bar`) and input placeholder dynamically sync across desktop and mobile.
+- **Unified Dialog Titlebar Across All Platform Surfaces**:
+  - Implemented `mountPlatformDialogTitleWrap`, equipping desktop and mobile switchers, workbench dialog, snippet studio, and settings window with standard 22x22 interstellar purple branded icon, clear title text, compact version badge, and Esc close hint (`.lv-dialog-title-wrap`).
+- **Midnight Black Gold Star-Sheen Hero Tiles**:
+  - Workbench local time (`external-local-time`), world clock (`external-world-clock`), and dark material (`mat-dark`) widgets render with midnight dark background (`.sw-home__cell--midnight`), titanium raikiri golden sheen border, and starburst glow shadow.
+
 ### v0.48.5 (2026-10-23)
 
 - **Chinese Full-Width Punctuation Adaptive Routing**:

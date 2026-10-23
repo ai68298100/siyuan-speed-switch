@@ -116,6 +116,7 @@
   "commandModeLabel": "命令",
   "commandGroupBuiltin": "内建动作",
   "commandGroupGlobal": "思源命令",
+  "commandGroupPlugins": "生态与插件命令",
   "commandModeEmpty": "无匹配命令",
   "quickCaptureSave": "追加到今日日记",
   "quickCaptureEmpty": "请输入内容",

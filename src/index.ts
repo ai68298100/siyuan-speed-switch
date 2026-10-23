@@ -3549,7 +3549,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.5", "iconSettings");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.6", "iconSettings");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
 
         const tabs = document.createElement("div");
@@ -4405,7 +4405,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         holder.dialog = dialog;
         this.platformSwitcherDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.5", "iconLvSpeedSwitch");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.6", "iconLvSpeedSwitch");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
         if (surfaceRoot) {
@@ -4495,7 +4495,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.5", "iconCode");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.6", "iconCode");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
@@ -5514,10 +5514,31 @@ const updatedMap: {[rootId: string]: string} = {};
         }
         // T-6911：内建动作与思源宿主命令分两组展示；组头可折叠（P5 选择器同款交互 +
         // 键盘等价），注册表本身有界（内建 22 + 宿主 12），不再做整体截断。
-        const groups: Array<{key: "builtin" | "global"; label: string; actions: typeof matched}> = [
+        const groups: Array<{key: "builtin" | "global" | "plugins"; label: string; actions: typeof matched}> = [
             {key: "builtin", label: this.i18n.commandGroupBuiltin, actions: matched.filter((action) => action.kind !== "global")},
             {key: "global", label: this.i18n.commandGroupGlobal, actions: matched.filter((action) => action.kind === "global")},
         ];
+        const pluginCommands = this.getPluginCommands();
+        if (pluginCommands.length > 0) {
+            const pluginActions = pluginCommands
+                .filter((cmd) => !q || (cmd.label || "").toLowerCase().includes(q) || (cmd.pluginTitle || "").toLowerCase().includes(q))
+                .slice(0, 15)
+                .map((cmd) => ({
+                    id: cmd.id,
+                    kind: "command" as const,
+                    value: cmd.value,
+                    label: `${cmd.pluginTitle} · ${cmd.label}`,
+                    icon: cmd.icon || "iconPlugin",
+                    targets: ["desktop", "sidebar", "mobile"] as QuickActionTarget[],
+                }));
+            if (pluginActions.length > 0) {
+                groups.push({
+                    key: "plugins",
+                    label: this.i18n.commandGroupPlugins || "生态与插件命令",
+                    actions: pluginActions as any,
+                });
+            }
+        }
         // 支持快门与常用直达 (Epoch 6 联邦规范)
         const commonBridge: any = getBridgeSafely("common");
         if (commonBridge && typeof commonBridge.search === "function" && q) {

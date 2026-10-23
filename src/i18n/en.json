@@ -116,6 +116,7 @@
   "commandModeLabel": "Commands",
   "commandGroupBuiltin": "Built-in actions",
   "commandGroupGlobal": "SiYuan commands",
+  "commandGroupPlugins": "Ecosystem & plugin commands",
   "commandModeEmpty": "No matching commands",
   "quickCaptureSave": "Append to today's journal",
   "quickCaptureEmpty": "Please enter something",
