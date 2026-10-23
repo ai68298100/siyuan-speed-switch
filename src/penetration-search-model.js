@@ -107,8 +107,8 @@ function parsePenetrationQuery(raw) {
         };
     }
 
-    // 3. 书签前缀：以 `!` 开头
-    if (text.startsWith("!")) {
+    // 3. 书签前缀：以 `!` 或 `！` 开头
+    if (text.startsWith("!") || text.startsWith("！")) {
         const needle = text.slice(1).trim();
         return {
             mode: SEARCH_MODES.BOOKMARK,
@@ -125,8 +125,8 @@ function parsePenetrationQuery(raw) {
         };
     }
 
-    // 4. 命令前缀：以 `>` 开头
-    if (text.startsWith(">")) {
+    // 4. 命令前缀：以 `>` 或 `》` 开头
+    if (text.startsWith(">") || text.startsWith("》")) {
         const needle = text.slice(1).trim();
         return {
             mode: SEARCH_MODES.COMMAND,
@@ -281,7 +281,7 @@ function findOutlineColonIndex(text) {
             inQuotes = !inQuotes;
             continue;
         }
-        if (ch === ":" && !inQuotes) {
+        if ((ch === ":" || ch === "：") && !inQuotes) {
             // 排除 URL 协议（如 http: 或 https: 或 file:）
             const prefix = text.slice(0, i).toLowerCase();
             if (prefix === "http" || prefix === "https" || prefix === "file" || prefix === "siyuan") {

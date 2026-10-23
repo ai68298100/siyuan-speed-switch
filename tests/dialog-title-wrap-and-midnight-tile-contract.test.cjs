@@ -28,15 +28,15 @@ test("T-7362: mountPlatformDialogTitleWrap 构建 22×22 紫底白标、标题�
         const dialog = doc.createElement("div");
         dialog.innerHTML = '<div class="b3-dialog__header"><span class="b3-dialog__title">页签切换器</span><button class="b3-dialog__close" type="button"></button></div>';
 
-        const wrap = platformDom.mountPlatformDialogTitleWrap(dialog, "页签切换器", "v0.48.4", "iconLvSpeedSwitch", doc);
+        const wrap = platformDom.mountPlatformDialogTitleWrap(dialog, "页签切换器", "v0.48.5", "iconLvSpeedSwitch", doc);
         assert.ok(wrap, "必须成功创建并返回 title wrap");
         assert.equal(wrap.className, "lv-dialog-title-wrap");
         assert.equal(wrap.querySelector(".lv-dialog-title-text").textContent, "页签切换器");
-        assert.equal(wrap.querySelector(".lv-dialog-title-badge").textContent, "v0.48.4");
+        assert.equal(wrap.querySelector(".lv-dialog-title-badge").textContent, "v0.48.5");
         assert.ok(wrap.querySelector(".lv-dialog-title-icon svg use").getAttribute("xlink:href").includes("iconLvSpeedSwitch"));
 
         // 幂等性自检
-        const wrap2 = platformDom.mountPlatformDialogTitleWrap(dialog, "重复", "v0.48.4", "iconLvSpeedSwitch", doc);
+        const wrap2 = platformDom.mountPlatformDialogTitleWrap(dialog, "重复", "v0.48.5", "iconLvSpeedSwitch", doc);
         assert.equal(wrap2, wrap, "二次挂载必须保持幂等并返回已有节点");
     });
 });
@@ -80,6 +80,22 @@ test("T-7362: 工作台深色与时钟小组件挂载 sw-home__cell--midnight �
         /cell\.classList\.add\("sw-home__cell--midnight"\);/,
         "second-panel-ui.js 必须按规则挂载 sw-home__cell--midnight",
     );
+});
+
+test("T-7362: 穿透检索模型全面支持中文全角符号自适应 (！、》、：、？)", () => {
+    const penetrationModel = require("../src/penetration-search-model.js");
+    const bookmarkRes = penetrationModel.parsePenetrationQuery("！重要书签");
+    assert.equal(bookmarkRes.mode, penetrationModel.SEARCH_MODES.BOOKMARK);
+    assert.equal(bookmarkRes.bookmarkNeedle, "重要书签");
+
+    const cmdRes = penetrationModel.parsePenetrationQuery("》插件设置");
+    assert.equal(cmdRes.mode, penetrationModel.SEARCH_MODES.COMMAND);
+    assert.equal(cmdRes.commandNeedle, "插件设置");
+
+    const outlineRes = penetrationModel.parsePenetrationQuery("工作周报：本周总结");
+    assert.equal(outlineRes.mode, penetrationModel.SEARCH_MODES.OUTLINE);
+    assert.equal(outlineRes.docNeedle, "工作周报");
+    assert.equal(outlineRes.headingNeedle, "本周总结");
 });
 
 test("T-7362 门禁负向验证: 若传入非法元素或空 header 必须安全返回 null", () => {

@@ -5,6 +5,17 @@
 
 ## Changelog (full history)
 
+### v0.48.5 (2026-10-23)
+
+- **Chinese Full-Width Punctuation Adaptive Routing**:
+  - Penetration search model natively supports full-width Chinese punctuation:
+    - `！` (full-width exclamation) $\to$ automatically maps to bookmark mode (`!`);
+    - `》` (full-width greater-than / book angle bracket) $\to$ automatically maps to command palette (`>`);
+    - `：` (full-width colon) $\to$ automatically maps to outline penetration delimiter (`:`);
+    - `？` (full-width question mark) $\to$ automatically maps to symbol cheatsheet (`?`);
+  - Mode chips bar (`.sw__mode-chips-bar`) and input placeholder dynamically sync across desktop and mobile, resolving the friction of punctuation mismatches in Chinese input methods;
+  - Mobile switcher dialog (`createMobileSwitcherDialog`) is now equipped with the `.lv-dialog-title-wrap` branded titlebar.
+
 ### v0.48.4 (2026-10-23)
 
 - **Unified Dialog Titlebar Across All Platform Surfaces**:

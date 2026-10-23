@@ -3549,7 +3549,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.4", "iconSettings");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.5", "iconSettings");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
 
         const tabs = document.createElement("div");
@@ -4405,7 +4405,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         holder.dialog = dialog;
         this.platformSwitcherDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.4", "iconLvSpeedSwitch");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.5", "iconLvSpeedSwitch");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
         if (surfaceRoot) {
@@ -4495,7 +4495,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.4", "iconCode");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.5", "iconCode");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
@@ -5283,7 +5283,8 @@ const updatedMap: {[rootId: string]: string} = {};
             this.recordRecentSearchQuery?.(keyword);
         }
         scrollElement.dataset.swDocSearchQuery = keyword;
-        searchInput.dataset.swMode = keyword.startsWith(">") ? "command" : "search";
+        const isCommand = keyword.startsWith(">") || keyword.startsWith("》");
+        searchInput.dataset.swMode = isCommand ? "command" : "search";
         const session = getDocSearchSession.call(this, scrollElement);
         // 所有输入分支（含命令模式）均立即取消旧定时器/请求并使旧结果失效。
         const version = beginSearch(session);
@@ -5291,7 +5292,7 @@ const updatedMap: {[rootId: string]: string} = {};
         // T-6802 查询运算符：解析一次，全链路共享（本地页签匹配 / 内核查询清洗 /
         // 统一索引分区 / 文档结果客户端预过滤）。发给内核的查询剔除排除项。
         const parsedQuery = parseSearchQuery(searchInput.value);
-        const kernelQuery = keyword.startsWith(">") ? "" : formatCleanQuery(parsedQuery);
+        const kernelQuery = isCommand ? "" : formatCleanQuery(parsedQuery);
         this.docSearchState.parsedQueries.set(scrollElement, parsedQuery);
         const localTabCount = this.filterCards(scrollElement, searchInput.value, new Set(), filters, parsedQuery);
         updateDocSearchHealth.call(this, scrollElement, {
@@ -5308,6 +5309,11 @@ const updatedMap: {[rootId: string]: string} = {};
         // T-6799 统一索引：查询时把"收藏/最近关闭/文档集"的命中分区渲染在
         // 页签卡片与全库文档结果之间；空查询时整块移除。
         // T-6820 命令前缀：`>` 进入命令面板模式，只列可执行动作（不再搜文档）
+        if (keyword.startsWith("》")) {
+            scrollElement.querySelector(".sw__snippet-results")?.remove();
+            this.renderCommandList(scrollElement, keyword.slice(1).trim(), onClose);
+            return;
+        }
         if (keyword.startsWith(">")) {
             scrollElement.querySelector(".sw__snippet-results")?.remove();
             this.renderCommandList(scrollElement, keyword.slice(1).trim(), onClose);
@@ -5422,11 +5428,11 @@ const updatedMap: {[rootId: string]: string} = {};
         const updateActiveMode = () => {
             const val = (searchInput.value || "").trim();
             let matchedPrefix = "";
-            if (val.startsWith("@") || (val.includes(":") && !val.includes("://"))) matchedPrefix = "@";
+            if (val.startsWith("@") || (val.includes(":") && !val.includes("://")) || (val.includes("：") && !val.includes("://"))) matchedPrefix = "@";
             else if (val.startsWith("^")) matchedPrefix = "^";
             else if (val.startsWith("#")) matchedPrefix = "#";
-            else if (val.startsWith("!")) matchedPrefix = "!";
-            else if (val.startsWith(">")) matchedPrefix = ">";
+            else if (val.startsWith("!") || val.startsWith("！")) matchedPrefix = "!";
+            else if (val.startsWith(">") || val.startsWith("》")) matchedPrefix = ">";
             else if (val.startsWith("?") || val.startsWith("？")) matchedPrefix = "?";
 
             chipButtons.forEach((btn) => {
@@ -5449,7 +5455,7 @@ const updatedMap: {[rootId: string]: string} = {};
             btn.innerHTML = `<svg width="12" height="12"><use xlink:href="#${icon}"></use></svg><span>${label}</span>`;
             btn.addEventListener("click", () => {
                 const rawVal = searchInput.value || "";
-                const currentPrefixMatch = rawVal.match(/^[@^#!>?？]/);
+                const currentPrefixMatch = rawVal.match(/^[@^#!>?？》！]/);
                 const pureText = currentPrefixMatch ? rawVal.slice(1).trim() : rawVal.trim();
                 if (prefix === "") {
                     searchInput.value = pureText;
@@ -13656,6 +13662,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         });
         holder.dialog = dialog;
         this.mobileSwitcherDialog = dialog;
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.5", "iconLvSpeedSwitch");
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         return dialog;
     }
 
