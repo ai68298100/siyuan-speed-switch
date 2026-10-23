@@ -6701,7 +6701,7 @@ class SpeedSwitchPlugin extends siyuan_1.Plugin {
             const normalized = (0, kernel_widget_model_1.normalizeTodayReservationsConfig)(config);
             const notebookScope = (0, agent_capabilities_1.buildNotebookBoxScope)(normalized.notebook, "B");
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT B.id, B.content, B.hpath, B.updated, A.value AS date FROM blocks AS B INNER JOIN attributes AS A ON A.block_id=B.id AND A.name='custom-reservation' WHERE A.value >= strftime('%Y%m%d', datetime('now','localtime')) AND A.value <= strftime('%Y%m%d', datetime('now','localtime','+${normalized.days} days'))${notebookScope} ORDER BY A.value, B.updated DESC LIMIT 48`,
+                stmt: `SELECT B.id, B.content, B.hpath, B.updated, A.value AS date FROM blocks AS B INNER JOIN attributes AS A ON A.block_id=B.id AND (A.name='custom-lv-raikiri-reservation' OR A.name='custom-reservation') WHERE A.value >= strftime('%Y%m%d', datetime('now','localtime')) AND A.value <= strftime('%Y%m%d', datetime('now','localtime','+${normalized.days} days'))${notebookScope} ORDER BY A.value, B.updated DESC LIMIT 48`,
             });
             if (!Array.isArray(json === null || json === void 0 ? void 0 : json.data))
                 throw new Error("invalid_today_reservations");
@@ -7611,10 +7611,10 @@ class SpeedSwitchPlugin extends siyuan_1.Plugin {
         custom.value = /^icon[A-Za-z0-9_-]+$/.test(action.icon || "") ? "" : (action.icon || "");
         const customApply = document.createElement("button");
         customApply.type = "button";
-        customApply.className = "b3-button sw-quick-icon-picker__custom-apply";
+        customApply.className = "b3-button sw-quick-icon-picker__custom-apply sw-quick-icon-picker__custom-lv-raikiri-apply";
         customApply.textContent = this.i18n.quickIconApplyCustom || "使用自定义图标";
         const customRow = document.createElement("div");
-        customRow.className = "sw-quick-icon-picker__custom-row";
+        customRow.className = "sw-quick-icon-picker__custom-row sw-quick-icon-picker__custom-lv-raikiri-row";
         const customPreview = document.createElement("span");
         customPreview.className = "sw-quick-icon-picker__preview";
         customPreview.setAttribute("aria-label", this.i18n.quickIconPreview);

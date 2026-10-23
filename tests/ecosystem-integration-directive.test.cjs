@@ -103,9 +103,7 @@ test("Directive-4: 块属性收敛、plugin.json 规范与合规文件就绪", (
     assert.equal(pluginJson.displayName.default, "Lv Speed Switch", "英文名必须对齐为 Lv Speed Switch");
     assert.equal(pluginJson.settingsWindow, true, "必须开启 settingsWindow: true");
     assert.equal(pluginJson.minAppVersion, "3.8.4", "minAppVersion 必须提升至 3.8.4");
-    assert.ok(pluginJson.keywords.includes("小驴"));
-    assert.ok(pluginJson.keywords.includes("xiaolv"));
-    assert.ok(pluginJson.keywords.includes("lv"));
+    assert.deepEqual(pluginJson.keywords.slice(0, 4), ["小驴", "小驴雷切", "xiaolv", "lv"], "关键词前置项必须为小驴家族规范");
 
     // 块属性命名空间收敛
     assert.match(indexTs, /custom-lv-raikiri-reservation/);

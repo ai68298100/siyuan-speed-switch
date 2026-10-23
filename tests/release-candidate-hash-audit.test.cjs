@@ -65,7 +65,7 @@ test("T-7350: package.zip、dist/index.js 与 release-readiness.md 记录的散�
     const zipSha = calcSha256(zipPath);
     const bundleSha = calcSha256(bundlePath);
 
-    assert.equal(zipSha, "5cb0121e6ebac42aa79626a5d83325f672db3d5ed5c1b2f681947c32685abc6a");
+    assert.equal(zipSha, "bb9f5185c568aeb87c5b6795240c629d4e6b8a9402c07f36e3d26f9b7b31cd32");
     assert.equal(bundleSha, "da0d6579a6a13e898edc0e0595570a742e94a7c668ea583be0fe2041af00d1e8");
 
     assert.ok(readinessContent.includes(zipSha), "release-readiness.md 必须包含当前构建 package.zip 的 SHA-256");
