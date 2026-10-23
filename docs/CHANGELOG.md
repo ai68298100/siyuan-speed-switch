@@ -4,6 +4,15 @@
 
 ## 更新日志（完整历史）
 
+### v0.48.3（2026-10-23）
+
+- **小驴生态 Epoch 6 联邦规范全方位升级（Ecosystem Federation & Bridge Kit）**：
+  - **第三方小组件 800ms 熔断与单向异常隔离**：调用任何外部组件时严格执行 800ms 超时熔断与 3s 快照缓存，异常时仅在卡片内优雅降级渲染 `[ 📦 数据暂未返回，点击重试 ]`，杜绝任何外部异常拖垮雷切工作台；维护好 `siyuanSpeedSwitch`、`xiaolvSpeedSwitch`、`xiaolvRaikiri`、`lvRaikiri` 四别名挂载与卸载安全解绑；
+  - **预置全生态 7 大标准小组件**：内置小驴打卡习惯连击（`checkin-daily-streaks`）、小驴考试（`exam-daily-summary`）、小驴闪卡（`cards-due-summary`）、小驴拾遗（`glean-later-list`）、小驴管家（`home-expiry-reminders`）、小驴人脉（`contacts-upcoming`）与小驴常用（`common-quick-palette`），支持命令模式（`>`）快门生态命令与常用语直达搜索；
+  - **顶栏单色矢量图标升级**：`CARD_ICON_SPRITE` 注入与 Logo 1:1 对齐的 `iconLvSpeedSwitch`（32×32 矢量三层阶梯页签 + 穿透利落雷刃 + 能量金核点），顶栏注册图标全面对齐；
+  - **星际紫+午夜黑金美学 Token 注入**：引入 `--lv-brand`、`--lv-brand-soft`、`--lv-accent-gold`、`--lv-midnight-card`，工作台支持午夜深空黑金卡底色质感，按钮支持 1.5px 物理微触感，弹窗标题规范统一；
+  - **深层工程规范与历史排雷**：块属性收敛为命名空间前缀 `custom-lv-raikiri-*`，`plugin.json` 英文名规范为 `Lv Speed Switch`，开启 `settingsWindow: true`，最低宿主版本提升至 `3.8.4`，TypeScript 编译目标升级至 `ES2022`，补齐根目录 `CHANGELOG.md` 与 `SECURITY.md`，保持 256×256 殿堂级 `icon.png` 绝对一致。
+
 ### v0.48.2（2026-10-22）
 
 - **顶栏点击秒级直出与深度克隆性能根治（Instant Open & Shallow Clone Engine）**：

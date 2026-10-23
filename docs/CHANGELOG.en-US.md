@@ -5,6 +5,15 @@
 
 ## Changelog (full history)
 
+### v0.48.3 (2026-10-23)
+
+- **Xiaolv Ecosystem Epoch 6 Federation Standard & Bridge Kit**:
+  - **800ms Circuit Breaker & One-Way Failure Isolation**: Strict 800ms timeout circuit breaker and 3s snapshot cache for third-party widget readers; graceful fallback rendering (`[ 📦 Data not ready, click to retry ]`) when external modules fail or time out, preventing any foreign code from breaking the Raikiri workbench; full four-alias mounting (`siyuanSpeedSwitch`, `xiaolvSpeedSwitch`, `xiaolvRaikiri`, `lvRaikiri`) with safe lifecycle unmounting;
+  - **Pre-configured 7 Core Ecosystem Widgets**: Built-in widget adapters for Xiaolv Checkin (`checkin-daily-streaks`), Exam (`exam-daily-summary`), Flashcards (`cards-due-summary`), Glean (`glean-later-list`), Butler (`home-expiry-reminders`), Contacts (`contacts-upcoming`), and Common Phrases (`common-quick-palette`); command mode (`>`) supports QuickGate commands and instant phrase search;
+  - **Monochrome Vector Icon Upgrade**: Injected 32x32 `iconLvSpeedSwitch` (three-tier tab cascade + raikiri blade + energy gold core) into `CARD_ICON_SPRITE` and aligned topbar registration;
+  - **Interstellar Purple & Midnight Black Gold Aesthetic**: Injected `--lv-brand`, `--lv-brand-soft`, `--lv-accent-gold`, and `--lv-midnight-card` tokens, added 1.5px physical tactile feedback to buttons, and unified `.lv-dialog-title-wrap` titlebars;
+  - **Deep Engineering Hardening**: Standardized block attributes under `custom-lv-raikiri-*` namespace, updated `plugin.json` display name to `Lv Speed Switch`, enabled `settingsWindow: true`, bumped `minAppVersion` to `3.8.4`, upgraded TypeScript compiler target to `ES2022`, added root `CHANGELOG.md` and `SECURITY.md`, and preserved the 256x256 high-resolution `icon.png`.
+
 ### v0.48.2 (2026-10-22)
 
 - **Instant Topbar Switcher Open & Shallow Clone Engine**:

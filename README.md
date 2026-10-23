@@ -1,19 +1,19 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.48.2-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.3-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **最近正式版：v0.48.2（2026-10-22）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.2) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **最近正式版：v0.48.3（2026-10-23）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.3) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
-## 本次更新（v0.48.2 · 2026-10-22）
+## 本次更新（v0.48.3 · 2026-10-23）
 
-- **顶栏点击秒开与长文档克隆性能根治**：大长文档缩略图彻底由 `cloneNode(true)` 全量深拷贝重构为 `cloneNode(false)` 浅克隆 + 仅拷贝首屏前 6 个子块，克隆开销彻底与文档大小解耦（耗时压降至 0.1ms）；桌面端弹窗配置 `disableAnimation: true` 消除 50ms 延迟停顿，点击顶栏瞬间秒出。
-- **消除全卡片二次搬迁与强制同步 Reflow**：重构 `renderList` 流式装配，直接装入 `contentHost` 容器，消除了旧代码在挂载后又拔插所有卡片的二次循环（`while (scrollElement.firstChild)`）与 `clientWidth` 引起的强制重排。
-- **微任务分层调度**：清理缩略图孤儿缓存（`pruneThumbCache`）与零词条工作台（`renderWorkbench`）以异步微任务挂载，卡片列表与搜索框获得最高首屏绘制优先级。
-- **第一面板多模态搜索模式药丸栏**：桌面端、移动端与侧栏 Dock 搜索顶栏全面常驻小驴打卡风格饱满全圆角药丸 Chips（`[全部页签]`、`[@ 大纲]`、`[^ 正文]`、`[# 标签]`、`[! 书签]`、`[> 命令]`、`[? 速查]`），支持触控横向滑动点选与输入框专属 Placeholder 实时联动。
-- **全库搜索结果次级动作画板与快捷引用**：全库文档搜索结果行接入 Raycast 风格次级动作画板（`⌘K` / `Ctrl+K`），支持分屏/思阅/思播/复制等动作；获焦时支持 `Alt+C` 单键秒级复制块超链接。
+- **小驴生态 Epoch 6 联邦规范全方位升级**：引入 `src/api/ecosystem-bridge-kit.ts`，强化第三方小组件 800ms 超时熔断与 3s 快照缓存，全链路 try-catch 单向异常隔离，绝不拖垮宿主工作台；维护好 `siyuanSpeedSwitch`、`xiaolvSpeedSwitch`、`xiaolvRaikiri`、`lvRaikiri` 四别名挂载与卸载解绑。
+- **预置全生态 7 大标准小组件**：内置小驴打卡习惯连击、小驴考试概览、小驴闪卡到期、小驴拾遗稍后读、小驴管家效期、小驴人脉跟进与小驴常用语，支持命令模式（`>`）快门生态命令与常用语直达搜索。
+- **顶栏单色矢量图标升级**：`CARD_ICON_SPRITE` 注入与 Logo 1:1 对齐的 `iconLvSpeedSwitch`（32×32 矢量三层阶梯页签 + 穿透利落雷刃 + 能量金核点），顶栏注册图标全面对齐。
+- **星际紫+午夜黑金美学 Token 注入**：引入 `--lv-brand`、`--lv-brand-soft`、`--lv-accent-gold`、`--lv-midnight-card`，工作台支持午夜深空黑金卡底色质感，按钮支持 1.5px 物理微触感，弹窗标题规范统一。
+- **深层工程规范与历史排雷**：块属性收敛为命名空间前缀 `custom-lv-raikiri-*`，`plugin.json` 英文名规范为 `Lv Speed Switch`，开启 `settingsWindow: true`，最低宿主版本提升至 `3.8.4`，TypeScript 编译目标升级至 `ES2022`，补齐根目录 `CHANGELOG.md` 与 `SECURITY.md`，保持 256×256 殿堂级 `icon.png` 绝对一致。
 
 逐项说明、验证数据与历史版本见[完整更新日志](./docs/CHANGELOG.md)。
 
@@ -399,7 +399,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和体积预算（归档 578 KiB、raw 1160 KiB、单条目压缩 320 KiB，见 [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.48.2`，包含深入穿透检索、次级动作画板、多端 E2E 交互与极限窄侧栏自适应加固。
+当前版本为 `v0.48.3`，包含小驴生态 Epoch 6 联邦规范、深入穿透检索、次级动作画板、多端 E2E 交互与极限窄侧栏自适应加固。
 
 <details>
 <summary>历史更新日志（点击展开）</summary>
