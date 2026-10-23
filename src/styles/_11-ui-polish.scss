@@ -330,12 +330,22 @@
         box-shadow: var(--sw-focus-ring);
     }
 
-    .sw__group-count,
+    .sw__group-count {
+        border: 1px solid var(--sw-polish-line);
+        background: color-mix(in srgb, var(--lv-brand, var(--b3-theme-primary)) 8%, var(--b3-theme-surface));
+        color: var(--lv-brand, var(--b3-theme-primary));
+        border-radius: var(--sw-platform-radius-pill, 999px);
+        padding: 0 var(--sw-space-xs, 4px);
+        font-variant-numeric: tabular-nums;
+        font-weight: var(--sw-weight-semibold, 600);
+    }
+
     .sw__card[data-sw-digit]::after,
     .sw__doc-item[data-sw-digit]::after {
         border: 1px solid var(--sw-polish-line);
+        border-bottom: 2px solid color-mix(in srgb, var(--b3-theme-on-surface) 24%, var(--b3-border-color));
         background: var(--b3-theme-surface);
-        box-shadow: 0 1px 2px rgb(30 34 50 / 8%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 4px rgba(0, 0, 0, 0.08);
         font-variant-numeric: tabular-nums;
     }
 
@@ -354,7 +364,8 @@
             bottom: 14px;
             width: 3px;
             border-radius: 0 var(--sw-platform-radius-pill, 999px) var(--sw-platform-radius-pill, 999px) 0;
-            background: var(--b3-theme-primary);
+            background: linear-gradient(180deg, var(--lv-brand, var(--b3-theme-primary)) 0%, var(--lv-accent-gold, #FACC15) 100%);
+            box-shadow: 0 0 8px color-mix(in srgb, var(--lv-brand, var(--b3-theme-primary)) 60%, transparent);
             opacity: 0;
             transform: scaleY(0.4);
             transition: opacity $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease;
@@ -455,7 +466,8 @@
             bottom: 12px;
             width: 3px;
             border-radius: 0 var(--sw-platform-radius-pill, 999px) var(--sw-platform-radius-pill, 999px) 0;
-            background: var(--b3-theme-primary);
+            background: linear-gradient(180deg, var(--lv-brand, var(--b3-theme-primary)) 0%, var(--lv-accent-gold, #FACC15) 100%);
+            box-shadow: 0 0 8px color-mix(in srgb, var(--lv-brand, var(--b3-theme-primary)) 60%, transparent);
             opacity: 0;
             transform: scaleY(0.4);
             transition: opacity $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease;

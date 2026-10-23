@@ -5,6 +5,19 @@
 
 ## Changelog (full history)
 
+### v0.48.7 (2026-10-23)
+
+- **First Panel Masterpiece Polish (The Storefront Interface)**:
+  - Tab cards (`.sw__card`) and document search results (`.sw__doc-item`) active indicator stripes upgraded to **interstellar purple to titanium raikiri gold dual-gradient energy shimmer** (`linear-gradient`) with ambient soft glow;
+  - Window group counters (`.sw__group-count`) upgraded to branded rounded pill capsules with tabular numerals;
+  - 1-9 direct access digit keycaps (`[data-sw-digit]::after`) upgraded with 2px physical mechanical keycap bottom edge and tactile inset shadow.
+- **Ecosystem & Plugin Commands Discovery In Command Mode**:
+  - Command mode (`>` or `》`) now discovers and filters all registered commands across installed plugins (including QuickGate, Checkin, Exam), enabling one-click and Enter execution;
+  - Complements the Xiaolv Common phrase search to establish a unified command cockpit.
+- **Chinese Full-Width Punctuation Adaptive Routing**:
+  - Penetration search model natively supports full-width Chinese punctuation (`！` $\to$ bookmark mode, `》` $\to$ command palette, `：` $\to$ outline penetration, `？` $\to$ cheatsheet);
+  - Mode chips bar (`.sw__mode-chips-bar`) and input placeholder dynamically sync across desktop and mobile.
+
 ### v0.48.6 (2026-10-23)
 
 - **Ecosystem & Plugin Commands Discovery In Command Mode**:

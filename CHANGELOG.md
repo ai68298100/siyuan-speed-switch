@@ -6,6 +6,14 @@
 
 ---
 
+### v0.48.7 (2026-10-23)
+- **第一面板门面专项深度打磨（First Panel Masterpiece Polish）**：
+  - 页签卡片（`.sw__card`）与文档搜索结果行（`.sw__doc-item`）激活指示微条升级为**星际深紫至钛金雷刃能量双色渐变光芒**（`linear-gradient`）并带有柔和的辉光光晕（ambient glow），与小驴雷切品牌深度共鸣；
+  - 组头标签计数（`.sw__group-count`）升级为品牌色圆角胶囊标签，增强分组层次感；
+  - 卡片与文档结果行的 1-9 键盘直达角标（`[data-sw-digit]::after`）升级为立体 2px 物理机械键帽质感，键帽立体感与动作画板保持一致。
+- **命令模式全生态插件动作接入（Ecosystem Commands Discovery）**：切换器命令模式（`>` 或 `》`）在既有内建动作与思源命令基础上，正式接入生态与已安装插件命令检索组（`.sw__command-group`），全面支持快门（QuickGate）、打卡（Checkin）、考试（Exam）等插件命令一键检索与回车执行。
+- **中文全角穿透符号自适应（Chinese Full-Width Punctuation Adaptive Routing）**：穿透检索模型全面支持中文全角标点符号智能映射（`！` $\to$ 书签模式、`》` $\to$ 命令面板、`：` $\to$ 大纲穿透、`？` $\to$ 符号速查），桌面端与移动端模式药丸栏与输入框实时响应。
+
 ### v0.48.6 (2026-10-23)
 - **命令模式全生态插件动作接入（Ecosystem Commands Discovery）**：切换器命令模式（`>` 或 `》`）在既有内建动作与思源命令基础上，正式接入生态与已安装插件命令检索组（`.sw__command-group`），全面支持快门（QuickGate）、打卡（Checkin）、考试（Exam）等插件命令一键检索与回车执行。
 - **中文全角穿透符号自适应（Chinese Full-Width Punctuation Adaptive Routing）**：穿透检索模型全面支持中文全角标点符号智能映射（`！` $\to$ 书签模式、`》` $\to$ 命令面板、`：` $\to$ 大纲穿透、`？` $\to$ 符号速查），桌面端与移动端模式药丸栏与输入框实时响应，彻底解决中文输入法下符号误输入无法触发模式的体验痛点。
