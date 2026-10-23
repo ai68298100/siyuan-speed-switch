@@ -5,6 +5,16 @@
 
 ## Changelog (full history)
 
+### v0.48.9 (2026-10-23)
+
+- **SiReader & SiMedia Deep Integration**:
+  - Workbench mounts "SiReader Recent Books (`sireader-recent`)" and "SiMedia Now Playing (`simedia-active`)" widgets to track reading progress and playing audio/video titles;
+  - Action palette actions `open-in-reader` and `open-in-media` prioritize native reader/player methods with graceful `openTab` fallbacks.
+- **Ecosystem Event Bus Real-Time Workbench Refresh**:
+  - The workbench listens to ecosystem lifecycle events across Xiaolv Checkin, Flashcards, Exam, Butler, and SiMedia/SiReader, automatically re-rendering active widgets upon brother plugin mutations without manual reload!
+- **First Panel Masterpiece Polish**:
+  - Keyboard navigation for mode chips, fluid hover scaling for card buttons, and dual-gradient energy shimmer stripes.
+
 ### v0.48.8 (2026-10-23)
 
 - **Mode Chips Keyboard Navigation & Fluid Focus Handoff**:

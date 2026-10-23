@@ -4,6 +4,16 @@
 
 ## 更新日志（完整历史）
 
+### v0.48.9（2026-10-23）
+
+- **思阅（SiReader）与思播（SiMedia）深度联动升级**：
+  - 工作台接入「思阅 · 最近阅读（`sireader-recent`）」与「思播 · 正在播放（`simedia-active`）」小组件，实时显示书架在读书目进度与正在播放的音视频标题；
+  - 动作画板 `open-in-reader`（在思阅中阅读）与 `open-in-media`（在思播中打开）优先唤起上游专有播放/阅读入口，并自带 `openTab` 优雅降级。
+- **小驴全生态总线事件实时刷新联动（Ecosystem Event Bus Integration）**：
+  - 雷切工作台聚合监听小驴打卡（`checkin:event-recorded`）、闪卡（`lv-cards:reviewed`）、考试（`lv-exam:session-ended`）、管家（`lv-home:data-changed`）与思播/思阅事件，一旦兄弟插件产生数据变动，雷切工作台组件实时自动无感重绘！
+- **第一面板门面专项深度打磨**：
+  - 模式药丸全键盘循环导航、卡片操作把手平滑微动效与双色能量微光指示条。
+
 ### v0.48.8（2026-10-23）
 
 - **模式药丸栏键盘循环导航与输入框焦点互通（Mode Chips Keyboard Navigation）**：

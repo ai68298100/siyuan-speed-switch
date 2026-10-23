@@ -106,7 +106,7 @@ function openSecondPanel(context) {
     dialogHolder.dialog = dialog;
     this.workbenchDialog = dialog;
     (_d = dialog.element.querySelector(".b3-dialog__container")) === null || _d === void 0 ? void 0 : _d.classList.add("sw-platform-dialog", "sw-platform-dialog--workbench");
-    (0, platform_dom_1.mountPlatformDialogTitleWrap)(dialog.element, this.i18n.dialogWorkbenchTitle || "工作台", "v0.48.8", "iconLayoutHome");
+    (0, platform_dom_1.mountPlatformDialogTitleWrap)(dialog.element, this.i18n.dialogWorkbenchTitle || "工作台", "v0.48.9", "iconLayoutHome");
     (0, platform_dom_1.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "to close");
     if (fullscreenMode) {
         (_e = dialog.element.querySelector(".b3-dialog__container")) === null || _e === void 0 ? void 0 : _e.classList.add("sw-dialog--fullscreen");

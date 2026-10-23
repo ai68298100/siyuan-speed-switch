@@ -1867,5 +1867,9 @@
   "homeContactsUpcoming": "人脉待跟进",
   "homeDescContactsUpcoming": "近期好友生日与互动跟进备忘",
   "homeCommonQuickPalette": "高频常用语",
-  "homeDescCommonQuickPalette": "高频文本片段与常用语快捷"
+  "homeDescCommonQuickPalette": "高频文本片段与常用语快捷",
+  "homeSireaderRecent": "最近阅读",
+  "homeDescSireaderRecent": "思阅书架与最近在读书目进度",
+  "homeSimediaActive": "正在播放",
+  "homeDescSimediaActive": "思播当前音视频播放状态与进度"
 }

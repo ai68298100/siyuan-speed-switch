@@ -1867,5 +1867,9 @@
   "homeContactsUpcoming": "Upcoming Contacts",
   "homeDescContactsUpcoming": "Upcoming birthdays and relationship follow-ups",
   "homeCommonQuickPalette": "Quick Common Phrases",
-  "homeDescCommonQuickPalette": "Frequently used text snippets and quick phrases"
+  "homeDescCommonQuickPalette": "Frequently used text snippets and quick phrases",
+  "homeSireaderRecent": "Recent Reading",
+  "homeDescSireaderRecent": "SiReader bookshelf and reading progress",
+  "homeSimediaActive": "Now Playing",
+  "homeDescSimediaActive": "SiMedia playback status and progress"
 }

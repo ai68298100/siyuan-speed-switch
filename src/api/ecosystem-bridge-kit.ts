@@ -298,6 +298,25 @@ export interface QuickGateBridgeApi {
     runCommand(plugin: string, command: string): Promise<ActionResult<unknown>>;
 }
 
+// --- ⑩ 思阅 (siyuan-sireader) ---
+export interface SiReaderBridgeApi {
+    readonly version?: string;
+    openDoc?(id: string): void;
+    getRecentBooks?(): Array<{ title: string; progress?: number; docId?: string }>;
+}
+
+// --- ⑪ 思播 (siyuan-media-player) ---
+export interface SiMediaBridgeApi {
+    controller?: {
+        isPlaying?: () => boolean;
+        getCurrentMedia?: () => { title?: string; name?: string; url?: string };
+        getCurrentTime?: () => number;
+        getDuration?: () => number;
+        play?: (media?: unknown) => void;
+        pause?: () => void;
+    };
+}
+
 /* ========================================================================= */
 /* 4. 统一别名检索表 (Ecosystem Bridge Aliases Registry)                      */
 /* ========================================================================= */
@@ -312,6 +331,8 @@ export const BRIDGE_ALIASES = Object.freeze({
     cards: ["xiaolvCards", "lvCards", "LvCards", "siyuanCards"],
     common: ["xiaolvCommon", "LvCommon", "lvCommon", "siyuanCommon"],
     quickgate: ["LvQuickgate", "lvQuickgate", "xiaolvQuickgate", "siyuanQuickgate"],
+    sireader: ["sireader", "SiReader", "siyuanSireader"],
+    simedia: ["siyuanMediaPlayer", "siplayer", "SiMedia"],
 } as const);
 
 /* ========================================================================= */

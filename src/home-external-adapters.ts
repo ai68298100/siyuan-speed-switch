@@ -569,4 +569,40 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                 return { items: [], emptyHint: "📦 数据暂未返回，点击重试", status: "ready", retryable: true };
             }
         }, 800, 3000), {}, commonSource);
+
+        // ==================== 思阅与思播生态联动组件 ====================
+        // ⑧ 思阅 · 最近阅读 (sireader-recent)
+        const sireaderSource = {pluginId: "siyuan-sireader", name: "思阅", icon: "iconBook", order: 14};
+        register("sireader-recent", this.i18n.homeSireaderRecent || "最近阅读", "iconBook", this.i18n.homeDescSireaderRecent || "思阅书架与最近在读书目进度", [], wrapEcosystemModuleRead(async () => {
+            const bridge: any = getBridgeSafely("sireader");
+            if (!bridge) return { items: [], emptyHint: "未检测到思阅插件", status: "ready" };
+            try {
+                const books = typeof bridge.getRecentBooks === "function" ? bridge.getRecentBooks() : [];
+                const rows = (books || []).slice(0, 5).map((book: any) => ({
+                    label: book.title || "书籍",
+                    value: Number.isFinite(book.progress) ? `${book.progress}%` : "阅读中",
+                }));
+                return { items: rows, emptyHint: rows.length ? "" : "暂无最近阅读书目", status: "ready" };
+            } catch {
+                return { items: [], emptyHint: "📦 数据暂未返回，点击重试", status: "ready", retryable: true };
+            }
+        }, 800, 3000), {}, sireaderSource);
+
+        // ⑨ 思播 · 正在播放 (simedia-active)
+        const simediaSource = {pluginId: "siyuan-media-player", name: "思播", icon: "iconPlay", order: 15};
+        register("simedia-active", this.i18n.homeSimediaActive || "正在播放", "iconPlay", this.i18n.homeDescSimediaActive || "思播当前音视频播放状态与进度", [], wrapEcosystemModuleRead(async () => {
+            const bridge: any = getBridgeSafely("simedia");
+            if (!bridge || !bridge.controller) return { items: [], emptyHint: "未检测到思播插件", status: "ready" };
+            try {
+                const isPlaying = typeof bridge.controller.isPlaying === "function" ? bridge.controller.isPlaying() : false;
+                const current = typeof bridge.controller.getCurrentMedia === "function" ? bridge.controller.getCurrentMedia() : null;
+                const title = current?.title || current?.name || "当前媒体";
+                const rows = [
+                    { label: isPlaying ? "▶ 正在播放" : "⏸ 暂停中", value: title },
+                ];
+                return { items: rows, stat: { value: isPlaying ? "在播" : "暂停", label: "播放状态" }, emptyHint: "", status: "ready" };
+            } catch {
+                return { items: [], emptyHint: "📦 数据暂未返回，点击重试", status: "ready", retryable: true };
+            }
+        }, 800, 3000), {}, simediaSource);
 }

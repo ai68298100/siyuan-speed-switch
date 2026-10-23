@@ -52,6 +52,8 @@ const PREVIEW_KINDS = Object.freeze({
     "home-expiry-reminders": "tasks",
     "contacts-upcoming": "documents",
     "common-quick-palette": "tasks",
+    "sireader-recent": "documents",
+    "simedia-active": "media",
 });
 const SOURCE_INFO = Object.freeze({
     "external-local-time": Object.freeze({providerName: "SiYuan runtime", integration: "direct", privacy: "local-only"}),
@@ -84,6 +86,8 @@ const SOURCE_INFO = Object.freeze({
     "home-expiry-reminders": Object.freeze({providerName: "小驴管家", integration: "local-bridge", privacy: "local-only"}),
     "contacts-upcoming": Object.freeze({providerName: "小驴人脉", integration: "local-bridge", privacy: "local-only"}),
     "common-quick-palette": Object.freeze({providerName: "小驴常用", integration: "local-bridge", privacy: "local-only"}),
+    "sireader-recent": Object.freeze({providerName: "思阅", integration: "local-bridge", privacy: "local-only"}),
+    "simedia-active": Object.freeze({providerName: "思播", integration: "local-bridge", privacy: "local-only"}),
 });
 const DEPENDENCY_INFO = Object.freeze({
     "clipped-unread": Object.freeze({kind: "plugin", required: true, name: "思源剪藏（siyuan-clipper）", installUrl: "", projectUrl: "", setup: "安装并启用支持 clipped-unread 协议的剪藏插件；本插件不再从通用标签读取剪藏数据，协议说明见组件协议文档", network: "由提供方插件决定；本组件不自行查询标签", platforms: "desktop/sidebar/mobile"}),

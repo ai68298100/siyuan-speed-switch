@@ -1918,6 +1918,43 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.eventBus.on("sync-end", syncEnd);
         this.eventBus.on("sync-fail", syncFail);
         this.eventBus.on("open-siyuan-url-plugin", openSiyuanUrlPlugin as any);
+        this.bindEcosystemEventSubscriptions();
+    }
+
+    private ecosystemUnsubscribers: Array<() => void> = [];
+
+    private bindEcosystemEventSubscriptions() {
+        if (typeof window === "undefined") return;
+        const triggerHomeRefresh = () => {
+            if (this.isUnloading) return;
+            this.homeModuleChangeListeners.forEach((listener) => listener());
+        };
+        // 聚合小驴打卡、闪卡、考试、人脉、管家、拾遗、常用、思阅与思播生命周期事件
+        const eventNames = [
+            "checkin:event-recorded", "checkin:event-deleted",
+            "lv-cards:reviewed",
+            "lv-exam:session-ended", "lv-exam:wrongbook-changed",
+            "lv-home:data-changed",
+            "lv-contacts:data-changed",
+            "lv-glean:data-changed", "lv-glean:clip-status-changed",
+            "xiaolv:common:item-created", "xiaolv:common:item-updated", "xiaolv:common:item-deleted",
+            "reader:open", "reader:close", "reader:focus", "reader:blur",
+            "mediaChanged", "playerDestroy",
+        ];
+        eventNames.forEach((name) => {
+            const handler = () => {
+                if (this.workbenchDialog?.element?.isConnected) {
+                    this.scheduleAnimationFrame(triggerHomeRefresh);
+                }
+            };
+            window.addEventListener(name, handler);
+            this.ecosystemUnsubscribers.push(() => window.removeEventListener(name, handler));
+        });
+    }
+
+    private unbindEcosystemEventSubscriptions() {
+        this.ecosystemUnsubscribers.forEach((unsub) => unsub());
+        this.ecosystemUnsubscribers = [];
     }
 
     private setSyncPresentation(syncing: boolean) {
@@ -2210,6 +2247,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 this.eventBus.off("open-siyuan-url-plugin", globalEventHandlers.openSiyuanUrlPlugin as any);
             }
         }
+        this.unbindEcosystemEventSubscriptions();
         this.globalEventHandlers = null;
         this.syncDepth = 0;
         this.syncRefreshPending = false;
@@ -3549,7 +3587,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.8", "iconSettings");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.9", "iconSettings");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
 
         const tabs = document.createElement("div");
@@ -4405,7 +4443,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         holder.dialog = dialog;
         this.platformSwitcherDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.8", "iconLvSpeedSwitch");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.9", "iconLvSpeedSwitch");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
         if (surfaceRoot) {
@@ -4495,7 +4533,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.8", "iconCode");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.9", "iconCode");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
@@ -12803,7 +12841,15 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             case "open-in-reader":
                 if (rootId) {
                     destroySwitcher();
-                    if (this.isMobile) {
+                    const sireader = (window as any).sireader;
+                    if (sireader && typeof sireader.openDoc === "function") {
+                        try {
+                            sireader.openDoc(rootId);
+                        } catch {
+                            if (this.isMobile) void this.mobileOpenDoc(rootId);
+                            else void openTab({app: this.app, doc: {id: rootId}});
+                        }
+                    } else if (this.isMobile) {
                         void this.mobileOpenDoc(rootId);
                     } else {
                         void openTab({app: this.app, doc: {id: rootId}});
@@ -12814,7 +12860,15 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             case "open-in-media":
                 if (rootId) {
                     destroySwitcher();
-                    if (this.isMobile) {
+                    const player = (window as any).siyuanMediaPlayer;
+                    if (player?.controller && typeof player.controller.play === "function") {
+                        try {
+                            player.controller.play(rootId);
+                        } catch {
+                            if (this.isMobile) void this.mobileOpenDoc(rootId);
+                            else void openTab({app: this.app, doc: {id: rootId}});
+                        }
+                    } else if (this.isMobile) {
                         void this.mobileOpenDoc(rootId);
                     } else {
                         void openTab({app: this.app, doc: {id: rootId}});
@@ -13708,7 +13762,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         });
         holder.dialog = dialog;
         this.mobileSwitcherDialog = dialog;
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.7", "iconLvSpeedSwitch");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.9", "iconLvSpeedSwitch");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         return dialog;
     }
