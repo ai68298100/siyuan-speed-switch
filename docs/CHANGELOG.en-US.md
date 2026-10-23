@@ -5,6 +5,15 @@
 
 ## Changelog (full history)
 
+### v0.48.4 (2026-10-23)
+
+- **Unified Dialog Titlebar Across All Platform Surfaces**:
+  - Implemented `mountPlatformDialogTitleWrap`, equipping the switcher dialog, workbench dialog, snippet studio, and settings window with standard 22x22 interstellar purple branded icon, clear title text, compact version badge, and Esc close hint (`.lv-dialog-title-wrap`), standardizing visual hierarchy across dialogs;
+  - Built-in idempotency guard ensures zero duplicate DOM injection during view reloads.
+- **Midnight Black Gold Star-Sheen Hero Tiles**:
+  - Workbench local time (`external-local-time`), world clock (`external-world-clock`), and dark material (`mat-dark`) widgets render with midnight dark background (`.sw-home__cell--midnight`), titanium raikiri golden sheen border, and starburst glow shadow;
+  - Titles, values, and status badges seamlessly inherit high-contrast gold and bright sheen.
+
 ### v0.48.3 (2026-10-23)
 
 - **Xiaolv Ecosystem Epoch 6 Federation Standard & Bridge Kit**:

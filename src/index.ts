@@ -86,7 +86,7 @@ import {normalizeSnippetGroupStore} from "./snippet-groups";
 import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, encodeSurfaceFocusSource, resolveSurfaceFocusRestoreTarget, buildSurfaceContextCaption, projectSnippetObjects, filterSnippetObjects, normalizeModuleVisibility, isSurfaceModuleEnabled, filterSurfacesByVisibility, createPlatformSurfaceAdapter} from "./platform-surface-model";
 import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
 import {createPlatformStatus} from "./platform-dom";
-import {mountPlatformDialogCloseHint} from "./platform-dom";
+import {mountPlatformDialogCloseHint, mountPlatformDialogTitleWrap} from "./platform-dom";
 import {mountRaikiriBridge, dispatchRaikiriNavigatedEvent, wrapEcosystemModuleRead} from "./api/external-bridge";
 import {getBridgeSafely} from "./api/ecosystem-bridge-kit";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
@@ -3549,6 +3549,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.4", "iconSettings");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
 
         const tabs = document.createElement("div");
@@ -4404,6 +4405,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         holder.dialog = dialog;
         this.platformSwitcherDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.4", "iconLvSpeedSwitch");
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
         if (surfaceRoot) {
             mountPlatformChrome(surfaceRoot, {
@@ -4492,6 +4495,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.4", "iconCode");
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
         if (!root) {

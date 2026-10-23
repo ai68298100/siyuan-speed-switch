@@ -18,7 +18,7 @@ import {millisecondsToNextMinute, millisecondsToNextSecond} from "./local-time-m
 import {encodeSurfaceFocusSource, projectWidgetObject} from "./platform-surface-model";
 import {resolvePanelSize} from "./settings-model";
 import {clampOversizedIcons} from "./util";
-import {mountPlatformDialogCloseHint} from "./platform-dom";
+import {mountPlatformDialogCloseHint, mountPlatformDialogTitleWrap} from "./platform-dom";
 import {getSiyuan} from "./types";
 import type {ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, PlatformSurfaceContext, PlatformSurfaceLabels} from "./index";
 
@@ -145,6 +145,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         dialogHolder.dialog = dialog;
         this.workbenchDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--workbench");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogWorkbenchTitle || "工作台", "v0.48.4", "iconLayoutHome");
+        mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         if (fullscreenMode) {
             dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
@@ -904,6 +906,9 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 cell.className = "sw-home__cell";
                 // T-6969（ADR 0091）：材质底色——目录声明的展示层属性，只换底色与文字色
                 cell.classList.add(`mat-${resolveHomeTileMaterial(inst.moduleId)}`);
+                if (resolveHomeTileMaterial(inst.moduleId) === "dark" || inst.moduleId === "external-local-time") {
+                    cell.classList.add("sw-home__cell--midnight");
+                }
                 cell.tabIndex = 0;
                 cell.dataset.size = sizeKey;
                 cell.dataset.moduleId = inst.moduleId;

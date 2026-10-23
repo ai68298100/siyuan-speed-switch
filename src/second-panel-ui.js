@@ -106,6 +106,8 @@ function openSecondPanel(context) {
     dialogHolder.dialog = dialog;
     this.workbenchDialog = dialog;
     (_d = dialog.element.querySelector(".b3-dialog__container")) === null || _d === void 0 ? void 0 : _d.classList.add("sw-platform-dialog", "sw-platform-dialog--workbench");
+    (0, platform_dom_1.mountPlatformDialogTitleWrap)(dialog.element, this.i18n.dialogWorkbenchTitle || "工作台", "v0.48.4", "iconLayoutHome");
+    (0, platform_dom_1.mountPlatformDialogCloseHint)(dialog.element, this.i18n.platformCloseHint || "to close");
     if (fullscreenMode) {
         (_e = dialog.element.querySelector(".b3-dialog__container")) === null || _e === void 0 ? void 0 : _e.classList.add("sw-dialog--fullscreen");
     }
@@ -867,6 +869,9 @@ function openSecondPanel(context) {
             cell.className = "sw-home__cell";
             // T-6969（ADR 0091）：材质底色——目录声明的展示层属性，只换底色与文字色
             cell.classList.add(`mat-${(0, home_model_1.resolveHomeTileMaterial)(inst.moduleId)}`);
+            if ((0, home_model_1.resolveHomeTileMaterial)(inst.moduleId) === "dark" || inst.moduleId === "external-local-time") {
+                cell.classList.add("sw-home__cell--midnight");
+            }
             cell.tabIndex = 0;
             cell.dataset.size = sizeKey;
             cell.dataset.moduleId = inst.moduleId;

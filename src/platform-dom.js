@@ -130,6 +130,33 @@ function mountPlatformDialogCloseHint(dialogElement, label = "to close", doc) {
     return hint;
 }
 
+/**
+ * 给思源原生 Dialog 标题栏装配统一的品牌标题栏规范（.lv-dialog-title-wrap）。
+ * 包含 22×22 紫底白标 + 标题 + 版本胶囊，重复调用保持幂等。
+ */
+function mountPlatformDialogTitleWrap(dialogElement, titleText, badgeText, iconName = "iconLvSpeedSwitch", doc) {
+    const root = dialogElement && typeof dialogElement.querySelector === "function" ? dialogElement : null;
+    if (!root) return null;
+    const header = root.querySelector(".b3-dialog__header");
+    const titleEl = header && header.querySelector(".b3-dialog__title");
+    if (!header || !titleEl) return null;
+    const existing = header.querySelector(".lv-dialog-title-wrap");
+    if (existing) return existing;
+    const d = doc || root.ownerDocument || document;
+    const wrap = createPlatformElement(d, "div", "lv-dialog-title-wrap");
+    const iconSpan = createPlatformElement(d, "span", "lv-dialog-title-icon");
+    iconSpan.innerHTML = `<svg><use xlink:href="#${iconName || "iconLvSpeedSwitch"}"></use></svg>`;
+    const titleSpan = createPlatformElement(d, "span", "lv-dialog-title-text", titleText || "");
+    wrap.append(iconSpan, titleSpan);
+    if (badgeText) {
+        const badgeSpan = createPlatformElement(d, "span", "lv-dialog-title-badge", badgeText);
+        wrap.appendChild(badgeSpan);
+    }
+    titleEl.textContent = "";
+    titleEl.appendChild(wrap);
+    return wrap;
+}
+
 module.exports = {
     PLATFORM_STATUS_STATES,
     normalizePlatformStatusState,
@@ -138,4 +165,5 @@ module.exports = {
     createPlatformSegmented,
     createPlatformPillAction,
     mountPlatformDialogCloseHint,
+    mountPlatformDialogTitleWrap,
 };

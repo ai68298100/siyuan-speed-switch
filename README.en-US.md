@@ -1,19 +1,17 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.48.3-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.4-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Latest stable release: v0.48.3 (2026-10-23)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.3) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Latest stable release: v0.48.4 (2026-10-23)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.4) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
-## What's New In v0.48.3 (2026-10-23)
+## What's New In v0.48.4 (2026-10-23)
 
-- **Xiaolv Ecosystem Epoch 6 Federation Standard & Bridge Kit**: Integrated `src/api/ecosystem-bridge-kit.ts`, enforcing strict 800ms circuit breaker and 3s snapshot cache for third-party widget readers; graceful fallback rendering (`[ 📦 Data not ready, click to retry ]`) when external modules fail or time out, preventing any foreign code from breaking the Raikiri workbench; full four-alias mounting (`siyuanSpeedSwitch`, `xiaolvSpeedSwitch`, `xiaolvRaikiri`, `lvRaikiri`) with safe lifecycle unmounting.
-- **Pre-configured 7 Core Ecosystem Widgets**: Built-in widget adapters for Xiaolv Checkin, Exam, Flashcards, Glean, Butler, Contacts, and Common Phrases; command mode (`>`) supports QuickGate commands and instant phrase search.
-- **Monochrome Vector Icon Upgrade**: Injected 32x32 `iconLvSpeedSwitch` (three-tier tab cascade + raikiri blade + energy gold core) into `CARD_ICON_SPRITE` and aligned topbar registration.
-- **Interstellar Purple & Midnight Black Gold Aesthetic**: Injected `--lv-brand`, `--lv-brand-soft`, `--lv-accent-gold`, and `--lv-midnight-card` tokens, added 1.5px physical tactile feedback to buttons, and unified `.lv-dialog-title-wrap` titlebars.
-- **Deep Engineering Hardening**: Standardized block attributes under `custom-lv-raikiri-*` namespace, updated `plugin.json` display name to `Lv Speed Switch`, enabled `settingsWindow: true`, bumped `minAppVersion` to `3.8.4`, upgraded TypeScript compiler target to `ES2022`, added root `CHANGELOG.md` and `SECURITY.md`, and preserved the 256x256 high-resolution `icon.png`.
+- **Unified Dialog Titlebar Across All Platform Surfaces**: Implemented `mountPlatformDialogTitleWrap`, equipping the switcher dialog, workbench dialog, snippet studio, and settings window with standard 22x22 interstellar purple branded icon, clear title text, compact version badge, and Esc close hint (`.lv-dialog-title-wrap`).
+- **Midnight Black Gold Star-Sheen Hero Tiles**: Workbench local time (`external-local-time`), world clock (`external-world-clock`), and dark material (`mat-dark`) widgets render with midnight dark background (`.sw-home__cell--midnight`), titanium raikiri golden sheen border, and starburst glow shadow.
+- **Xiaolv Ecosystem Epoch 6 Federation Standard & Bridge Kit**: Integrated `src/api/ecosystem-bridge-kit.ts`, enforcing strict 800ms circuit breaker and 3s snapshot cache for third-party widget readers; pre-configured 7 core ecosystem widgets; upgraded topbar monochrome vector icon to `iconLvSpeedSwitch`.
 
 Itemized changes, validation data, and release history are in the [complete changelog](./docs/CHANGELOG.en-US.md).
 
@@ -400,7 +398,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and size budgets after building: 578 KiB archive, 1160 KiB raw bundle, and 320 KiB compressed per entry (see [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)). Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.48.3`, featuring Xiaolv Ecosystem Epoch 6 federation standard, deep penetration search, secondary action palette, cross-surface E2E interactive contracts, and narrow sidebar overflow protection. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
+The current version is `v0.48.4`, featuring unified branded dialog titlebars, midnight black gold hero tiles, Xiaolv Ecosystem Epoch 6 federation standard, deep penetration search, and secondary action palette. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>

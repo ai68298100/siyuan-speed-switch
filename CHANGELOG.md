@@ -6,6 +6,11 @@
 
 ---
 
+### v0.48.4 (2026-10-23)
+- **全表面 Dialog 统一品牌标题栏规范（Unified Dialog Titlebar）**：实现 `mountPlatformDialogTitleWrap`，页签切换器、小组件工作台、代码片段实验室与设置大窗全面装配 22×22 星际深紫底白标 + 标题文字 + 紧凑版本胶囊 + Esc 退出按键提示（`.lv-dialog-title-wrap`），彻底统一各表面弹窗视觉层级与品牌辨识度。
+- **工作台深空黑金星芒卡片美学落地（Midnight Black Gold Hero Tiles）**：工作台本地时钟（`external-local-time`）、世界时钟（`external-world-clock`）与深色材质（`mat-dark`）小组件全面接入午夜深空黑金底色（`.sw-home__cell--midnight`）、钛金雷刃金色微光边框与星芒反光阴影，忠实呈现参考图高能质感。
+- **小驴生态 Epoch 6 联邦规范全方位升级**：引入 `src/api/ecosystem-bridge-kit.ts`，强化第三方小组件 800ms 超时熔断与 3s 快照缓存，全链路 try-catch 单向异常隔离，绝不拖垮宿主工作台；预置打卡、考试、闪卡、拾遗、管家、人脉、常用等 7 大标准小组件；顶栏单色矢量图标升级为 `iconLvSpeedSwitch`。
+
 ### v0.48.3 (2026-10-23)
 - **小驴生态 Epoch 6 联邦规范全方位升级**：引入 `src/api/ecosystem-bridge-kit.ts`，强化第三方小组件 800ms 超时熔断与 3s 快照缓存，全链路 try-catch 单向异常隔离，绝不拖垮宿主工作台；维护好 `siyuanSpeedSwitch`、`xiaolvSpeedSwitch`、`xiaolvRaikiri`、`lvRaikiri` 四别名挂载与卸载解绑。
 - **预置全生态 7 大标准小组件**：内置小驴打卡习惯连击、小驴考试概览、小驴闪卡到期、小驴拾遗稍后读、小驴管家效期、小驴人脉跟进与小驴常用语，支持命令模式（`>`）快门生态命令与常用语直达搜索。
