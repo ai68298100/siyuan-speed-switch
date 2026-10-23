@@ -87,7 +87,8 @@ import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resol
 import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
 import {createPlatformStatus} from "./platform-dom";
 import {mountPlatformDialogCloseHint} from "./platform-dom";
-import {mountRaikiriBridge, dispatchRaikiriNavigatedEvent} from "./api/external-bridge";
+import {mountRaikiriBridge, dispatchRaikiriNavigatedEvent, wrapEcosystemModuleRead} from "./api/external-bridge";
+import {getBridgeSafely} from "./api/ecosystem-bridge-kit";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournalOutcome as ensureTodayJournalOutcomeAction, findTodayJournalOutcome as findTodayJournalOutcomeAction} from "./journal-actions";
@@ -450,7 +451,9 @@ const CARD_ICON_SPRITE =
     '<symbol id="iconClose" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>' +
     // 第二面板专属图标：与 iconLayout（2×2 均等网格）同族，但为 dashboard 变体
     // （一格宽 + 三格小），暗示"聚合面板"，外框/描边风格保持一致以示同源
-    '<symbol id="iconLayoutHome" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="10" rx="1.2"/><rect x="13.5" y="3" width="7.5" height="6" rx="1.2"/><rect x="13.5" y="12" width="7.5" height="9" rx="1.2"/><rect x="3" y="16" width="7.5" height="5" rx="1.2"/></symbol>';
+    '<symbol id="iconLayoutHome" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="10" rx="1.2"/><rect x="13.5" y="3" width="7.5" height="6" rx="1.2"/><rect x="13.5" y="12" width="7.5" height="9" rx="1.2"/><rect x="3" y="16" width="7.5" height="5" rx="1.2"/></symbol>' +
+    // 小驴雷切单色矢量图标（三层阶梯页签 + 穿透利落雷刃 + 能量金核点，对齐品牌 Logo）
+    '<symbol id="iconLvSpeedSwitch" viewBox="0 0 32 32"><path d="M6 8h8c1.7 0 3 1.3 3 3v10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-opacity="0.3"/><path d="M9 10h8c1.7 0 3 1.3 3 3v10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-opacity="0.5"/><rect x="12" y="12" width="14" height="15" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m19 6-6 9.5h4.5l-2.5 9.5 8-10.5h-4.5z" fill="currentColor"/><circle cx="25.5" cy="25.5" r="2.5" fill="currentColor"/></symbol>';
 
 // 单分组渲染上下文：避免 renderTabGroup 形参列表爆炸，所有共享字段打包到一个对象
 export interface ITabGroupRenderCtx {
@@ -1285,7 +1288,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         type TopBarContextMenu = (menu: {addItem: (item: {icon: string; label: string; click: () => void}) => void}) => void;
         const switcherTopBar: {id?: string; icon: string; title: string; position: "right"; contextMenu: TopBarContextMenu; callback: () => void} = {
             id: "siyuan-speed-switch-topbar",
-            icon: "iconLayout",
+            icon: "iconLvSpeedSwitch",
             title: this.i18n.switchTabs,
             position: "right",
             contextMenu: (menu) => {
@@ -2113,6 +2116,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             searchDocuments: async (args) => {
                 return await this.searchAgentDocuments(args as unknown as Record<string, unknown>);
             },
+            registerHomeModule: (options) => this.registerHomeModule(options),
         }, legacyTarget);
     }
 
@@ -5503,6 +5507,36 @@ const updatedMap: {[rootId: string]: string} = {};
             {key: "builtin", label: this.i18n.commandGroupBuiltin, actions: matched.filter((action) => action.kind !== "global")},
             {key: "global", label: this.i18n.commandGroupGlobal, actions: matched.filter((action) => action.kind === "global")},
         ];
+        // 支持快门与常用直达 (Epoch 6 联邦规范)
+        const commonBridge: any = getBridgeSafely("common");
+        if (commonBridge && typeof commonBridge.search === "function" && q) {
+            void Promise.resolve(commonBridge.search(q)).then((res: any) => {
+                if (res?.ok && Array.isArray(res.data) && res.data.length > 0 && box.isConnected) {
+                    const commonGroup = document.createElement("div");
+                    commonGroup.className = "sw__command-group sw__command-group--common";
+                    const commonHeading = document.createElement("div");
+                    commonHeading.className = "sw__window-label";
+                    commonHeading.textContent = `小驴常用 · ${Math.min(5, res.data.length)}`;
+                    const commonList = document.createElement("div");
+                    commonList.className = "sw__command-group-list";
+                    res.data.slice(0, 5).forEach((snippet: any) => {
+                        const itemEl = document.createElement("div");
+                        itemEl.className = "sw__command-item b3-list-item";
+                        itemEl.innerHTML = `<span class="sw__command-icon"><svg><use xlink:href="#iconFile"></use></svg></span><span class="sw__command-label">${this.escapeAttr(snippet.title || snippet.content || "")}</span><span class="sw__command-hint">常用语</span>`;
+                        itemEl.onclick = () => {
+                            if (navigator?.clipboard?.writeText) {
+                                void navigator.clipboard.writeText(snippet.content || "");
+                                showMessage(this.i18n.snippetCopied || "已复制到剪贴板");
+                            }
+                            onClose();
+                        };
+                        commonList.appendChild(itemEl);
+                    });
+                    commonGroup.append(commonHeading, commonList);
+                    box.appendChild(commonGroup);
+                }
+            }).catch(() => {});
+        }
         for (const group of groups) {
             if (!group.actions.length) continue;
             const section = document.createElement("div");
@@ -5812,7 +5846,13 @@ const updatedMap: {[rootId: string]: string} = {};
         readOnly?: boolean;
         open?: () => void;
     }): () => void {
-        const registration = this.homeRuntime.registerAdapter(options as unknown as Record<string, unknown>);
+        const safeRead = typeof options?.read === "function"
+            ? wrapEcosystemModuleRead(options.read, 800, 3000)
+            : options?.read;
+        const registration = this.homeRuntime.registerAdapter({
+            ...options,
+            read: safeRead,
+        } as unknown as Record<string, unknown>);
         const moduleId = String(options?.moduleId || "");
         if (registration.registered && typeof options?.open === "function") {
             this.homeModuleOpens.set(String(options.moduleId), (options as unknown as {open: () => void}).open);
@@ -7787,7 +7827,7 @@ const updatedMap: {[rootId: string]: string} = {};
             const normalized = normalizeTodayReservationsConfig(config);
             const notebookScope = buildNotebookBoxScope(normalized.notebook, "B");
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT B.id, B.content, B.hpath, B.updated, A.value AS date FROM blocks AS B INNER JOIN attributes AS A ON A.block_id=B.id AND A.name='custom-reservation' WHERE A.value >= strftime('%Y%m%d', datetime('now','localtime')) AND A.value <= strftime('%Y%m%d', datetime('now','localtime','+${normalized.days} days'))${notebookScope} ORDER BY A.value, B.updated DESC LIMIT 48`,
+                stmt: `SELECT B.id, B.content, B.hpath, B.updated, A.value AS date FROM blocks AS B INNER JOIN attributes AS A ON A.block_id=B.id AND (A.name='custom-lv-raikiri-reservation' OR A.name='custom-reservation') WHERE A.value >= strftime('%Y%m%d', datetime('now','localtime')) AND A.value <= strftime('%Y%m%d', datetime('now','localtime','+${normalized.days} days'))${notebookScope} ORDER BY A.value, B.updated DESC LIMIT 48`,
             });
             if (!Array.isArray(json?.data)) throw new Error("invalid_today_reservations");
             const snapshot = buildTodayReservationsSnapshot(json.data, normalized, {
@@ -8709,10 +8749,10 @@ const updatedMap: {[rootId: string]: string} = {};
         custom.value = /^icon[A-Za-z0-9_-]+$/.test(action.icon || "") ? "" : (action.icon || "");
         const customApply = document.createElement("button");
         customApply.type = "button";
-        customApply.className = "b3-button sw-quick-icon-picker__custom-apply";
+        customApply.className = "b3-button sw-quick-icon-picker__custom-apply sw-quick-icon-picker__custom-lv-raikiri-apply";
         customApply.textContent = this.i18n.quickIconApplyCustom || "使用自定义图标";
         const customRow = document.createElement("div");
-        customRow.className = "sw-quick-icon-picker__custom-row";
+        customRow.className = "sw-quick-icon-picker__custom-row sw-quick-icon-picker__custom-lv-raikiri-row";
         const customPreview = document.createElement("span");
         customPreview.className = "sw-quick-icon-picker__preview";
         customPreview.setAttribute("aria-label", this.i18n.quickIconPreview);

@@ -1875,3 +1875,68 @@ mark.sw__search-mark,
         font-weight: 800;
     }
 }
+
+// ==================== Epoch 6 联邦规范 · Bento 软性美学与微交互 ====================
+
+// 按钮物理微触感
+button:active:not(:disabled),
+.b3-button:active:not(:disabled),
+.sw__mode-chip:active,
+.sw__palette-item:active {
+    transform: translateY(1.5px) scale(0.985);
+}
+
+// 弹窗标题栏规范：22×22 紫底白标 + 标题 + 版本胶囊
+.lv-dialog-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sw-space-xs, 4px);
+
+    .lv-dialog-title-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: var(--sw-platform-radius-sm, 6px);
+        background: var(--lv-brand, #8B5CF6);
+        color: #fff;
+
+        svg {
+            width: 14px;
+            height: 14px;
+        }
+    }
+
+    .lv-dialog-title-text {
+        font-weight: var(--sw-weight-bold, 700);
+        color: var(--b3-theme-on-background);
+    }
+
+    .lv-dialog-title-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px var(--sw-space-xs, 4px);
+        border-radius: var(--sw-platform-radius-pill, 999px);
+        background: var(--lv-brand-soft, rgba(139, 92, 246, 0.12));
+        color: var(--lv-brand, #8B5CF6);
+        font-size: var(--sw-font-2xs, 10px);
+        font-weight: var(--sw-weight-semibold, 600);
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// 参考图午夜深空黑金卡底色与质感
+.sw-home__cell--midnight,
+.sw-home__midnight-card {
+    background: var(--lv-midnight-card, #1B1E2E);
+    border: 1px solid color-mix(in srgb, var(--lv-accent-gold, #FACC15) 32%, var(--b3-border-color));
+    border-radius: var(--sw-platform-radius-md, 12px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    color: #fff;
+
+    .sw__home-stat-value {
+        color: var(--lv-accent-gold, #FACC15);
+        text-shadow: 0 0 12px color-mix(in srgb, var(--lv-accent-gold, #FACC15) 40%, transparent);
+    }
+}

@@ -1852,5 +1852,19 @@
   "searchModeCommand": "命令",
   "searchModeHelp": "速查",
   "allTasksDone": "🎉 太棒了！今日待办已全部完成",
-  "recentSearchQueries": "近期搜索："
+  "recentSearchQueries": "近期搜索：",
+  "homeCheckinDailyStreaks": "每日习惯连击",
+  "homeDescCheckinDailyStreaks": "今日习惯完成与连续天数总览",
+  "homeExamDailySummary": "备考今日概览",
+  "homeDescExamDailySummary": "今日答题量、正确率与连击天数",
+  "homeCardsDueSummary": "闪卡待复习数",
+  "homeDescCardsDueSummary": "今日到期卡片与记忆复习队列",
+  "homeGleanLaterList": "稍后读推荐流",
+  "homeDescGleanLaterList": "收藏文章精读队列与剪藏推荐",
+  "homeExpiryReminders": "家庭效期提醒",
+  "homeDescExpiryReminders": "食品、药品与证件到期预警",
+  "homeContactsUpcoming": "人脉待跟进",
+  "homeDescContactsUpcoming": "近期好友生日与互动跟进备忘",
+  "homeCommonQuickPalette": "高频常用语",
+  "homeDescCommonQuickPalette": "高频文本片段与常用语快捷"
 }

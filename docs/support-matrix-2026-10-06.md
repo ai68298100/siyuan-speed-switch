@@ -8,10 +8,10 @@
 
 | 平台/入口 | 版本依据 | 当前能力 | 证据与限制 |
 | --- | --- | --- | --- |
-| 思源桌面主窗口 | `plugin.json` 最低 3.8.0；真实隔离宿主 3.8.6 | 切换器、文档卡片搜索/预览、收藏/最近、日记、工作台、片段实验室、悬浮球 | 3.8.6 隔离桌面 E2E 7/7：`.artifacts/t7115-desktop/results.json`；最终主题、读屏、长会话仍归 T-7115/B-005 |
-| 思源桌面右侧 Dock | 最低 3.8.0；真实隔离宿主 3.8.6 | 紧凑切换器/工作台、搜索和筛选、焦点与名称、窄宽度降级 | 3.8.6 Dock 340px→245px partial：[`docs/native-sidebar-host-evidence.md`](native-sidebar-host-evidence.md)；最窄可用宽度、主题、读屏待 T-7115 |
+| 思源桌面主窗口 | `plugin.json` 最低 3.8.4；真实隔离宿主 3.8.6 | 切换器、文档卡片搜索/预览、收藏/最近、日记、工作台、片段实验室、悬浮球 | 3.8.6 隔离桌面 E2E 7/7：`.artifacts/t7115-desktop/results.json`；最终主题、读屏、长会话仍归 T-7115/B-005 |
+| 思源桌面右侧 Dock | 最低 3.8.4；真实隔离宿主 3.8.6 | 紧凑切换器/工作台、搜索和筛选、焦点与名称、窄宽度降级 | 3.8.6 Dock 340px→245px partial：[`docs/native-sidebar-host-evidence.md`](native-sidebar-host-evidence.md)；最窄可用宽度、主题、读屏待 T-7115 |
 | 思源独立窗口/浏览器桌面 | `plugin.json.frontends` 声明 `desktop-window`/`browser-desktop` | 复用桌面命令和布局适配；独立窗口能力取决于宿主是否提供对应入口 | 代码和兼容探针覆盖 API 形状；没有独立窗口真实人工结果，不能标记 verified |
-| 思源 Android/移动 WebView | `plugin.json.frontends` 声明 `mobile`/`browser-mobile`；最低 3.8.0 | 手机切换器、收藏/最近、日记、排序与分组浮层、移动工作台；块定位和桌面全屏不声明可用 | 移动浏览器 DOM 行为 11/11，真实 Android 安装/升级/IME/旋转/Back/手势仍受 B-004，归 T-7116 |
+| 思源 Android/移动 WebView | `plugin.json.frontends` 声明 `mobile`/`browser-mobile`；最低 3.8.4 | 手机切换器、收藏/最近、日记、排序与分组浮层、移动工作台；块定位和桌面全屏不声明可用 | 移动浏览器 DOM 行为 11/11，真实 Android 安装/升级/IME/旋转/Back/手势仍受 B-004，归 T-7116 |
 
 ## 思源版本探针
 
@@ -19,7 +19,7 @@
 | --- | --- | --- |
 | 3.8.4-beta.2 | 笔记本和路径只读 API 响应：`data.box`、`data.path`、`data.files[]`；路径不存在时返回空列表 | 这是宿主 API 证据，不替代完整 UI 和升级验收；详见 [`docs/path-filter-host-evidence.md`](path-filter-host-evidence.md) |
 | 3.8.6 | 标题搜索、路径筛选字段、卸载公开钩子；真实桌面/Dock 隔离 E2E | 不能据此推断 Android、其他未来小版本或外部 provider 质量；详见 [`docs/siyuan-compatibility-matrix.md`](siyuan-compatibility-matrix.md) |
-| 低于 3.8.0 | 不在插件 manifest 声明范围内 | 不提供兼容承诺；不要通过修改 manifest 绕过宿主能力缺失 |
+| 低于 3.8.4 | 不在插件 manifest 声明范围内 | 不提供兼容承诺；不要通过修改 manifest 绕过宿主能力缺失 |
 
 ## 能力边界
 

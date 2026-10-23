@@ -129,4 +129,10 @@ $sw-space-2xl: 24px;
     // 现代科技感与物理质感微光 Token（随宿主主题自适应反光与发光焦点）
     --sw-rim-light: inset 0 1px 0 0 color-mix(in srgb, var(--b3-theme-on-background) 8%, transparent);
     --sw-focus-glow: 0 0 0 1px var(--b3-theme-background), 0 0 0 3px color-mix(in srgb, var(--b3-theme-primary) 35%, transparent);
+
+    // 小驴全生态品牌与午夜黑金卡 Token (Epoch 6 联邦规范)
+    --lv-brand: #8B5CF6; /* 星际电光紫 */
+    --lv-brand-soft: color-mix(in srgb, var(--lv-brand) 12%, transparent);
+    --lv-accent-gold: #FACC15; /* 钛金雷刃黄 */
+    --lv-midnight-card: #1B1E2E; /* 参考图午夜深空黑金卡底色 */
 }

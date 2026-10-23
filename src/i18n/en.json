@@ -1852,5 +1852,19 @@
   "searchModeCommand": "Command",
   "searchModeHelp": "CheatSheet",
   "allTasksDone": "🎉 Great job! All tasks completed today",
-  "recentSearchQueries": "Recent searches: "
+  "recentSearchQueries": "Recent searches: ",
+  "homeCheckinDailyStreaks": "Daily Streaks",
+  "homeDescCheckinDailyStreaks": "Today's habit completion and streak days overview",
+  "homeExamDailySummary": "Daily Exam Summary",
+  "homeDescExamDailySummary": "Today's questions answered, accuracy rate, and streak days",
+  "homeCardsDueSummary": "Cards Due Summary",
+  "homeDescCardsDueSummary": "Today's due cards and memory review queue",
+  "homeGleanLaterList": "Read Later Stream",
+  "homeDescGleanLaterList": "Saved articles reading queue and clipper recommendations",
+  "homeExpiryReminders": "Home Expiry Reminders",
+  "homeDescExpiryReminders": "Food, medicine, and document expiration alerts",
+  "homeContactsUpcoming": "Upcoming Contacts",
+  "homeDescContactsUpcoming": "Upcoming birthdays and relationship follow-ups",
+  "homeCommonQuickPalette": "Quick Common Phrases",
+  "homeDescCommonQuickPalette": "Frequently used text snippets and quick phrases"
 }

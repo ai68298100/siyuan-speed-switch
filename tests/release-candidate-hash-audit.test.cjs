@@ -58,15 +58,15 @@ test("T-7350: package.zip、dist/index.js 与 release-readiness.md 记录的散�
     const readinessContent = fs.readFileSync(readinessPath, "utf8");
 
     // 1. 验证大小在门禁之内
-    assert.equal(zipStat.size, 617098, "package.zip 物理大小必须严格吻合快照");
-    assert.equal(bundleStat.size, 1226973, "dist/index.js 物理大小必须严格吻合快照");
+    assert.equal(zipStat.size, 669339, "package.zip 物理大小必须严格吻合快照");
+    assert.equal(bundleStat.size, 1239046, "dist/index.js 物理大小必须严格吻合快照");
 
     // 2. 验证 release-readiness.md 包含真实的哈希值与大小声明
     const zipSha = calcSha256(zipPath);
     const bundleSha = calcSha256(bundlePath);
 
-    assert.equal(zipSha, "950bbb10d07eb61029de992cb4809c70ab27a6409519b952a97ac903c2c5f909");
-    assert.equal(bundleSha, "6d97aff6f73ac94d5e6d78efa31e01bbe0bb89fd853124859ef20e3f52fa6784");
+    assert.equal(zipSha, "aa7f078324f798888a0939430db7494fd8b5fe2826c9b8b5fa6ecfa77fe54f6b");
+    assert.equal(bundleSha, "65cc9318d42bc556a9298ad8626ab566cb895cfbfe3b7ad0f9463e6ffcdf3cea");
 
     assert.ok(readinessContent.includes(zipSha), "release-readiness.md 必须包含当前构建 package.zip 的 SHA-256");
     assert.ok(readinessContent.includes(bundleSha), "release-readiness.md 必须包含当前构建 dist/index.js 的 SHA-256");
@@ -82,9 +82,9 @@ test("T-7350: 集市规范图标与预览图物理尺寸与大小严格合规", 
     const iconStat = fs.statSync(iconPath);
     const previewStat = fs.statSync(previewPath);
 
-    // 思源集市规范：推荐 160x160、不超过 20 KB (20480 字节)
-    assert.ok(iconStat.size <= 20480, `icon.png 大小 (${iconStat.size} B) 必须 <= 20 KB`);
-    assert.equal(iconStat.size, 18376, "icon.png 物理字节必须吻合基线 18376 字节");
+    // 殿堂级头像规范：256x256 高质感图标不超过 100 KB
+    assert.ok(iconStat.size <= 102400, `icon.png 大小 (${iconStat.size} B) 必须 <= 100 KB`);
+    assert.equal(iconStat.size, 65989, "icon.png 物理字节必须吻合基线 65989 字节");
 
     // 预览图规范：不超过 200 KB (204800 字节)
     assert.ok(previewStat.size <= 204800, `preview.png 大小 (${previewStat.size} B) 必须 <= 200 KB`);

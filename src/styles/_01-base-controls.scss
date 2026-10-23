@@ -579,7 +579,8 @@
     margin: var(--sw-space-md, 8px) 0;
 }
 
-.sw-quick-icon-picker__custom-row {
+.sw-quick-icon-picker__custom-row,
+.sw-quick-icon-picker__custom-lv-raikiri-row {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -593,7 +594,8 @@
     min-height: 44px;
 }
 
-.sw-quick-icon-picker__custom-apply { min-height: 44px; }
+.sw-quick-icon-picker__custom-apply,
+.sw-quick-icon-picker__custom-lv-raikiri-apply { min-height: 44px; }
 
 .sw-quick-icon-picker__preview {
     display: inline-flex;

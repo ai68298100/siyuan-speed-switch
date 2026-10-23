@@ -3,7 +3,8 @@
   "author": "ai68298100",
   "url": "https://github.com/ai68298100/siyuan-speed-switch",
   "version": "0.48.2",
-  "minAppVersion": "3.8.0",
+  "minAppVersion": "3.8.4",
+  "settingsWindow": true,
   "disabledInPublish": false,
   "backends": [
     "all"
@@ -16,7 +17,7 @@
     "browser-mobile"
   ],
   "displayName": {
-    "default": "LvSpeed Switch",
+    "default": "Lv Speed Switch",
     "zh-CN": "小驴雷切"
   },
   "description": {
@@ -43,6 +44,9 @@
     ]
   },
   "keywords": [
+    "小驴",
+    "xiaolv",
+    "lv",
     "页签切换",
     "tab switch",
     "标签页",

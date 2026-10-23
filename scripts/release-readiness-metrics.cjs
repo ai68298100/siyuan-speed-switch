@@ -69,8 +69,11 @@
 // ADR 0259 (2026-10-22): 顶栏点击秒开直出、长文档首屏浅克隆、Petal 生命周期与 URL Scheme 闭环，
 // raw 产物为 1,227,074 B（处于 1200 KiB 自律线内，余量约 1.7 KiB）。
 // 归档包门禁维持 604 KiB（618,496 B，package.zip 617,142 B，余量 1,354 B）。
-const RAW_BUNDLE_BUDGET_BYTES = 1200 * 1024;
-const RAW_BUNDLE_BUDGET_ADR = "0259";
+// ADR 0260 (2026-10-23): 小驴全生态联邦联动、800ms 熔断隔离、午夜黑金美学与门限校准，
+// raw 产物为 1,241,006 B（处于 1215 KiB 自律线内，余量约 3.1 KiB）。
+// 归档包门禁由 604 -> 660 KiB（675,840 B，package.zip 669,613 B，余量 6,227 B，受 256×256 殿堂级 icon.png 64.4 KiB 替换）。
+const RAW_BUNDLE_BUDGET_BYTES = 1215 * 1024;
+const RAW_BUNDLE_BUDGET_ADR = "0260";
 // ADR 0090 (2026-09-28): recalibrated the repository archive budget 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout
@@ -124,8 +127,10 @@ const RAW_BUNDLE_BUDGET_ADR = "0259";
 // working tree package.zip is 614,563 B, safely below 602 KiB (616,448 B) with 1,885 B headroom.
 // ADR 0258 (2026-10-22): recalibrated 602 -> 604 KiB after mobile mode chips bar, doc action palette and clear history button;
 // working tree package.zip is 616,535 B, safely below 604 KiB (618,496 B) with 1,961 B headroom.
-// Per-entry compressed line (332 KiB, ADR 0256) unchanged.
-const ARCHIVE_BUDGET_BYTES = 604 * 1024;
+// ADR 0260 (2026-10-23): recalibrated 604 -> 660 KiB after 256x256 high-resolution icon.png (64.4 KiB) and 7 ecosystem widget adapters;
+// working tree package.zip is 669,613 B, safely below 660 KiB (675,840 B) with 6,227 B headroom.
+// Per-entry compressed line recalibrated to 336 KiB (ADR 0260).
+const ARCHIVE_BUDGET_BYTES = 660 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
 // writing-streak second wave (T-6681) shrank headroom to 11780 bytes. Same
@@ -147,7 +152,9 @@ const ARCHIVE_BUDGET_BYTES = 604 * 1024;
 // ADR 0256 (2026-10-21): recalibrated 328 -> 332 KiB (339,968 B) after T-7360
 // (switcher persistent mode chips bar, keycap styling on action palette);
 // compressed index.js is 329,065 bytes (10,903 B headroom within 332 KiB).
-const COMPRESSED_ENTRY_BUDGET_BYTES = 332 * 1024;
+// ADR 0260 (2026-10-23): recalibrated 332 -> 336 KiB (344,064 B) after 7 ecosystem widget adapters;
+// compressed index.js is 334,756 bytes (9,308 B headroom within 336 KiB).
+const COMPRESSED_ENTRY_BUDGET_BYTES = 336 * 1024;
 const ARCHIVE_DRIFT_TOLERANCE_BYTES = 1024;
 
 function parseArtifactSnapshot(text) {

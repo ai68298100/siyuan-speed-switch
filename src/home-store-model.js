@@ -45,6 +45,13 @@ const PREVIEW_KINDS = Object.freeze({
     "external-ical-events": "feed",
     "external-github-contrib": "feed",
     "external-activitywatch-time": "activity",
+    "checkin-daily-streaks": "progress",
+    "exam-daily-summary": "stat",
+    "cards-due-summary": "tasks",
+    "glean-later-list": "documents",
+    "home-expiry-reminders": "tasks",
+    "contacts-upcoming": "documents",
+    "common-quick-palette": "tasks",
 });
 const SOURCE_INFO = Object.freeze({
     "external-local-time": Object.freeze({providerName: "SiYuan runtime", integration: "direct", privacy: "local-only"}),
@@ -70,6 +77,13 @@ const SOURCE_INFO = Object.freeze({
     "checkin-weekly": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
     "checkin-occasions": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
     "checkin-monthly": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
+    "checkin-daily-streaks": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
+    "exam-daily-summary": Object.freeze({providerName: "小驴考试", integration: "local-bridge", privacy: "local-only"}),
+    "cards-due-summary": Object.freeze({providerName: "小驴闪卡", integration: "local-bridge", privacy: "local-only"}),
+    "glean-later-list": Object.freeze({providerName: "小驴拾遗", integration: "local-bridge", privacy: "local-only"}),
+    "home-expiry-reminders": Object.freeze({providerName: "小驴管家", integration: "local-bridge", privacy: "local-only"}),
+    "contacts-upcoming": Object.freeze({providerName: "小驴人脉", integration: "local-bridge", privacy: "local-only"}),
+    "common-quick-palette": Object.freeze({providerName: "小驴常用", integration: "local-bridge", privacy: "local-only"}),
 });
 const DEPENDENCY_INFO = Object.freeze({
     "clipped-unread": Object.freeze({kind: "plugin", required: true, name: "思源剪藏（siyuan-clipper）", installUrl: "", projectUrl: "", setup: "安装并启用支持 clipped-unread 协议的剪藏插件；本插件不再从通用标签读取剪藏数据，协议说明见组件协议文档", network: "由提供方插件决定；本组件不自行查询标签", platforms: "desktop/sidebar/mobile"}),

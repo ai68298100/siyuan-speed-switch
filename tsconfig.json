@@ -2,8 +2,7 @@
   "compilerOptions": {
     "noImplicitAny": true,
     "module": "commonjs",
-    "target": "es2017",
-    "strictNullChecks": false,
+    "target": "ES2022",
     "skipLibCheck": true,
     "allowJs": true
   },

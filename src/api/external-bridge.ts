@@ -23,6 +23,7 @@ export const RAIKIRI_CAPABILITIES = Object.freeze([
     "getNavigationContext",
     "getWorkspaceStats",
     "searchDocuments",
+    "registerHomeModule",
 ]);
 
 export interface ActionResult<T = unknown> {
@@ -82,6 +83,7 @@ export interface RaikiriBridgeApi {
     getNavigationContext(): ActionResult<RaikiriNavigationContext>;
     getWorkspaceStats(): ActionResult<RaikiriWorkspaceStats>;
     searchDocuments(args: RaikiriSearchArgs): Promise<ActionResult<unknown>>;
+    registerHomeModule?(options: any): (() => void) | { unregister?: () => void };
 }
 
 export interface RaikiriNavigatedEventDetail {
@@ -130,6 +132,58 @@ export interface RaikiriBridgeHandlers {
     getNavigationContext: () => RaikiriNavigationContext;
     getWorkspaceStats: () => RaikiriWorkspaceStats;
     searchDocuments: (args: RaikiriSearchArgs) => Promise<unknown>;
+    registerHomeModule?: (options: any) => (() => void) | { unregister?: () => void };
+}
+
+/**
+ * 第三方小组件安全读取器：800ms 超时熔断 + 3s 快照缓存 + 全链路单向异常隔离
+ */
+export function wrapEcosystemModuleRead(
+    rawRead: (config: any, device: string, options?: any) => Promise<any> | any,
+    timeoutMs = 800,
+    cacheTtlMs = 3000,
+): (config: any, device: string, options?: any) => Promise<any> {
+    const cache = new Map<string, { data: any; ts: number }>();
+    const inFlight = new Map<string, Promise<any>>();
+
+    return async (config: any, device: string, options?: any) => {
+        const cacheKey = `${device}:${JSON.stringify(config || {})}`;
+        const cached = cache.get(cacheKey);
+        const now = Date.now();
+        if (cached && now - cached.ts < cacheTtlMs) {
+            return cached.data;
+        }
+
+        if (inFlight.has(cacheKey)) {
+            return inFlight.get(cacheKey)!;
+        }
+
+        const task = (async () => {
+            try {
+                const readPromise = Promise.resolve(rawRead(config, device, options));
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error("ECOSYSTEM_MODULE_TIMEOUT")), timeoutMs);
+                });
+                const res = await Promise.race([readPromise, timeoutPromise]);
+                const payload = res && typeof res === "object" ? res : { items: [] };
+                cache.set(cacheKey, { data: payload, ts: Date.now() });
+                return payload;
+            } catch (err) {
+                console.warn("[小驴生态联邦] 第三方小组件读取熔断或异常，触发单向隔离:", err);
+                return {
+                    items: [],
+                    emptyHint: "📦 数据暂未返回，点击重试",
+                    status: "ready",
+                    retryable: true,
+                };
+            } finally {
+                inFlight.delete(cacheKey);
+            }
+        })();
+
+        inFlight.set(cacheKey, task);
+        return task;
+    };
 }
 
 const GLOBAL_BRIDGE_ALIASES = [
@@ -213,6 +267,16 @@ export function mountRaikiriBridge(
             } catch (err: unknown) {
                 return { ok: false, code: "SEARCH_EXCEPTION", message: String(err) };
             }
+        },
+        registerHomeModule: (options) => {
+            if (typeof handlers.registerHomeModule === "function") {
+                const safeOptions = {
+                    ...options,
+                    read: typeof options?.read === "function" ? wrapEcosystemModuleRead(options.read, 800, 3000) : options?.read,
+                };
+                return handlers.registerHomeModule(safeOptions);
+            }
+            return () => {};
         },
     };
 

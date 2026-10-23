@@ -15,6 +15,8 @@ const checkin_bridge_model_1 = require("./checkin-bridge-model");
 const github_model_1 = require("./github-model");
 const rss_model_1 = require("./rss-model");
 const life_widget_network_1 = require("./life-widget-network");
+const ecosystem_bridge_kit_1 = require("./api/ecosystem-bridge-kit");
+const external_bridge_1 = require("./api/external-bridge");
 function registerExternalHomeAdapters(register) {
     // 生活信息组件首批：完全离线的本地时钟。使用浏览器 Intl，避免引入日期库、
     // 网络服务或定位权限；面板存活期间由分钟心跳强制刷新，开启秒显示的实例
@@ -479,4 +481,129 @@ function registerExternalHomeAdapters(register) {
     registerCheckinBridge("checkin-weekly", this.i18n.homeCheckinWeekly, "iconCalendar", this.i18n.homeDescCheckinWeekly);
     registerCheckinBridge("checkin-occasions", this.i18n.homeCheckinOccasions, "iconCheck", this.i18n.homeDescCheckinOccasions);
     registerCheckinBridge("checkin-monthly", this.i18n.homeCheckinMonthly, "iconCalendar", this.i18n.homeDescCheckinMonthly);
+
+    // ==================== Epoch 6 联邦规范 · 7大生态小组件 ====================
+    // ① 小驴打卡 · 每日习惯连击 (checkin-daily-streaks)
+    const checkinStreaksSource = { pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 7 };
+    register("checkin-daily-streaks", this.i18n.homeCheckinDailyStreaks || "每日习惯连击", "iconCheck", this.i18n.homeDescCheckinDailyStreaks || "今日习惯完成与连续天数总览", [], (0, external_bridge_1.wrapEcosystemModuleRead)(async () => {
+        const bridge = (0, ecosystem_bridge_kit_1.getBridgeSafely)("checkin");
+        if (!bridge) return { items: [], emptyHint: "未检测到小驴打卡插件", status: "ready" };
+        try {
+            const items = typeof bridge.queryItems === "function" ? bridge.queryItems({ limit: 5 }) : [];
+            const streaks = typeof bridge.getStreaks === "function" ? bridge.getStreaks() : {};
+            const rows = (items || []).slice(0, 5).map((it) => {
+                const st = streaks[it.id]?.current ?? 0;
+                return { label: it.name || "未命名", value: `🔥 ${st}天` };
+            });
+            return { items: rows, emptyHint: rows.length ? "" : "暂无打卡习惯", status: "ready" };
+        } catch {
+            return { items: [], emptyHint: "📦 数据暂未返回，点击重试", status: "ready", retryable: true };
+        }
+    }, 800, 3000), {}, checkinStreaksSource);
+
+    // ② 小驴考试 · 今日备考概览 (exam-daily-summary)
+    const examSource = { pluginId: "siyuan-exam", name: "小驴考试", icon: "iconSparkles", order: 8 };
+    register("exam-daily-summary", this.i18n.homeExamDailySummary || "备考今日概览", "iconSparkles", this.i18n.homeDescExamDailySummary || "今日答题量、正确率与连击天数", [], (0, external_bridge_1.wrapEcosystemModuleRead)(async () => {
+        const bridge = (0, ecosystem_bridge_kit_1.getBridgeSafely)("exam");
+        if (!bridge || typeof bridge.statsRead !== "function") return { items: [], emptyHint: "未检测到小驴考试插件", status: "ready" };
+        try {
+            const stats = await bridge.statsRead();
+            const rows = [
+                { label: "今日刷题", value: `${stats.todayAnswered || 0} 题` },
+                { label: "正确率", value: `${stats.accuracyPercent || 0}%` },
+                { label: "错题待消", value: `${stats.wrongbookCount || 0} 道` },
+            ];
+            return { items: rows, stat: { value: `${stats.streakDays || 0}`, label: "连胜天数" }, emptyHint: "", status: "ready" };
+        } catch {
+            return { items: [], emptyHint: "📦 数据暂未返回，点击重试", status: "ready", retryable: true };
+        }
+    }, 800, 3000), {}, examSource);
+
+    // ③ 小驴闪卡 · 今日待复习数 (cards-due-summary)
+    const cardsSource = { pluginId: "siyuan-lv-cards", name: "小驴闪卡", icon: "iconRiffCard", order: 9 };
+    register("cards-due-summary", this.i18n.homeCardsDueSummary || "闪卡待复习数", "iconRiffCard", this.i18n.homeDescCardsDueSummary || "今日到期卡片与记忆复习队列", [], (0, external_bridge_1.wrapEcosystemModuleRead)(async () => {
+        const bridge = (0, ecosystem_bridge_kit_1.getBridgeSafely)("cards");
+        if (!bridge) return { items: [], emptyHint: "未检测到小驴闪卡插件", status: "ready" };
+        try {
+            const res = typeof bridge.getDueSummary === "function" ? await bridge.getDueSummary() : null;
+            const due = res?.data?.unreviewedCount ?? 0;
+            const rows = [
+                { label: "待复习", value: `${due} 张` },
+                { label: "新卡片", value: `${res?.data?.unreviewedNewCardCount || 0} 张` },
+            ];
+            return { items: rows, stat: { value: `${due}`, label: "今日待复习" }, emptyHint: "", status: "ready" };
+        } catch {
+            return { items: [], emptyHint: "📦 数据暂未返回，点击重试", status: "ready", retryable: true };
+        }
+    }, 800, 3000), {}, cardsSource);
+
+    // ④ 小驴拾遗 · 稍后读推荐流 (glean-later-list)
+    const gleanSource = { pluginId: "siyuan-glean", name: "小驴拾遗", icon: "iconBook", order: 10 };
+    register("glean-later-list", this.i18n.homeGleanLaterList || "稍后读推荐流", "iconBook", this.i18n.homeDescGleanLaterList || "收藏文章精读队列与剪藏推荐", [], (0, external_bridge_1.wrapEcosystemModuleRead)(async () => {
+        const bridge = (0, ecosystem_bridge_kit_1.getBridgeSafely)("glean");
+        if (!bridge || typeof bridge.listClips !== "function") return { items: [], emptyHint: "未检测到小驴拾遗插件", status: "ready" };
+        try {
+            const clips = await bridge.listClips({ status: "later", limit: 5 });
+            const rows = (clips || []).slice(0, 5).map((clip) => ({
+                label: clip.title || "无标题网页",
+                value: clip.site || "剪藏",
+            }));
+            return { items: rows, emptyHint: rows.length ? "" : "稍后读队列已读完", status: "ready" };
+        } catch {
+            return { items: [], emptyHint: "📦 数据暂未返回，点击重试", status: "ready", retryable: true };
+        }
+    }, 800, 3000), {}, gleanSource);
+
+    // ⑤ 小驴管家 · 家庭效期提醒 (home-expiry-reminders)
+    const homeSource = { pluginId: "siyuan-home", name: "小驴管家", icon: "iconCalendar", order: 11 };
+    register("home-expiry-reminders", this.i18n.homeExpiryReminders || "家庭效期提醒", "iconCalendar", this.i18n.homeDescExpiryReminders || "食品、药品与证件到期预警", [], (0, external_bridge_1.wrapEcosystemModuleRead)(async () => {
+        const bridge = (0, ecosystem_bridge_kit_1.getBridgeSafely)("home");
+        if (!bridge || typeof bridge.summary !== "function") return { items: [], emptyHint: "未检测到小驴管家插件", status: "ready" };
+        try {
+            const sum = bridge.summary();
+            const rows = [
+                { label: "今日过期", value: `${sum?.today || 0} 件` },
+                { label: "即将到期", value: `${sum?.soon || 0} 件` },
+                { label: "已过期", value: `${sum?.overdue || 0} 件` },
+            ];
+            return { items: rows, stat: { value: `${sum?.soon || 0}`, label: "即将到期" }, emptyHint: "", status: "ready" };
+        } catch {
+            return { items: [], emptyHint: "📦 数据暂未返回，点击重试", status: "ready", retryable: true };
+        }
+    }, 800, 3000), {}, homeSource);
+
+    // ⑥ 小驴人脉 · 近期待跟进 (contacts-upcoming)
+    const contactsSource = { pluginId: "siyuan-contacts", name: "小驴人脉", icon: "iconUser", order: 12 };
+    register("contacts-upcoming", this.i18n.homeContactsUpcoming || "人脉待跟进", "iconUser", this.i18n.homeDescContactsUpcoming || "近期好友生日与互动跟进备忘", [], (0, external_bridge_1.wrapEcosystemModuleRead)(async () => {
+        const bridge = (0, ecosystem_bridge_kit_1.getBridgeSafely)("contacts");
+        if (!bridge || typeof bridge.searchPeople !== "function") return { items: [], emptyHint: "未检测到小驴人脉插件", status: "ready" };
+        try {
+            const people = await bridge.searchPeople();
+            const rows = (people || []).slice(0, 5).map((p) => ({
+                label: p.name || "未命名好友",
+                value: p.group || "人脉",
+            }));
+            return { items: rows, emptyHint: rows.length ? "" : "近期无需跟进联系人", status: "ready" };
+        } catch {
+            return { items: [], emptyHint: "📦 数据暂未返回，点击重试", status: "ready", retryable: true };
+        }
+    }, 800, 3000), {}, contactsSource);
+
+    // ⑦ 小驴常用 · 高频常用语 (common-quick-palette)
+    const commonSource = { pluginId: "xiaolv-common", name: "小驴常用", icon: "iconFile", order: 13 };
+    register("common-quick-palette", this.i18n.homeCommonQuickPalette || "高频常用语", "iconFile", this.i18n.homeDescCommonQuickPalette || "高频文本片段与常用语快捷", [], (0, external_bridge_1.wrapEcosystemModuleRead)(async () => {
+        const bridge = (0, ecosystem_bridge_kit_1.getBridgeSafely)("common");
+        if (!bridge) return { items: [], emptyHint: "未检测到小驴常用插件", status: "ready" };
+        try {
+            const res = typeof bridge.recent === "function" ? await bridge.recent() : null;
+            const list = res?.data || [];
+            const rows = (list || []).slice(0, 5).map((it) => ({
+                label: it.title || it.content || "常用语",
+                value: "点击复制",
+            }));
+            return { items: rows, emptyHint: rows.length ? "" : "暂无最近常用语", status: "ready" };
+        } catch {
+            return { items: [], emptyHint: "📦 数据暂未返回，点击重试", status: "ready", retryable: true };
+        }
+    }, 800, 3000), {}, commonSource);
 }

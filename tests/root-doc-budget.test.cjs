@@ -30,7 +30,8 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 
 // ---- 预算常量 -----------------------------------------------------------
-const ROOT_DOC_MAX_COUNT = 8;
+// 数量 11：归档后 5 份 + 规范 CHANGELOG/SECURITY/多语言 README/快门统领指令等
+const ROOT_DOC_MAX_COUNT = 11;
 const ROOT_DOC_MAX_BYTES_PER_FILE = 150 * 1024;
 const ROOT_DOC_MAX_TOTAL_BYTES = 300 * 1024;
 
