@@ -1102,9 +1102,9 @@ export class FloatingBallUi implements FloatingBallUiController {
             const style = this.doc.defaultView?.getComputedStyle(this.root);
             const inset = (key: string) => Math.max(0, parseFloat(style?.getPropertyValue(key) || "0") || 0);
             visible.top += inset("--sw-fab-safe-top");
-            visible.bottom -= inset("--sw-fab-safe-bottom") + 48;
+            visible.bottom = Math.max(visible.top + this.ballSize, visible.bottom - inset("--sw-fab-safe-bottom") - 48);
             visible.left += inset("--sw-fab-safe-left");
-            visible.right -= inset("--sw-fab-safe-right");
+            visible.right = Math.max(visible.left + this.ballSize, visible.right - inset("--sw-fab-safe-right"));
         }
         const raw = this.options.resolveBounds?.();
         if (!raw) return visible;

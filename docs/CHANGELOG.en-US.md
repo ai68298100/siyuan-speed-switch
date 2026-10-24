@@ -5,6 +5,14 @@
 
 ## Changelog (full history)
 
+### v0.48.15 (2026-10-24)
+
+- **Floating Ball Viewport Bounds Inversion Defense & Lifecycle Cleanup**:
+  - Guarded mobile floating ball bounds against inverted viewports (`visible.bottom < visible.top`) under extreme insets (landscape, soft keyboards), enforcing physical `ballSize` minimums;
+  - Cleaned redundant dialog teardowns in `onunload` for deterministic lifecycle release.
+- **Doc Preview Robustness & Fallback**:
+  - Node fallback when contenteditable is absent and dataset.title header fallback.
+
 ### v0.48.14 (2026-10-24)
 
 - **Doc Preview Robustness & Fallback**:

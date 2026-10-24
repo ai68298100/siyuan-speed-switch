@@ -1045,9 +1045,9 @@ class FloatingBallUi {
             const style = (_b = this.doc.defaultView) === null || _b === void 0 ? void 0 : _b.getComputedStyle(this.root);
             const inset = (key) => Math.max(0, parseFloat((style === null || style === void 0 ? void 0 : style.getPropertyValue(key)) || "0") || 0);
             visible.top += inset("--sw-fab-safe-top");
-            visible.bottom -= inset("--sw-fab-safe-bottom") + 48;
+            visible.bottom = Math.max(visible.top + this.ballSize, visible.bottom - inset("--sw-fab-safe-bottom") - 48);
             visible.left += inset("--sw-fab-safe-left");
-            visible.right -= inset("--sw-fab-safe-right");
+            visible.right = Math.max(visible.left + this.ballSize, visible.right - inset("--sw-fab-safe-right"));
         }
         const raw = (_d = (_c = this.options).resolveBounds) === null || _d === void 0 ? void 0 : _d.call(_c);
         if (!raw)

@@ -4,6 +4,14 @@
 
 ## 更新日志（完整历史）
 
+### v0.48.15（2026-10-24）
+
+- **悬浮球极端视口边界防倒置与生命周期清理加固（Floating Ball Bounds & Cleanup）**：
+  - 修复移动端在横屏或软键盘、导航栏高度占用极大场景下，安全区扣减导致 `visible.bottom < visible.top` 产生的视口倒置与坐标抖动 Bug，加入 `Math.max(visible.top + this.ballSize, ...)` 物理尺寸保底；
+  - 优化 `onunload` 生命周期回收链路，剔除重复引用清理，确保各 Dialog、全局监听器与定时器严格注销。
+- **文档预览内容提取容错与标题兜底强化**：
+  - 无 contenteditable 节点回退与 dataset.title 兜底。
+
 ### v0.48.14（2026-10-24）
 
 - **文档预览内容提取容错与标题兜底强化（Doc Preview Robustness & Fallback）**：
