@@ -49,8 +49,9 @@ function buildBlockSearchSql(needle, options = {}) {
         ? Math.min(Math.floor(options.limit), MAX_BLOCK_LIMIT)
         : DEFAULT_BLOCK_LIMIT;
 
-    const notebookFilter = options.notebookId && typeof options.notebookId === "string"
-        ? ` AND box = '${escapeSqlLiteral(options.notebookId)}'`
+    const cleanNotebookId = options.notebookId && typeof options.notebookId === "string" ? options.notebookId.trim() : "";
+    const notebookFilter = cleanNotebookId
+        ? ` AND box = '${escapeSqlLiteral(cleanNotebookId)}'`
         : "";
 
     // 仅检索正文块（排除纯根文档块 type='d'），按更新时间倒序排序

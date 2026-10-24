@@ -3594,7 +3594,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.10", "iconSettings");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.11", "iconSettings");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
 
         const tabs = document.createElement("div");
@@ -4450,7 +4450,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         holder.dialog = dialog;
         this.platformSwitcherDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.10", "iconLvSpeedSwitch");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.11", "iconLvSpeedSwitch");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
         if (surfaceRoot) {
@@ -4540,7 +4540,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.10", "iconCode");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.11", "iconCode");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
@@ -4999,6 +4999,7 @@ const updatedMap: {[rootId: string]: string} = {};
         });
         input.addEventListener("keydown", (event) => {
             if (event.key === "Escape" && input.value) {
+                if (composing) return;
                 event.preventDefault();
                 event.stopPropagation();
                 input.value = "";
@@ -12063,7 +12064,11 @@ private rootIdOf(tab: Tab): string | null {
                 qChip.className = "b3-button b3-button--text sw__recent-query-chip";
                 qChip.textContent = q;
                 qChip.addEventListener("click", () => {
-                    const searchInput = searchSurface?.querySelector<HTMLInputElement>(".sw__search");
+                    const targetSurface = empty.closest<HTMLElement>(".sw-platform-surface")
+                        || empty.closest<HTMLElement>(".sw-platform-dialog")
+                        || empty.closest<HTMLElement>(".sw--sidebar")
+                        || searchSurface;
+                    const searchInput = targetSurface?.querySelector<HTMLInputElement>(".sw__search");
                     if (searchInput) {
                         searchInput.value = q;
                         searchInput.dispatchEvent(new (searchInput.ownerDocument.defaultView || window).Event("input", {bubbles: true}));
@@ -12106,7 +12111,11 @@ private rootIdOf(tab: Tab): string | null {
             if (this.mobileSwitcherDialog?.element.contains(empty)) this.mobileSwitcherDialog.destroy();
         };
         addAction("focus-search", this.i18n.platformGuideSearchAction || "开始搜索", () => {
-            searchSurface?.querySelector<HTMLInputElement>(".sw__search")?.focus({preventScroll: true});
+            const targetSurface = empty.closest<HTMLElement>(".sw-platform-surface")
+                || empty.closest<HTMLElement>(".sw-platform-dialog")
+                || empty.closest<HTMLElement>(".sw--sidebar")
+                || searchSurface;
+            targetSurface?.querySelector<HTMLInputElement>(".sw__search")?.focus({preventScroll: true});
         });
         const available = this.getAvailablePlatformSurfaces();
         if (available.includes("workbench")) {

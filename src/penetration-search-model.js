@@ -287,6 +287,13 @@ function findOutlineColonIndex(text) {
             if (prefix === "http" || prefix === "https" || prefix === "file" || prefix === "siyuan") {
                 continue;
             }
+            // 排除 Windows 驱动器盘符路径（如盘符路径或 file://c:/）
+            const isDriveLetter = i >= 1 && /^[a-zA-Z]$/.test(text[i - 1]) &&
+                (i === 1 || text[i - 2] === "/" || text[i - 2] === "\\" || /\s/.test(text[i - 2])) &&
+                (text[i + 1] === "/" || text[i + 1] === "\\");
+            if (isDriveLetter) {
+                continue;
+            }
             return i;
         }
     }

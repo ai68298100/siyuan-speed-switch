@@ -1,20 +1,20 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.48.10-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.11-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Latest stable release: v0.48.10 (2026-10-24)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.10) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Latest stable release: v0.48.11 (2026-10-24)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.11) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
-## What's New In v0.48.10 (2026-10-24)
+## What's New In v0.48.11 (2026-10-24)
 
-- **Bug Audit & Robustness Defense**:
-  - Fixed an un-cleared `setTimeout` timer in `wrapEcosystemModuleRead` that could cause hanging event loops, and guarded non-serializable circular configurations;
-  - Added full-width/half-width colon (`:` / `：`) prefix stripping for mode chips and W3C standard `Home` / `End` keyboard navigation;
-  - Hardened ecosystem event bus listener execution with per-listener `try-catch` isolation and idempotent unbinding;
-  - Upgraded SiReader and SiMedia palette actions to use comprehensive multi-alias detection (`getBridgeSafely`).
-- **SiReader & SiMedia Deep Integration**: Workbench widgets (`sireader-recent`, `simedia-active`) and real-time event bus auto-refresh.
+- **Deep Bug Audit & Robustness Round 2**:
+  - Fixed an IME issue where pressing Escape while typing Pinyin (`composing`) would wipe the entire search box instead of only closing the candidate popup;
+  - Fixed empty state recent search chips and search guide focus scoping by using dynamic target surface resolution (`targetSurface`);
+  - Guarded outline colon detection against Windows drive paths (`C:\`, `d:/`), preventing accidental outline mode switching;
+  - Guarded block search SQL generation against whitespace-only notebook ID filters.
+- **Deep Bug Audit Round 1**: Timer leak fix in ecosystem bridge, circular config serialization safety, and full-width colon mode chip handling.
 
 Itemized changes, validation data, and release history are in the [complete changelog](./docs/CHANGELOG.en-US.md).
 
@@ -401,7 +401,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and size budgets after building: 578 KiB archive, 1160 KiB raw bundle, and 320 KiB compressed per entry (see [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)). Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.48.10`, featuring deep bug audit, robustness defense against timer leaks, full-width colon mode chip handling, and SiReader/SiMedia deep integration. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
+The current version is `v0.48.11`, featuring two rounds of deep bug audit, IME composition Escape protection, dynamic empty-state scoping, and Windows drive path defenses. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>

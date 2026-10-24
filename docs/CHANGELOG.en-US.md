@@ -5,6 +5,16 @@
 
 ## Changelog (full history)
 
+### v0.48.11 (2026-10-24)
+
+- **Deep Bug Audit & Robustness Round 2**:
+  - Fixed an IME issue where pressing Escape while typing Pinyin (`composing`) would wipe the entire search box instead of only closing the candidate popup;
+  - Fixed empty state recent search chips and search guide focus scoping by using dynamic target surface resolution (`targetSurface`);
+  - Guarded outline colon detection against Windows drive paths (`C:\`, `d:/`), preventing accidental outline mode switching;
+  - Guarded block search SQL generation against whitespace-only notebook ID filters.
+- **Deep Bug Audit Round 1**:
+  - Timer leak fix in ecosystem bridge, circular config serialization safety, and full-width colon mode chip handling.
+
 ### v0.48.10 (2026-10-24)
 
 - **Bug Audit & Robustness Defense**:

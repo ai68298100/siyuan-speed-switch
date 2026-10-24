@@ -2,7 +2,7 @@
 // 门禁自查（docs/gate-audit-checklist.md）：
 //   1. 验证 package.zip、dist/index.js、dist/index.css 的物理字节数与 SHA-256 散列值与 release-readiness.md 一致；
 //   2. 验证集市规范资产 icon.png 与 preview.png 的物理限制；
-//   3. 验证解压后 package.zip 内部 plugin.json 的 version 严格等于 0.48.10；
+//   3. 验证解压后 package.zip 内部 plugin.json 的 version 严格等于 0.48.11；
 //   4. 负向探针覆盖：篡改哈希或版本号必定被安全拦截。
 
 const test = require("node:test");
@@ -58,15 +58,15 @@ test("T-7350: package.zip、dist/index.js 与 release-readiness.md 记录的散�
     const readinessContent = fs.readFileSync(readinessPath, "utf8");
 
     // 1. 验证大小在门禁之内
-    assert.equal(zipStat.size, 670878, "package.zip 物理大小必须严格吻合快照");
-    assert.equal(bundleStat.size, 1245518, "dist/index.js 物理大小必须严格吻合快照");
+    assert.equal(zipStat.size, 670943, "package.zip 物理大小必须严格吻合快照");
+    assert.equal(bundleStat.size, 1245886, "dist/index.js 物理大小必须严格吻合快照");
 
     // 2. 验证 release-readiness.md 包含真实的哈希值与大小声明
     const zipSha = calcSha256(zipPath);
     const bundleSha = calcSha256(bundlePath);
 
-    assert.equal(zipSha, "9af8eb0cee5ddc913b0468147c99afe57eba8400c359ae78405592c1472af47d");
-    assert.equal(bundleSha, "e7a72cdd0a664363de025087e69ee4ed9d7a605232c862121c16d944b32417b9");
+    assert.equal(zipSha, "256aadd57892a39fe9bb4013f680837eeca1d33b55b398a8172a9586e1e38b41");
+    assert.equal(bundleSha, "5c96e8a778b9c6f4fbca12a474fd1e3637f474b9507881124692e0622e54aa2a");
 
     assert.ok(readinessContent.includes(zipSha), "release-readiness.md 必须包含当前构建 package.zip 的 SHA-256");
     assert.ok(readinessContent.includes(bundleSha), "release-readiness.md 必须包含当前构建 dist/index.js 的 SHA-256");
@@ -90,7 +90,7 @@ test("T-7350: 集市规范图标与预览图物理尺寸与大小严格合规", 
     assert.ok(previewStat.size <= 204800, `preview.png 大小 (${previewStat.size} B) 必须 <= 200 KB`);
 });
 
-test("T-7350: package.zip 内部包含完整 14 项文件且版本号严格等于 0.48.10", () => {
+test("T-7350: package.zip 内部包含完整 14 项文件且版本号严格等于 0.48.11", () => {
     const zipPath = path.join(ROOT, "package.zip");
     const buf = fs.readFileSync(zipPath);
     const entries = parseZipEntryNames(buf);
@@ -102,7 +102,7 @@ test("T-7350: package.zip 内部包含完整 14 项文件且版本号严格等�
 
     // 校验 dist/plugin.json 中的 version
     const distPlugin = JSON.parse(fs.readFileSync(path.join(ROOT, "dist", "plugin.json"), "utf8"));
-    assert.equal(distPlugin.version, "0.48.10", "解压产物中的 plugin.json 版本必须为 0.48.10");
+    assert.equal(distPlugin.version, "0.48.11", "解压产物中的 plugin.json 版本必须为 0.48.11");
 });
 
 test("T-7350 门禁负向验证：篡改散列或伪造解压版本必须精准红", () => {
