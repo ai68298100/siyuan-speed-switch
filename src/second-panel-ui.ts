@@ -145,7 +145,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         dialogHolder.dialog = dialog;
         this.workbenchDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--workbench");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogWorkbenchTitle || "工作台", "v0.48.16", "iconLayoutHome");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogWorkbenchTitle || "工作台", "v0.48.17", "iconLayoutHome");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         if (fullscreenMode) {
             dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");

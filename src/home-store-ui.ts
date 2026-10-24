@@ -63,7 +63,7 @@ import {openHomeConfigForm} from "./home-config-form";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {buildHomeStoreProviderGroups, buildHomeStoreSourceGroups, buildHomeStoreSourceSearchText, resolveHomeModuleSource, buildHomeStoreTransparencySummary} from "./home-source-model";
-import {mountPlatformDialogCloseHint} from "./platform-dom";
+import {mountPlatformDialogCloseHint, mountPlatformDialogTitleWrap} from "./platform-dom";
 
 export interface HomeStoreUiHost {
     i18n: Record<string, string>;
@@ -294,6 +294,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             height: this.isMobile ? "min(560px, 85vh)" : `${Math.min(720, Math.round(window.innerHeight * 0.84))}px`,
             destroyCallback: () => disposeStore(),
         });
+        mountPlatformDialogTitleWrap(storeDialog.element, this.i18n.homeStoreTitle || "组件商店", "v0.48.17", "iconPlugin");
         mountPlatformDialogCloseHint(storeDialog.element, this.i18n.platformCloseHint || "to close");
         if (!this.isMobile) {
             storeDialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen", "sw-home-store-dialog");
@@ -359,6 +360,9 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             preview.className = "sw-store-preview sw-home-store__inline-preview";
             const cell = document.createElement("div");
             cell.className = `sw-home__cell mat-${resolveHomeTileMaterial(moduleId)}`;
+            if (resolveHomeTileMaterial(moduleId) === "dark" || moduleId === "external-local-time" || moduleId === "external-world-clock") {
+                cell.classList.add("sw-home__cell--midnight");
+            }
             cell.dataset.moduleId = moduleId;
             cell.dataset.size = sizeKey;
             const body = document.createElement("div");
@@ -860,7 +864,17 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 card.dataset.sourceKind = sourceMetaInfo.kind;
                 card.dataset.sourceNetwork = sourceMetaInfo.network;
                 card.dataset.sourceAuth = sourceMetaInfo.auth;
+                const isEcosystem = moduleId.startsWith("checkin-")
+                    || moduleId.startsWith("exam-")
+                    || moduleId.startsWith("cards-")
+                    || moduleId.startsWith("glean-")
+                    || moduleId.startsWith("home-expiry-")
+                    || moduleId.startsWith("contacts-")
+                    || moduleId.startsWith("common-")
+                    || moduleId.startsWith("sireader-")
+                    || moduleId.startsWith("simedia-");
                 card.dataset.category = def.category === "siyuan" ? "builtin" : "plugin";
+                if (isEcosystem) card.dataset.category = "ecosystem";
                 card.dataset.availability = def.availability || "ready";
                 card.dataset.integration = externalInfo?.integration === "http" ? "network"
                     : externalInfo?.integration === "local-bridge" ? "local"
@@ -875,7 +889,8 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 card.dataset.integrationTone = resolveHomeStoreIntegrationTone(card.dataset);
                 card.dataset.cardTone = resolveHomeStoreCardTone(card.dataset);
                 card.dataset.configurable = String(Array.isArray(def.configSchema) && def.configSchema.length > 0);
-                card.dataset.recommended = String(def.category === "siyuan" && !externalInfo && (def.availability || "ready") === "ready");
+                const isFeatured = HOME_FEATURED_MODULE_IDS.includes(moduleId);
+                card.dataset.recommended = String(isFeatured || (def.category === "siyuan" && !externalInfo && (def.availability || "ready") === "ready"));
                 card.dataset.dependency = dependencySummary.state;
                 card.dataset.dependencyName = dependencySummary.name;
                 card.dataset.dependencySetup = dependencySummary.setup;
@@ -957,6 +972,7 @@ const tabs: Array<{key: string; label: string; category?: string; availability?:
                 // 供既有锚点/模型消费）；依赖/可配置/已添加等状态 chips 两变体都保留。
                 if (variant === "catalog") {
                     if (externalInfo) {
+                        if (isEcosystem) addChip(this.i18n.homeStoreTabEcosystem || "小驴生态", "ecosystem");
                         addChip(this.i18n.homeStoreSource.replace("{source}", externalInfo.providerName), "source");
                         const integrationKind = externalInfo.integration;
                         const privacyKind = externalInfo.privacy;

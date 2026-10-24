@@ -8,11 +8,11 @@
 const STORE_TABS = Object.freeze(["all", "recommended", "configurable", "builtin", "offline", "local", "network", "plugin", "conditional", "requires", "optional", "added"]);
 const STORE_DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
 const STORE_AVAILABILITY = Object.freeze(["ready", "conditional", "external"]);
-const STORE_CATEGORIES = Object.freeze(["builtin", "plugin"]);
+const STORE_CATEGORIES = Object.freeze(["builtin", "plugin", "ecosystem"]);
 const STORE_INTEGRATIONS = Object.freeze(["offline", "local", "network"]);
 const STORE_SORTS = Object.freeze(["relevance", "title", "status", "category"]);
 
-// T-7360 核心精选推荐组件清单（Featured / Essentials）
+// T-7360 / T-7375 核心精选推荐组件清单（Featured / Essentials）
 const HOME_FEATURED_MODULE_IDS = Object.freeze([
     "recent-documents",
     "today-journal",
@@ -26,6 +26,9 @@ const HOME_FEATURED_MODULE_IDS = Object.freeze([
     "document-sets",
     "external-weather-open-meteo",
     "checkin-today",
+    "checkin-weekly",
+    "cards-due-summary",
+    "sireader-recent",
 ]);
 const PREVIEW_KINDS = Object.freeze({
     "today-journal": "documents", "journal-monthly": "calendar", "recent-daily-notes": "documents", "today-reservations": "tasks",
@@ -192,7 +195,7 @@ function buildHomeStoreTabCounts(cards) {
         recommended: all.filter((card) => isHomeStoreRecommended(card)).length,
         configurable: all.filter((card) => normalizeHomeStoreCard(card).configurable).length,
         builtin: all.filter((card) => normalizeHomeStoreCard(card).category === "builtin").length,
-        plugin: all.filter((card) => normalizeHomeStoreCard(card).category === "plugin").length,
+        plugin: all.filter((card) => normalizeHomeStoreCard(card).category === "plugin" || normalizeHomeStoreCard(card).category === "ecosystem").length,
         offline: all.filter((card) => normalizeHomeStoreCard(card).integration === "offline").length,
         local: all.filter((card) => normalizeHomeStoreCard(card).integration === "local").length,
         network: all.filter((card) => normalizeHomeStoreCard(card).integration === "network").length,
@@ -200,6 +203,9 @@ function buildHomeStoreTabCounts(cards) {
         added: all.filter(isHomeStoreAdded).length,
     };
     const normalized = all.map(normalizeHomeStoreCard);
+    if (normalized.some((card) => card.category === "ecosystem")) {
+        counts.ecosystem = normalized.filter((card) => card.category === "ecosystem").length;
+    }
     if (normalized.some((card) => card.dependency === "required" || card.dependency === "optional")) {
         counts.requires = normalized.filter((card) => card.dependency === "required").length;
         counts.optional = normalized.filter((card) => card.dependency === "optional").length;
@@ -575,7 +581,7 @@ function buildHomeStoreViewSummary(value, labels = {}) {
 }
 
 function normalizeHomeStoreTab(value) {
-    return STORE_TABS.includes(value) ? value : "all";
+    return value === "ecosystem" || STORE_TABS.includes(value) ? value : "all";
 }
 
 function normalizeHomeStoreDevice(value) {
@@ -594,7 +600,7 @@ function resolveHomeStoreFilter(tab) {
     const key = normalizeHomeStoreTab(tab);
     const normalized = {
         tab: key,
-        category: key === "builtin" || key === "plugin" ? key : "all",
+        category: key === "builtin" || key === "plugin" || key === "ecosystem" ? key : "all",
         availability: key === "conditional" ? "conditional" : "",
         integration: STORE_INTEGRATIONS.includes(key) ? key : "",
         addedOnly: key === "added",
@@ -609,9 +615,22 @@ function normalizeHomeStoreCard(card) {
     const source = card && typeof card === "object" ? card : {};
     const rawModuleId = boundedText(source.moduleId || source.id, 64);
     const isFeatured = rawModuleId ? HOME_FEATURED_MODULE_IDS.includes(rawModuleId) : false;
+    const isEcosystem = rawModuleId && (
+        rawModuleId.startsWith("checkin-") ||
+        rawModuleId.startsWith("exam-") ||
+        rawModuleId.startsWith("cards-") ||
+        rawModuleId.startsWith("glean-") ||
+        rawModuleId.startsWith("home-expiry-") ||
+        rawModuleId.startsWith("contacts-") ||
+        rawModuleId.startsWith("common-") ||
+        rawModuleId.startsWith("sireader-") ||
+        rawModuleId.startsWith("simedia-") ||
+        source.category === "ecosystem"
+    );
+    const category = isEcosystem ? "ecosystem" : normalizeHomeStoreCategory(source.category);
     const normalized = {
         search: boundedText(source.search, 512).toLowerCase(),
-        category: normalizeHomeStoreCategory(source.category),
+        category,
         availability: normalizeHomeStoreAvailability(source.availability),
         integration: STORE_INTEGRATIONS.includes(source.integration) ? source.integration : "unknown",
         added: source.added === true || source.added === "true",
@@ -627,7 +646,7 @@ function matchesHomeStoreCard(card, query, filter) {
     const text = normalizeHomeStoreQuery(query);
     const active = filter && typeof filter === "object" ? filter : resolveHomeStoreFilter("all");
     return (!text || item.search.includes(text))
-        && (!active.category || active.category === "all" || item.category === active.category)
+        && (!active.category || active.category === "all" || item.category === active.category || (active.category === "plugin" && item.category === "ecosystem"))
         && (!active.availability || item.availability === active.availability)
         && (!active.integration || item.integration === active.integration)
         && (!active.addedOnly || item.added)

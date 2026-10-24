@@ -799,10 +799,21 @@
     border-color: color-mix(in srgb, var(--b3-theme-primary) 38%, var(--b3-border-color));
 }
 
+.sw-home-store__tab[data-tab-key="ecosystem"] {
+    color: var(--lv-brand, #8B5CF6);
+    font-weight: var(--sw-weight-semibold, 600);
+
+    &.is-active {
+        background: color-mix(in srgb, var(--lv-brand, #8B5CF6) 14%, var(--b3-theme-surface));
+        color: var(--lv-brand, #8B5CF6);
+        box-shadow: inset 0 -2px 0 var(--lv-brand, #8B5CF6);
+    }
+}
+
 .sw-home-store__catalog .sw-home-store__card.is-active {
-    background: color-mix(in srgb, var(--b3-theme-primary) 12%, var(--b3-theme-surface, transparent));
-    border-color: var(--b3-theme-primary);
-    box-shadow: inset 3px 0 0 var(--b3-theme-primary);
+    background: color-mix(in srgb, var(--lv-brand, var(--b3-theme-primary)) 12%, var(--b3-theme-surface, transparent));
+    border-color: var(--lv-brand, var(--b3-theme-primary));
+    box-shadow: inset 3px 0 0 var(--lv-brand, var(--b3-theme-primary));
 }
 
 .sw-home-store__catalog .sw-home-store__card .sw-home-store__support,

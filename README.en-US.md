@@ -1,18 +1,20 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.48.16-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.17-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Latest stable release: v0.48.16 (2026-10-24)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.16) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Latest stable release: v0.48.17 (2026-10-24)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.17) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
-## What's New In v0.48.16 (2026-10-24)
+## What's New In v0.48.17 (2026-10-24)
 
-- **Widget Store Search Input IME Composition Guard & Performance (home-store-ui)**:
-  - Guarded widget store search input with `compositionstart` / `compositionend`, preventing intermediate Pinyin keystrokes from triggering expensive whole-catalog DOM refiltering and statistics recalculation;
-  - Added Escape key protection during composition (`keyCode === 229`) to prevent candidate dismissal from accidentally clearing the search query.
-- **Floating Ball Viewport Bounds Inversion Defense & Lifecycle Cleanup**: Physical ball size minimum bounds and deterministic teardown.
+- **Second Panel Widget Store Complete Redesign**:
+  - **Unified Branded Titlebar**: Equipped the widget store with `mountPlatformDialogTitleWrap` (22x22 interstellar purple branded icon, clear title, compact version badge, Esc close hint);
+  - **Dedicated Ecosystem Tab**: Introduced a dedicated "Ecosystem" tab aggregating Xiaolv Checkin, Exam, Flashcards, Butler, Contacts, Common, Glean, SiReader, and SiMedia widgets;
+  - **Midnight Black Gold Hero Tile Live Preview**: The store live preview embeds the workbench midnight black gold aesthetics (`.sw-home__cell--midnight` for clocks and dark tiles);
+  - **Synchronized Featured Curations**: Featured list expanded to include weekly checkin capsules, flashcard due queues, SiReader reading shelf, and SiMedia playing state.
+- **Widget Store Search Input IME Guard**: Composition guard and Escape key protection during Pinyin typing.
 
 Itemized changes, validation data, and release history are in the [complete changelog](./docs/CHANGELOG.en-US.md).
 
@@ -399,7 +401,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and size budgets after building: 578 KiB archive, 1160 KiB raw bundle, and 320 KiB compressed per entry (see [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)). Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.48.16`, featuring widget store search IME composition guarding, floating ball bounds inversion defense, and doc preview contenteditable fallback. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
+The current version is `v0.48.17`, featuring a complete redesign of the widget store, a dedicated ecosystem tab, midnight black gold live preview, and branded titlebars. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>

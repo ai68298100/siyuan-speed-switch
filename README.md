@@ -1,19 +1,21 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.48.16-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.17-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **最近正式版：v0.48.16（2026-10-24）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.16) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **最近正式版：v0.48.17（2026-10-24）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.17) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
-## 本次更新（v0.48.16 · 2026-10-24）
+## 本次更新（v0.48.17 · 2026-10-24）
 
-- **组件商店搜索框输入法（IME）守卫与性能优化（Widget Store IME Guard）**：
-  - 修复第二面板组件商店（`home-store-ui`）搜索框此前缺失输入法合成守卫的缺陷，在拼音候选期间（`compositionstart` / `isComposing`）阻断中间态高频触发全卡片 DOM 筛选与状态摘要重算；
-  - 增加候选阶段按 Escape 的按键保护（`keyCode === 229`），杜绝撤销拼音候选窗时误触发搜索清空；
-  - `compositionend` 阶段补发一次精准筛选，输入体验与切换器主搜索保持高度一致。
-- **悬浮球极端视口边界防倒置与生命周期清理加固**：物理尺寸保底与卸载链路梳理。
+- **第二面板小组件商店全新重构与生态专区落地（Widget Store Complete Redesign）**：
+  - **统一品牌弹窗标题栏装配**：商店大窗全面装配 `lv-dialog-title-wrap`（22×22 星际深紫底白标 + 标题 + 版本徽章 + Esc 退出提示），补齐最后一块品牌标题栏拼图；
+  - **小驴生态专属专区（Ecosystem Tab）**：分类栏正式增加「小驴生态」专属页签，聚合小驴打卡、考试、闪卡、管家、人脉、常用、拾遗以及思阅与思播等全部生态组件；
+  - **午夜黑金 Hero Tile 沉浸式预览**：商店实时预览区同步渗透第二面板黑金美学（时钟与深色模块挂载 `.sw-home__cell--midnight`）；
+  - **精选推荐清单（Featured）同步**：将本周打卡、闪卡待复习、思阅在读书架与思播正在播放同步纳入核心黄金精选清单；
+  - **分类芯片与添加按钮微动效**：电光紫生态页签高亮与主色实底胶囊按钮微交互。
+- **组件商店搜索框输入法（IME）守卫与性能优化**：拼音候选期间阻断高频重绘，Escape 防误清空。
 
 逐项说明、验证数据与历史版本见[完整更新日志](./docs/CHANGELOG.md)。
 
@@ -399,7 +401,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和体积预算（归档 578 KiB、raw 1160 KiB、单条目压缩 320 KiB，见 [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.48.16`，包含组件商店搜索输入法守卫、悬浮球极端视口边界防倒置与文档预览内容提取容错。
+当前版本为 `v0.48.17`，包含第二面板小组件商店全新重构、小驴生态专属专区、午夜黑金沉浸式预览与组件商店搜索输入法守卫。
 
 <details>
 <summary>历史更新日志（点击展开）</summary>

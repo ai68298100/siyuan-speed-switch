@@ -5,6 +5,16 @@
 
 ## Changelog (full history)
 
+### v0.48.17 (2026-10-24)
+
+- **Second Panel Widget Store Complete Redesign**:
+  - **Unified Branded Titlebar**: Equipped the widget store with `mountPlatformDialogTitleWrap` (22x22 interstellar purple branded icon, clear title, compact version badge, Esc close hint);
+  - **Dedicated Ecosystem Tab**: Introduced a dedicated "Ecosystem" tab aggregating Xiaolv Checkin, Exam, Flashcards, Butler, Contacts, Common, Glean, SiReader, and SiMedia widgets;
+  - **Midnight Black Gold Hero Tile Live Preview**: The store live preview embeds the workbench midnight black gold aesthetics (`.sw-home__cell--midnight` for clocks and dark tiles);
+  - **Synchronized Featured Curations**: Featured list expanded to include weekly checkin capsules, flashcard due queues, SiReader reading shelf, and SiMedia playing state.
+- **Widget Store Search Input IME Guard**:
+  - Composition guard and Escape key protection during Pinyin typing.
+
 ### v0.48.16 (2026-10-24)
 
 - **Widget Store Search Input IME Composition Guard & Performance (home-store-ui)**:
