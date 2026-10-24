@@ -4,6 +4,14 @@
 
 ## 更新日志（完整历史）
 
+### v0.48.14（2026-10-24）
+
+- **文档预览内容提取容错与标题兜底强化（Doc Preview Robustness & Fallback）**：
+  - 修复 `extractDocPreviewBlocks` 在段落、代码、引用或列表块缺少 `contenteditable="true"` 属性时（如静态只读或导出视图）内容被静默丢弃的问题，增加回退至节点自身的保护；
+  - 增强 `docPreviewItemTitle` 标题获取：优先支持从 `item.dataset.title` 获取标题兜底，杜绝预览头部在非标准卡片上出现空标题。
+- **移动端长按防抖容差与动作画板输入法守卫**：
+  - 10px touch slop 容差与拼音候选期间 NOOP 拦截。
+
 ### v0.48.13（2026-10-24）
 
 - **移动端触控容差防抖与动作画板输入法守卫（Touch Slop & Action Palette IME Guard）**：

@@ -1467,7 +1467,7 @@ function resetDocPreviewFind(this: DocSearchUiHost, pane: HTMLElement, rerunIfOp
     }
 
 function docPreviewItemTitle(item: HTMLElement): string {
-        return item.querySelector<HTMLElement>(".sw__doc-title, .sw__title")?.textContent?.trim() || "";
+        return item.dataset.title || item.querySelector<HTMLElement>(".sw__doc-title, .sw__title")?.textContent?.trim() || "";
     }
 
 function docPreviewPinButtonOf(pane: HTMLElement): HTMLButtonElement | null {
@@ -1626,11 +1626,11 @@ function extractDocPreviewBlocks(html: unknown): Array<{content: string; kind: s
         for (const node of template.content.children) {
             if (blocks.length >= 12) break;
             const kind = kinds[node.getAttribute("data-type") || ""];
-            if (kind) add(node.querySelector('[contenteditable="true"]'), kind);
+            if (kind) add(node.querySelector('[contenteditable="true"]') || node, kind);
             else if (node.getAttribute("data-type") === "NodeList") {
                 node.querySelectorAll('[data-type="NodeListItem"], [data-type="NodeTaskListItem"]').forEach((item) => {
                     if (blocks.length >= 12) return;
-                    const textNode = item.querySelector('[contenteditable="true"]');
+                    const textNode = item.querySelector('[contenteditable="true"]') || item;
                     const task = node.getAttribute("data-subtype") === "t"
                         || item.getAttribute("data-subtype") === "t"
                         || item.getAttribute("data-type") === "NodeTaskListItem";

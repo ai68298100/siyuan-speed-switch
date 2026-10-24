@@ -1355,8 +1355,7 @@ function resetDocPreviewFind(pane, rerunIfOpen = false) {
         runDocPreviewFind.call(this, pane);
 }
 function docPreviewItemTitle(item) {
-    var _a, _b;
-    return ((_b = (_a = item.querySelector(".sw__doc-title, .sw__title")) === null || _a === void 0 ? void 0 : _a.textContent) === null || _b === void 0 ? void 0 : _b.trim()) || "";
+    return item.dataset.title || ((_b = (_a = item.querySelector(".sw__doc-title, .sw__title")) === null || _a === void 0 ? void 0 : _a.textContent) === null || _b === void 0 ? void 0 : _b.trim()) || "";
 }
 function docPreviewPinButtonOf(pane) {
     return pane.querySelector(".sw__doc-preview-pin");
@@ -1523,13 +1522,13 @@ function extractDocPreviewBlocks(html) {
             break;
         const kind = kinds[node.getAttribute("data-type") || ""];
         if (kind)
-            add(node.querySelector('[contenteditable="true"]'), kind);
+            add(node.querySelector('[contenteditable="true"]') || node, kind);
         else if (node.getAttribute("data-type") === "NodeList") {
             node.querySelectorAll('[data-type="NodeListItem"], [data-type="NodeTaskListItem"]').forEach((item) => {
                 var _a, _b, _c, _d, _e, _f;
                 if (blocks.length >= 12)
                     return;
-                const textNode = item.querySelector('[contenteditable="true"]');
+                const textNode = item.querySelector('[contenteditable="true"]') || item;
                 const task = node.getAttribute("data-subtype") === "t"
                     || item.getAttribute("data-subtype") === "t"
                     || item.getAttribute("data-type") === "NodeTaskListItem";

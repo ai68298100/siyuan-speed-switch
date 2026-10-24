@@ -5,6 +5,14 @@
 
 ## Changelog (full history)
 
+### v0.48.14 (2026-10-24)
+
+- **Doc Preview Robustness & Fallback**:
+  - Fixed an issue in `extractDocPreviewBlocks` where paragraphs, code, quotes, or list items lacking `contenteditable="true"` (e.g. read-only or static views) would be silently dropped, adding graceful fallback to the node itself;
+  - Hardened `docPreviewItemTitle` to check `item.dataset.title` as fallback, ensuring the preview header always receives an accurate title.
+- **Touch Slop & Action Palette IME Guard**:
+  - 10px touch slop tolerance and IME composition NOOP guard.
+
 ### v0.48.13 (2026-10-24)
 
 - **Touch Slop & Action Palette IME Guard**:
