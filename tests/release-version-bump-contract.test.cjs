@@ -1,9 +1,9 @@
-// T-7349/T-7370 版本号晋级与发布历史结转契约测试
+// T-7349/T-7371 版本号晋级与发布历史结转契约测试
 // 门禁自查（docs/gate-audit-checklist.md）：
-//   1. 验证 package.json 与 plugin.json 版本号精确对齐至 0.48.12；
-//   2. 验证中英文 README 徽标、标题与链接精确反映 0.48.12；
-//   3. 验证中英文 CHANGELOG 存在独立的 v0.48.12 章节并置于 v0.48.11 之前；
-//   4. 验证 ROADMAP.md 基线版本精确对齐至 v0.48.12；
+//   1. 验证 package.json 与 plugin.json 版本号精确对齐至 0.48.13；
+//   2. 验证中英文 README 徽标、标题与链接精确反映 0.48.13；
+//   3. 验证中英文 CHANGELOG 存在独立的 v0.48.13 章节并置于 v0.48.12 之前；
+//   4. 验证 ROADMAP.md 基线版本精确对齐至 v0.48.13；
 //   5. 负向探针覆盖：版本退化或文档缺少正式发布章节必定被安全拦截。
 
 const test = require("node:test");
@@ -20,55 +20,55 @@ const changelogZh = fs.readFileSync(path.join(ROOT, "docs", "CHANGELOG.md"), "ut
 const changelogEn = fs.readFileSync(path.join(ROOT, "docs", "CHANGELOG.en-US.md"), "utf8");
 const roadmap = fs.readFileSync(path.join(ROOT, "ROADMAP.md"), "utf8");
 
-test("T-7370: package.json 与 plugin.json 版本号精确升级为 0.48.12", () => {
-    assert.equal(pkg.version, "0.48.12", "package.json 版本号必须为 0.48.12");
-    assert.equal(plugin.version, "0.48.12", "plugin.json 版本号必须为 0.48.12");
+test("T-7371: package.json 与 plugin.json 版本号精确升级为 0.48.13", () => {
+    assert.equal(pkg.version, "0.48.13", "package.json 版本号必须为 0.48.13");
+    assert.equal(plugin.version, "0.48.13", "plugin.json 版本号必须为 0.48.13");
     assert.equal(pkg.version, plugin.version, "版本元数据必须 100% 对齐");
 });
 
-test("T-7370: 中英文 README 徽标、标题与说明精确对齐 0.48.12", () => {
+test("T-7371: 中英文 README 徽标、标题与说明精确对齐 0.48.13", () => {
     // 中文 README 对齐
-    assert.match(readmeZh, /badge\/version-0\.48\.12-blue/, "中文 README 徽标必须为 0.48.12");
-    assert.match(readmeZh, /最近正式版：v0\.48\.12（2026-10-24）/, "中文 README 最近正式版必须为 v0.48.12");
-    assert.match(readmeZh, /## 本次更新（v0\.48\.12 · 2026-10-24）/, "中文 README 更新章节必须为 v0.48.12");
-    assert.match(readmeZh, /当前版本为 `v0\.48\.12`/, "中文 README 底部版本声明必须为 v0.48.12");
+    assert.match(readmeZh, /badge\/version-0\.48\.13-blue/, "中文 README 徽标必须为 0.48.13");
+    assert.match(readmeZh, /最近正式版：v0\.48\.13（2026-10-24）/, "中文 README 最近正式版必须为 v0.48.13");
+    assert.match(readmeZh, /## 本次更新（v0\.48\.13 · 2026-10-24）/, "中文 README 更新章节必须为 v0.48.13");
+    assert.match(readmeZh, /当前版本为 `v0\.48\.13`/, "中文 README 底部版本声明必须为 v0.48.13");
 
     // 英文 README 对齐
-    assert.match(readmeEn, /badge\/version-0\.48\.12-blue/, "英文 README 徽标必须为 0.48.12");
-    assert.match(readmeEn, /Latest stable release: v0\.48\.12 \(2026-10-24\)/, "英文 README 最近正式版必须为 v0.48.12");
-    assert.match(readmeEn, /## What's New In v0\.48\.12 \(2026-10-24\)/, "英文 README 更新章节必须为 v0.48.12");
-    assert.match(readmeEn, /The current version is `v0\.48\.12`/, "英文 README 底部版本声明必须为 v0.48.12");
+    assert.match(readmeEn, /badge\/version-0\.48\.13-blue/, "英文 README 徽标必须为 0.48.13");
+    assert.match(readmeEn, /Latest stable release: v0\.48\.13 \(2026-10-24\)/, "英文 README 最近正式版必须为 v0.48.13");
+    assert.match(readmeEn, /## What's New In v0\.48\.13 \(2026-10-24\)/, "英文 README 更新章节必须为 v0.48.13");
+    assert.match(readmeEn, /The current version is `v0\.48\.13`/, "英文 README 底部版本声明必须为 v0.48.13");
 });
 
-test("T-7370: 中英文 CHANGELOG 固化独立的 v0.48.12 章节并优先于 v0.48.11", () => {
+test("T-7371: 中英文 CHANGELOG 固化独立的 v0.48.13 章节并优先于 v0.48.12", () => {
     // 中文 CHANGELOG
+    const zhPos4813 = changelogZh.indexOf("### v0.48.13（2026-10-24）");
     const zhPos4812 = changelogZh.indexOf("### v0.48.12（2026-10-24）");
-    const zhPos4811 = changelogZh.indexOf("### v0.48.11（2026-10-24）");
-    assert.ok(zhPos4812 >= 0, "中文 CHANGELOG 必须包含 v0.48.12 发布章节");
-    assert.ok(zhPos4811 >= 0, "中文 CHANGELOG 必须包含历史 v0.48.11 章节");
-    assert.ok(zhPos4812 < zhPos4811, "v0.48.12 章节必须排在 v0.48.11 之前");
+    assert.ok(zhPos4813 >= 0, "中文 CHANGELOG 必须包含 v0.48.13 发布章节");
+    assert.ok(zhPos4812 >= 0, "中文 CHANGELOG 必须包含历史 v0.48.12 章节");
+    assert.ok(zhPos4813 < zhPos4812, "v0.48.13 章节必须排在 v0.48.12 之前");
 
     // 英文 CHANGELOG
+    const enPos4813 = changelogEn.indexOf("### v0.48.13 (2026-10-24)");
     const enPos4812 = changelogEn.indexOf("### v0.48.12 (2026-10-24)");
-    const enPos4811 = changelogEn.indexOf("### v0.48.11 (2026-10-24)");
-    assert.ok(enPos4812 >= 0, "英文 CHANGELOG 必须包含 v0.48.12 发布章节");
-    assert.ok(enPos4811 >= 0, "英文 CHANGELOG 必须包含历史 v0.48.11 章节");
-    assert.ok(enPos4812 < enPos4811, "v0.48.12 章节必须排在 v0.48.11 之前");
+    assert.ok(enPos4813 >= 0, "英文 CHANGELOG 必须包含 v0.48.13 发布章节");
+    assert.ok(enPos4812 >= 0, "英文 CHANGELOG 必须包含历史 v0.48.12 章节");
+    assert.ok(enPos4813 < enPos4812, "v0.48.13 章节必须排在 v0.48.12 之前");
 });
 
-test("T-7370: ROADMAP.md 基线版本精确结转为 v0.48.12", () => {
-    assert.match(roadmap, /> 基线：`v0\.48\.12` 已就绪/);
+test("T-7371: ROADMAP.md 基线版本精确结转为 v0.48.13", () => {
+    assert.match(roadmap, /> 基线：`v0\.48\.13` 已就绪/);
     assert.match(roadmap, /最后更新：2026-10-24/);
 });
 
-test("T-7370 门禁负向验证：若版本号退化或发布章节倒序，断言必须精准红", () => {
+test("T-7371 门禁负向验证：若版本号退化或发布章节倒序，断言必须精准红", () => {
     // 探针 1：模拟旧版本号比较必须失败
     assert.throws(() => {
-        assert.equal(pkg.version, "0.48.11");
+        assert.equal(pkg.version, "0.48.12");
     }, assert.AssertionError);
 
     // 探针 2：模拟倒置的更新日志章节顺序必须失败
     assert.throws(() => {
-        assert.ok(changelogZh.indexOf("### v0.48.11（2026-10-24）") < changelogZh.indexOf("### v0.48.12（2026-10-24）"));
+        assert.ok(changelogZh.indexOf("### v0.48.12（2026-10-24）") < changelogZh.indexOf("### v0.48.13（2026-10-24）"));
     }, assert.AssertionError);
 });

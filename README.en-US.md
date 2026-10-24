@@ -1,19 +1,19 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.48.12-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.13-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
-> **Latest stable release: v0.48.12 (2026-10-24)**<br>
-> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.12) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
+> **Latest stable release: v0.48.13 (2026-10-24)**<br>
+> [Download the GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.13) · [Release readiness](./docs/release-readiness.md) · [Roadmap](./ROADMAP.md)
 
-## What's New In v0.48.12 (2026-10-24)
+## What's New In v0.48.13 (2026-10-24)
 
-- **Cross-Boundary Keyboard Navigation & Relative Viewport Scrolling**:
-  - Rebuilt `scrollIntoView` using `getBoundingClientRect()` relative viewport deltas, completely eliminating scroll jumping bugs caused by nested `position: relative` containers;
-  - Added seamless keyboard focus penetration between tab cards and doc items: pressing `ArrowDown` on the last card row moves focus into the first doc item, while `ArrowUp` on the first doc item seamlessly returns to cards or the search box;
-  - Hardened `activateCardByElement` with strict `!card` and `!tabId` guards to prevent out-of-bound undefined tab matches.
-- **Deep Bug Audit Round 2**: IME composition Escape protection, dynamic target surface scoping, and Windows drive path defenses.
+- **Touch Slop & Action Palette IME Guard**:
+  - Added a 10px `touch slop` tolerance to mobile card long-press (`bindCardLongPress`) and history item long-press, preventing micro-jitters from prematurely cancelling the gesture timer;
+  - Guarded action palette keyboard navigation against IME composition (`isComposing || keyCode === 229`), completely preventing Enter keypresses from executing actions while typing Pinyin;
+  - Added lifecycle cleanup for `focusTimer` on palette disposal.
+- **Cross-Boundary Navigation & Scroll**: Relative viewport scroll normalization and card-to-doc seamless navigation.
 
 Itemized changes, validation data, and release history are in the [complete changelog](./docs/CHANGELOG.en-US.md).
 
@@ -400,7 +400,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and size budgets after building: 578 KiB archive, 1160 KiB raw bundle, and 320 KiB compressed per entry (see [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)). Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.48.12`, featuring cross-boundary keyboard navigation, relative viewport scroll normalization, strict card guard, and two rounds of deep bug audit. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
+The current version is `v0.48.13`, featuring mobile touch slop, action palette IME guards, cross-boundary keyboard navigation, and relative viewport scroll normalization. Local working-tree changes are development-only and are not a published release until the release workflow and downloaded asset have been verified.
 
 <details>
 <summary>Full historical changelog (click to expand)</summary>

@@ -6,6 +6,13 @@
 
 ---
 
+### v0.48.13 (2026-10-24)
+- **移动端触控容差防抖与动作画板输入法守卫（Touch Slop & Action Palette IME Guard）**：
+  - 修复移动端卡片长按（`bindCardLongPress`）与历史条目长按手势因缺少微颤容差导致长按难以触发的问题，引入业界标准的 10px `touch slop` 防抖容差，手指微小抖动不打断长按计时；
+  - 修复次级动作画板（`Action Palette`）键盘调度逻辑：在中文/日文拼音候选期间（`isComposing || keyCode === 229`）严格返回 `NOOP`，彻底杜绝回车确认拼音时意外触发动作执行的 Bug；
+  - 增强动作画板自动聚焦定时器生命周期管理，在 `dispose` 时主动清理 `focusTimer`，消除事件循环悬挂隐患。
+- **跨区域键盘连续导航与无 offsetParent 视口滚动**：绝对视口滚动坐标修复、卡片至文档结果平滑过渡。
+
 ### v0.48.12 (2026-10-24)
 - **跨区域键盘连续导航与无 offsetParent 视口滚动（Cross-Boundary Navigation & Scroll）**：
   - 重构 `scrollIntoView`：改用 `getBoundingClientRect()` 相对视口绝对差值滚动，彻底消除嵌套相对定位容器（`position: relative` / 网格 / 流式分组）导致的滚动跳动 Bug；

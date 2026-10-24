@@ -1,19 +1,19 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.48.12-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.13-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **最近正式版：v0.48.12（2026-10-24）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.12) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **最近正式版：v0.48.13（2026-10-24）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.13) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
-## 本次更新（v0.48.12 · 2026-10-24）
+## 本次更新（v0.48.13 · 2026-10-24）
 
-- **跨区域键盘连续导航与无 offsetParent 视口滚动（Cross-Boundary Navigation & Scroll）**：
-  - 重构 `scrollIntoView`：改用 `getBoundingClientRect()` 相对视口绝对差值滚动，彻底消除嵌套相对定位容器（`position: relative` / 网格 / 流式分组）导致的滚动跳动 Bug；
-  - 实现卡片区与文档结果区键盘焦点无缝穿透：在卡片末行按 `ArrowDown` 自动平滑过渡聚焦至首条文档结果项，在结果行首项按 `ArrowUp` 自动平滑回焦至卡片末项或搜索框；
-  - 强化 `activateCardByElement` 空值防御：严格拦截 `!card` 与 `!tabId`，杜绝数字键越界时向底层传入 `undefined` 引发偶发误匹配。
-- **第二轮代码潜在 Bug 排查与交互边界防御**：输入法拼音候选阶段 Escape 保护、空态近期搜索动态上下文定位、Windows 驱动器盘符排除与 SQL 防空。
+- **移动端触控容差防抖与动作画板输入法守卫（Touch Slop & Action Palette IME Guard）**：
+  - 修复移动端卡片长按（`bindCardLongPress`）与历史条目长按手势因缺少微颤容差导致长按难以触发的问题，引入业界标准的 10px `touch slop` 防抖容差，手指微小抖动不打断长按计时；
+  - 修复次级动作画板（`Action Palette`）键盘调度逻辑：在中文/日文拼音候选期间（`isComposing || keyCode === 229`）严格返回 `NOOP`，彻底杜绝回车确认拼音时意外触发动作执行的 Bug；
+  - 增强动作画板自动聚焦定时器生命周期管理，在 `dispose` 时主动清理 `focusTimer`，消除事件循环悬挂隐患。
+- **跨区域键盘连续导航与无 offsetParent 视口滚动**：绝对视口滚动坐标修复、卡片至文档结果平滑过渡。
 
 逐项说明、验证数据与历史版本见[完整更新日志](./docs/CHANGELOG.md)。
 
@@ -399,7 +399,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和体积预算（归档 578 KiB、raw 1160 KiB、单条目压缩 320 KiB，见 [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.48.12`，包含跨区域键盘连续导航、视口滚动坐标修复、空卡片严格守卫与两轮代码潜在 Bug 深度排查。
+当前版本为 `v0.48.13`，包含移动端长按防抖容差、动作画板输入法守卫、跨区域键盘连续导航与无 offsetParent 视口滚动修复。
 
 <details>
 <summary>历史更新日志（点击展开）</summary>

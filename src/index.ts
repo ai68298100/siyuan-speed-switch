@@ -3594,7 +3594,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.12", "iconSettings");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.13", "iconSettings");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
 
         const tabs = document.createElement("div");
@@ -4450,7 +4450,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         holder.dialog = dialog;
         this.platformSwitcherDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.12", "iconLvSpeedSwitch");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.13", "iconLvSpeedSwitch");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
         if (surfaceRoot) {
@@ -4540,7 +4540,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.12", "iconCode");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.13", "iconCode");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
@@ -10355,10 +10355,14 @@ private rootIdOf(tab: Tab): string | null {
             event.stopPropagation();
             openMenu(event.clientX, event.clientY);
         });
+        let startX = 0;
+        let startY = 0;
         item.addEventListener("touchstart", (event) => {
             const touch = event.touches[0];
             x = touch?.clientX || 0;
             y = touch?.clientY || 0;
+            startX = x;
+            startY = y;
             longPressed = false;
             clearTimer();
             timer = window.setTimeout(() => {
@@ -10367,7 +10371,18 @@ private rootIdOf(tab: Tab): string | null {
                 openMenu(x, y);
             }, 500);
         }, {passive: true});
-        item.addEventListener("touchmove", clearTimer, {passive: true});
+        item.addEventListener("touchmove", (event) => {
+            const touch = event.touches[0];
+            if (!touch) {
+                clearTimer();
+                return;
+            }
+            const dx = Math.abs(touch.clientX - startX);
+            const dy = Math.abs(touch.clientY - startY);
+            if (dx > 10 || dy > 10) {
+                clearTimer();
+            }
+        }, {passive: true});
         item.addEventListener("touchcancel", clearTimer);
         item.addEventListener("touchend", (event) => {
             clearTimer();
@@ -12606,11 +12621,15 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         let longPressed = false;
         let menuX = 0;
         let menuY = 0;
+        let startX = 0;
+        let startY = 0;
         const start = (event: TouchEvent) => {
             const touch = event.touches[0];
             if (touch) {
                 menuX = touch.clientX;
                 menuY = touch.clientY;
+                startX = touch.clientX;
+                startY = touch.clientY;
             }
             longPressed = false;
             timer = window.setTimeout(() => {
@@ -12624,11 +12643,25 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 timer = undefined;
             }
         };
+        const onMove = (event: TouchEvent) => {
+            const touch = event.touches[0];
+            if (!touch) {
+                cancel();
+                return;
+            }
+            const dx = Math.abs(touch.clientX - startX);
+            const dy = Math.abs(touch.clientY - startY);
+            if (dx > 10 || dy > 10) {
+                cancel();
+            }
+        };
         const end = (event: TouchEvent) => {
             cancel();
             if (longPressed) {
-                // 阻止长按结束后合成 click 触发页签切换
                 event.preventDefault();
+                window.setTimeout(() => {
+                    longPressed = false;
+                }, 200);
             }
         };
         card.addEventListener("click", (event) => {
@@ -12639,7 +12672,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             }
         }, true);
         card.addEventListener("touchstart", start, {passive: true});
-        card.addEventListener("touchmove", cancel, {passive: true});
+        card.addEventListener("touchmove", onMove, {passive: true});
         card.addEventListener("touchend", end, {passive: false});
         card.addEventListener("touchcancel", cancel);
     }

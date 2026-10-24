@@ -5,6 +5,16 @@
 
 ## Changelog (full history)
 
+### v0.48.13 (2026-10-24)
+
+- **Touch Slop & Action Palette IME Guard**:
+  - Added a 10px `touch slop` tolerance to mobile card long-press (`bindCardLongPress`) and history item long-press, preventing micro-jitters from prematurely cancelling the gesture timer;
+  - Guarded action palette keyboard navigation against IME composition (`isComposing || keyCode === 229`), completely preventing Enter keypresses from executing actions while typing Pinyin;
+  - Added lifecycle cleanup for `focusTimer` on palette disposal.
+- **Cross-Boundary Keyboard Navigation & Relative Viewport Scrolling**:
+  - Rebuilt `scrollIntoView` using `getBoundingClientRect()` relative viewport deltas, completely eliminating scroll jumping bugs caused by nested `position: relative` containers;
+  - Added seamless keyboard focus penetration between tab cards and doc items.
+
 ### v0.48.12 (2026-10-24)
 
 - **Cross-Boundary Keyboard Navigation & Relative Viewport Scrolling**:

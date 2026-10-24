@@ -215,12 +215,17 @@ function mountActionPalette(container, actions = [], options = {}) {
     // (2) 键盘导航调度
     const onKeydown = (e) => {
         if (disposed) return;
+        if (e.isComposing || e.keyCode === 229) {
+            return;
+        }
         const res = dispatchPaletteKey(state, {
             key: e.key,
             ctrlKey: e.ctrlKey,
             metaKey: e.metaKey,
             shiftKey: e.shiftKey,
             altKey: e.altKey,
+            isComposing: e.isComposing,
+            keyCode: e.keyCode,
         });
 
         if (res.intent === PALETTE_KEY_ACTIONS.NOOP) {
@@ -249,8 +254,9 @@ function mountActionPalette(container, actions = [], options = {}) {
     renderList();
     container.appendChild(root);
 
+    let focusTimer = null;
     if (typeof searchInput.focus === "function") {
-        setTimeout(() => {
+        focusTimer = setTimeout(() => {
             if (!disposed && searchInput.isConnected) {
                 searchInput.focus();
             }
@@ -260,6 +266,10 @@ function mountActionPalette(container, actions = [], options = {}) {
     function dispose() {
         if (disposed) return;
         disposed = true;
+        if (focusTimer) {
+            clearTimeout(focusTimer);
+            focusTimer = null;
+        }
         cleanups.forEach((fn) => {
             try { fn(); } catch (_) { /* ignore */ }
         });

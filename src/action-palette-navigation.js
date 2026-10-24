@@ -101,6 +101,9 @@ function dispatchPaletteKey(state, event) {
     if (!state || typeof state !== "object") {
         return {state: createPaletteNavigationState(), intent: PALETTE_KEY_ACTIONS.NOOP};
     }
+    if (event && (event.isComposing || event.keyCode === 229)) {
+        return {state, intent: PALETTE_KEY_ACTIONS.NOOP};
+    }
     const key = event && typeof event.key === "string" ? event.key : "";
     const ctrlOrMeta = Boolean(event && (event.ctrlKey || event.metaKey));
     const shiftKey = Boolean(event && event.shiftKey);
