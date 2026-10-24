@@ -5,6 +5,15 @@
 
 ## Changelog (full history)
 
+### v0.48.12 (2026-10-24)
+
+- **Cross-Boundary Keyboard Navigation & Relative Viewport Scrolling**:
+  - Rebuilt `scrollIntoView` using `getBoundingClientRect()` relative viewport deltas, completely eliminating scroll jumping bugs caused by nested `position: relative` containers;
+  - Added seamless keyboard focus penetration between tab cards and doc items: pressing `ArrowDown` on the last card row moves focus into the first doc item, while `ArrowUp` on the first doc item seamlessly returns to cards or the search box;
+  - Hardened `activateCardByElement` with strict `!card` and `!tabId` guards to prevent out-of-bound undefined tab matches.
+- **Deep Bug Audit Round 2**:
+  - IME composition Escape protection, dynamic target surface scoping, and Windows drive path defenses.
+
 ### v0.48.11 (2026-10-24)
 
 - **Deep Bug Audit & Robustness Round 2**:

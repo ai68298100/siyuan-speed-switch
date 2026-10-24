@@ -4,6 +4,15 @@
 
 ## 更新日志（完整历史）
 
+### v0.48.12（2026-10-24）
+
+- **跨区域键盘连续导航与无 offsetParent 视口滚动（Cross-Boundary Navigation & Scroll）**：
+  - 重构 `scrollIntoView`：改用 `getBoundingClientRect()` 相对视口绝对差值滚动，彻底消除嵌套相对定位容器（`position: relative` / 网格 / 流式分组）导致的滚动跳动 Bug；
+  - 实现卡片区与文档结果区键盘焦点无缝穿透：在卡片末行按 `ArrowDown` 自动平滑过渡聚焦至首条文档结果项，在结果行首项按 `ArrowUp` 自动平滑回焦至卡片末项或搜索框；
+  - 强化 `activateCardByElement` 空值防御：严格拦截 `!card` 与 `!tabId`，杜绝数字键越界时向底层传入 `undefined` 引发偶发误匹配。
+- **第二轮代码潜在 Bug 排查与交互边界防御**：
+  - 输入法拼音候选阶段 Escape 保护、空态近期搜索动态上下文定位、Windows 驱动器盘符排除与 SQL 防空。
+
 ### v0.48.11（2026-10-24）
 
 - **第二轮代码潜在 Bug 排查与交互边界防御（Deep Bug Audit & Robustness Round 2）**：

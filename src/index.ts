@@ -3594,7 +3594,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.11", "iconSettings");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.12", "iconSettings");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
 
         const tabs = document.createElement("div");
@@ -4450,7 +4450,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         holder.dialog = dialog;
         this.platformSwitcherDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.11", "iconLvSpeedSwitch");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.12", "iconLvSpeedSwitch");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
         if (surfaceRoot) {
@@ -4540,7 +4540,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.11", "iconCode");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.12", "iconCode");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
@@ -13489,7 +13489,19 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                     : (focusIndex - 1 + cards.length) % cards.length;
             } else if (key === "ArrowDown" && plain) {
                 event.preventDefault();
-                next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.min(focusIndex + colCount, cards.length - 1);
+                if (flowNav && flowNeighbor(key) >= 0) {
+                    next = flowNeighbor(key);
+                } else if (focusIndex + colCount < cards.length) {
+                    next = focusIndex + colCount;
+                } else {
+                    const firstDoc = scrollElement.querySelector<HTMLElement>(".sw__doc-grid .sw__doc-item:not(.fn__none)");
+                    if (firstDoc && !firstDoc.closest(".fn__none")) {
+                        firstDoc.focus();
+                        this.scrollIntoView(firstDoc, scrollElement);
+                        return;
+                    }
+                    next = cards.length - 1;
+                }
             } else if (key === "ArrowUp" && plain) {
                 event.preventDefault();
                 next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.max(focusIndex - colCount, 0);
@@ -13561,7 +13573,25 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             .filter((element) => !element.closest(".fn__none"));
         const at = items.indexOf(current);
         if (at < 0) return false;
-        const next = items[Math.max(0, Math.min(items.length - 1, at + delta))];
+        const targetIndex = at + delta;
+        if (targetIndex < 0) {
+            const cards = Array.from(scrollElement.querySelectorAll<HTMLElement>(".sw__card"))
+                .filter((card) => !card.closest(".fn__none"));
+            if (cards.length > 0) {
+                const lastCard = cards[cards.length - 1];
+                this.focusCard(lastCard, true);
+                this.scrollIntoView(lastCard, scrollElement);
+                return true;
+            }
+            const surface = scrollElement.closest<HTMLElement>(".sw-platform-surface") || scrollElement.parentElement;
+            const searchInput = surface?.querySelector<HTMLInputElement>(".sw__search");
+            if (searchInput) {
+                searchInput.focus();
+                return true;
+            }
+            return false;
+        }
+        const next = items[Math.min(items.length - 1, targetIndex)];
         if (next) {
             next.focus();
             this.scrollIntoView(next, scrollElement);
@@ -13572,8 +13602,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     // 流式布局下的方向键导航：按屏幕坐标就近移动（组块宽度不等，固定列数换算会跳错位）
     // T-6820：按元素激活页签卡（Enter 与数字直达共用；卡上无对应页签时静默）
     private activateCardByElement(card: HTMLElement | undefined, closeOverlay: IOverlayClose) {
-        const tabId = card?.dataset.tabId;
-        const tab = (card && this.cardTabs.get(card)) || (this.isMobile
+        if (!card) return;
+        const tabId = card.dataset.tabId;
+        if (!tabId) return;
+        const tab = this.cardTabs.get(card) || (this.isMobile
             ? this.getMobileTabs().find((item) => item.id === tabId)
             : getAllTabs().find((item) => item.id === tabId));
         if (tab) {
@@ -13668,12 +13700,12 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     private scrollIntoView(card: HTMLElement, container: HTMLElement) {
-        const cardTop = card.offsetTop;
-        const cardBottom = cardTop + card.offsetHeight;
-        if (cardTop < container.scrollTop) {
-            container.scrollTop = cardTop;
-        } else if (cardBottom > container.scrollTop + container.clientHeight) {
-            container.scrollTop = cardBottom - container.clientHeight;
+        const cardRect = card.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        if (cardRect.top < containerRect.top) {
+            container.scrollTop -= (containerRect.top - cardRect.top);
+        } else if (cardRect.bottom > containerRect.bottom) {
+            container.scrollTop += (cardRect.bottom - containerRect.bottom);
         }
     }
 
