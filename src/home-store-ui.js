@@ -543,13 +543,28 @@ function openHomeWidgetStore(device, onChanged) {
                 button.setAttribute("aria-label", `${button.dataset.tabLabel || ""} · ${count}`);
             });
         };
-        bindRenderListener(searchInput, "input", () => {
+        let isComposing = false;
+        bindRenderListener(searchInput, "compositionstart", () => {
+            isComposing = true;
+        });
+        bindRenderListener(searchInput, "compositionend", () => {
+            isComposing = false;
             storeQuery = searchInput.value;
             root.dataset.query = (0, home_store_model_1.normalizeHomeStoreQuery)(storeQuery);
             clearSearchButton.hidden = !(0, home_store_model_1.normalizeHomeStoreQuery)(storeQuery);
             applyFilter();
         });
+        bindRenderListener(searchInput, "input", () => {
+            clearSearchButton.hidden = !(0, home_store_model_1.normalizeHomeStoreQuery)(searchInput.value);
+            if (isComposing)
+                return;
+            storeQuery = searchInput.value;
+            root.dataset.query = (0, home_store_model_1.normalizeHomeStoreQuery)(storeQuery);
+            applyFilter();
+        });
         bindRenderListener(searchInput, "keydown", (event) => {
+            if (isComposing || event.keyCode === 229)
+                return;
             if (event.key !== "Escape" || !searchInput.value)
                 return;
             event.preventDefault();

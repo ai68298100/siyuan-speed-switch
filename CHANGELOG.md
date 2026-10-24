@@ -6,6 +6,13 @@
 
 ---
 
+### v0.48.16 (2026-10-24)
+- **组件商店搜索框输入法（IME）守卫与性能优化（Widget Store IME Guard）**：
+  - 修复第二面板组件商店（`home-store-ui`）搜索框此前缺失输入法合成守卫的缺陷，在拼音候选期间（`compositionstart` / `isComposing`）阻断中间态高频触发全卡片 DOM 筛选与状态摘要重算；
+  - 增加候选阶段按 Escape 的按键保护（`keyCode === 229`），杜绝撤销拼音候选窗时误触发搜索清空；
+  - `compositionend` 阶段补发一次精准筛选，输入体验与切换器主搜索保持高度一致。
+- **悬浮球极端视口边界防倒置与生命周期清理加固**：物理尺寸保底与卸载链路梳理。
+
 ### v0.48.15 (2026-10-24)
 - **悬浮球极端视口边界防倒置与生命周期清理加固（Floating Ball Bounds & Cleanup）**：
   - 修复移动端在横屏或软键盘、导航栏高度占用极大场景下，安全区扣减导致 `visible.bottom < visible.top` 产生的视口倒置与坐标抖动 Bug，加入 `Math.max(visible.top + this.ballSize, ...)` 物理尺寸保底；

@@ -5,6 +5,14 @@
 
 ## Changelog (full history)
 
+### v0.48.16 (2026-10-24)
+
+- **Widget Store Search Input IME Composition Guard & Performance (home-store-ui)**:
+  - Guarded widget store search input with `compositionstart` / `compositionend`, preventing intermediate Pinyin keystrokes from triggering expensive whole-catalog DOM refiltering and statistics recalculation;
+  - Added Escape key protection during composition (`keyCode === 229`) to prevent candidate dismissal from accidentally clearing the search query.
+- **Floating Ball Viewport Bounds Inversion Defense & Lifecycle Cleanup**:
+  - Physical ball size minimum bounds and deterministic teardown.
+
 ### v0.48.15 (2026-10-24)
 
 - **Floating Ball Viewport Bounds Inversion Defense & Lifecycle Cleanup**:
