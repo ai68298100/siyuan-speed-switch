@@ -1925,9 +1925,16 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     private bindEcosystemEventSubscriptions() {
         if (typeof window === "undefined") return;
+        this.unbindEcosystemEventSubscriptions();
         const triggerHomeRefresh = () => {
             if (this.isUnloading) return;
-            this.homeModuleChangeListeners.forEach((listener) => listener());
+            this.homeModuleChangeListeners.forEach((listener) => {
+                try {
+                    listener();
+                } catch (error) {
+                    logger.warn("homeModuleChangeListener error", error);
+                }
+            });
         };
         // 聚合小驴打卡、闪卡、考试、人脉、管家、拾遗、常用、思阅与思播生命周期事件
         const eventNames = [
@@ -3587,7 +3594,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.9", "iconSettings");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.settings || "设置", "v0.48.10", "iconSettings");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
 
         const tabs = document.createElement("div");
@@ -4443,7 +4450,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         holder.dialog = dialog;
         this.platformSwitcherDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.9", "iconLvSpeedSwitch");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogSwitcherTitle || "页签切换器", "v0.48.10", "iconLvSpeedSwitch");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
         if (surfaceRoot) {
@@ -4533,7 +4540,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
-        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.9", "iconCode");
+        mountPlatformDialogTitleWrap(dialog.element, this.i18n.dialogStudioTitle || "片段实验室", "v0.48.10", "iconCode");
         mountPlatformDialogCloseHint(dialog.element, this.i18n.platformCloseHint || "to close");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
@@ -5493,7 +5500,7 @@ const updatedMap: {[rootId: string]: string} = {};
             btn.innerHTML = `<svg width="12" height="12"><use xlink:href="#${icon}"></use></svg><span>${label}</span>`;
             btn.addEventListener("click", () => {
                 const rawVal = searchInput.value || "";
-                const currentPrefixMatch = rawVal.match(/^[@^#!>?？》！]/);
+                const currentPrefixMatch = rawVal.match(/^[@^#!>?？》！:：]/);
                 const pureText = currentPrefixMatch ? rawVal.slice(1).trim() : rawVal.trim();
                 if (prefix === "") {
                     searchInput.value = pureText;
@@ -5515,6 +5522,12 @@ const updatedMap: {[rootId: string]: string} = {};
                 } else if (e.key === "ArrowDown") {
                     e.preventDefault();
                     searchInput.focus();
+                } else if (e.key === "Home") {
+                    e.preventDefault();
+                    chipButtons[0]?.focus();
+                } else if (e.key === "End") {
+                    e.preventDefault();
+                    chipButtons[chipButtons.length - 1]?.focus();
                 }
             });
             chipButtons.push(btn);
@@ -12841,7 +12854,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             case "open-in-reader":
                 if (rootId) {
                     destroySwitcher();
-                    const sireader = (window as any).sireader;
+                    const sireader = (getBridgeSafely("sireader") || (window as any).sireader) as any;
                     if (sireader && typeof sireader.openDoc === "function") {
                         try {
                             sireader.openDoc(rootId);
@@ -12860,7 +12873,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             case "open-in-media":
                 if (rootId) {
                     destroySwitcher();
-                    const player = (window as any).siyuanMediaPlayer;
+                    const player = (getBridgeSafely("simedia") || (window as any).siyuanMediaPlayer) as any;
                     if (player?.controller && typeof player.controller.play === "function") {
                         try {
                             player.controller.play(rootId);

@@ -577,10 +577,12 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
             const bridge: any = getBridgeSafely("sireader");
             if (!bridge) return { items: [], emptyHint: "未检测到思阅插件", status: "ready" };
             try {
-                const books = typeof bridge.getRecentBooks === "function" ? bridge.getRecentBooks() : [];
-                const rows = (books || []).slice(0, 5).map((book: any) => ({
+                const booksRaw = typeof bridge.getRecentBooks === "function" ? await bridge.getRecentBooks() : [];
+                const books = Array.isArray(booksRaw) ? booksRaw : (Array.isArray(booksRaw?.data) ? booksRaw.data : []);
+                const rows = books.slice(0, 5).map((book: any) => ({
                     label: book.title || "书籍",
                     value: Number.isFinite(book.progress) ? `${book.progress}%` : "阅读中",
+                    id: book.docId || book.id || book.blockId,
                 }));
                 return { items: rows, emptyHint: rows.length ? "" : "暂无最近阅读书目", status: "ready" };
             } catch {
@@ -594,9 +596,13 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
             const bridge: any = getBridgeSafely("simedia");
             if (!bridge || !bridge.controller) return { items: [], emptyHint: "未检测到思播插件", status: "ready" };
             try {
-                const isPlaying = typeof bridge.controller.isPlaying === "function" ? bridge.controller.isPlaying() : false;
+                const isPlaying = typeof bridge.controller.isPlaying === "function" ? Boolean(bridge.controller.isPlaying()) : false;
                 const current = typeof bridge.controller.getCurrentMedia === "function" ? bridge.controller.getCurrentMedia() : null;
-                const title = current?.title || current?.name || "当前媒体";
+                const title = (typeof current?.title === "string" && current.title.trim())
+                    ? current.title.trim()
+                    : ((typeof current?.name === "string" && current.name.trim())
+                        ? current.name.trim()
+                        : "当前媒体");
                 const rows = [
                     { label: isPlaying ? "▶ 正在播放" : "⏸ 暂停中", value: title },
                 ];

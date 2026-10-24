@@ -1,19 +1,20 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.48.9-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.48.10-blue)](./plugin.json) [![CI](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-speed-switch/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/ai68298100/siyuan-speed-switch?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-speed-switch/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D源笔记-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的**统一切换与工作上下文平台**：用一个平台外壳连接切换器、工作台、片段实验室和悬浮球。它让用户找到并预览内容、查看和编排工作组件、在安全边界内管理代码片段，再从任意宿主位置回到上次工作现场。桌面弹窗、右侧栏和手机端共享对象、动作和状态语义，但按空间与输入方式采用不同布局。
 
-> **最近正式版：v0.48.9（2026-10-23）**<br>
-> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.9) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
+> **最近正式版：v0.48.10（2026-10-24）**<br>
+> [下载 GitHub Release](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.48.10) · [发布检查](./docs/release-readiness.md) · [开发路线](./ROADMAP.md)
 
-## 本次更新（v0.48.9 · 2026-10-23）
+## 本次更新（v0.48.10 · 2026-10-24）
 
-- **思阅（SiReader）与思播（SiMedia）深度联动升级**：
-  - 工作台接入「思阅 · 最近阅读（`sireader-recent`）」与「思播 · 正在播放（`simedia-active`）」小组件，实时显示书架在读书目进度与正在播放的音视频标题；
-  - 动作画板 `open-in-reader`（在思阅中阅读）与 `open-in-media`（在思播中打开）优先唤起上游专有播放/阅读入口，并自带 `openTab` 优雅降级。
-- **小驴全生态总线事件实时刷新联动（Ecosystem Event Bus Integration）**：雷切工作台聚合监听小驴打卡（`checkin:event-recorded`）、闪卡（`lv-cards:reviewed`）、考试（`lv-exam:session-ended`）、管家（`lv-home:data-changed`）与思播/思阅事件，一旦兄弟插件产生数据变动，雷切工作台组件实时自动无感重绘！
-- **第一面板门面专项深度打磨**：模式药丸全键盘循环导航、卡片操作把手平滑微动效与双色能量微光指示条。
+- **代码潜在 Bug 深度排查与边界隐患加固（Bug Audit & Robustness Defense）**：
+  - 修复 `wrapEcosystemModuleRead` 早期解析结算时未释放超时定时器导致的事件循环悬挂隐患，并增加非标准/循环引用配置的序列化防御保护；
+  - 增强 `setupSearchModeChips` 模式药丸栏前缀自适应，补齐对全半角冒号（`:` / `：`）大纲穿透符号的平滑剥离与切换，并遵循 W3C 规范补齐 `Home` / `End` 首末快捷键导航；
+  - 强化生态事件总线调度：重绑前严格执行幂等解绑，并在广播刷新时对每个监听器执行独立 `try-catch` 保护，防止单个第三方模块抛错破坏总线；
+  - 动作画板思阅/思播专有调用升级为全别名安全探测（`getBridgeSafely`）。
+- **思阅与思播深度联动升级**：工作台组件接入（`sireader-recent` 与 `simedia-active`）与全生态总线事件实时刷新。
 
 逐项说明、验证数据与历史版本见[完整更新日志](./docs/CHANGELOG.md)。
 
@@ -399,7 +400,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和体积预算（归档 578 KiB、raw 1160 KiB、单条目压缩 320 KiB，见 [`scripts/release-readiness-metrics.cjs`](scripts/release-readiness-metrics.cjs)）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.48.9`，包含思阅/思播深度联动、全生态总线事件实时自刷新、模式药丸栏键盘循环导航、卡片操作把手丝滑微动效、第一面板门面专项深度打磨。
+当前版本为 `v0.48.10`，包含代码潜在 Bug 深度排查与边界隐患加固、思阅/思播深度联动、全生态总线事件实时自刷新。
 
 <details>
 <summary>历史更新日志（点击展开）</summary>

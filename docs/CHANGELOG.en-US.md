@@ -5,6 +5,17 @@
 
 ## Changelog (full history)
 
+### v0.48.10 (2026-10-24)
+
+- **Bug Audit & Robustness Defense**:
+  - Fixed an un-cleared `setTimeout` timer in `wrapEcosystemModuleRead` that could cause hanging event loops, strictly clearing timer handles in `finally`;
+  - Added safe serialization defense for non-standard or circular external module configurations;
+  - Added full-width/half-width colon (`:` / `：`) prefix stripping for mode chips and W3C standard `Home` / `End` keyboard navigation;
+  - Hardened ecosystem event bus listener execution with per-listener `try-catch` isolation and idempotent unbinding;
+  - Upgraded SiReader and SiMedia palette actions to use comprehensive multi-alias detection (`getBridgeSafely`).
+- **SiReader & SiMedia Deep Integration**:
+  - Workbench mounts "SiReader Recent Books (`sireader-recent`)" and "SiMedia Now Playing (`simedia-active`)" widgets to track reading progress and playing audio/video titles.
+
 ### v0.48.9 (2026-10-23)
 
 - **SiReader & SiMedia Deep Integration**:

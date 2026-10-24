@@ -147,7 +147,13 @@ export function wrapEcosystemModuleRead(
     const inFlight = new Map<string, Promise<any>>();
 
     return async (config: any, device: string, options?: any) => {
-        const cacheKey = `${device}:${JSON.stringify(config || {})}`;
+        let serializedConfig = "";
+        try {
+            serializedConfig = JSON.stringify(config || {});
+        } catch {
+            serializedConfig = String(config || "");
+        }
+        const cacheKey = `${device}:${serializedConfig}`;
         const cached = cache.get(cacheKey);
         const now = Date.now();
         if (cached && now - cached.ts < cacheTtlMs) {
@@ -158,11 +164,12 @@ export function wrapEcosystemModuleRead(
             return inFlight.get(cacheKey)!;
         }
 
+        let timer: ReturnType<typeof setTimeout> | undefined;
         const task = (async () => {
             try {
                 const readPromise = Promise.resolve(rawRead(config, device, options));
                 const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error("ECOSYSTEM_MODULE_TIMEOUT")), timeoutMs);
+                    timer = setTimeout(() => reject(new Error("ECOSYSTEM_MODULE_TIMEOUT")), timeoutMs);
                 });
                 const res = await Promise.race([readPromise, timeoutPromise]);
                 const payload = res && typeof res === "object" ? res : { items: [] };
@@ -177,6 +184,10 @@ export function wrapEcosystemModuleRead(
                     retryable: true,
                 };
             } finally {
+                if (timer) {
+                    clearTimeout(timer);
+                    timer = undefined;
+                }
                 inFlight.delete(cacheKey);
             }
         })();
